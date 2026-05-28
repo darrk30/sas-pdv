@@ -13,8 +13,10 @@ return new class extends Migration
     {
         Schema::create('empresas', function (Blueprint $table) {
             $table->id();
-            $table->string('nombre');
+            $table->string('name');
             $table->string('ruc')->maxLength(11);
+            $table->string('logo')->nullable();
+            $table->string('slug')->nullable();
             $table->string('direccion')->nullable();
             $table->string('telefono')->nullable();
             $table->string('email')->nullable();
@@ -25,8 +27,6 @@ return new class extends Migration
             $table->string('estado')->default('activo');
             $table->string('carta_activa_cliente')->default('activo');
             $table->string('carta_activa_admin')->default('activo');
-            $table->string('logo')->nullable();
-            $table->string('slug')->nullable();
             $table->string('cod_local')->default('0000');
             $table->string('country_code')->default('PE');
             $table->timestamps();

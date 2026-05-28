@@ -32,7 +32,7 @@ class PdvPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
-            ->brandName(fn() => auth()->user()?->restaurants()->first()?->nombre ?? 'Mi Punto de Venta')
+            ->brandName(fn() => auth()->user()?->empresas()->first()?->name ?? 'Mi Punto de Venta')
             ->discoverResources(in: app_path('Filament/Pdv/Resources'), for: 'App\Filament\Pdv\Resources')
             ->discoverPages(in: app_path('Filament/Pdv/Pages'), for: 'App\Filament\Pdv\Pages')
             ->pages([
