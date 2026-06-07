@@ -11,10 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('empresa_user', function (Blueprint $table) {
+        Schema::create('suscripciones', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
+            $table->foreignId('plan_id')->constrained('plans')->restrictOnDelete();
+            
+            $table->decimal('precio_pagado', 10, 2);
+            $table->date('fecha_inicio');
+            $table->date('fecha_fin');
             $table->string('estado')->default('activo');
             $table->timestamps();
         });
@@ -25,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('empresa_user');
+        Schema::dropIfExists('suscripciones');
     }
 };

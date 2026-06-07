@@ -2,15 +2,20 @@
 
 namespace App\Filament\Resources\Empresas\Schemas;
 
+use App\Enums\EstadoGeneral;
+use App\Models\Plan;
 use App\Models\Role;
 use App\Models\User;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 
@@ -39,7 +44,7 @@ class EmpresaForm
                                 FileUpload::make('logo')->label('Logotipo')->image()->directory('logos')->columnSpanFull(),
                             ]),
 
-                        Tab::make('Ubicación y Facturación')
+                        Tab::make('Ubicación')
                             ->icon('heroicon-o-map-pin')
                             ->schema([
                                 TextInput::make('direccion')->label('Dirección Completa')->columnSpanFull(),
@@ -115,6 +120,73 @@ class EmpresaForm
                                             $component->state($data);
                                         }
                                     })
+                            ]),
+
+                        Tab::make('Suscripción y Plan')
+                            ->icon('heroicon-o-credit-card')
+                            ->schema([
+                                Fieldset::make('Detalles de la Suscripción')
+                                    ->relationship('suscripcion')
+                                    ->columns([
+                                        'default' => 1, // Celulares pequeños (vertical)
+                                        'sm' => 2,      // Celulares grandes (horizontal) y Tablets pequeñas
+                                        'lg' => 3,      // Monitores y Laptops
+                                    ])
+                                    ->schema([
+                                        Select::make('plan_id')
+                                            ->label('Plan Contratado')
+                                            ->relationship('plan', 'nombre')
+                                            ->native(false)
+                                            ->required()
+                                            ->live()
+                                            ->columnSpan([
+                                                'default' => 1, // En celular pequeño, 1 columna
+                                                'sm' => 2,      // En tablet/celular grande, 2 columnas
+                                                'lg' => 2,      // En PC, 2 de las 3 columnas
+                                            ])
+                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                if (! $state) return;
+
+                                                $plan = Plan::find($state);
+                                                if ($plan) {
+                                                    $set('precio_pagado', $plan->precio);
+                                                    $set('fecha_inicio', now()->format('Y-m-d'));
+
+                                                    $fechaFin = $plan->ciclo_facturacion === 'anual'
+                                                        ? now()->addYear()->format('Y-m-d')
+                                                        : now()->addMonth()->format('Y-m-d');
+
+                                                    $set('fecha_fin', $fechaFin);
+                                                }
+                                            }),
+
+                                        Select::make('estado')
+                                            ->label('Estado')
+                                            ->options(EstadoGeneral::class)
+                                            ->default(EstadoGeneral::Activo)
+                                            ->required()
+                                            ->columnSpan(1), // Automáticamente tomará el espacio dictado por el Fieldset
+
+                                        TextInput::make('precio_pagado')
+                                            ->label('Precio Acordado')
+                                            ->required()
+                                            ->numeric()
+                                            ->prefix('S/')
+                                            ->columnSpan(1),
+
+                                        DatePicker::make('fecha_inicio')
+                                            ->label('Fecha de Inicio')
+                                            ->required()
+                                            ->native(false)
+                                            ->default(now())
+                                            ->columnSpan(1),
+
+                                        DatePicker::make('fecha_fin')
+                                            ->label('Fecha de Vencimiento')
+                                            ->required()
+                                            ->native(false)
+                                            ->columnSpan(1),
+                                    ])
                             ]),
                     ])
                     ->columnSpanFull()

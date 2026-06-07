@@ -2,6 +2,8 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\ValidarEstadoUsuarioEmpresa;
+use App\Http\Middleware\VerificarEmpresaActiva;
 use App\Models\Empresa;
 use Filament\FontProviders\GoogleFontProvider;
 use Filament\Http\Middleware\Authenticate;
@@ -57,7 +59,7 @@ class PdvPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
-            ->authMiddleware([
+            ->authMiddleware([ 
                 Authenticate::class,
             ])
             ->assets([
@@ -65,6 +67,10 @@ class PdvPanelProvider extends PanelProvider
                 // Js::make('mesas-script', asset('js/mesas.js')),
                 // Js::make('orden-mesa-script', asset('js/ordenmesa.js')),
             ])
+            ->tenantMiddleware([
+                VerificarEmpresaActiva::class,
+                ValidarEstadoUsuarioEmpresa::class,
+            ], isPersistent: true)
             ->spa()
             ->databaseTransactions()
             ->tenant(Empresa::class, slugAttribute: 'slug')

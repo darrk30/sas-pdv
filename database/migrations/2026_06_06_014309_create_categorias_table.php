@@ -11,11 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('empresa_user', function (Blueprint $table) {
+        Schema::create('categorias', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
-            $table->string('estado')->default('activo');
+            $table->foreignId('empresa_id')->constrained()->cascadeOnDelete(); // Relación con empresas
+            $table->string('nombre');
+            $table->integer('orden')->default(0);
+            $table->string('imagen_url')->nullable();
+            $table->boolean('estado')->default(true);
             $table->timestamps();
         });
     }
@@ -25,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('empresa_user');
+        Schema::dropIfExists('categorias');
     }
 };

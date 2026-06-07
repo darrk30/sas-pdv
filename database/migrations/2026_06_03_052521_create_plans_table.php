@@ -11,10 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('empresa_user', function (Blueprint $table) {
+        Schema::create('plans', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
+            $table->string('nombre');
+            $table->text('descripcion')->nullable();
+            $table->decimal('precio', 10, 2);
+            $table->string('ciclo_facturacion')->default('mensual'); // 'mensual' o 'anual'
+            $table->integer('maximo_usuarios')->default(1);
+            $table->integer('maximo_locales')->default(1);
             $table->string('estado')->default('activo');
             $table->timestamps();
         });
@@ -25,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('empresa_user');
+        Schema::dropIfExists('plans');
     }
 };

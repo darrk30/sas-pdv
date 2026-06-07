@@ -37,8 +37,24 @@ class Empresa extends Model
 
     public function usuarios()
     {
-        // Asegúrate de definir la tabla pivote y las claves foráneas
         return $this->belongsToMany(User::class, 'empresa_user', 'empresa_id', 'user_id')
-            ->withPivot('id'); // Importante si el pivote tiene ID propio
+                    ->withPivot('id', 'estado'); // 👈 Solo agregamos 'estado' aquí, separado por coma
+    }
+
+    public function pagos()
+    {
+        return $this->hasManyThrough(
+            PagosCliente::class, // Modelo destino
+            Suscripcion::class,  // Modelo intermedio
+            'empresa_id', // Foreign key en tabla Suscripciones
+            'suscripcion_id', // Foreign key en tabla PagosCliente
+            'id', // Local key en Empresa
+            'id' // Local key en Suscripciones
+        );
+    }
+
+    public function suscripcion()
+    {
+        return $this->hasOne(Suscripcion::class);
     }
 }

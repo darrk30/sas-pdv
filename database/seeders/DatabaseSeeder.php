@@ -18,26 +18,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Crear los Roles base del sistema
-        $roleAdmin = Role::create(['name' => 'Administrador Global']);
-        $roleCajero = Role::create(['name' => 'Administrador Local']);
-
-        // 2. Crear tu Usuario Principal (Super Admin)
-        $user = User::create([
-            'name' => 'Kevin Rivera',
-            'email' => 'kevin@gmail.com',
-            'password' => Hash::make('123123123'),
-        ]);
-
-        // Asignarle el rol de Administrador
-        $user->assignRole($roleAdmin);
-
-        // 3. Crear la Primera Empresa (El Tenant Matriz)
-        // Usamos los campos correctos basados en tu nueva migración
+        // 1. Crear la Primera Empresa (El Tenant Matriz) PRIMERO
         $empresa = Empresa::create([
-            'name' => 'Mi bodega S.A.C.',
-            'ruc'    => '20123456789',
-            'slug'   => 'mi-bodega',
+            'name'                 => 'Mi bodega S.A.C.',
+            'ruc'                  => '20123456789',
+            'slug'                 => 'bodega',
             'direccion'            => 'Av. Javier Prado 123',
             'telefono'             => '987654321',
             'email'                => 'contacto@empresa.com',
@@ -52,8 +37,32 @@ class DatabaseSeeder extends Seeder
             'country_code'         => 'PE',
         ]);
 
-        // 5. ¡Conexión a través de Tablas Pivote! 
-        // Le damos acceso al usuario a la empresa (para que entre al panel pdv)
-        $user->empresas()->attach($empresa->id);
+        // 2. Crear los Roles base asignándoles la empresa_id
+        $roleAdmin = Role::create([
+            'name'       => 'Administrador Global',
+            'empresa_id' => null
+        ]);
+        
+        $roleCajero = Role::create([
+            'name'       => 'Administrador Local',
+            'empresa_id' => $empresa->id
+        ]);
+
+        // 3. Crear tu Usuario Principal (Super Admin)
+        $user = User::create([
+            'name'     => 'Kevin Rivera',
+            'email'    => 'kevin@gmail.com',
+            'password' => Hash::make('123123123'),
+        ]);
+
+        // 4. Asignarle el rol de Administrador
+        $user->assignRole($roleAdmin);
+
+        // 5. ¡Conexión a través de la Tabla Pivote! 
+        // Le damos acceso al usuario a la empresa para que entre al panel pdv
+        $user->empresas()->attach($empresa->id, [
+            // Si ya tienes tu configuración del estado en la pivote, puedes pasarlo aquí:
+            'estado' => 'activo' 
+        ]);
     }
 }
