@@ -11,13 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('atributos', function (Blueprint $table) {
+        Schema::create('dimensions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('empresa_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
             $table->string('nombre');
-            $table->string('tipo')->default('texto');
-            $table->string('estado')->default('activo');
+            $table->boolean('estado')->default(true);
             $table->timestamps();
+            $table->unique(['empresa_id', 'nombre']);
         });
     }
 
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('atributos');
+        Schema::dropIfExists('dimensions');
     }
 };

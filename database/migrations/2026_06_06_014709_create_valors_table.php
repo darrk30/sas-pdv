@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('atributo_id')->constrained()->cascadeOnDelete();
             $table->string('nombre');
+            $table->string('valor');
             $table->string('estado')->default('activo');
             $table->timestamps();
         });

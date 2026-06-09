@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('atributos', function (Blueprint $table) {
+        Schema::create('producto_atributo_valors', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('empresa_id')->constrained()->cascadeOnDelete();
-            $table->string('nombre');
-            $table->string('tipo')->default('texto');
+            $table->foreignId('producto_atributo_id')->constrained('producto_atributos')->cascadeOnDelete();
+            $table->foreignId('valor_id')->constrained('valors')->cascadeOnDelete();
+            $table->decimal('precio_adicional', 15, 2)->default(0);
             $table->string('estado')->default('activo');
             $table->timestamps();
         });
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('atributos');
+        Schema::dropIfExists('producto_atributo_valors');
     }
 };

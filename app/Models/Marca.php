@@ -5,11 +5,13 @@ namespace App\Models;
 use App\Traits\BelongsToEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
-class Categoria extends Model
+class Marca extends Model
 {
     use BelongsToEmpresa;
 
-    protected $fillable = ['nombre', 'imagen_url', 'estado', 'empresa_id', 'orden',];
+    protected $fillable = ['empresa_id', 'nombre', 'logo', 'estado'];
+
+    protected $casts = ['estado' => 'boolean'];
 
     public function productos()
     {
