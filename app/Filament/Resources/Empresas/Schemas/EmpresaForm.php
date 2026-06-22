@@ -74,53 +74,53 @@ class EmpresaForm
                                         ->native(false),
                                 ]),
                             ]),
-                        Tab::make('Usuarios y Roles')
-                            ->icon('heroicon-o-users')
-                            ->schema([
-                                Repeater::make('usuarios')
-                                    ->label('Usuarios Asignados')
-                                    ->schema([
-                                        Grid::make(2)->schema([
-                                            Select::make('user_id')
-                                                ->label('Usuario')
-                                                ->options(User::all()->pluck('name', 'id'))
-                                                ->searchable()
-                                                ->preload()
-                                                ->required()
-                                                ->createOptionForm([
-                                                    TextInput::make('name')->required(),
-                                                    TextInput::make('email')->email()->required(),
-                                                    TextInput::make('password')->password()->required(),
-                                                ])
-                                                ->createOptionUsing(function (array $data) {
-                                                    return User::create([
-                                                        'name' => $data['name'],
-                                                        'email' => $data['email'],
-                                                        'password' => Hash::make($data['password']),
-                                                    ])->id;
-                                                }),
+                        // Tab::make('Usuarios y Roles')
+                        //     ->icon('heroicon-o-users')
+                        //     ->schema([
+                        //         Repeater::make('usuarios')
+                        //             ->label('Usuarios Asignados')
+                        //             ->schema([
+                        //                 Grid::make(2)->schema([
+                        //                     Select::make('user_id')
+                        //                         ->label('Usuario')
+                        //                         ->options(User::all()->pluck('name', 'id'))
+                        //                         ->searchable()
+                        //                         ->preload()
+                        //                         ->required()
+                        //                         ->createOptionForm([
+                        //                             TextInput::make('name')->required(),
+                        //                             TextInput::make('email')->email()->required(),
+                        //                             TextInput::make('password')->password()->required(),
+                        //                         ])
+                        //                         ->createOptionUsing(function (array $data) {
+                        //                             return User::create([
+                        //                                 'name' => $data['name'],
+                        //                                 'email' => $data['email'],
+                        //                                 'password' => Hash::make($data['password']),
+                        //                             ])->id;
+                        //                         }),
 
-                                            Select::make('roles')
-                                                ->label('Rol')
-                                                ->options(Role::all()->pluck('name', 'id'))
-                                                ->multiple()
-                                                ->preload()
-                                                ->native(false),
-                                        ]),
-                                    ])
-                                    ->itemLabel(fn(array $state): ?string => User::find($state['user_id'])?->name ?? 'Nuevo Usuario')
-                                    ->addActionLabel('Vincular usuario')
-                                    ->columnSpanFull()
-                                    ->afterStateHydrated(function ($component, $state, $record) {
-                                        if ($record) {
-                                            $data = $record->usuarios->map(fn($user) => [
-                                                'user_id' => $user->id,
-                                                'roles' => $user->roles->pluck('id')->toArray(),
-                                            ])->toArray();
-                                            $component->state($data);
-                                        }
-                                    })
-                            ]),
+                        //                     Select::make('roles')
+                        //                         ->label('Rol')
+                        //                         ->options(Role::all()->pluck('name', 'id'))
+                        //                         ->multiple()
+                        //                         ->preload()
+                        //                         ->native(false),
+                        //                 ]),
+                        //             ])
+                        //             ->itemLabel(fn(array $state): ?string => User::find($state['user_id'])?->name ?? 'Nuevo Usuario')
+                        //             ->addActionLabel('Vincular usuario')
+                        //             ->columnSpanFull()
+                        //             ->afterStateHydrated(function ($component, $state, $record) {
+                        //                 if ($record) {
+                        //                     $data = $record->usuarios->map(fn($user) => [
+                        //                         'user_id' => $user->id,
+                        //                         'roles' => $user->roles->pluck('id')->toArray(),
+                        //                     ])->toArray();
+                        //                     $component->state($data);
+                        //                 }
+                        //             })
+                        //     ]),
 
                         Tab::make('Suscripción y Plan')
                             ->icon('heroicon-o-credit-card')

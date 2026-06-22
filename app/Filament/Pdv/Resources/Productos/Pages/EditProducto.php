@@ -3,25 +3,30 @@
 namespace App\Filament\Pdv\Resources\Productos\Pages;
 
 use App\Filament\Pdv\Resources\Productos\ProductoResource;
-use App\Models\Exclusion;
+use App\Models\Inventario;
 use App\Models\ProductoAtributo;
 use App\Models\ProductoAtributoValor;
+use App\Models\Variante;
+use App\Services\ProductoAtributoService;
+use App\Services\VarianteService;
+use App\Traits\GestionaVariantes;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Str;
 
 class EditProducto extends EditRecord
 {
+    use GestionaVariantes;
+
     protected static string $resource = ProductoResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
-            // DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
 
-    // Reconstruimos el slug antes de guardar los cambios
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['slug'] = Str::slug($data['nombre']) . '-' . $this->getRecord()->id;
@@ -31,17 +36,15 @@ class EditProducto extends EditRecord
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $producto = $this->record->load([
-            'atributos' => fn($q) => $q->where('estado', 'activo'),
-            'atributos.valores' => fn($q) => $q->where('producto_atributo_valors.estado', 'activo'),
-            'atributos.detallesExclusiones.valorExcluido'
+            'atributos'                                    => fn($q) => $q->where('estado', 'activo'),
+            'atributos.valores'                            => fn($q) => $q->where('producto_atributo_valors.estado', 'activo'),
+            'atributos.detallesExclusiones.valorExcluido',
         ]);
 
         $data['atributos'] = $producto->atributos->map(function ($prodAttr) {
             $exclusionesFormateadas = [];
+
             foreach ($prodAttr->detallesExclusiones as $exclusion) {
-                if (!isset($exclusionesFormateadas[$exclusion->valor_base_id])) {
-                    $exclusionesFormateadas[$exclusion->valor_base_id] = [];
-                }
                 $exclusionesFormateadas[$exclusion->valor_base_id][] = [
                     'atributo_id' => $exclusion->valorExcluido->atributo_id ?? null,
                     'valor_id'    => $exclusion->valor_exluido_id,
@@ -49,11 +52,11 @@ class EditProducto extends EditRecord
             }
 
             return [
-                'atributo_id' => $prodAttr->atributo_id,
+                'atributo_id'           => $prodAttr->atributo_id,
                 'valores_seleccionados' => $prodAttr->valores->pluck('id')->toArray(),
-                'extra_prices' => $prodAttr->valores->mapWithKeys(function ($valor) {
-                    return [$valor->id => $valor->pivot->precio_adicional ?? 0];
-                })->toArray(),
+                'extra_prices'          => $prodAttr->valores
+                    ->mapWithKeys(fn($valor) => [$valor->id => $valor->pivot->precio_adicional ?? 0])
+                    ->toArray(),
                 'exclusiones_guardadas' => $exclusionesFormateadas,
             ];
         })->toArray();
@@ -61,77 +64,98 @@ class EditProducto extends EditRecord
         return $data;
     }
 
-
-    // 3. GUARDAR ATRIBUTOS Y VALORES: Se ejecuta después de guardar la tabla 'productos'
     protected function afterSave(): void
     {
-        $producto = $this->getRecord();
-        $estadoFormulario = $this->form->getState();
-        $atributosFormulario = $estadoFormulario['atributos'] ?? [];
+        $producto         = $this->getRecord();
+        $estadoFormulario = $this->form->getRawState();
+        $atributosForm    = $estadoFormulario['atributos'] ?? [];
 
-        // 1. Identificamos los atributos del formulario
-        $idsPresentes = collect($atributosFormulario)->pluck('atributo_id')->filter()->toArray();
+        if (isset($estadoFormulario['stock_minimo'])) {
+            Inventario::where('producto_id', $producto->id)
+                ->whereNull('variante_id')
+                ->update(['stock_minimo' => $estadoFormulario['stock_minimo']]);
+        }
 
-        // 2. Obtenemos los IDs (de la tabla puente) de los atributos que se van a DESACTIVAR
+        $idsPresentes = collect($atributosForm)->pluck('atributo_id')->filter()->toArray();
+
         $idsAtributosADesactivar = $producto->atributos()
             ->whereNotIn('atributo_id', $idsPresentes)
             ->pluck('id');
 
-        // 3. Desactivamos todos los VALORES que pertenecen a esos atributos eliminados
         if ($idsAtributosADesactivar->isNotEmpty()) {
-            ProductoAtributoValor::whereIn('producto_atributo_id', $idsAtributosADesactivar)->update(['estado' => 'inactivo']);
+            ProductoAtributoValor::whereIn('producto_atributo_id', $idsAtributosADesactivar)
+                ->update(['estado' => 'inactivo']);
         }
 
-        // 4. Ahora sí, desactivamos los ATRIBUTOS padres que no están en el nuevo envío
         $producto->atributos()
             ->whereNotIn('atributo_id', $idsPresentes)
             ->update(['estado' => 'inactivo']);
 
-        foreach ($atributosFormulario as $item) {
-            if (empty($item['atributo_id'])) continue;
+        app(ProductoAtributoService::class)->sincronizarAtributos($producto, $atributosForm);
 
-            // Buscamos o creamos
-            $productoAtributo = ProductoAtributo::updateOrCreate(
-                ['producto_id' => $producto->id, 'atributo_id' => $item['atributo_id']],
-                ['estado' => 'activo']
-            );
+        $esComplejo = $this->debeGenerarVariantes($atributosForm);
 
-            $valoresNuevos = $item['valores_seleccionados'] ?? [];
-            $extraPrices = $item['extra_prices'] ?? [];
-            $exclusiones = $item['exclusiones_guardadas'] ?? [];
+        if ($esComplejo) {
+            app(VarianteService::class)->syncVariantes($producto, $atributosForm);
 
-            // 5. Desactivamos los valores específicos que ya no están seleccionados en este atributo
-            $productoAtributo->detallesPrecios()
-                ->whereNotIn('valor_id', $valoresNuevos)
-                ->update(['estado' => 'inactivo']);
-
-            // 6. Activamos/Actualizamos los valores presentes
-            foreach ($valoresNuevos as $valorId) {
-                ProductoAtributoValor::updateOrCreate(
+            foreach ($producto->variantes()->where('estado', 'activo')->get() as $variante) {
+                Inventario::firstOrCreate(
                     [
-                        'producto_atributo_id' => $productoAtributo->id,
-                        'valor_id' => $valorId
+                        'empresa_id'  => $producto->empresa_id,
+                        'producto_id' => $producto->id,
+                        'variante_id' => $variante->id,
                     ],
                     [
-                        'precio_adicional' => $extraPrices[$valorId] ?? 0,
-                        'estado' => 'activo'
+                        'stock_real'        => 0,
+                        'stock_reserva'     => 0,
+                        'stock_minimo'      => $estadoFormulario['stock_minimo'] ?? 0,
+                        'estado_almacen'    => 'activo',
+                        'estado_inventario' => 'agotado',
                     ]
                 );
             }
 
-            // 7. ACTUALIZAR EXCLUSIONES
-            $productoAtributo->detallesExclusiones()->delete();
-            foreach ($exclusiones as $valorBaseId => $reglasExclusion) {
-                foreach ($reglasExclusion as $regla) {
-                    if (empty($regla['valor_id'])) continue;
+            $this->recalcularPreciosVariantes($producto);
 
-                    Exclusion::create([
-                        'producto_atributo_id' => $productoAtributo->id,
-                        'valor_base_id'        => $valorBaseId,
-                        'valor_exluido_id'     => $regla['valor_id'],
-                    ]);
-                }
-            }
+        } else {
+            Variante::where('producto_id', $producto->id)
+                ->update(['estado' => 'inactivo']);
+        }
+
+        $tieneVariantes = $producto->variantes()->where('estado', 'activo')->exists();
+
+        if ($tieneVariantes) {
+            Inventario::where('producto_id', $producto->id)->whereNull('variante_id')->update(['estado_almacen' => 'inactivo']);
+            Inventario::where('producto_id', $producto->id)->whereNotNull('variante_id')->update(['estado_almacen' => 'activo']);
+        } else {
+            Inventario::where('producto_id', $producto->id)->whereNull('variante_id')->update(['estado_almacen' => 'activo']);
+            Inventario::where('producto_id', $producto->id)->whereNotNull('variante_id')->update(['estado_almacen' => 'inactivo']);
+        }
+
+        if ($producto->tiene_variantes !== $tieneVariantes) {
+            $producto->update(['tiene_variantes' => $tieneVariantes]);
+        }
+    }
+
+    private function recalcularPreciosVariantes($producto): void
+    {
+        // Refrescar para leer precio_con_descuento ya persistido en BD
+        $producto->refresh();
+
+        // Siempre usar precio_con_descuento (ya refleja si hay o no descuento)
+        $precioBase = (float) $producto->precio_con_descuento;
+
+        $variantes = $producto->variantes()
+            ->where('estado', 'activo')
+            ->with('valores.valor')
+            ->get();
+
+        foreach ($variantes as $variante) {
+            $extras = $variante->valores->sum(
+                fn($v) => (float) ($v->valor?->precio_adicional ?? 0)
+            );
+
+            $variante->update(['precio_final' => $precioBase + $extras]);
         }
     }
 }

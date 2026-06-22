@@ -6,6 +6,7 @@ use App\Filament\Resources\Empresas\Pages\CreateEmpresa;
 use App\Filament\Resources\Empresas\Pages\EditEmpresa;
 use App\Filament\Resources\Empresas\Pages\ListEmpresas;
 use App\Filament\Resources\Empresas\RelationManagers\PagosRelationManager;
+use App\Filament\Resources\Empresas\RelationManagers\UsuariosRelationManager;
 use App\Filament\Resources\Empresas\Schemas\EmpresaForm;
 use App\Filament\Resources\Empresas\Tables\EmpresasTable;
 use App\Models\Empresa;
@@ -37,6 +38,7 @@ class EmpresaResource extends Resource
     {
         return [
             PagosRelationManager::class,
+            UsuariosRelationManager::class,
         ];
     }
 

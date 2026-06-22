@@ -28,13 +28,13 @@ return new class extends Migration
             $table->string('codigo_barras')->nullable();
             $table->text('descripcion')->nullable();
             $table->string('slug');
-
-            // Precios y Stock
+            $table->decimal('porcentaje_descuento', 5, 2)->default(0); // Ej: 15.00 para 15%
+            $table->decimal('precio_con_descuento', 15, 2)->default(0); // Precio ya calculado: precio_venta - descuento
+            $table->boolean('es_oferta')->default(false);
             $table->decimal('precio_costo', 15, 2)->default(0);
             $table->decimal('precio_venta', 15, 2)->default(0);
-
-            // 🌟 Nuevos Booleanos de Control Operativo
             $table->boolean('es_cortesia')->default(false);
+            $table->boolean('tiene_variantes')->default(false);
             $table->boolean('visible_en_carta')->default(true);
             $table->boolean('control_de_stock')->default(true);
             $table->boolean('venta_sin_stock')->default(false);

@@ -3,71 +3,78 @@
 namespace App\Filament\Pdv\Resources\Productos\Pages;
 
 use App\Filament\Pdv\Resources\Productos\ProductoResource;
-use App\Models\Exclusion;
-use App\Models\ProductoAtributo;
-use App\Models\ProductoAtributoValor;
+use App\Models\Inventario;
+use App\Services\ProductoAtributoService;
+use App\Services\VarianteService;
+use App\Traits\GestionaVariantes;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Str;
 
 class CreateProducto extends CreateRecord
 {
+    use GestionaVariantes;
+
     protected static string $resource = ProductoResource::class;
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Slug temporal para evitar error de MySQL 1364
         $data['slug'] = Str::slug($data['nombre']);
-
         return $data;
     }
 
     protected function afterCreate(): void
     {
-        $producto = $this->getRecord();
+        $producto          = $this->getRecord();
+        $estadoFormulario  = $this->form->getRawState();
+        $stockMinimo       = $estadoFormulario['stock_minimo'] ?? 0;
+        $atributosForm     = $estadoFormulario['atributos'] ?? [];
+
+        // Slug definitivo usando el ID real
         $producto->update([
             'slug' => Str::slug($producto->nombre) . '-' . $producto->id,
         ]);
 
-        // 2. REGISTRO DE ATRIBUTOS, VALORES Y EXCLUSIONES
-        $estadoFormulario = $this->form->getRawState();
-        $atributosFormulario = $estadoFormulario['atributos'] ?? [];
+        $esComplejo        = $this->debeGenerarVariantes($atributosForm);
+        $estadoBaseInicial = $esComplejo ? 'inactivo' : 'activo';
 
-        foreach ($atributosFormulario as $item) {
-            if (empty($item['atributo_id'])) continue;
+        // Inventario base (siempre variante_id = null)
+        Inventario::create([
+            'empresa_id'        => $producto->empresa_id,
+            'producto_id'       => $producto->id,
+            'variante_id'       => null,
+            'stock_real'        => 0,
+            'stock_reserva'     => 0,
+            'stock_minimo'      => $stockMinimo,
+            'estado_almacen'    => $estadoBaseInicial,
+            'estado_inventario' => 'agotado',
+        ]);
 
-            // Creamos la relación en la tabla puente
-            $productoAtributo = ProductoAtributo::create([
-                'producto_id' => $producto->id,
-                'atributo_id' => $item['atributo_id'],
-                'estado'      => 'activo',
-            ]);
+        // Registro de atributos, valores y exclusiones
+        app(ProductoAtributoService::class)->sincronizarAtributos($producto, $atributosForm);
 
-            $valoresSeleccionados = $item['valores_seleccionados'] ?? [];
-            $extraPrices = $item['extra_prices'] ?? [];
-            $exclusiones = $item['exclusiones_guardadas'] ?? []; // Obtenemos las exclusiones
+        // Variantes e inventarios hijos
+        if ($esComplejo) {
+            app(VarianteService::class)->syncVariantes($producto, $atributosForm);
 
-            // Registramos cada valor con su precio
-            foreach ($valoresSeleccionados as $valorId) {
-                ProductoAtributoValor::create([
-                    'producto_atributo_id' => $productoAtributo->id,
-                    'valor_id'             => $valorId,
-                    'precio_adicional'     => $extraPrices[$valorId] ?? 0,
-                    'estado'               => 'activo',
-                ]);
-            }
-
-            // GUARDAMOS LAS EXCLUSIONES
-            foreach ($exclusiones as $valorBaseId => $reglasExclusion) {
-                foreach ($reglasExclusion as $regla) {
-                    if (empty($regla['valor_id'])) continue;
-
-                    Exclusion::create([
-                        'producto_atributo_id' => $productoAtributo->id,
-                        'valor_base_id'        => $valorBaseId,
-                        'valor_exluido_id'     => $regla['valor_id'],
-                    ]);
-                }
+            foreach ($producto->variantes()->where('estado', 'activo')->get() as $variante) {
+                Inventario::firstOrCreate(
+                    [
+                        'empresa_id'  => $producto->empresa_id,
+                        'producto_id' => $producto->id,
+                        'variante_id' => $variante->id,
+                    ],
+                    [
+                        'stock_real'        => 0,
+                        'stock_reserva'     => 0,
+                        'stock_minimo'      => $stockMinimo,
+                        'estado_almacen'    => 'activo',
+                        'estado_inventario' => 'agotado',
+                    ]
+                );
             }
         }
+
+        $tieneVariantes = $producto->variantes()->where('estado', 'activo')->exists();
+        $producto->update(['tiene_variantes' => $tieneVariantes]);
     }
 }

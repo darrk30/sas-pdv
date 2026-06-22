@@ -1,0 +1,56 @@
+<?php
+
+namespace App\Observers;
+
+use App\Models\Empresa;
+use Database\Seeders\ConfiguracionInicialSeeder;
+use Database\Seeders\DimensionSeeder;
+
+class EmpresaObserver
+{
+    
+    /**
+     * Handle the Empresa "created" event.
+     */
+    public function created(Empresa $empresa): void
+    {
+        app()->instance('bypass_tenant_scope', true);
+        
+        (new DimensionSeeder())->runForEmpresa($empresa);
+        (new ConfiguracionInicialSeeder())->runForEmpresa($empresa);
+        
+        app()->forgetInstance('bypass_tenant_scope');
+    }
+
+    /**
+     * Handle the Empresa "updated" event.
+     */
+    public function updated(Empresa $empresa): void
+    {
+        //
+    }
+
+    /**
+     * Handle the Empresa "deleted" event.
+     */
+    public function deleted(Empresa $empresa): void
+    {
+        //
+    }
+
+    /**
+     * Handle the Empresa "restored" event.
+     */
+    public function restored(Empresa $empresa): void
+    {
+        //
+    }
+
+    /**
+     * Handle the Empresa "force deleted" event.
+     */
+    public function forceDeleted(Empresa $empresa): void
+    {
+        //
+    }
+}

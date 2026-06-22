@@ -33,6 +33,10 @@ class Producto extends Model
         'etiqueta',
         'orden',
         'estado',
+        'porcentaje_descuento',
+        'precio_con_descuento',
+        'es_oferta',
+        'stock_minimo',
     ];
 
     protected $casts = [
@@ -73,5 +77,38 @@ class Producto extends Model
     {
         return $this->hasMany(ProductoAtributo::class);
     }
-    
+
+    public function variantes()
+    {
+        return $this->hasMany(Variante::class);
+    }
+
+    public function inventarios()
+    {
+        return $this->hasOne(Inventario::class)->whereNull('variante_id');
+    }
+
+    public function inventario()
+    {
+        return $this->hasOne(Inventario::class, 'producto_id')
+                    ->whereNull('variante_id');
+    }
+
+    public function calcularStockTotal()
+    {
+        if ($this->tiene_variantes) {
+            // Suma el stock de todas las variantes activas
+            return $this->variantes()->where('estado', 'activo')
+                ->join('inventarios', 'variantes.id', '=', 'inventarios.variantes_id')
+                ->sum('inventarios.stock_real');
+        }
+
+        // Retorna el stock del producto simple
+        return $this->inventario()->sum('stock_real');
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
 }

@@ -3,6 +3,8 @@
 namespace App\Filament\Pdv\Resources\Dimensions\RelationManagers;
 
 use App\Filament\Pdv\Resources\Dimensions\DimensionResource;
+use App\Models\UnidadesMedida;
+use App\Models\User;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -25,7 +27,7 @@ class UnidadesMedidaRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-        ->columns([
+            ->columns([
                 TextColumn::make('nombre')
                     ->label('Unidad')
                     ->sortable()
@@ -56,8 +58,13 @@ class UnidadesMedidaRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->modalHeading(fn(UnidadesMedida $record) => 'Editando a ' . $record->nombre)
+                    ->hidden(fn(UnidadesMedida $record) => strtolower($record->nombre) === 'unidad'),
+
+                DeleteAction::make()
+                    ->modalHeading(fn(UnidadesMedida $record) => 'Eliminar a ' . $record->nombre)
+                    ->hidden(fn(UnidadesMedida $record) => strtolower($record->nombre) === 'unidad'),
             ]);
     }
 
@@ -89,12 +96,12 @@ class UnidadesMedidaRelationManager extends RelationManager
                 Select::make('unidad_base_id')
                     ->label('Unidad de Referencia')
                     ->placeholder('¿De qué unidad depende?')
-                    ->hidden(fn ($get) => $get('es_base')) // Oculta si es la base
-                    ->required(fn ($get) => !$get('es_base')) // Exige este campo si no es la base
+                    ->hidden(fn($get) => $get('es_base')) // Oculta si es la base
+                    ->required(fn($get) => !$get('es_base')) // Exige este campo si no es la base
                     ->relationship(
                         name: 'unidadPadre',
                         titleAttribute: 'nombre',
-                        modifyQueryUsing: fn ($query) => $query->where('dimension_id', $this->getOwnerRecord()->id)
+                        modifyQueryUsing: fn($query) => $query->where('dimension_id', $this->getOwnerRecord()->id)
                     )
                     ->searchable()
                     ->preload(),
@@ -103,10 +110,10 @@ class UnidadesMedidaRelationManager extends RelationManager
                     ->label('Factor de Conversión')
                     ->numeric()
                     ->default(1)
-                    ->disabled(fn ($get) => $get('es_base')) // Bloquea la escritura si es base
+                    ->disabled(fn($get) => $get('es_base')) // Bloquea la escritura si es base
                     ->dehydrated() // Asegura que el número 1 se envíe a la base de datos aunque esté bloqueado
-                    ->helperText(fn ($get) => $get('es_base') 
-                        ? 'Al ser unidad base, el factor es siempre 1.' 
+                    ->helperText(fn($get) => $get('es_base')
+                        ? 'Al ser unidad base, el factor es siempre 1.'
                         : '¿A cuántas unidades de referencia equivale esta?'),
             ]);
     }

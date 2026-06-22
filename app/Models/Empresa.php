@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Observers\EmpresaObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 
+#[ObservedBy([EmpresaObserver::class])]
 class Empresa extends Model
 {
     protected $fillable = [
