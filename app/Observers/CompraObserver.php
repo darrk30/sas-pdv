@@ -2,7 +2,6 @@
 
 namespace App\Observers;
 
-use App\Enums\EstadoDespacho;
 use App\Models\Compra;
 use App\Services\InventarioCoreService;
 
@@ -21,17 +20,15 @@ class CompraObserver
         }
 
         $old = $compra->getOriginal('estado_despacho');
-        $new = $compra->estado_despacho instanceof \BackedEnum
-            ? $compra->estado_despacho->value
-            : $compra->estado_despacho;
+        $new = $compra->estado_despacho;
 
         // pendiente → recibido: aplicar stock (entrada)
-        if ($old === EstadoDespacho::Pendiente->value && $new === EstadoDespacho::Recibido->value) {
+        if ($old === 'pendiente' && $new === 'recibido') {
             app(InventarioCoreService::class)->aplicarCompra($compra);
         }
 
         // recibido → pendiente: revertir stock
-        if ($old === EstadoDespacho::Recibido->value && $new === EstadoDespacho::Pendiente->value) {
+        if ($old === 'recibido' && $new === 'pendiente') {
             app(InventarioCoreService::class)->revertirCompra($compra);
         }
     }

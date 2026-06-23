@@ -2,9 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\EstadoDespacho;
-use App\Enums\EstadoPago;
-use App\Enums\TipoComprobante;
 use App\Observers\CompraObserver;
 use App\Traits\BelongsToEmpresa;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -39,15 +36,12 @@ class Compra extends Model
     ];
 
     protected $casts = [
-        'tipo_comprobante' => TipoComprobante::class,
-        'estado_despacho'  => EstadoDespacho::class,
-        'estado_pago'      => EstadoPago::class,
-        'fecha_compra'     => 'date',
-        'costo_envio'      => 'float',
-        'descuento'        => 'float',
-        'subtotal'         => 'float',
-        'igv'              => 'float',
-        'total'            => 'float',
+        'fecha_compra' => 'date',
+        'costo_envio'  => 'float',
+        'descuento'    => 'float',
+        'subtotal'     => 'float',
+        'igv'          => 'float',
+        'total'        => 'float',
     ];
 
     // -------------------------------------------------------------------------
@@ -85,7 +79,7 @@ class Compra extends Model
 
     public function esBorrador(): bool
     {
-        return $this->estado === 'borrador';
+        return in_array($this->estado, ['borrador', null]);
     }
 
     public function estaConfirmada(): bool
@@ -100,12 +94,12 @@ class Compra extends Model
 
     public function estaRecibida(): bool
     {
-        return $this->estado_despacho === EstadoDespacho::Recibido;
+        return $this->estado_despacho === 'recibido';
     }
 
     public function estaPagada(): bool
     {
-        return $this->estado_pago === EstadoPago::Pagado;
+        return $this->estado_pago === 'pagado';
     }
 
     public function listaParaConfirmar(): bool

@@ -2,8 +2,6 @@
 
 namespace App\Filament\Pdv\Resources\Compras\Tables;
 
-use App\Enums\EstadoDespacho;
-use App\Enums\EstadoPago;
 use App\Enums\TipoComprobante;
 use App\Models\Compra;
 use App\Services\InventarioCoreService;
@@ -40,8 +38,8 @@ class ComprasTable
                 TextColumn::make('tipo_comprobante')
                     ->label('Comprobante')
                     ->badge()
-                    ->color(fn(TipoComprobante $state): string|array|null => $state->getColor())
-                    ->formatStateUsing(fn(TipoComprobante $state): string => $state->getLabel()),
+                    ->color(fn(string $state): string => TipoComprobante::from($state)->getColor())
+                    ->formatStateUsing(fn(string $state): string => TipoComprobante::from($state)->getLabel()),
 
                 TextColumn::make('fecha_compra')
                     ->label('Fecha')
@@ -51,14 +49,30 @@ class ComprasTable
                 TextColumn::make('estado_despacho')
                     ->label('Despacho')
                     ->badge()
-                    ->color(fn(EstadoDespacho $state): string|array|null => $state->getColor())
-                    ->formatStateUsing(fn(EstadoDespacho $state): string => $state->getLabel()),
+                    ->color(fn(string $state): string => match ($state) {
+                        'recibido'  => 'success',
+                        'pendiente' => 'warning',
+                        default     => 'gray',
+                    })
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                        'recibido'  => 'Recibido',
+                        'pendiente' => 'Pendiente',
+                        default     => $state,
+                    }),
 
                 TextColumn::make('estado_pago')
                     ->label('Pago')
                     ->badge()
-                    ->color(fn(EstadoPago $state): string|array|null => $state->getColor())
-                    ->formatStateUsing(fn(EstadoPago $state): string => $state->getLabel()),
+                    ->color(fn(string $state): string => match ($state) {
+                        'pagado'    => 'success',
+                        'pendiente' => 'warning',
+                        default     => 'gray',
+                    })
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                        'pagado'    => 'Pagado',
+                        'pendiente' => 'Pendiente',
+                        default     => $state,
+                    }),
 
                 TextColumn::make('estado')
                     ->label('Estado')
