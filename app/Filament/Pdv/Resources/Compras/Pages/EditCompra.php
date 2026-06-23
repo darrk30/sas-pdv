@@ -26,30 +26,32 @@ class EditCompra extends EditRecord
     {
         $record = $this->getRecord();
 
-        // Capturar estado y detalles ANTES de que Filament guarde cambios en BD
+        // Capturar estado ANTES de que Filament sobreescriba el registro
         $this->estadoDespachoAntes = $record->estado_despacho ?? 'pendiente';
-        $this->detallesAntes       = $record->detalles()->with('unidad')->get();
+
+        // Capturar detalles actuales en BD por si necesitamos revertir stock
+        $this->detallesAntes = $record->detalles()->with('unidad')->get();
     }
 
     protected function afterSave(): void
     {
-        $record      = $this->getRecord();
         $estadoViejo = $this->estadoDespachoAntes;
-        $estadoNuevo = $record->estado_despacho ?? 'pendiente';
+        $estadoNuevo = $this->getRecord()->estado_despacho ?? 'pendiente';
 
+        // Si el estado de despacho no cambió, no tocar el stock
+        if ($estadoViejo === $estadoNuevo) {
+            return;
+        }
+
+        $record  = $this->getRecord();
         $service = app(InventarioCoreService::class);
 
-        if ($estadoViejo === 'recibido' && $estadoNuevo === 'recibido') {
-            // Sigue recibido: revertir con detalles viejos y aplicar con detalles nuevos
-            $service->revertirDetalles($record->empresa_id, 'entrada', $this->detallesAntes);
+        if ($estadoNuevo === 'recibido') {
+            // pendiente → recibido: aumentar stock con los detalles ya guardados
             $service->aplicarCompra($record);
-        } elseif ($estadoViejo !== 'recibido' && $estadoNuevo === 'recibido') {
-            // Pasó a recibido: aplicar con los detalles ya guardados
-            $service->aplicarCompra($record);
-        } elseif ($estadoViejo === 'recibido' && $estadoNuevo !== 'recibido') {
-            // Salió de recibido: revertir con los detalles que había antes del guardado
+        } else {
+            // recibido → pendiente: revertir con los detalles que había antes del guardado
             $service->revertirDetalles($record->empresa_id, 'entrada', $this->detallesAntes);
         }
-        // pendiente → pendiente: sin cambio de stock
     }
 }
