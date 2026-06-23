@@ -115,6 +115,7 @@ class AjusteForm
                                             ->doesntHave('variantes')
                                             ->whereHas('inventario')
                                             ->where('control_de_stock', true)
+                                            ->where('estado', '!=', 'archivado')
                                             ->with('unidadMedida')
                                             ->get();
 
@@ -124,7 +125,10 @@ class AjusteForm
 
                                         $variantes = Variante::query()
                                             ->with(['producto', 'valores.valor'])
-                                            ->whereHas('producto', fn($q) => $q->where('control_de_stock', true))
+                                            ->whereHas('producto', fn($q) => $q
+                                                ->where('control_de_stock', true)
+                                                ->where('estado', '!=', 'archivado')
+                                            )
                                             ->get();
 
                                         foreach ($variantes as $variante) {

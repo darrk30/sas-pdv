@@ -2,14 +2,18 @@
 
 namespace App\Filament\Pdv\Resources\Ajustes\Tables;
 
+use App\Models\Ajuste;
+use App\Services\InventarioCoreService;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Tables\Columns\BadgeColumn;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection;
 
 class AjustesTable
 {
@@ -18,10 +22,12 @@ class AjustesTable
         return $table
             ->columns([
 
-                TextColumn::make('id')
-                    ->label('#')
+                TextColumn::make('codigo')
+                    ->label('Código')
+                    ->searchable()
                     ->sortable()
-                    ->width('60px'),
+                    ->weight('bold')
+                    ->copyable(),
 
                 TextColumn::make('tipo')
                     ->label('Tipo')
@@ -71,16 +77,16 @@ class AjustesTable
                     ->label('Estado')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
-                        'borrador' => 'warning',
-                        'aplicado' => 'success',
-                        'anulado'  => 'danger',
-                        default    => 'gray',
+                        'borrador'   => 'warning',
+                        'confirmado' => 'success',
+                        'anulado'    => 'danger',
+                        default      => 'gray',
                     })
                     ->formatStateUsing(fn(string $state): string => match ($state) {
-                        'borrador' => 'Borrador',
-                        'aplicado' => 'Aplicado',
-                        'anulado'  => 'Anulado',
-                        default    => $state,
+                        'borrador'   => 'Borrador',
+                        'confirmado' => 'Confirmado',
+                        'anulado'    => 'Anulado',
+                        default      => $state,
                     })
                     ->sortable(),
 
@@ -103,23 +109,78 @@ class AjustesTable
                 SelectFilter::make('estado')
                     ->label('Estado')
                     ->options([
-                        'borrador' => 'Borrador',
-                        'aplicado' => 'Aplicado',
-                        'anulado'  => 'Anulado',
+                        'borrador'   => 'Borrador',
+                        'confirmado' => 'Confirmado',
+                        'anulado'    => 'Anulado',
                     ]),
 
             ])
 
             ->recordActions([
-                ViewAction::make(),
+
+                // Confirmar: solo borradores → aplica stock y bloquea el ajuste
+                Action::make('confirmar')
+                    ->label('Confirmar')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('¿Confirmar ajuste?')
+                    ->modalDescription('Al confirmar se aplicará el movimiento de stock. Esta acción no se puede deshacer.')
+                    ->modalSubmitActionLabel('Sí, confirmar')
+                    ->visible(fn(Ajuste $record): bool => $record->estado === 'borrador')
+                    ->action(function (Ajuste $record): void {
+                        app(InventarioCoreService::class)->aplicarAjuste($record);
+                        $record->update(['estado' => 'confirmado']);
+
+                        Notification::make()
+                            ->success()
+                            ->title('Ajuste ' . $record->codigo . ' confirmado')
+                            ->body('El stock ha sido actualizado correctamente.')
+                            ->send();
+                    }),
+
+                // Editar: solo borradores
                 EditAction::make()
-                    ->hidden(fn($record): bool => $record->estado === 'aplicado'),
+                    ->visible(fn(Ajuste $record): bool => $record->estado === 'borrador'),
+
+                // Eliminar: solo borradores (sin revertir stock, nunca fue aplicado)
+                DeleteAction::make()
+                    ->visible(fn(Ajuste $record): bool => $record->estado === 'borrador'),
+
             ])
 
             ->toolbarActions([
                 BulkActionGroup::make([
+                    // Eliminar en lote: solo procesa los que están en borrador
                     DeleteBulkAction::make()
-                        ->hidden(fn(): bool => false),
+                        ->action(function (Collection $records): void {
+                            $eliminados = 0;
+                            $omitidos   = 0;
+
+                            foreach ($records as $ajuste) {
+                                if ($ajuste->estado === 'borrador') {
+                                    $ajuste->delete();
+                                    $eliminados++;
+                                } else {
+                                    $omitidos++;
+                                }
+                            }
+
+                            if ($omitidos > 0) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title("{$omitidos} ajuste(s) no eliminado(s)")
+                                    ->body('Solo se pueden eliminar ajustes en borrador.')
+                                    ->send();
+                            }
+
+                            if ($eliminados > 0) {
+                                Notification::make()
+                                    ->success()
+                                    ->title("{$eliminados} ajuste(s) eliminado(s)")
+                                    ->send();
+                            }
+                        }),
                 ]),
             ])
 

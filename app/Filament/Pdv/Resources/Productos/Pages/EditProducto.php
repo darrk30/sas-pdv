@@ -122,14 +122,33 @@ class EditProducto extends EditRecord
                 ->update(['estado' => 'inactivo']);
         }
 
-        $tieneVariantes = $producto->variantes()->where('estado', 'activo')->exists();
+        $idsVariantesActivas = $producto->variantes()->where('estado', 'activo')->pluck('id');
+        $tieneVariantes      = $idsVariantesActivas->isNotEmpty();
 
         if ($tieneVariantes) {
-            Inventario::where('producto_id', $producto->id)->whereNull('variante_id')->update(['estado_almacen' => 'inactivo']);
-            Inventario::where('producto_id', $producto->id)->whereNotNull('variante_id')->update(['estado_almacen' => 'activo']);
+            // Inventario de producto simple → inactivo
+            Inventario::where('producto_id', $producto->id)
+                ->whereNull('variante_id')
+                ->update(['estado_almacen' => 'inactivo']);
+
+            // Solo las variantes activas (ROJO-L-POLIESTER) → activo
+            Inventario::where('producto_id', $producto->id)
+                ->whereIn('variante_id', $idsVariantesActivas)
+                ->update(['estado_almacen' => 'activo']);
+
+            // Variantes que quedaron inactivas (ROJO-L, AZUL-L) → inactivo en inventario
+            Inventario::where('producto_id', $producto->id)
+                ->whereNotNull('variante_id')
+                ->whereNotIn('variante_id', $idsVariantesActivas)
+                ->update(['estado_almacen' => 'inactivo']);
         } else {
-            Inventario::where('producto_id', $producto->id)->whereNull('variante_id')->update(['estado_almacen' => 'activo']);
-            Inventario::where('producto_id', $producto->id)->whereNotNull('variante_id')->update(['estado_almacen' => 'inactivo']);
+            Inventario::where('producto_id', $producto->id)
+                ->whereNull('variante_id')
+                ->update(['estado_almacen' => 'activo']);
+
+            Inventario::where('producto_id', $producto->id)
+                ->whereNotNull('variante_id')
+                ->update(['estado_almacen' => 'inactivo']);
         }
 
         if ($producto->tiene_variantes !== $tieneVariantes) {

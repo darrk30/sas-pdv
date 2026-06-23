@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProductoResource extends Resource
 {
@@ -30,6 +31,12 @@ class ProductoResource extends Resource
     public static function table(Table $table): Table
     {
         return ProductosTable::configure($table);
+    }
+
+    // Excluye productos archivados del listado y de las búsquedas del resource.
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->where('estado', '!=', 'archivado');
     }
 
     public static function getRelations(): array

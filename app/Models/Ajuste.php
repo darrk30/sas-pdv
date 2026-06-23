@@ -17,6 +17,7 @@ class Ajuste extends Model
     protected $fillable = [
         'empresa_id',
         'user_id',
+        'codigo',
         'tipo',
         'motivo',
         'valor_total',
@@ -60,9 +61,9 @@ class Ajuste extends Model
         return $this->tipo === 'salida';
     }
 
-    public function estaAplicado(): bool
+    public function estaConfirmado(): bool
     {
-        return $this->estado === 'aplicado';
+        return $this->estado === 'confirmado';
     }
 
     /**
