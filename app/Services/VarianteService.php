@@ -69,7 +69,7 @@ class VarianteService
                 $query = Variante::where('producto_id', $producto->id);
 
                 foreach ($pavIds as $pavId) {
-                    $query->whereHas('valores', fn($q) => $q->where('id', $pavId));
+                    $query->whereHas('valores', fn($q) => $q->where('producto_atributo_valors.id', $pavId));
                 }
 
                 $varianteExistente = $query->has('valores', '=', count($pavIds))->first();
