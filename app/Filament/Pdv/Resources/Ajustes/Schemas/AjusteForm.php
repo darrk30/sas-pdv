@@ -6,8 +6,10 @@ use App\Models\AjusteDetalle;
 use App\Models\Producto;
 use App\Models\UnidadesMedida;
 use App\Models\Variante;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -75,6 +77,13 @@ class AjusteForm
                                 $data['costo_total'] = round((float) ($data['cantidad'] ?? 0) * (float) ($data['costo_unitario'] ?? 0), 4);
                                 return $data;
                             })
+                            ->table([
+                                TableColumn::make('Producto / Variante'),
+                                TableColumn::make('Unidad'),
+                                TableColumn::make('Cantidad'),
+                                TableColumn::make('Costo Unit.'),
+                                TableColumn::make('Subtotal'),
+                            ])
                             ->schema([
 
                                 // ── Select unificado: productos simples + variantes ──
@@ -84,7 +93,6 @@ class AjusteForm
                                     ->searchable()
                                     ->required()
                                     ->live()
-                                    ->columnSpan(3)
                                     ->formatStateUsing(function (?Model $record) {
                                         if (! $record) return null;
 
@@ -158,17 +166,17 @@ class AjusteForm
                                             $set('variante_id', null);
                                             $set('nombre_producto', $producto?->nombre);
                                             $set('unidad_id', $producto?->unidad_medida_id);
-                                            // Asignar costo por defecto si existe en tu lógica, ej: $set('costo_unitario', $producto->precio_compra);
+                                            $set('costo_unitario', $producto?->precio_costo ?? null);
                                         } else {
                                             $variante = Variante::with(['producto.unidadMedida', 'valores.valor'])->find($id);
                                             $set('producto_id', null);
                                             $set('variante_id', $variante?->id);
                                             $set('nombre_producto', AjusteDetalle::generarNombre(null, $variante));
                                             $set('unidad_id', $variante?->producto?->unidad_medida_id);
+                                            $set('costo_unitario', $variante?->producto?->precio_costo ?? null);
                                         }
 
                                         $set('cantidad', null);
-                                        $set('costo_unitario', null);
                                         $set('costo_total', null);
                                     }),
 
@@ -178,7 +186,6 @@ class AjusteForm
                                     ->placeholder('Unidad...')
                                     ->required()
                                     ->live()
-                                    ->columnSpan(2)
                                     ->options(function (Get $get): Collection {
                                         $productoId  = $get('producto_id');
                                         $varianteId  = $get('variante_id');
@@ -210,7 +217,6 @@ class AjusteForm
                                     ->minValue(0.0001)
                                     ->required()
                                     ->live(onBlur: true)
-                                    ->columnSpan(2)
                                     ->afterStateUpdated(function (?float $state, Get $get, Set $set): void {
                                         self::calcularSubtotalItem($get, $set);
                                         self::actualizarTotalGlobal($get, $set, true);
@@ -224,7 +230,28 @@ class AjusteForm
                                     ->prefix('S/')
                                     ->required()
                                     ->live(onBlur: true)
-                                    ->columnSpan(2)
+                                    ->hint(fn(Get $get): ?string => self::hintCostoDiferente($get))
+                                    ->hintColor('warning')
+                                    ->hintAction(
+                                        Action::make('actualizar_costo_producto')
+                                            ->label('Actualizar costo')
+                                            ->icon('heroicon-o-arrow-path')
+                                            ->requiresConfirmation()
+                                            ->modalHeading('¿Actualizar precio de costo?')
+                                            ->modalDescription(fn(Get $get): string =>
+                                                'Se actualizará el costo registrado del producto a S/ '
+                                                . number_format((float) $get('costo_unitario'), 2) . '.'
+                                            )
+                                            ->modalSubmitActionLabel('Sí, actualizar')
+                                            ->visible(fn(Get $get): bool => self::costoEsDiferente($get))
+                                            ->action(function (Get $get): void {
+                                                $productoId = self::resolverProductoId($get);
+                                                if ($productoId) {
+                                                    Producto::where('id', $productoId)
+                                                        ->update(['precio_costo' => (float) $get('costo_unitario')]);
+                                                }
+                                            })
+                                    )
                                     ->afterStateUpdated(function (?float $state, Get $get, Set $set): void {
                                         self::calcularSubtotalItem($get, $set);
                                         self::actualizarTotalGlobal($get, $set, true);
@@ -235,20 +262,16 @@ class AjusteForm
                                     ->label('Subtotal')
                                     ->prefix('S/')
                                     ->readOnly()
-                                    ->numeric()
-                                    ->columnSpan(2),
+                                    ->numeric(),
 
                                 // ── Campos ocultos ──
                                 Hidden::make('producto_id'),
                                 Hidden::make('variante_id'),
                                 Hidden::make('nombre_producto'),
                             ])
-                            ->columns(11)
                             ->addActionLabel('Agregar producto')
                             ->reorderable(false)
                             ->defaultItems(1)
-                            ->itemLabel(fn(array $state): ?string => $state['nombre_producto'] ?? null)
-                            ->collapsible()
                             ->cloneable(),
                     ])->columnSpanFull(),
 
@@ -282,6 +305,43 @@ class AjusteForm
         } else {
             $set('costo_total', null);
         }
+    }
+
+    private static function resolverProductoId(Get $get): ?int
+    {
+        $productoId = $get('producto_id');
+        if ($productoId) return (int) $productoId;
+
+        $varianteId = $get('variante_id');
+        if ($varianteId) {
+            return Variante::find($varianteId)?->producto_id;
+        }
+        return null;
+    }
+
+    private static function costoBD(Get $get): ?float
+    {
+        $productoId = self::resolverProductoId($get);
+        if (! $productoId) return null;
+
+        return Producto::find($productoId)?->precio_costo;
+    }
+
+    private static function costoEsDiferente(Get $get): bool
+    {
+        $ingresado = (float) $get('costo_unitario');
+        $bd        = self::costoBD($get);
+
+        if ($bd === null || $ingresado <= 0) return false;
+
+        return abs($ingresado - $bd) > 0.001;
+    }
+
+    private static function hintCostoDiferente(Get $get): ?string
+    {
+        if (! self::costoEsDiferente($get)) return null;
+
+        return 'Costo registrado: S/ ' . number_format((float) self::costoBD($get), 2);
     }
 
     /**

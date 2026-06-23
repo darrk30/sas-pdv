@@ -34,6 +34,7 @@ class GestionInventario extends Page implements HasTable
             ->query(
                 Inventario::query()
                     ->where('estado_almacen', 'activo')
+                    ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado'))
                     ->with([
                         'producto',
                         'variante.valores.valor',
