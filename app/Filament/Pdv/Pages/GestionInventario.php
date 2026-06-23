@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pdv\Pages;
 
+use App\Models\AjusteDetalle;
 use App\Models\Inventario;
 use BackedEnum;
 use Filament\Pages\Page;
@@ -31,28 +32,24 @@ class GestionInventario extends Page implements HasTable
             ->query(
                 Inventario::query()
                     ->where('estado_almacen', 'activo')
-                    ->with(['producto', 'variante']) 
+                    ->with([
+                        'producto',
+                        'variante.valores.valor',
+                        'variante.producto',
+                    ])
             )
             ->columns([
                 TextColumn::make('producto.nombre')
                     ->label('Producto')
+                    ->formatStateUsing(function (string $state, Inventario $record): string {
+                        if ($record->variante_id && $record->variante) {
+                            return AjusteDetalle::generarNombre(null, $record->variante);
+                        }
+                        return $state;
+                    })
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
-
-                TextColumn::make('variante_id')
-                    ->label('Tipo / Variante')
-                    ->formatStateUsing(function ($record) {
-                        if (!$record->variante_id) {
-                            return 'Producto Simple';
-                        }
-                        
-                        // Si tu modelo Variante tiene la columna 'nombre', 
-                        // puedes cambiar esto a: return $record->variante->nombre;
-                        return 'Variante #' . $record->variante_id;
-                    })
-                    ->badge()
-                    ->color(fn ($record) => $record->variante_id ? 'info' : 'gray'),
 
                 TextColumn::make('stock_real')
                     ->label('Stock Actual')

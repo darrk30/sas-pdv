@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\EstadoStock;
 use App\Models\Ajuste;
 use App\Models\Inventario;
 use App\Models\UnidadesMedida;
@@ -119,18 +120,42 @@ class InventarioCoreService
 
         if (! $inv) {
             $inv = Inventario::create([
-                'empresa_id'  => $empresaId,
-                'producto_id' => $productoId,
-                'variante_id' => $varianteId,
-                'stock_real'  => 0,
-                'stock_reserva' => 0,
-                'stock_minimo' => 0,
+                'empresa_id'       => $empresaId,
+                'producto_id'      => $productoId,
+                'variante_id'      => $varianteId,
+                'stock_real'       => 0,
+                'stock_reserva'    => 0,
+                'stock_minimo'     => 0,
+                'estado_inventario' => EstadoStock::Agotado,
             ]);
         }
 
-        $tipo === 'entrada'
-            ? $inv->increment('stock_real', $cantidadBase)
-            : $inv->decrement('stock_real', $cantidadBase);
+        $nuevoStock = (float) $inv->stock_real + ($tipo === 'entrada' ? $cantidadBase : -$cantidadBase);
+
+        $inv->update([
+            'stock_real'        => $nuevoStock,
+            'estado_inventario' => $this->calcularEstado($nuevoStock, (float) $inv->stock_minimo),
+        ]);
+    }
+
+    /**
+     * Calcula el EstadoStock según el stock resultante y el mínimo configurado.
+     *
+     * - stock <= 0                          → agotado
+     * - 0 < stock <= stock_minimo           → por_agotarse
+     * - stock > stock_minimo                → disponible
+     */
+    private function calcularEstado(float $stockReal, float $stockMinimo): EstadoStock
+    {
+        if ($stockReal <= 0) {
+            return EstadoStock::Agotado;
+        }
+
+        if ($stockMinimo > 0 && $stockReal <= $stockMinimo) {
+            return EstadoStock::PorAgotarse;
+        }
+
+        return EstadoStock::Disponible;
     }
 
     /**
