@@ -14,7 +14,6 @@ class EditCompra extends EditRecord
 
     private ?string $stockAction    = null;
     private array   $detallesViejos = [];
-    private array   $detallesNuevos = [];
 
     protected function getHeaderActions(): array
     {
@@ -24,54 +23,38 @@ class EditCompra extends EditRecord
     }
 
     /**
-     * Se ejecuta ANTES de que Filament guarde el registro y las relaciones.
-     * Aquí capturamos el estado viejo (directo de BD) y el estado nuevo (del form $data),
-     * así no dependemos del orden en que Filament llame a afterSave vs saveRelationships.
+     * Captura el estado viejo y los detalles viejos ANTES de guardar.
+     * Los detalles nuevos NO se capturan aquí — se leen de BD en afterSave,
+     * donde Filament ya guardó las relaciones y el dato es confiable.
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $this->stockAction    = null;
         $this->detallesViejos = [];
-        $this->detallesNuevos = [];
 
         $record   = $this->getRecord();
         $compraId = $record->getKey();
 
-        // Estado viejo: directo de BD, sin pasar por el modelo (que puede estar sincronizado con el form)
         $estadoViejo = DB::table('compras')
             ->where('id', $compraId)
             ->value('estado_despacho') ?? 'pendiente';
 
-        // Estado nuevo: del form, normalizado por si llega como enum instance
         $raw         = $data['estado_despacho'] ?? 'pendiente';
         $estadoNuevo = $raw instanceof \BackedEnum ? $raw->value : (string) $raw;
 
-        // Detalles viejos: directo de BD sin Eloquent (evita scopes y caché de relaciones)
-        $viejos = DB::table('compra_detalles')
-            ->where('compra_id', $compraId)
-            ->get(['producto_id', 'variante_id', 'unidad_id', 'cantidad'])
-            ->map(fn(\stdClass $row) => (array) $row)
-            ->values()
-            ->all();
-
-        // Detalles nuevos: del form $data (disponibles antes del guardado, independiente del timing)
-        $nuevos = array_values($data['detalles'] ?? []);
-
         if ($estadoViejo !== $estadoNuevo) {
             if ($estadoNuevo === 'recibido') {
-                // pendiente → recibido: aplicar los nuevos detalles del form
-                $this->stockAction    = 'aplicar';
-                $this->detallesNuevos = $nuevos;
+                // pendiente → recibido: stock se aplicará en afterSave con los detalles ya guardados
+                $this->stockAction = 'aplicar';
             } else {
-                // recibido → pendiente: revertir los viejos que estaban en BD
+                // recibido → pendiente: capturar viejos ahora antes de que se sobreescriban
                 $this->stockAction    = 'revertir';
-                $this->detallesViejos = $viejos;
+                $this->detallesViejos = $this->leerDetallesDeDB($compraId);
             }
         } elseif ($estadoNuevo === 'recibido') {
-            // recibido → recibido: revertir viejos y aplicar nuevos (sincroniza cambios de cantidad/unidad)
+            // recibido → recibido: capturar viejos ahora; los nuevos se leerán en afterSave
             $this->stockAction    = 'sincronizar';
-            $this->detallesViejos = $viejos;
-            $this->detallesNuevos = $nuevos;
+            $this->detallesViejos = $this->leerDetallesDeDB($compraId);
         }
         // pendiente → pendiente: sin acción
 
@@ -79,9 +62,8 @@ class EditCompra extends EditRecord
     }
 
     /**
-     * Se ejecuta después de que Filament guarda el registro.
-     * Usamos los datos capturados en mutateFormDataBeforeSave (no consultamos la BD aquí)
-     * para evitar dependencia del orden afterSave/saveRelationships.
+     * Aplica los movimientos de stock usando los detalles ya persistidos en BD.
+     * En este punto Filament ya guardó el registro principal y las relaciones.
      */
     protected function afterSave(): void
     {
@@ -92,17 +74,35 @@ class EditCompra extends EditRecord
         $record  = $this->getRecord();
         $service = app(InventarioCoreService::class);
 
-        $viejos = collect($this->detallesViejos);
-        $nuevos = collect($this->detallesNuevos);
-
-        if ($this->stockAction === 'aplicar') {
-            $service->aplicarDetalles($record->empresa_id, 'entrada', $nuevos);
-        } elseif ($this->stockAction === 'revertir') {
-            $service->revertirDetalles($record->empresa_id, 'entrada', $viejos);
-        } else {
-            // sincronizar: revertir con unidades/cantidades viejas, sumar con las nuevas
-            $service->revertirDetalles($record->empresa_id, 'entrada', $viejos);
-            $service->aplicarDetalles($record->empresa_id, 'entrada', $nuevos);
+        if ($this->stockAction === 'revertir') {
+            $service->revertirDetalles($record->empresa_id, 'entrada', collect($this->detallesViejos));
+            return;
         }
+
+        // Para 'aplicar' y 'sincronizar', los detalles nuevos se leen de BD
+        // (Filament ya los guardó antes de llamar a afterSave)
+        $nuevos = $record->detalles()->with('unidad')->get();
+
+        if ($this->stockAction === 'sincronizar') {
+            // Atomizar revert + apply para evitar estado inconsistente si falla alguno
+            DB::transaction(function () use ($record, $service, $nuevos): void {
+                $service->revertirDetalles($record->empresa_id, 'entrada', collect($this->detallesViejos));
+                $service->aplicarDetalles($record->empresa_id, 'entrada', $nuevos);
+            });
+            return;
+        }
+
+        // pendiente → recibido: solo aplicar los nuevos
+        $service->aplicarDetalles($record->empresa_id, 'entrada', $nuevos);
+    }
+
+    private function leerDetallesDeDB(int $compraId): array
+    {
+        return DB::table('compra_detalles')
+            ->where('compra_id', $compraId)
+            ->get(['producto_id', 'variante_id', 'unidad_id', 'cantidad'])
+            ->map(fn(\stdClass $row) => (array) $row)
+            ->values()
+            ->all();
     }
 }

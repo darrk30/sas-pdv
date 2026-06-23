@@ -10,13 +10,8 @@ class CreateCompra extends CreateRecord
 {
     protected static string $resource = CompraResource::class;
 
-    private bool  $aplicarStock    = false;
-    private array $detallesAPlicar = [];
+    private bool $aplicarStock = false;
 
-    /**
-     * Captura el estado_despacho y los detalles del form ANTES del guardado,
-     * igual que EditCompra, para no depender del orden afterCreate/saveRelationships.
-     */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['user_id'] = auth()->id();
@@ -25,14 +20,15 @@ class CreateCompra extends CreateRecord
         $raw = $data['estado_despacho'] ?? 'pendiente';
         $estadoDespacho = $raw instanceof \BackedEnum ? $raw->value : (string) $raw;
 
-        if ($estadoDespacho === 'recibido') {
-            $this->aplicarStock    = true;
-            $this->detallesAPlicar = array_values($data['detalles'] ?? []);
-        }
+        $this->aplicarStock = ($estadoDespacho === 'recibido');
 
         return $data;
     }
 
+    /**
+     * Lee los detalles directamente de BD (Filament ya guardó las relaciones
+     * antes de llamar a afterCreate), así se evitan problemas de formato del $data del form.
+     */
     protected function afterCreate(): void
     {
         if (! $this->aplicarStock) {
@@ -44,7 +40,7 @@ class CreateCompra extends CreateRecord
         app(InventarioCoreService::class)->aplicarDetalles(
             $record->empresa_id,
             'entrada',
-            collect($this->detallesAPlicar),
+            $record->detalles()->with('unidad')->get(),
         );
     }
 }
