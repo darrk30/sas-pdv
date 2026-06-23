@@ -49,6 +49,9 @@ class EditCompra extends EditRecord
 
         if ($estadoViejo !== $estadoNuevo) {
             $this->stockAction = ($estadoNuevo === 'recibido') ? 'aplicar' : 'revertir';
+        } elseif ($estadoNuevo === 'recibido') {
+            // Se mantiene en recibido: revertir viejos + aplicar nuevos para sincronizar cantidades
+            $this->stockAction = 'sincronizar';
         }
 
         return $data;
@@ -69,8 +72,12 @@ class EditCompra extends EditRecord
 
         if ($this->stockAction === 'aplicar') {
             $service->aplicarCompra($record);
-        } else {
+        } elseif ($this->stockAction === 'revertir') {
             $service->revertirDetalles($record->empresa_id, 'entrada', $this->detallesAntes);
+        } else {
+            // sincronizar: revertir cantidades viejas y aplicar las nuevas
+            $service->revertirDetalles($record->empresa_id, 'entrada', $this->detallesAntes);
+            $service->aplicarCompra($record);
         }
     }
 }
