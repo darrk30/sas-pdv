@@ -33,19 +33,23 @@ class EditCompra extends EditRecord
     {
         $this->stockAction = null;
 
-        $record = $this->getRecord();
+        $record   = $this->getRecord();
+        $compraId = $record->getKey();
 
         // Leer directamente de BD para garantizar el valor pre-guardado (sin depender del modelo)
         $estadoViejo = DB::table('compras')
-            ->where('id', $record->getKey())
+            ->where('id', $compraId)
             ->value('estado_despacho') ?? 'pendiente';
 
         // Normalizar el valor nuevo: puede llegar como string o como instancia de enum
         $raw         = $data['estado_despacho'] ?? 'pendiente';
         $estadoNuevo = $raw instanceof \BackedEnum ? $raw->value : (string) $raw;
 
-        // Capturar detalles en BD ahora (antes de que Filament sobreescriba las relaciones)
-        $this->detallesAntes = $record->detalles()->with('unidad')->get();
+        // Capturar detalles con DB::table (sin Eloquent ni scopes) para garantizar valores pre-guardado
+        $this->detallesAntes = DB::table('compra_detalles')
+            ->where('compra_id', $compraId)
+            ->get(['producto_id', 'variante_id', 'unidad_id', 'cantidad'])
+            ->map(fn(\stdClass $row) => (array) $row);
 
         if ($estadoViejo !== $estadoNuevo) {
             $this->stockAction = ($estadoNuevo === 'recibido') ? 'aplicar' : 'revertir';
