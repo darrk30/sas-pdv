@@ -9,6 +9,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -146,6 +147,10 @@ class AjustesTable
                 // Eliminar: solo borradores (sin revertir stock, nunca fue aplicado)
                 DeleteAction::make()
                     ->visible(fn(Ajuste $record): bool => $record->estado === 'borrador'),
+
+                // Ver: confirmados y anulados (solo lectura)
+                ViewAction::make()
+                    ->visible(fn(Ajuste $record): bool => $record->estado !== 'borrador'),
 
             ])
 

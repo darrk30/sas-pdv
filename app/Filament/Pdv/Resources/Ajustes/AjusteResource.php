@@ -5,6 +5,7 @@ namespace App\Filament\Pdv\Resources\Ajustes;
 use App\Filament\Pdv\Resources\Ajustes\Pages\CreateAjuste;
 use App\Filament\Pdv\Resources\Ajustes\Pages\EditAjuste;
 use App\Filament\Pdv\Resources\Ajustes\Pages\ListAjustes;
+use App\Filament\Pdv\Resources\Ajustes\Pages\ViewAjuste;
 use App\Filament\Pdv\Resources\Ajustes\Schemas\AjusteForm;
 use App\Filament\Pdv\Resources\Ajustes\Tables\AjustesTable;
 use App\Models\Ajuste;
@@ -20,7 +21,7 @@ class AjusteResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'Ajuste';
+    protected static ?string $recordTitleAttribute = 'codigo';
 
     public static function form(Schema $schema): Schema
     {
@@ -29,22 +30,26 @@ class AjusteResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return AjustesTable::configure($table);
+        return AjustesTable::configure($table)
+            ->recordUrl(fn(Ajuste $record): string =>
+                $record->estado === 'borrador'
+                    ? static::getUrl('edit', ['record' => $record])
+                    : static::getUrl('view', ['record' => $record])
+            );
     }
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => ListAjustes::route('/'),
+            'index'  => ListAjustes::route('/'),
             'create' => CreateAjuste::route('/create'),
-            'edit' => EditAjuste::route('/{record}/edit'),
+            'edit'   => EditAjuste::route('/{record}/edit'),
+            'view'   => ViewAjuste::route('/{record}'),
         ];
     }
 }
