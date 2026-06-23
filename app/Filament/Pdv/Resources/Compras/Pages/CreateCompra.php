@@ -20,6 +20,7 @@ class CreateCompra extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['user_id'] = auth()->id();
+        $data['estado']  = 'confirmado';
 
         $raw = $data['estado_despacho'] ?? 'pendiente';
         $estadoDespacho = $raw instanceof \BackedEnum ? $raw->value : (string) $raw;

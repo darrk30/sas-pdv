@@ -6,8 +6,6 @@ use App\Enums\EstadoDespacho;
 use App\Enums\EstadoPago;
 use App\Enums\TipoComprobante;
 use App\Models\Compra;
-use App\Services\InventarioCoreService;
-use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -132,32 +130,11 @@ class ComprasTable
 
             ->recordActions([
 
-                // Confirmar: solo cuando recibida + pagada + borrador
-                Action::make('confirmar')
-                    ->label('Confirmar')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('¿Confirmar compra?')
-                    ->modalDescription('Al confirmar, la compra quedará bloqueada y no podrá ser editada.')
-                    ->modalSubmitActionLabel('Sí, confirmar')
-                    ->visible(fn(Compra $record): bool => $record->listaParaConfirmar())
-                    ->action(function (Compra $record): void {
-                        $record->update(['estado' => 'confirmado']);
-
-                        Notification::make()
-                            ->success()
-                            ->title('Compra ' . $record->codigo . ' confirmada')
-                            ->send();
-                    }),
-
-                // Editar: solo borradores
                 EditAction::make()
-                    ->visible(fn(Compra $record): bool => $record->esBorrador()),
+                    ->visible(fn(Compra $record): bool => ! $record->estaAnulada()),
 
-                // Eliminar: solo borradores
                 DeleteAction::make()
-                    ->visible(fn(Compra $record): bool => $record->esBorrador()),
+                    ->visible(fn(Compra $record): bool => ! $record->estaAnulada()),
 
             ])
 
@@ -169,7 +146,7 @@ class ComprasTable
                             $omitidos   = 0;
 
                             foreach ($records as $compra) {
-                                if ($compra->esBorrador()) {
+                                if (! $compra->estaAnulada()) {
                                     $compra->delete();
                                     $eliminados++;
                                 } else {
@@ -181,7 +158,7 @@ class ComprasTable
                                 Notification::make()
                                     ->warning()
                                     ->title("{$omitidos} compra(s) no eliminada(s)")
-                                    ->body('Solo se pueden eliminar compras en borrador.')
+                                    ->body('No se pueden eliminar compras anuladas.')
                                     ->send();
                             }
 
