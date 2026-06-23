@@ -31,7 +31,6 @@ class VarianteService
 
             Variante::where('producto_id', $producto->id)->update(['estado' => 'inactivo']);
 
-            // Siempre usar precio_con_descuento (ya refleja si hay o no descuento)
             $precioBase = (float) $producto->precio_con_descuento;
             $datos = [];
 
@@ -56,23 +55,34 @@ class VarianteService
 
             $combinaciones = $this->generarCartesiano($datos);
 
-            foreach ($combinaciones as $index => $comb) {
+            // Base para códigos nuevos: total de variantes ya existentes (activas + inactivas).
+            // Así nunca colisiona con códigos previos aunque se edite varias veces.
+            $baseContador = Variante::where('producto_id', $producto->id)->count();
+            $contadorNuevo = 0;
+
+            foreach ($combinaciones as $comb) {
                 $pavIds = collect($comb)->pluck('pav_id')->toArray();
 
-                $varianteExistente = Variante::where('producto_id', $producto->id)
-                    ->whereHas('valores', function ($q) use ($pavIds) {
-                        $q->whereIn('producto_atributo_valors_id', $pavIds);
-                    }, '=', count($pavIds))
-                    ->first();
+                // Busca la variante que tenga EXACTAMENTE estos PAVs.
+                // Fix: usar where('id', $pavId) en lugar de whereIn('producto_atributo_valors_id')
+                // que referenciaba una columna inexistente en producto_atributo_valors.
+                $query = Variante::where('producto_id', $producto->id);
+
+                foreach ($pavIds as $pavId) {
+                    $query->whereHas('valores', fn($q) => $q->where('id', $pavId));
+                }
+
+                $varianteExistente = $query->has('valores', '=', count($pavIds))->first();
 
                 if ($varianteExistente) {
                     $variante = $varianteExistente;
                     $variante->update(['estado' => 'activo']);
                 } else {
+                    $contadorNuevo++;
                     $variante = Variante::create([
                         'empresa_id'   => $producto->empresa_id,
                         'producto_id'  => $producto->id,
-                        'codigo'       => 'PROD_' . $producto->id . '_' . str_pad($index + 1, 3, '0', STR_PAD_LEFT),
+                        'codigo'       => 'PROD_' . $producto->id . '_' . str_pad($baseContador + $contadorNuevo, 3, '0', STR_PAD_LEFT),
                         'estado'       => 'activo',
                         'precio_final' => 0,
                     ]);
