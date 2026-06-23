@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pdv\Resources\Compras\Tables;
 
+use App\Enums\EstadoDespacho;
+use App\Enums\EstadoPago;
 use App\Enums\TipoComprobante;
 use App\Models\Compra;
 use App\Services\InventarioCoreService;
