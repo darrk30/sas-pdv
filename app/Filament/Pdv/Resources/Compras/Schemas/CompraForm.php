@@ -218,7 +218,6 @@ class CompraForm
 
                                         $simples = Producto::query()
                                             ->doesntHave('variantes')
-                                            ->whereHas('inventario')
                                             ->where('control_de_stock', true)
                                             ->where('estado', '!=', 'archivado')
                                             ->with('unidadMedida')

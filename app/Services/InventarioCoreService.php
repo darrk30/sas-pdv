@@ -50,6 +50,9 @@ class InventarioCoreService
                 $unidad = $this->resolverUnidad($detalle);
 
                 if (! $unidad) {
+                    \Log::warning('InventarioCoreService: unidad_id no encontrada, ítem omitido.', [
+                        'detalle' => is_array($detalle) ? $detalle : $detalle->toArray(),
+                    ]);
                     continue;
                 }
 
