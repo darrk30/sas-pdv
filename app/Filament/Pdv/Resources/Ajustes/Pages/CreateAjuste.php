@@ -9,6 +9,14 @@ class CreateAjuste extends CreateRecord
 {
     protected static string $resource = AjusteResource::class;
 
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        // Asignamos el usuario autenticado al array de datos
+        $data['user_id'] = auth()->id();
+        
+        return $data;
+    }
+
     // El ajuste se crea en estado 'borrador'.
     // El stock se aplica únicamente cuando el usuario confirma desde la tabla.
 }
