@@ -3,6 +3,7 @@
 namespace App\Filament\Pdv\Resources\Compras\Pages;
 
 use App\Filament\Pdv\Resources\Compras\CompraResource;
+use App\Services\InventarioCoreService;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateCompra extends CreateRecord
@@ -14,5 +15,14 @@ class CreateCompra extends CreateRecord
         $data['user_id'] = auth()->id();
 
         return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $record = $this->getRecord();
+
+        if (($record->estado_despacho ?? 'pendiente') === 'recibido') {
+            app(InventarioCoreService::class)->aplicarCompra($record);
+        }
     }
 }
