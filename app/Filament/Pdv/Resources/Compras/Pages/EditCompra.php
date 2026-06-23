@@ -7,6 +7,7 @@ use App\Services\InventarioCoreService;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class EditCompra extends EditRecord
 {
@@ -32,11 +33,18 @@ class EditCompra extends EditRecord
     {
         $this->stockAction = null;
 
-        $record      = $this->getRecord();
-        $estadoViejo = $record->estado_despacho ?? 'pendiente';
-        $estadoNuevo = $data['estado_despacho']  ?? 'pendiente';
+        $record = $this->getRecord();
 
-        // Capturar detalles que están en BD ahora (antes de que el form los sobreescriba)
+        // Leer directamente de BD para garantizar el valor pre-guardado (sin depender del modelo)
+        $estadoViejo = DB::table('compras')
+            ->where('id', $record->getKey())
+            ->value('estado_despacho') ?? 'pendiente';
+
+        // Normalizar el valor nuevo: puede llegar como string o como instancia de enum
+        $raw         = $data['estado_despacho'] ?? 'pendiente';
+        $estadoNuevo = $raw instanceof \BackedEnum ? $raw->value : (string) $raw;
+
+        // Capturar detalles en BD ahora (antes de que Filament sobreescriba las relaciones)
         $this->detallesAntes = $record->detalles()->with('unidad')->get();
 
         if ($estadoViejo !== $estadoNuevo) {
