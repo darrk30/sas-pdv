@@ -9,8 +9,10 @@ use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Builder;
 
 class GestionInventario extends Page implements HasTable
 {
@@ -47,7 +49,18 @@ class GestionInventario extends Page implements HasTable
                         }
                         return $state;
                     })
-                    ->searchable()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $q) use ($search): void {
+                            // Busca por nombre del producto (cubre simples y variantes)
+                            $q->whereHas('producto', fn(Builder $pq) =>
+                                $pq->where('nombre', 'like', "%{$search}%")
+                            )
+                            // Busca por valor de atributo: Rojo, S, M, etc.
+                            ->orWhereHas('variante.valores.valor', fn(Builder $vq) =>
+                                $vq->where('nombre', 'like', "%{$search}%")
+                            );
+                        });
+                    })
                     ->sortable()
                     ->weight('bold'),
 
@@ -68,7 +81,15 @@ class GestionInventario extends Page implements HasTable
                     ->badge(),
             ])
             ->filters([
-                // Filtros (se pueden añadir después)
+                SelectFilter::make('estado_inventario')
+                    ->label('Estado de stock')
+                    ->options([
+                        'agotado'      => 'Agotado',
+                        'por_agotarse' => 'Por agotarse',
+                        'disponible'   => 'Disponible',
+                    ])
+                    ->multiple()
+                    ->placeholder('Todos los estados'),
             ])
             ->recordActions([
                 // Acciones (se pueden añadir después)
