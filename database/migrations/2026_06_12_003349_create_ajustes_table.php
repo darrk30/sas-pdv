@@ -16,10 +16,10 @@ return new class extends Migration
             $table->foreignId('empresa_id')->constrained('empresas')->restrictOnDelete();
             $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
             $table->string('codigo')->nullable();
-            $table->enum('tipo', ['entrada', 'salida']);
+            $table->string('tipo');
             $table->string('motivo');
             $table->decimal('valor_total', 12, 4)->default(0);
-            $table->enum('estado', ['borrador', 'confirmado', 'anulado'])->default('borrador');
+            $table->string('estado')->default('borrador');
             $table->timestamps();
             $table->unique(['empresa_id', 'codigo'], 'ajustes_empresa_codigo_unique');
             $table->index(['empresa_id', 'tipo']);
