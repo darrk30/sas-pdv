@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\EstadoStock;
 use App\Models\Ajuste;
+use App\Models\Compra;
 use App\Models\Inventario;
 use App\Models\UnidadesMedida;
 use App\Models\Variante;
@@ -92,6 +93,28 @@ class InventarioCoreService
     {
         $detalles = $ajuste->detalles()->with('unidad')->get();
         $this->revertirDetalles($ajuste->empresa_id, $ajuste->tipo, $detalles);
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers para Compra (atajos de alto nivel)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Aplica stock de una Compra recibida (siempre es entrada).
+     */
+    public function aplicarCompra(Compra $compra): void
+    {
+        $detalles = $compra->detalles()->with('unidad')->get();
+        $this->aplicarDetalles($compra->empresa_id, 'entrada', $detalles);
+    }
+
+    /**
+     * Revierte el stock de una Compra (cuando pasa de recibido → pendiente o se elimina).
+     */
+    public function revertirCompra(Compra $compra): void
+    {
+        $detalles = $compra->detalles()->with('unidad')->get();
+        $this->revertirDetalles($compra->empresa_id, 'entrada', $detalles);
     }
 
     // -------------------------------------------------------------------------

@@ -30,7 +30,11 @@ class CompraResource extends Resource
     public static function table(Table $table): Table
     {
         return ComprasTable::configure($table)
-            ->recordUrl(fn(Compra $record): string => static::getUrl('edit', ['record' => $record]));
+            ->recordUrl(fn(Compra $record): ?string =>
+                $record->esBorrador()
+                    ? static::getUrl('edit', ['record' => $record])
+                    : null
+            );
     }
 
     public static function getRelations(): array

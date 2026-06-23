@@ -26,6 +26,7 @@ class Compra extends Model
         'correlativo',
         'tipo_comprobante',
         'fecha_compra',
+        'estado',
         'estado_despacho',
         'estado_pago',
         'observaciones',
@@ -82,6 +83,21 @@ class Compra extends Model
     // Helpers
     // -------------------------------------------------------------------------
 
+    public function esBorrador(): bool
+    {
+        return $this->estado === 'borrador';
+    }
+
+    public function estaConfirmada(): bool
+    {
+        return $this->estado === 'confirmado';
+    }
+
+    public function estaAnulada(): bool
+    {
+        return $this->estado === 'anulado';
+    }
+
     public function estaRecibida(): bool
     {
         return $this->estado_despacho === EstadoDespacho::Recibido;
@@ -90,6 +106,13 @@ class Compra extends Model
     public function estaPagada(): bool
     {
         return $this->estado_pago === EstadoPago::Pagado;
+    }
+
+    public function listaParaConfirmar(): bool
+    {
+        return $this->esBorrador()
+            && $this->estaRecibida()
+            && $this->estaPagada();
     }
 
     public function recalcularTotales(): void

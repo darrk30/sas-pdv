@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('correlativo', 20)->nullable();
 
             $table->date('fecha_compra');
+            $table->string('estado')->default('borrador');
             $table->string('estado_despacho')->default('pendiente');
             $table->string('estado_pago')->default('pendiente');
             $table->text('observaciones')->nullable();
@@ -40,6 +41,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['empresa_id', 'codigo'], 'compras_empresa_codigo_unique');
+            $table->index(['empresa_id', 'estado']);
             $table->index(['empresa_id', 'estado_despacho']);
             $table->index(['empresa_id', 'estado_pago']);
             $table->index(['empresa_id', 'fecha_compra']);

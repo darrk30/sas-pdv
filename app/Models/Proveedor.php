@@ -13,6 +13,8 @@ class Proveedor extends Model
 {
     use BelongsToEmpresa;
 
+    protected $table = 'proveedores';
+
     protected $fillable = [
         'empresa_id',
         'user_id',
