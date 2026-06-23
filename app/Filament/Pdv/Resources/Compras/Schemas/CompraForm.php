@@ -303,9 +303,7 @@ class CompraForm
                                             ->where('estado', true)
                                             ->pluck('nombre', 'id');
                                     })
-                                    ->getOptionLabelUsing(fn($value) => UnidadesMedida::find($value)?->nombre)
-                                    ->disabled(fn(string $operation): bool => $operation === 'edit')
-                                    ->dehydrated(true),
+                                    ->getOptionLabelUsing(fn($value) => UnidadesMedida::find($value)?->nombre),
 
                                 // ── Cantidad ──
                                 TextInput::make('cantidad')
