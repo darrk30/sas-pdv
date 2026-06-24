@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Empresa;
 use Database\Seeders\CajaPrincipalSeeder;
+use Database\Seeders\ClienteGeneralSeeder;
 use Database\Seeders\ConfiguracionInicialSeeder;
 use Database\Seeders\DimensionSeeder;
 use Database\Seeders\MetodoPagoSeeder;
@@ -26,6 +27,7 @@ class EmpresaObserver
         (new MetodoPagoSeeder())->runForEmpresa($empresa);
         (new TurnoSeeder())->runForEmpresa($empresa);
         (new CajaPrincipalSeeder())->runForEmpresa($empresa);
+        (new ClienteGeneralSeeder())->runForEmpresa($empresa);
 
         app()->forgetInstance('bypass_tenant_scope');
     }
