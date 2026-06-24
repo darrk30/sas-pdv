@@ -18,7 +18,15 @@ class AtributoResource extends Resource
 {
     protected static ?string $model = Atributo::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
+
+    protected static ?string $navigationLabel = 'Atributos';
+
+    protected static ?string $navigationGroup = 'Catálogo';
+
+    protected static ?string $modelLabel = 'Atributo';
+
+    protected static ?string $pluralModelLabel = 'Atributos';
 
     protected static ?string $recordTitleAttribute = 'Atributo';
 

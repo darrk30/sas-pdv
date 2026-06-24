@@ -18,7 +18,15 @@ class ImpresoraResource extends Resource
 {
     protected static ?string $model = Impresora::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPrinter;
+
+    protected static ?string $navigationLabel = 'Impresoras';
+
+    protected static ?string $navigationGroup = 'Configuración';
+
+    protected static ?string $modelLabel = 'Impresora';
+
+    protected static ?string $pluralModelLabel = 'Impresoras';
 
     protected static ?string $recordTitleAttribute = 'Impresora';
 

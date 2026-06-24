@@ -19,7 +19,15 @@ class DimensionResource extends Resource
 {
     protected static ?string $model = Dimension::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsPointingOut;
+
+    protected static ?string $navigationLabel = 'Dimensiones';
+
+    protected static ?string $navigationGroup = 'Catálogo';
+
+    protected static ?string $modelLabel = 'Dimensión';
+
+    protected static ?string $pluralModelLabel = 'Dimensiones';
 
     protected static ?string $recordTitleAttribute = 'Dimension';
 

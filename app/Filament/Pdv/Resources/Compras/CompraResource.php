@@ -20,6 +20,14 @@ class CompraResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
 
+    protected static ?string $navigationLabel = 'Compras';
+
+    protected static ?string $navigationGroup = 'Compras';
+
+    protected static ?string $modelLabel = 'Compra';
+
+    protected static ?string $pluralModelLabel = 'Compras';
+
     protected static ?string $recordTitleAttribute = 'codigo';
 
     public static function form(Schema $schema): Schema

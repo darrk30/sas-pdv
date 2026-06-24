@@ -24,6 +24,12 @@ class MetodoPagoResource extends Resource
 
     protected static ?string $navigationLabel = 'Métodos de Pago';
 
+    protected static ?string $navigationGroup = 'Configuración';
+
+    protected static ?string $modelLabel = 'Método de Pago';
+
+    protected static ?string $pluralModelLabel = 'Métodos de Pago';
+
     public static function form(Schema $schema): Schema
     {
         return MetodoPagoForm::configure($schema);

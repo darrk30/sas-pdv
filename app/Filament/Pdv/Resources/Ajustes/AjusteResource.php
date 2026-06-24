@@ -19,7 +19,15 @@ class AjusteResource extends Resource
 {
     protected static ?string $model = Ajuste::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAdjustmentsHorizontal;
+
+    protected static ?string $navigationLabel = 'Control de Stock';
+
+    protected static ?string $navigationGroup = 'Inventario';
+
+    protected static ?string $modelLabel = 'Ajuste';
+
+    protected static ?string $pluralModelLabel = 'Ajustes';
 
     protected static ?string $recordTitleAttribute = 'codigo';
 

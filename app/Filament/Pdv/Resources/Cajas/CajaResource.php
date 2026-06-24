@@ -19,7 +19,15 @@ class CajaResource extends Resource
 {
     protected static ?string $model = Caja::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedComputerDesktop;
+
+    protected static ?string $navigationLabel = 'Cajas';
+
+    protected static ?string $navigationGroup = 'Configuración';
+
+    protected static ?string $modelLabel = 'Caja';
+
+    protected static ?string $pluralModelLabel = 'Cajas';
 
     protected static ?string $recordTitleAttribute = 'Caja';
 
