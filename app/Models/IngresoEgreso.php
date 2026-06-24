@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\CategoriaEgreso;
+use App\Enums\EstadoMovimiento;
 use App\Enums\TipoMovimiento;
 use App\Traits\BelongsToEmpresa;
 use App\Traits\BelongsToUser;
@@ -18,6 +19,7 @@ class IngresoEgreso extends Model
     protected $fillable = [
         'empresa_id',
         'user_id',
+        'sesion_caja_id',
         'fecha_hora',
         'tipo',
         'categoria',
@@ -25,14 +27,21 @@ class IngresoEgreso extends Model
         'user_receptor_id',
         'monto',
         'motivo',
+        'estado',
     ];
 
     protected $casts = [
         'tipo'       => TipoMovimiento::class,
         'categoria'  => CategoriaEgreso::class,
+        'estado'     => EstadoMovimiento::class,
         'fecha_hora' => 'datetime',
         'monto'      => 'decimal:2',
     ];
+
+    public function sesionCaja(): BelongsTo
+    {
+        return $this->belongsTo(SesionCaja::class);
+    }
 
     public function registradoPor(): BelongsTo
     {

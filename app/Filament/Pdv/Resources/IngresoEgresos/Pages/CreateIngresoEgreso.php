@@ -2,9 +2,12 @@
 
 namespace App\Filament\Pdv\Resources\IngresoEgresos\Pages;
 
-use App\Filament\Pdv\Resources\IngresoEgresos\IngresoEgresoResource;
 use App\Enums\TipoMovimiento;
+use App\Filament\Pdv\Resources\IngresoEgresos\IngresoEgresoResource;
+use App\Filament\Pdv\Resources\IngresoEgresos\Schemas\IngresoEgresoForm;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Exceptions\Halt;
 
 class CreateIngresoEgreso extends CreateRecord
 {
@@ -12,10 +15,26 @@ class CreateIngresoEgreso extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        // Verificar que existe una sesión abierta
+        $sesion = IngresoEgresoForm::sesionAbierta();
+
+        if (! $sesion) {
+            Notification::make()
+                ->danger()
+                ->title('Sin sesión de caja abierta')
+                ->body('Debes aperturar una caja antes de registrar movimientos.')
+                ->send();
+
+            throw new Halt();
+        }
+
+        $data['sesion_caja_id'] = $sesion->id;
+        $data['estado']         = 'aprobado';
+
+        // Limpiar campos que no aplican
         $tipo = $data['tipo'] ?? '';
         $tipo = $tipo instanceof TipoMovimiento ? $tipo->value : (string) $tipo;
 
-        // Limpiar campos que no aplican según el tipo
         if ($tipo === TipoMovimiento::Ingreso->value) {
             $data['categoria']        = null;
             $data['user_receptor_id'] = null;

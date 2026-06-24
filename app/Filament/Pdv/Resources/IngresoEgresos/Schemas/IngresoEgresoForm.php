@@ -4,9 +4,11 @@ namespace App\Filament\Pdv\Resources\IngresoEgresos\Schemas;
 
 use App\Enums\CategoriaEgreso;
 use App\Enums\TipoMovimiento;
+use App\Models\SesionCaja;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -25,6 +27,17 @@ class IngresoEgresoForm
                     ->schema([
                         Grid::make(['default' => 1, 'md' => 2])->schema([
 
+                            // Info de la sesión activa (solo lectura)
+                            Placeholder::make('sesion_info')
+                                ->label('Caja activa')
+                                ->content(function () {
+                                    $sesion = self::sesionAbierta();
+                                    return $sesion
+                                        ? "✅ {$sesion->caja->nombre} — abierta desde {$sesion->fecha_apertura->format('d/m/Y H:i')}"
+                                        : '⚠️ No tienes ninguna sesión de caja abierta.';
+                                })
+                                ->columnSpanFull(),
+
                             ToggleButtons::make('tipo')
                                 ->label('Tipo')
                                 ->options(TipoMovimiento::class)
@@ -40,7 +53,7 @@ class IngresoEgresoForm
                                 ->default(now())
                                 ->native(false),
 
-                            // Solo egreso: categoría
+                            // Solo egreso
                             Select::make('categoria')
                                 ->label('Categoría')
                                 ->options(CategoriaEgreso::class)
@@ -49,7 +62,7 @@ class IngresoEgresoForm
                                 ->live()
                                 ->visible(fn($get) => self::tipo($get('tipo')) === TipoMovimiento::Egreso->value),
 
-                            // Nombre libre: ingreso siempre, egreso solo si categoría ≠ remuneración
+                            // Nombre libre: ingreso siempre | egreso si no es remuneración
                             TextInput::make('entregado_a')
                                 ->label(fn($get) => self::tipo($get('tipo')) === TipoMovimiento::Ingreso->value
                                     ? 'Nombre de quien entrega'
@@ -89,6 +102,15 @@ class IngresoEgresoForm
                         ]),
                     ])->columnSpanFull(),
             ]);
+    }
+
+    public static function sesionAbierta(): ?SesionCaja
+    {
+        return SesionCaja::with('caja')
+            ->where('empresa_id', Filament::getTenant()?->id)
+            ->where('user_id', auth()->id())
+            ->where('estado', 'abierta')
+            ->first();
     }
 
     private static function tipo(mixed $v): string

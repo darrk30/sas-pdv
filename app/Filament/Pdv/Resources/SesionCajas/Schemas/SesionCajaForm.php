@@ -31,9 +31,20 @@ class SesionCajaForm
 
                             Select::make('caja_id')
                                 ->label('Caja')
-                                ->options(fn() => Caja::where('empresa_id', Filament::getTenant()->id)
-                                    ->where('estado', true)
-                                    ->pluck('nombre', 'id'))
+                                ->options(function () {
+                                    return Caja::where('empresa_id', Filament::getTenant()->id)
+                                        ->where('estado', true)
+                                        ->whereHas('usuarios', fn($q) => $q->where('user_id', auth()->id()))
+                                        ->pluck('nombre', 'id');
+                                })
+                                ->default(function () {
+                                    $cajas = Caja::where('empresa_id', Filament::getTenant()->id)
+                                        ->where('estado', true)
+                                        ->whereHas('usuarios', fn($q) => $q->where('user_id', auth()->id()))
+                                        ->pluck('id');
+
+                                    return $cajas->count() === 1 ? $cajas->first() : null;
+                                })
                                 ->native(false)
                                 ->required()
                                 ->searchable(),
