@@ -49,6 +49,14 @@ class CompraForm
                             ->placeholder('Seleccionar proveedor...')
                             ->searchable()
                             ->nullable()
+                            ->default(function (): ?int {
+                                $empresa = \Filament\Facades\Filament::getTenant();
+                                return $empresa
+                                    ? Proveedor::where('empresa_id', $empresa->id)
+                                        ->where('numero_documento', '00000000001')
+                                        ->value('id')
+                                    : null;
+                            })
                             ->relationship('proveedor', 'nombre')
                             ->createOptionForm([
                                 Grid::make(2)
