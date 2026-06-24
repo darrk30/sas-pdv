@@ -29,6 +29,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class CompraForm
 {
@@ -138,6 +139,27 @@ class CompraForm
                             ->inline()
                             ->required()
                             ->live()
+                            ->afterStateUpdated(function (?string $state, Get $get, Set $set): void {
+                                if ($state !== EstadoPago::Pagado->value) {
+                                    return;
+                                }
+                                // Solo pre-cargar si no hay pagos ya registrados
+                                if (! empty($get('pagos'))) {
+                                    return;
+                                }
+                                $efectivo = MetodoPago::query()
+                                    ->where('estado', 'activo')
+                                    ->where('nombre', 'like', '%fectivo%')
+                                    ->first();
+                                $total = (float) ($get('total') ?? 0);
+                                $set('pagos', [
+                                    Str::uuid()->toString() => [
+                                        'metodo_pago_id' => $efectivo?->id,
+                                        'monto'          => $total > 0 ? $total : null,
+                                        'referencia'     => null,
+                                    ],
+                                ]);
+                            })
                             ->default('pendiente'),
 
                         Textarea::make('observaciones')
@@ -417,7 +439,7 @@ class CompraForm
                             ])
                             ->addActionLabel('Agregar pago')
                             ->reorderable(false)
-                            ->defaultItems(1),
+                            ->defaultItems(0),
                     ])->columnSpanFull(),
 
                 // ── Totales ───────────────────────────────────────────────
