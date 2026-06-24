@@ -22,6 +22,7 @@ class IngresoEgresosTable
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) {
+                $query->with('sesionCaja');
                 if (! self::esAdmin()) {
                     $query->where('user_id', auth()->id());
                 }
@@ -99,7 +100,8 @@ class IngresoEgresosTable
                     ->requiresConfirmation()
                     ->modalHeading('¿Anular este movimiento?')
                     ->modalDescription('Esta acción no se puede deshacer.')
-                    ->visible(fn($record) => $record->estado === EstadoMovimiento::Aprobado)
+                    ->visible(fn($record) => $record->estado === EstadoMovimiento::Aprobado
+                        && $record->sesionCaja?->estaAbierta())
                     ->action(function ($record) {
                         $record->update(['estado' => EstadoMovimiento::Anulado->value]);
                         Notification::make()

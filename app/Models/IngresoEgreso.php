@@ -5,11 +5,15 @@ namespace App\Models;
 use App\Enums\CategoriaEgreso;
 use App\Enums\EstadoMovimiento;
 use App\Enums\TipoMovimiento;
+use App\Observers\IngresoEgresoObserver;
 use App\Traits\BelongsToEmpresa;
 use App\Traits\BelongsToUser;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
+#[ObservedBy(IngresoEgresoObserver::class)]
 class IngresoEgreso extends Model
 {
     use BelongsToEmpresa, BelongsToUser;
@@ -37,6 +41,11 @@ class IngresoEgreso extends Model
         'fecha_hora' => 'datetime',
         'monto'      => 'decimal:2',
     ];
+
+    public function transaccion(): MorphOne
+    {
+        return $this->morphOne(Transaccion::class, 'transaccionable');
+    }
 
     public function sesionCaja(): BelongsTo
     {
