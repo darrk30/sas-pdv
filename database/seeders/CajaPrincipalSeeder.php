@@ -33,14 +33,12 @@ class CajaPrincipalSeeder extends Seeder
             return;
         }
 
-        // Buscar el primer usuario con rol en esta empresa (Spatie con teams)
-        $userRow = DB::table('model_has_roles')
+        $userRow = DB::table('empresa_user')
             ->where('empresa_id', $empresa->id)
-            ->where('model_type', 'App\\Models\\User')
             ->first();
 
         if ($userRow) {
-            $caja->usuarios()->attach($userRow->model_id, ['turno_id' => $turnoManana->id]);
+            $caja->usuarios()->attach($userRow->user_id, ['turno_id' => $turnoManana->id]);
         }
     }
 }
