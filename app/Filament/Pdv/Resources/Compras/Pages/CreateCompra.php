@@ -4,7 +4,10 @@ namespace App\Filament\Pdv\Resources\Compras\Pages;
 
 use App\Filament\Pdv\Resources\Compras\CompraResource;
 use App\Services\InventarioCoreService;
+use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CreateCompra extends CreateRecord
 {
@@ -21,6 +24,30 @@ class CreateCompra extends CreateRecord
         $estadoDespacho = $raw instanceof \BackedEnum ? $raw->value : (string) $raw;
 
         $this->aplicarStock = ($estadoDespacho === 'recibido');
+
+        $tipo = $data['tipo_comprobante'] ?? '';
+        $tipo = $tipo instanceof \BackedEnum ? $tipo->value : (string) $tipo;
+
+        if ($tipo !== 'sin_comprobante') {
+            $serie       = $data['serie'] ?? null;
+            $correlativo = $data['correlativo'] ?? null;
+
+            if ($serie && $correlativo) {
+                $codigo    = $serie . '-' . $correlativo;
+                $empresaId = Filament::getTenant()?->id;
+
+                $existe = DB::table('compras')
+                    ->where('empresa_id', $empresaId)
+                    ->where('codigo', $codigo)
+                    ->exists();
+
+                if ($existe) {
+                    throw ValidationException::withMessages([
+                        'data.correlativo' => "El comprobante {$codigo} ya está registrado.",
+                    ]);
+                }
+            }
+        }
 
         return $data;
     }

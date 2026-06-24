@@ -5,8 +5,10 @@ namespace App\Filament\Pdv\Resources\Compras\Pages;
 use App\Filament\Pdv\Resources\Compras\CompraResource;
 use App\Services\InventarioCoreService;
 use Filament\Actions\DeleteAction;
+use Filament\Facades\Filament;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 
 class EditCompra extends EditRecord
@@ -26,6 +28,36 @@ class EditCompra extends EditRecord
 
     #[Locked]
     public array $snapshotDetalles = [];
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $tipo = $data['tipo_comprobante'] ?? '';
+        $tipo = $tipo instanceof \BackedEnum ? $tipo->value : (string) $tipo;
+
+        if ($tipo !== 'sin_comprobante') {
+            $serie       = $data['serie'] ?? null;
+            $correlativo = $data['correlativo'] ?? null;
+
+            if ($serie && $correlativo) {
+                $codigo    = $serie . '-' . $correlativo;
+                $empresaId = Filament::getTenant()?->id;
+
+                $existe = DB::table('compras')
+                    ->where('empresa_id', $empresaId)
+                    ->where('codigo', $codigo)
+                    ->where('id', '!=', $this->getRecord()->getKey())
+                    ->exists();
+
+                if ($existe) {
+                    throw ValidationException::withMessages([
+                        'data.correlativo' => "El comprobante {$codigo} ya está registrado.",
+                    ]);
+                }
+            }
+        }
+
+        return $data;
+    }
 
     protected function getHeaderActions(): array
     {

@@ -26,6 +26,13 @@ class CompraObserver
         $compra->codigo = ($compra->serie ?? '') . '-' . ($compra->correlativo ?? '');
     }
 
+    public function updating(Compra $compra): void
+    {
+        if ($compra->isDirty(['serie', 'correlativo'])) {
+            $compra->codigo = ($compra->serie ?? '') . '-' . ($compra->correlativo ?? '');
+        }
+    }
+
     public function deleting(Compra $compra): void
     {
         if ($compra->estaRecibida()) {
