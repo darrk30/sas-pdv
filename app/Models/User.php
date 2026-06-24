@@ -54,7 +54,8 @@ class User extends Authenticatable implements HasTenants, HasName, FilamentUser
     public function empresas()
     {
         return $this->belongsToMany(Empresa::class)
-            ->withPivot('estado'); // <-- Agrega esta línea
+            ->using(EmpresaUser::class)
+            ->withPivot('estado');
     }
 
     // --- FILAMENT MULTI-TENANCY ---

@@ -4,9 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Caja;
 use App\Models\Empresa;
-use App\Models\Turno;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class CajaPrincipalSeeder extends Seeder
 {
@@ -18,27 +16,13 @@ class CajaPrincipalSeeder extends Seeder
             return;
         }
 
-        $caja = Caja::create([
+        Caja::create([
             'empresa_id' => $empresa->id,
             'nombre'     => 'Caja Principal',
             'codigo'     => 'CAJA-001',
             'estado'     => true,
         ]);
-
-        $turnoManana = Turno::where('empresa_id', $empresa->id)
-            ->where('nombre', 'MAÑANA')
-            ->first();
-
-        if (! $turnoManana) {
-            return;
-        }
-
-        $userRow = DB::table('empresa_user')
-            ->where('empresa_id', $empresa->id)
-            ->first();
-
-        if ($userRow) {
-            $caja->usuarios()->attach($userRow->user_id, ['turno_id' => $turnoManana->id]);
-        }
+        // La vinculación usuario-caja ocurre automáticamente en EmpresaUser (pivot model)
+        // cuando el usuario es adjuntado a la empresa vía empresa_user.
     }
 }
