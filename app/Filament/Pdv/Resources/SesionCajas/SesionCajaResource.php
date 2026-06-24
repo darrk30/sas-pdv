@@ -33,7 +33,7 @@ class SesionCajaResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return SesionCajaForm::configure($schema);
+        return SesionCajaForm::configureApertura($schema);
     }
 
     public static function table(Table $table): Table
