@@ -139,8 +139,9 @@ class CompraForm
                             ->inline()
                             ->required()
                             ->live()
-                            ->afterStateUpdated(function (?string $state, Get $get, Set $set): void {
-                                if ($state !== EstadoPago::Pagado->value) {
+                            ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                                $value = $state instanceof \BackedEnum ? $state->value : $state;
+                                if ($value !== EstadoPago::Pagado->value) {
                                     return;
                                 }
                                 // Solo pre-cargar si no hay pagos ya registrados
