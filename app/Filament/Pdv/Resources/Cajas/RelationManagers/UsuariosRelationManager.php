@@ -49,6 +49,7 @@ class UsuariosRelationManager extends RelationManager
                             ->label('Turno')
                             ->native(false)
                             ->options(fn() => Turno::where('empresa_id', Filament::getTenant()->id)->pluck('nombre', 'id'))
+                            ->default(fn() => Turno::where('empresa_id', Filament::getTenant()->id)->where('nombre', 'MAÑANA')->value('id'))
                             ->required()
                             ->createOptionForm([
                                 TextInput::make('nombre')->required(),
