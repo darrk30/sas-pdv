@@ -23,7 +23,7 @@ class ProduccionResource extends Resource
 
     protected static ?string $navigationLabel = 'Producción';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Inventario';
+    protected static string|UnitEnum|null $navigationGroup = 'Configuración';
 
     protected static ?string $modelLabel = 'Producción';
 

@@ -13,14 +13,18 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class GestionInventario extends Page implements HasTable
 {
     use InteractsWithTable;
 
     // Estas propiedades de navegación SÍ son estáticas en Filament
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::ArchiveBox;
-    protected static ?string $navigationLabel = 'Control de Stock';
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
+
+    protected static ?string $navigationLabel = 'Inventario';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Inventario';
     
     // ELIMINAMOS 'static' de aquí para evitar el Error Fatal de PHP
     protected string $view = 'filament.pdv.pages.gestion-inventario';

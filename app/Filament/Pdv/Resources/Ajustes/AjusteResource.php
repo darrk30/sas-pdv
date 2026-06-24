@@ -22,7 +22,7 @@ class AjusteResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAdjustmentsHorizontal;
 
-    protected static ?string $navigationLabel = 'Control de Stock';
+    protected static ?string $navigationLabel = 'Ajustes de Stock';
 
     protected static string|UnitEnum|null $navigationGroup = 'Inventario';
 
