@@ -5,6 +5,8 @@ namespace App\Observers;
 use App\Models\Empresa;
 use Database\Seeders\ConfiguracionInicialSeeder;
 use Database\Seeders\DimensionSeeder;
+use Database\Seeders\MetodoPagoSeeder;
+use Database\Seeders\ProveedorGeneralSeeder;
 
 class EmpresaObserver
 {
@@ -15,10 +17,12 @@ class EmpresaObserver
     public function created(Empresa $empresa): void
     {
         app()->instance('bypass_tenant_scope', true);
-        
+
         (new DimensionSeeder())->runForEmpresa($empresa);
         (new ConfiguracionInicialSeeder())->runForEmpresa($empresa);
-        
+        (new ProveedorGeneralSeeder())->runForEmpresa($empresa);
+        (new MetodoPagoSeeder())->runForEmpresa($empresa);
+
         app()->forgetInstance('bypass_tenant_scope');
     }
 

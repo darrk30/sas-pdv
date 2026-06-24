@@ -7,6 +7,7 @@ use App\Enums\EstadoPago;
 use App\Enums\TipoComprobante;
 use App\Enums\TipoDocumento;
 use App\Models\AjusteDetalle;
+use App\Models\Compra;
 use App\Models\MetodoPago;
 use App\Models\Producto;
 use App\Models\Proveedor;
@@ -97,20 +98,59 @@ class CompraForm
 
                         Select::make('tipo_comprobante')
                             ->label('Tipo de comprobante')
-                            ->options(TipoComprobante::class)
+                            ->options([
+                                TipoComprobante::Factura->value        => TipoComprobante::Factura->getLabel(),
+                                TipoComprobante::Boleta->value         => TipoComprobante::Boleta->getLabel(),
+                                TipoComprobante::Ticket->value         => TipoComprobante::Ticket->getLabel(),
+                                TipoComprobante::SinComprobante->value => TipoComprobante::SinComprobante->getLabel(),
+                            ])
+                            ->default(TipoComprobante::Ticket->value)
                             ->required()
-                            ->live(),
+                            ->live()
+                            ->afterStateUpdated(function (mixed $state, Set $set): void {
+                                $value = $state instanceof \BackedEnum ? $state->value : (string) $state;
+
+                                if ($value === TipoComprobante::Ticket->value) {
+                                    $empresa = \Filament\Facades\Filament::getTenant();
+                                    $serie   = 'TK01';
+                                    $ultimo  = $empresa
+                                        ? Compra::where('empresa_id', $empresa->id)
+                                            ->where('tipo_comprobante', 'ticket')
+                                            ->where('serie', $serie)
+                                            ->max('correlativo')
+                                        : null;
+                                    $siguiente = $ultimo ? ((int) $ultimo + 1) : 1;
+                                    $set('serie', $serie);
+                                    $set('correlativo', str_pad($siguiente, 8, '0', STR_PAD_LEFT));
+                                } else {
+                                    // sin_comprobante: el observer genera los valores
+                                    // factura/boleta: el usuario los ingresa manualmente
+                                    $set('serie', null);
+                                    $set('correlativo', null);
+                                }
+                            }),
 
                         TextInput::make('serie')
                             ->label('Serie')
                             ->nullable()
                             ->maxLength(10)
+                            ->default('TK01')
                             ->visible(fn(Get $get): bool => $get('tipo_comprobante') !== TipoComprobante::SinComprobante->value),
 
                         TextInput::make('correlativo')
                             ->label('Correlativo')
                             ->nullable()
                             ->maxLength(20)
+                            ->default(function (): string {
+                                $empresa = \Filament\Facades\Filament::getTenant();
+                                if (! $empresa) return '00000001';
+                                $ultimo = Compra::where('empresa_id', $empresa->id)
+                                    ->where('tipo_comprobante', 'ticket')
+                                    ->where('serie', 'TK01')
+                                    ->max('correlativo');
+                                $siguiente = $ultimo ? ((int) $ultimo + 1) : 1;
+                                return str_pad($siguiente, 8, '0', STR_PAD_LEFT);
+                            })
                             ->visible(fn(Get $get): bool => $get('tipo_comprobante') !== TipoComprobante::SinComprobante->value),
 
                         DatePicker::make('fecha_compra')
