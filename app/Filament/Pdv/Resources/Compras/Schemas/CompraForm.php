@@ -394,7 +394,11 @@ class CompraForm
 
                 // ── Pagos ─────────────────────────────────────────────────
                 Section::make('Pagos')
-                    ->visible(fn(Get $get): bool => $get('estado_pago') === EstadoPago::Pagado->value)
+                    ->visible(function (Get $get): bool {
+                        $state = $get('estado_pago');
+                        $value = $state instanceof \BackedEnum ? $state->value : $state;
+                        return $value === EstadoPago::Pagado->value;
+                    })
                     ->schema([
                         Repeater::make('pagos')
                             ->label('')
