@@ -31,7 +31,13 @@ class ClienteForm
                             TextInput::make('numero_documento')
                                 ->label('Número de documento')
                                 ->required()
-                                ->maxLength(fn($get) => TipoDocumento::tryFrom($get('tipo_documento'))?->maxLength() ?? 20)
+                                ->maxLength(function ($get) {
+                                    $tipo = $get('tipo_documento');
+                                    if ($tipo instanceof TipoDocumento) {
+                                        return $tipo->maxLength();
+                                    }
+                                    return TipoDocumento::tryFrom((string) $tipo)?->maxLength() ?? 20;
+                                })
                                 ->numeric()
                                 ->unique(
                                     table: Cliente::class,

@@ -3,6 +3,7 @@
 namespace App\Filament\Pdv\Resources\Clientes\Tables;
 
 use App\Enums\TipoDocumento;
+use App\Models\Cliente;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -55,8 +56,10 @@ class ClientesTable
                     ->options(TipoDocumento::class),
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->hidden(fn(Cliente $record) => $record->numero_documento === '99999999'),
+                DeleteAction::make()
+                    ->hidden(fn(Cliente $record) => $record->numero_documento === '99999999'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
