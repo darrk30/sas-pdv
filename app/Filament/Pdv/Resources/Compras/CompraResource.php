@@ -9,6 +9,7 @@ use App\Filament\Pdv\Resources\Compras\Schemas\CompraForm;
 use App\Filament\Pdv\Resources\Compras\Tables\ComprasTable;
 use App\Models\Compra;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -22,7 +23,7 @@ class CompraResource extends Resource
 
     protected static ?string $navigationLabel = 'Compras';
 
-    protected static ?string $navigationGroup = 'Compras';
+    protected static string|UnitEnum|null $navigationGroup = 'Compras';
 
     protected static ?string $modelLabel = 'Compra';
 

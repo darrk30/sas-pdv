@@ -10,6 +10,7 @@ use App\Filament\Pdv\Resources\Ajustes\Schemas\AjusteForm;
 use App\Filament\Pdv\Resources\Ajustes\Tables\AjustesTable;
 use App\Models\Ajuste;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -23,7 +24,7 @@ class AjusteResource extends Resource
 
     protected static ?string $navigationLabel = 'Control de Stock';
 
-    protected static ?string $navigationGroup = 'Inventario';
+    protected static string|UnitEnum|null $navigationGroup = 'Inventario';
 
     protected static ?string $modelLabel = 'Ajuste';
 

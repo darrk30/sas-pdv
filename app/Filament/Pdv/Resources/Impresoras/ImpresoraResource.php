@@ -9,6 +9,7 @@ use App\Filament\Pdv\Resources\Impresoras\Schemas\ImpresoraForm;
 use App\Filament\Pdv\Resources\Impresoras\Tables\ImpresorasTable;
 use App\Models\Impresora;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -22,7 +23,7 @@ class ImpresoraResource extends Resource
 
     protected static ?string $navigationLabel = 'Impresoras';
 
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string|UnitEnum|null $navigationGroup = 'Configuración';
 
     protected static ?string $modelLabel = 'Impresora';
 

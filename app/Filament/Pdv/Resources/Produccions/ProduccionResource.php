@@ -9,6 +9,7 @@ use App\Filament\Pdv\Resources\Produccions\Schemas\ProduccionForm;
 use App\Filament\Pdv\Resources\Produccions\Tables\ProduccionsTable;
 use App\Models\Produccion;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -22,7 +23,7 @@ class ProduccionResource extends Resource
 
     protected static ?string $navigationLabel = 'Producción';
 
-    protected static ?string $navigationGroup = 'Inventario';
+    protected static string|UnitEnum|null $navigationGroup = 'Inventario';
 
     protected static ?string $modelLabel = 'Producción';
 

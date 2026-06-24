@@ -9,6 +9,7 @@ use App\Filament\Pdv\Resources\Users\Schemas\UserForm;
 use App\Filament\Pdv\Resources\Users\Tables\UsersTable;
 use App\Models\User;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -22,7 +23,7 @@ class UserResource extends Resource
 
     protected static ?string $navigationLabel = 'Usuarios';
 
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string|UnitEnum|null $navigationGroup = 'Configuración';
 
     protected static ?string $modelLabel = 'Usuario';
 

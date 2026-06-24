@@ -9,6 +9,7 @@ use App\Filament\Pdv\Resources\Productos\Schemas\ProductoForm;
 use App\Filament\Pdv\Resources\Productos\Tables\ProductosTable;
 use App\Models\Producto;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -23,7 +24,7 @@ class ProductoResource extends Resource
 
     protected static ?string $navigationLabel = 'Productos';
 
-    protected static ?string $navigationGroup = 'Catálogo';
+    protected static string|UnitEnum|null $navigationGroup = 'Catálogo';
 
     protected static ?string $modelLabel = 'Producto';
 

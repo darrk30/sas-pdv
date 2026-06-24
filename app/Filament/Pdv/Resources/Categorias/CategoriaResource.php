@@ -9,6 +9,7 @@ use App\Filament\Pdv\Resources\Categorias\Schemas\CategoriaForm;
 use App\Filament\Pdv\Resources\Categorias\Tables\CategoriasTable;
 use App\Models\Categoria;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -22,7 +23,7 @@ class CategoriaResource extends Resource
 
     protected static ?string $navigationLabel = 'Categorías';
 
-    protected static ?string $navigationGroup = 'Catálogo';
+    protected static string|UnitEnum|null $navigationGroup = 'Catálogo';
 
     protected static ?string $modelLabel = 'Categoría';
 

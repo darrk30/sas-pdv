@@ -9,6 +9,7 @@ use App\Filament\Pdv\Resources\Atributos\Schemas\AtributoForm;
 use App\Filament\Pdv\Resources\Atributos\Tables\AtributosTable;
 use App\Models\Atributo;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -22,7 +23,7 @@ class AtributoResource extends Resource
 
     protected static ?string $navigationLabel = 'Atributos';
 
-    protected static ?string $navigationGroup = 'Catálogo';
+    protected static string|UnitEnum|null $navigationGroup = 'Catálogo';
 
     protected static ?string $modelLabel = 'Atributo';
 

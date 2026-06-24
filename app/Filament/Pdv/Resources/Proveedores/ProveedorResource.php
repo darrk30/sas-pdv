@@ -9,6 +9,7 @@ use App\Filament\Pdv\Resources\Proveedores\Schemas\ProveedorForm;
 use App\Filament\Pdv\Resources\Proveedores\Tables\ProveedoresTable;
 use App\Models\Proveedor;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -24,7 +25,7 @@ class ProveedorResource extends Resource
 
     protected static ?string $navigationLabel = 'Proveedores';
 
-    protected static ?string $navigationGroup = 'Compras';
+    protected static string|UnitEnum|null $navigationGroup = 'Compras';
 
     protected static ?string $modelLabel = 'Proveedor';
 

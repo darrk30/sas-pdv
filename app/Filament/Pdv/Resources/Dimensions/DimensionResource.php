@@ -10,6 +10,7 @@ use App\Filament\Pdv\Resources\Dimensions\Schemas\DimensionForm;
 use App\Filament\Pdv\Resources\Dimensions\Tables\DimensionsTable;
 use App\Models\Dimension;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -23,7 +24,7 @@ class DimensionResource extends Resource
 
     protected static ?string $navigationLabel = 'Dimensiones';
 
-    protected static ?string $navigationGroup = 'Catálogo';
+    protected static string|UnitEnum|null $navigationGroup = 'Catálogo';
 
     protected static ?string $modelLabel = 'Dimensión';
 

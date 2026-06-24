@@ -9,6 +9,7 @@ use App\Filament\Pdv\Resources\Marcas\Schemas\MarcaForm;
 use App\Filament\Pdv\Resources\Marcas\Tables\MarcasTable;
 use App\Models\Marca;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -22,7 +23,7 @@ class MarcaResource extends Resource
 
     protected static ?string $navigationLabel = 'Marcas';
 
-    protected static ?string $navigationGroup = 'Catálogo';
+    protected static string|UnitEnum|null $navigationGroup = 'Catálogo';
 
     protected static ?string $modelLabel = 'Marca';
 

@@ -10,6 +10,7 @@ use App\Filament\Pdv\Resources\Cajas\Schemas\CajaForm;
 use App\Filament\Pdv\Resources\Cajas\Tables\CajasTable;
 use App\Models\Caja;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -23,7 +24,7 @@ class CajaResource extends Resource
 
     protected static ?string $navigationLabel = 'Cajas';
 
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string|UnitEnum|null $navigationGroup = 'Configuración';
 
     protected static ?string $modelLabel = 'Caja';
 

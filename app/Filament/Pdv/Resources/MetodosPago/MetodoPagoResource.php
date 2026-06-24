@@ -9,6 +9,7 @@ use App\Filament\Pdv\Resources\MetodosPago\Schemas\MetodoPagoForm;
 use App\Filament\Pdv\Resources\MetodosPago\Tables\MetodosPagoTable;
 use App\Models\MetodoPago;
 use BackedEnum;
+use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -24,7 +25,7 @@ class MetodoPagoResource extends Resource
 
     protected static ?string $navigationLabel = 'Métodos de Pago';
 
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string|UnitEnum|null $navigationGroup = 'Configuración';
 
     protected static ?string $modelLabel = 'Método de Pago';
 
