@@ -44,7 +44,10 @@ class CajaForm
                                 ->unique(
                                     ignoreRecord: true,
                                     modifyRuleUsing: fn($rule) => $rule->where('empresa_id', Filament::getTenant()->id)
-                                ),
+                                )
+                                ->validationMessages([
+                                    'unique' => 'Ya existe una caja con este código en la empresa.',
+                                ]),
 
                             Toggle::make('estado')
                                 ->label('Estado')

@@ -3,10 +3,12 @@
 namespace App\Observers;
 
 use App\Models\Empresa;
+use Database\Seeders\CajaPrincipalSeeder;
 use Database\Seeders\ConfiguracionInicialSeeder;
 use Database\Seeders\DimensionSeeder;
 use Database\Seeders\MetodoPagoSeeder;
 use Database\Seeders\ProveedorGeneralSeeder;
+use Database\Seeders\TurnoSeeder;
 
 class EmpresaObserver
 {
@@ -22,6 +24,8 @@ class EmpresaObserver
         (new ConfiguracionInicialSeeder())->runForEmpresa($empresa);
         (new ProveedorGeneralSeeder())->runForEmpresa($empresa);
         (new MetodoPagoSeeder())->runForEmpresa($empresa);
+        (new TurnoSeeder())->runForEmpresa($empresa);
+        (new CajaPrincipalSeeder())->runForEmpresa($empresa);
 
         app()->forgetInstance('bypass_tenant_scope');
     }
