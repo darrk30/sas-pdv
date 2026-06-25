@@ -540,9 +540,6 @@ class ProductoForm
                                             ->addable(false)
                                             ->deletable(false)
                                             ->reorderable(false)
-                                            ->modifyRelationshipQueryUsing(
-                                                fn($q) => $q->with(['valores.valor', 'producto'])
-                                            )
                                             ->table([
                                                 TableColumn::make('Variante'),
                                                 TableColumn::make('Cód. Interno'),
