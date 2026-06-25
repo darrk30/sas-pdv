@@ -19,6 +19,7 @@ use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 
@@ -90,8 +91,9 @@ class PromocionForm
                     ->icon('heroicon-o-shopping-bag')
                     ->schema([
                         Repeater::make('detalles')
-                            ->relationship('detalles')
                             ->label('')
+                            ->relationship('detalles')
+                            ->live()
                             ->mutateRelationshipDataBeforeCreateUsing(
                                 fn(array $data) => collect($data)->except('item_id')->toArray()
                             )
@@ -108,7 +110,6 @@ class PromocionForm
                                     ->label('Producto / Variante')
                                     ->placeholder('Buscar producto...')
                                     ->searchable()
-                                    ->minCharactersToSearch(0)
                                     ->required()
                                     ->live()
                                     ->formatStateUsing(function (?Model $record): ?string {
@@ -138,29 +139,26 @@ class PromocionForm
                                             ? AjusteDetalle::generarNombre(null, $variante)
                                             : null;
                                     })
-                                    ->getSearchResultsUsing(function (string $search): array {
+                                    ->options(function (): array {
                                         $opciones = [];
-                                        $term     = '%' . mb_strtolower(trim($search)) . '%';
 
-                                        Producto::doesntHave('variantes')
+                                        Producto::query()
+                                            ->doesntHave('variantes')
                                             ->where('estado', '!=', 'archivado')
-                                            ->whereRaw('LOWER(nombre) LIKE ?', [$term])
                                             ->orderBy('nombre')
-                                            ->limit(50)
                                             ->get()
                                             ->each(fn($p) => $opciones["producto_{$p->id}"] = $p->nombre);
 
-                                        Variante::with(['producto', 'valores.valor'])
+                                        Variante::query()
+                                            ->with(['producto', 'valores.valor'])
                                             ->whereHas('producto', fn($q) => $q
-                                                ->where('estado', '!=', 'archivado')
-                                                ->whereRaw('LOWER(nombre) LIKE ?', [$term]))
-                                            ->limit(50)
+                                                ->where('estado', '!=', 'archivado'))
                                             ->get()
                                             ->each(fn($v) => $opciones["variante_{$v->id}"] = AjusteDetalle::generarNombre(null, $v));
 
                                         return $opciones;
                                     })
-                                    ->afterStateUpdated(function (?string $state, $set): void {
+                                    ->afterStateUpdated(function (?string $state, Set $set): void {
                                         if (blank($state)) {
                                             $set('producto_id', null);
                                             $set('variante_id', null);
@@ -190,8 +188,8 @@ class PromocionForm
 
                             ])
                             ->addActionLabel('Agregar producto')
-                            ->defaultItems(1)
                             ->reorderable(false)
+                            ->defaultItems(1)
                             ->minItems(1),
                     ]),
 
