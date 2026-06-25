@@ -112,7 +112,7 @@ class PromocionForm
                                     ->searchable()
                                     ->required()
                                     ->live()
-                                    ->formatStateUsing(function (?Model $record): ?string {
+                                    ->formatStateUsing(function (?Model $record) {
                                         if (! $record) {
                                             return null;
                                         }
@@ -142,20 +142,25 @@ class PromocionForm
                                     ->options(function (): array {
                                         $opciones = [];
 
-                                        Producto::query()
+                                        $simples = Producto::query()
                                             ->doesntHave('variantes')
                                             ->where('estado', '!=', 'archivado')
-                                            ->orderBy('nombre')
-                                            ->get()
-                                            ->each(fn($p) => $opciones["producto_{$p->id}"] = $p->nombre);
+                                            ->get();
+                                        foreach ($simples as $producto) {
+                                            $opciones["producto_{$producto->id}"] = $producto->nombre;
+                                        }
 
-                                        Variante::query()
+                                        $variantes = Variante::query()
                                             ->with(['producto', 'valores.valor'])
                                             ->whereHas('producto', fn($q) => $q
                                                 ->where('estado', '!=', 'archivado'))
-                                            ->get()
-                                            ->each(fn($v) => $opciones["variante_{$v->id}"] = AjusteDetalle::generarNombre(null, $v));
+                                            ->get();
 
+                                        foreach ($variantes as $variante) {
+                                            $nombreVariante = AjusteDetalle::generarNombre(null, $variante);
+                                            $opciones["variante_{$variante->id}"] = $nombreVariante;
+                                        }
+                                        
                                         return $opciones;
                                     })
                                     ->afterStateUpdated(function (?string $state, Set $set): void {
