@@ -13,12 +13,13 @@ use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
+use UnitEnum;
 
 class PuntoDeVenta extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-receipt-percent';
     protected static ?string $navigationLabel = 'Punto de Venta';
-    protected static ?string $navigationGroup = 'Caja';
+    protected static string|UnitEnum|null $navigationGroup = 'Caja';
     protected static ?int $navigationSort = 1;
     protected string $view = 'filament.pdv.pages.punto-de-venta';
     protected ?string $heading = 'Punto de Venta';
