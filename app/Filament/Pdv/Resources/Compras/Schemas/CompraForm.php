@@ -290,7 +290,7 @@ class CompraForm
                                         $simples = Producto::query()
                                             ->doesntHave('variantes')
                                             ->where('control_de_stock', true)
-                                            ->where('estado', '!=', 'archivado')
+                                            ->where('estado', 'activo')
                                             ->with('unidadMedida')
                                             ->get();
 
@@ -300,9 +300,10 @@ class CompraForm
 
                                         $variantes = Variante::query()
                                             ->with(['producto', 'valores.valor'])
+                                            ->where('estado', 'activo')
                                             ->whereHas('producto', fn($q) => $q
                                                 ->where('control_de_stock', true)
-                                                ->where('estado', '!=', 'archivado')
+                                                ->where('estado', 'activo')
                                             )
                                             ->get();
 
