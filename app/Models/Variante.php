@@ -32,4 +32,19 @@ class Variante extends Model
     {
         return $this->hasOne(Inventario::class);
     }
+
+    /**
+     * Intercepta cualquier llamada $variante->delete() y la redirige a
+     * desactivar en lugar de borrar, preservando el stock_real del inventario.
+     * Los DELETE a nivel DB (cascade de producto) siguen funcionando normalmente.
+     */
+    public function delete(): bool
+    {
+        $this->update(['estado' => 'inactivo']);
+
+        Inventario::where('variante_id', $this->id)
+            ->update(['estado_almacen' => 'inactivo']);
+
+        return true;
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Inventario;
 use App\Models\Producto;
 use App\Models\Variante;
 use App\Models\VarianteValor;
@@ -24,12 +25,18 @@ class VarianteService
 
         if ($totalValores <= $totalAtributos && $totalAtributos > 0) {
             Variante::where('producto_id', $producto->id)->update(['estado' => 'inactivo']);
+            Inventario::where('producto_id', $producto->id)
+                ->whereNotNull('variante_id')
+                ->update(['estado_almacen' => 'inactivo']);
             return;
         }
 
         DB::transaction(function () use ($producto, $atributosFormulario) {
 
             Variante::where('producto_id', $producto->id)->update(['estado' => 'inactivo']);
+            Inventario::where('producto_id', $producto->id)
+                ->whereNotNull('variante_id')
+                ->update(['estado_almacen' => 'inactivo']);
 
             $precioBase = (float) $producto->precio_con_descuento;
             $datos = [];
