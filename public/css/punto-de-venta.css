@@ -303,6 +303,54 @@
     color: var(--pdv-warning);
 }
 
+/* ── Avatar con inicial cuando no hay imagen ────────────── */
+.pdv-card__avatar {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--pdv-radius-sm);
+    background: linear-gradient(135deg, var(--pdv-primary) 0%, #818cf8 100%);
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    flex-shrink: 0;
+    line-height: 1;
+    user-select: none;
+}
+
+/* ── Stock badge ────────────────────────────────────────── */
+.pdv-card__stock {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.45rem;
+    border-radius: var(--pdv-radius-full);
+    margin-bottom: 0.15rem;
+    letter-spacing: .02em;
+}
+
+.pdv-card__stock--ok {
+    background: rgba(34,197,94,.12);
+    color: #15803d;
+}
+
+.pdv-card__stock--bajo {
+    background: rgba(245,158,11,.15);
+    color: #92400e;
+}
+
+.pdv-card__stock--agotado {
+    background: rgba(239,68,68,.12);
+    color: #b91c1c;
+}
+
+.dark .pdv-card__stock--ok     { background: rgba(34,197,94,.18);  color: #4ade80; }
+.dark .pdv-card__stock--bajo   { background: rgba(245,158,11,.18); color: #fbbf24; }
+.dark .pdv-card__stock--agotado{ background: rgba(239,68,68,.18);  color: #f87171; }
+
 /* ── Textos del card ────────────────────────────────────── */
 .pdv-card__nombre {
     font-size: 0.8125rem;

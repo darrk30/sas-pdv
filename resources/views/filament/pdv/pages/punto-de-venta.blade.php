@@ -89,8 +89,18 @@
                 @if($productos->isNotEmpty())
                     <div class="pdv-items-grid">
                         @foreach($productos as $producto)
+                            @php
+                                $tieneVariantes = $producto->variantes->isNotEmpty();
+                                $stockSimple    = ! $tieneVariantes && $producto->control_de_stock
+                                    ? (float)($producto->inventario?->stock_real ?? 0)
+                                    : null;
+                                $stockVariantes = $tieneVariantes && $producto->control_de_stock
+                                    ? $producto->variantes->sum(fn($v) => (float)($v->inventario?->stock_real ?? 0))
+                                    : null;
+                            @endphp
                             <button class="pdv-card" wire:click="abrirModalProducto({{ $producto->id }})">
 
+                                {{-- Imagen o avatar con inicial --}}
                                 @if($producto->logo)
                                     <img
                                         class="pdv-card__imagen"
@@ -98,16 +108,26 @@
                                         alt="{{ $producto->nombre }}"
                                     />
                                 @else
-                                    <div class="pdv-card__icono">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/>
-                                        </svg>
+                                    <div class="pdv-card__avatar">
+                                        {{ strtoupper(mb_substr($producto->nombre, 0, 1)) }}
                                     </div>
                                 @endif
 
                                 <p class="pdv-card__nombre">{{ $producto->nombre }}</p>
 
-                                @if($producto->variantes->isNotEmpty())
+                                {{-- Stock --}}
+                                @if($stockSimple !== null)
+                                    <span class="pdv-card__stock {{ $stockSimple <= 0 ? 'pdv-card__stock--agotado' : ($stockSimple <= 5 ? 'pdv-card__stock--bajo' : 'pdv-card__stock--ok') }}">
+                                        Stock: {{ number_format($stockSimple, 0) }}
+                                    </span>
+                                @elseif($stockVariantes !== null)
+                                    <span class="pdv-card__stock {{ $stockVariantes <= 0 ? 'pdv-card__stock--agotado' : ($stockVariantes <= 5 ? 'pdv-card__stock--bajo' : 'pdv-card__stock--ok') }}">
+                                        Stock: {{ number_format($stockVariantes, 0) }}
+                                    </span>
+                                @endif
+
+                                {{-- Precio --}}
+                                @if($tieneVariantes)
                                     <p class="pdv-card__meta">{{ $producto->variantes->count() }} variantes</p>
                                     <p class="pdv-card__precio">Desde S/ {{ number_format($producto->variantes->min('precio_final'), 2) }}</p>
                                 @else
