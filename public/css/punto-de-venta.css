@@ -70,33 +70,15 @@
    CONTENEDOR RAÍZ — ocupa todo el espacio disponible
    ═══════════════════════════════════════════════════════════ */
 
-/* Impide scroll en la página cuando el PDV está activo */
-html:has(.pdv-root),
-body:has(.pdv-root) {
-    overflow: hidden;
-    height: 100%;
-}
-
-/* Contenedores de Filament: sin desbordamiento */
-body:has(.pdv-root) .fi-layout,
-body:has(.pdv-root) .fi-body,
-body:has(.pdv-root) .fi-main,
-body:has(.pdv-root) .fi-main-ctn,
-body:has(.pdv-root) .fi-page,
-body:has(.pdv-root) [class^="fi-simple-"],
-body:has(.pdv-root) section.fi-page {
-    overflow: hidden;
-    height: 100%;
-    min-height: 0;
-    padding-bottom: 0 !important;
-}
-
-/* Nuestro root — altura fijada por Alpine desde su posición hasta el fondo */
+/*
+ * La altura se asigna dinámicamente en el blade via Alpine:
+ *   el.style.height = (window.innerHeight - el.getBoundingClientRect().top) + 'px'
+ * Así se adapta a cualquier topbar/sidebar de Filament sin romperlo.
+ */
 .pdv-root {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    /* height se asigna inline por Alpine (window.innerHeight - getBoundingClientRect().top) */
 }
 
 /* ═══════════════════════════════════════════════════════════
