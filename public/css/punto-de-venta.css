@@ -1471,8 +1471,9 @@
         height: calc(100vh - 128px);
     }
 
-    .pdv-wrap {
-        padding-bottom: 4.5rem; /* espacio bajo el FAB */
+    /* El espacio va dentro del grid scrollable, no en el contenedor */
+    .pdv-grid {
+        padding-bottom: 5rem;
     }
 
     /* Carrito: drawer fijo desde la derecha */
