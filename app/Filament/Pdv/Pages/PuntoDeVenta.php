@@ -304,7 +304,10 @@ class PuntoDeVenta extends Page
 
         $query = Producto::where('empresa_id', $empresaId)
             ->where('estado', 'activo')
-            ->with(['variantes.inventario', 'inventario']);
+            ->with([
+                'variantesActivas' => fn($q) => $q->with('inventario'),
+                'inventario',
+            ]);
 
         if ($this->busqueda !== '') {
             $query->where('nombre', 'like', "%{$this->busqueda}%");
@@ -340,8 +343,7 @@ class PuntoDeVenta extends Page
     public function abrirModalProducto(int $productoId): void
     {
         $producto = Producto::with([
-            'variantes.inventario',
-            'variantes.valores',
+            'variantesActivas' => fn($q) => $q->with(['inventario', 'valores']),
             'atributos.atributo',
             'atributos.detallesPrecios.valor',
             'atributos.detallesExclusiones',
@@ -351,7 +353,7 @@ class PuntoDeVenta extends Page
         $this->productoVentaSinStock = (bool) $producto->venta_sin_stock;
         $this->productoEsCortesia    = (bool) $producto->es_cortesia;
 
-        if ($producto->variantes->isEmpty()) {
+        if ($producto->variantesActivas->isEmpty()) {
             $precio = $producto->es_cortesia ? 0.0 : (float) $producto->precio_venta;
             $this->agregarProductoSimple($productoId, $producto->nombre, $precio);
             return;
@@ -380,7 +382,7 @@ class PuntoDeVenta extends Page
             ->values()
             ->toArray();
 
-        $this->variantesInfo = $producto->variantes
+        $this->variantesInfo = $producto->variantesActivas
             ->map(fn($v) => [
                 'pav_ids' => $v->valores->pluck('id')->toArray(),
                 'stock'   => (float) ($v->inventario?->stock_real ?? 0),

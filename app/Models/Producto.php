@@ -83,6 +83,11 @@ class Producto extends Model
         return $this->hasMany(Variante::class);
     }
 
+    public function variantesActivas()
+    {
+        return $this->hasMany(Variante::class)->where('estado', 'activo');
+    }
+
     public function inventarios()
     {
         return $this->hasOne(Inventario::class)->whereNull('variante_id');

@@ -104,11 +104,11 @@
                     <div class="pdv-items-grid">
                         @foreach($productos as $producto)
                             @php
-                                $tieneVariantes = $producto->variantes->isNotEmpty();
+                                $tieneVariantes = $producto->variantesActivas->isNotEmpty();
                                 $stockSimple    = ! $tieneVariantes && $producto->control_de_stock
                                     ? (float)($producto->inventario?->stock_real ?? 0) : null;
                                 $stockVariantes = $tieneVariantes && $producto->control_de_stock
-                                    ? $producto->variantes->sum(fn($v) => (float)($v->inventario?->stock_real ?? 0)) : null;
+                                    ? $producto->variantesActivas->sum(fn($v) => (float)($v->inventario?->stock_real ?? 0)) : null;
                                 $stock      = $stockSimple ?? $stockVariantes;
                                 $agotado    = $producto->control_de_stock
                                     && ! $producto->venta_sin_stock
@@ -142,13 +142,13 @@
                                 <div class="pdv-card__body">
                                     <p class="pdv-card__nombre">{{ $producto->nombre }}</p>
                                     @if($tieneVariantes)
-                                        <p class="pdv-card__meta">{{ $producto->variantes->count() }} variantes</p>
+                                        <p class="pdv-card__meta">{{ $producto->variantesActivas->count() }} variantes</p>
                                     @endif
                                     <p class="pdv-card__precio">
                                         @if($producto->es_cortesia)
                                             GRATIS
                                         @elseif($tieneVariantes)
-                                            Desde S/ {{ number_format($producto->variantes->min('precio_final'), 2) }}
+                                            Desde S/ {{ number_format($producto->variantesActivas->min('precio_final'), 2) }}
                                         @else
                                             S/ {{ number_format($producto->precio_venta, 2) }}
                                         @endif
