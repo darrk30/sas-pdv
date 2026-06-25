@@ -547,6 +547,7 @@ class ProductoForm
                                         TableColumn::make('Cód. Interno'),
                                         TableColumn::make('Cód. de Barras'),
                                         TableColumn::make('Precio Final'),
+                                        TableColumn::make('Stock'),
                                     ])
                                     ->schema([
 
@@ -577,6 +578,14 @@ class ProductoForm
                                             ->prefix('S/')
                                             ->readOnly()
                                             ->dehydrated(false),
+
+                                        TextInput::make('_stock_display')
+                                            ->label('Stock')
+                                            ->readOnly()
+                                            ->dehydrated(false)
+                                            ->formatStateUsing(function ($state, ?Model $record): string {
+                                                return number_format((float) ($record?->inventario?->stock_real ?? 0), 2);
+                                            }),
 
                                     ])
                                     ->defaultItems(0),

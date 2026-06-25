@@ -85,7 +85,7 @@ class Producto extends Model
 
     public function variantesActivas()
     {
-        return $this->hasMany(Variante::class)->where('estado', 'activo');
+        return $this->hasMany(Variante::class)->where('estado', 'activo')->with('inventario');
     }
 
     public function inventarios()
@@ -101,14 +101,13 @@ class Producto extends Model
 
     public function calcularStockTotal()
     {
-        if ($this->tiene_variantes) {
-            // Suma el stock de todas las variantes activas
-            return $this->variantes()->where('estado', 'activo')
-                ->join('inventarios', 'variantes.id', '=', 'inventarios.variantes_id')
+        if ($this->variantesActivas()->exists()) {
+            return $this->variantesActivas()
+                ->join('inventarios', 'variantes.id', '=', 'inventarios.variante_id')
+                ->where('inventarios.estado_almacen', 'activo')
                 ->sum('inventarios.stock_real');
         }
 
-        // Retorna el stock del producto simple
         return $this->inventario()->sum('stock_real');
     }
 
