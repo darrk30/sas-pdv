@@ -64,9 +64,10 @@ class Promocion extends Model
             return false;
         }
 
-        if ($this->dias_semana !== null) {
-            $diaSemana = Carbon::now()->dayOfWeekIso; // 1=lunes … 7=domingo
-            if (! in_array($diaSemana, $this->dias_semana)) {
+        // Array vacío = sin restricción de días; null también
+        if (! empty($this->dias_semana)) {
+            $diaSemana = (string) Carbon::now()->dayOfWeekIso; // 1=lunes … 7=domingo
+            if (! in_array($diaSemana, array_map('strval', $this->dias_semana))) {
                 return false;
             }
         }
