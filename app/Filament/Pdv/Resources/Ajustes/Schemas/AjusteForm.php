@@ -120,7 +120,7 @@ class AjusteForm
                                         $opciones = [];
 
                                         $simples = Producto::query()
-                                            ->doesntHave('variantes')
+                                            ->doesntHave('variantesActivas')
                                             ->whereHas('inventario')
                                             ->where('control_de_stock', true)
                                             ->where('estado', 'activo')

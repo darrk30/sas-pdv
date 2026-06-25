@@ -288,7 +288,7 @@ class CompraForm
                                         $opciones = [];
 
                                         $simples = Producto::query()
-                                            ->doesntHave('variantes')
+                                            ->doesntHave('variantesActivas')
                                             ->where('control_de_stock', true)
                                             ->where('estado', 'activo')
                                             ->with('unidadMedida')
