@@ -710,6 +710,16 @@ class PuntoDeVenta extends Page
 
     public function setMontoExacto(): void
     {
+        if (! $this->metodoPagoId) {
+            $efectivo = collect($this->metodosPagoDisponibles)
+                ->first(fn($m) => mb_strtolower($m['nombre']) === 'efectivo');
+
+            if ($efectivo) {
+                $this->seleccionarMetodoPago($efectivo['id']);
+                return;
+            }
+        }
+
         $saldo = $this->getSaldoRestante();
         $this->montoPagoInput = number_format(max(0, $saldo), 2, '.', '');
     }
