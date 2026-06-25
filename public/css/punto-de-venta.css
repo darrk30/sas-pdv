@@ -91,12 +91,12 @@ body:has(.pdv-root) section.fi-page {
     padding-bottom: 0 !important;
 }
 
-/* Nuestro root ocupa el 100% del espacio que le da Filament */
+/* Nuestro root — altura fijada por Alpine desde su posición hasta el fondo */
 .pdv-root {
     display: flex;
     flex-direction: column;
-    height: 100%;
     overflow: hidden;
+    /* height se asigna inline por Alpine (window.innerHeight - getBoundingClientRect().top) */
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -475,6 +475,8 @@ body:has(.pdv-root) section.fi-page {
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
     border: 1px solid var(--pdv-border);
     border-radius: var(--pdv-radius-xl);
     background: var(--pdv-surface);
