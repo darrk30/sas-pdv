@@ -326,7 +326,7 @@
                             <span class="pdv-carrito__total-monto">S/ {{ number_format($this->getTotal(), 2) }}</span>
                         </div>
                     </div>
-                    <button class="pdv-btn-venta">Procesar Venta</button>
+                    <button class="pdv-btn-venta" wire:click="abrirModalPago">Procesar Venta</button>
                 </div>
             @endif
 
@@ -409,6 +409,194 @@
                         {{ $todosSeleccionados ? 'Agregar al carrito' : 'Selecciona todas las opciones' }}
                     </button>
                 </div>
+            </div>
+        </div>
+    @endif
+
+
+    {{-- ══ MODAL: pago ══ --}}
+    @if($modalPago)
+        <div class="pdv-overlay" wire:key="modal-pago">
+            <div class="pdv-overlay__backdrop" wire:click="cerrarModalPago"></div>
+            <div class="pdv-modal pdv-modal--pago">
+
+                <div class="pdv-modal__header">
+                    <div>
+                        <h3 class="pdv-modal__titulo">Procesar Venta</h3>
+                        <p class="pdv-modal__subtitulo">Completa el pago para confirmar</p>
+                    </div>
+                    <button class="pdv-modal__cerrar" wire:click="cerrarModalPago">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="pdv-modal__body pdv-pago-body">
+
+                    {{-- ── RESUMEN ── --}}
+                    <div class="pdv-pago-resumen">
+                        <div class="pdv-pago-resumen__fila">
+                            <span>Op. Gravada</span>
+                            <span>S/ {{ number_format($this->getOpGravadas(), 2) }}</span>
+                        </div>
+                        <div class="pdv-pago-resumen__fila">
+                            <span>IGV (18%)</span>
+                            <span>S/ {{ number_format($this->getIgv(), 2) }}</span>
+                        </div>
+                        @if($this->getDescuento() > 0)
+                            <div class="pdv-pago-resumen__fila pdv-pago-resumen__fila--descuento">
+                                <span>Descuento</span>
+                                <span>-S/ {{ number_format($this->getDescuento(), 2) }}</span>
+                            </div>
+                        @endif
+                        <div class="pdv-pago-resumen__fila pdv-pago-resumen__fila--total">
+                            <span>Total</span>
+                            <span>S/ {{ number_format($this->getTotalConDescuento(), 2) }}</span>
+                        </div>
+                    </div>
+
+                    {{-- ── DESCUENTO ── --}}
+                    <div class="pdv-pago-section">
+                        <p class="pdv-pago-section__label">Descuento (opcional)</p>
+                        <div class="pdv-pago-input-wrap">
+                            <span class="pdv-pago-input-wrap__prefix">S/</span>
+                            <input
+                                type="number"
+                                class="pdv-pago-input"
+                                wire:model.live="descuentoInput"
+                                min="0"
+                                step="0.10"
+                                placeholder="0.00"
+                            />
+                        </div>
+                    </div>
+
+                    {{-- ── MÉTODOS DE PAGO ── --}}
+                    <div class="pdv-pago-section">
+                        <p class="pdv-pago-section__label">Método de pago</p>
+                        @if(empty($metodosPagoDisponibles))
+                            <p class="pdv-pago-empty">No hay métodos de pago configurados</p>
+                        @else
+                            <div class="pdv-metodos-grid">
+                                @foreach($metodosPagoDisponibles as $metodo)
+                                    <button
+                                        class="pdv-metodo-btn {{ $metodoPagoId === $metodo['id'] ? 'pdv-metodo-btn--activo' : '' }}"
+                                        wire:click="seleccionarMetodoPago({{ $metodo['id'] }})"
+                                    >
+                                        @if($metodo['imagen'])
+                                            <img class="pdv-metodo-btn__img" src="{{ \Illuminate\Support\Facades\Storage::url($metodo['imagen']) }}" alt="{{ $metodo['nombre'] }}"/>
+                                        @else
+                                            <div class="pdv-metodo-btn__avatar">{{ strtoupper(mb_substr($metodo['nombre'], 0, 1)) }}</div>
+                                        @endif
+                                        <span class="pdv-metodo-btn__nombre">{{ $metodo['nombre'] }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                            @php $metodoActivo = collect($metodosPagoDisponibles)->firstWhere('id', $metodoPagoId); @endphp
+                            @if($metodoActivo && $metodoActivo['requiere_referencia'])
+                                <div class="pdv-pago-referencia">
+                                    <input
+                                        type="text"
+                                        class="pdv-field__input"
+                                        wire:model.live="pagoReferencia"
+                                        placeholder="Número de referencia / operación"
+                                    />
+                                </div>
+                            @endif
+                        @endif
+                    </div>
+
+                    {{-- ── MONTO Y BOTONES RÁPIDOS ── --}}
+                    <div class="pdv-pago-section">
+                        <p class="pdv-pago-section__label">Monto</p>
+                        <div class="pdv-quick-btns">
+                            <button class="pdv-quick-btn pdv-quick-btn--exacto" wire:click="setMontoExacto">Exacto</button>
+                            <button class="pdv-quick-btn" wire:click="ajustarMonto(200)">+200</button>
+                            <button class="pdv-quick-btn" wire:click="ajustarMonto(100)">+100</button>
+                            <button class="pdv-quick-btn" wire:click="ajustarMonto(50)">+50</button>
+                            <button class="pdv-quick-btn" wire:click="ajustarMonto(20)">+20</button>
+                            <button class="pdv-quick-btn" wire:click="ajustarMonto(10)">+10</button>
+                        </div>
+                        <div class="pdv-pago-monto-row">
+                            <div class="pdv-pago-input-wrap" style="flex:1">
+                                <span class="pdv-pago-input-wrap__prefix">S/</span>
+                                <input
+                                    type="number"
+                                    class="pdv-pago-input"
+                                    wire:model.live="montoPagoInput"
+                                    min="0"
+                                    step="0.10"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <button class="pdv-btn-agregar-pago" wire:click="agregarPago">
+                                Agregar pago
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- ── PAGOS AGREGADOS ── --}}
+                    @if(! empty($pagosAgregados))
+                        <div class="pdv-pago-section">
+                            <p class="pdv-pago-section__label">Pagos registrados</p>
+                            <div class="pdv-pagos-lista">
+                                @foreach($pagosAgregados as $idx => $pago)
+                                    <div class="pdv-pago-item" wire:key="pago-{{ $idx }}">
+                                        <div class="pdv-pago-item__info">
+                                            <span class="pdv-pago-item__nombre">{{ $pago['nombre'] }}</span>
+                                            @if($pago['referencia'])
+                                                <span class="pdv-pago-item__ref">{{ $pago['referencia'] }}</span>
+                                            @endif
+                                        </div>
+                                        <span class="pdv-pago-item__monto">S/ {{ number_format($pago['monto'], 2) }}</span>
+                                        <button class="pdv-pago-item__del" wire:click="eliminarPago({{ $idx }})">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div class="pdv-pago-saldo">
+                                <div class="pdv-pago-saldo__fila">
+                                    <span>Pagado</span>
+                                    <span class="pdv-pago-saldo__ok">S/ {{ number_format($this->getTotalPagado(), 2) }}</span>
+                                </div>
+                                @if($this->getSaldoRestante() > 0)
+                                    <div class="pdv-pago-saldo__fila">
+                                        <span>Pendiente</span>
+                                        <span class="pdv-pago-saldo__pend">S/ {{ number_format($this->getSaldoRestante(), 2) }}</span>
+                                    </div>
+                                @else
+                                    <div class="pdv-pago-saldo__fila">
+                                        <span>Cambio</span>
+                                        <span class="pdv-pago-saldo__cambio">S/ {{ number_format(abs($this->getSaldoRestante()), 2) }}</span>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
+                </div>
+
+                <div class="pdv-modal__footer">
+                    @php $listo = $this->getSaldoRestante() <= 0.01 && ! empty($pagosAgregados); @endphp
+                    <button
+                        class="pdv-btn-confirmar {{ $listo ? 'pdv-btn-confirmar--venta' : '' }}"
+                        wire:click="procesarVenta"
+                        @if(! $listo) disabled @endif
+                        wire:loading.attr="disabled"
+                        wire:target="procesarVenta"
+                    >
+                        <span wire:loading.remove wire:target="procesarVenta">
+                            {{ $listo ? 'Confirmar Venta' : 'Completa el pago para continuar' }}
+                        </span>
+                        <span wire:loading wire:target="procesarVenta">Procesando...</span>
+                    </button>
+                </div>
+
             </div>
         </div>
     @endif

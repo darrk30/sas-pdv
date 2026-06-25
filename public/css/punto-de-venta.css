@@ -1705,3 +1705,379 @@
     background: var(--pdv-surface) !important;
     color: var(--pdv-text-muted) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   MODAL DE PAGO
+   ═══════════════════════════════════════════════════════════ */
+
+.pdv-modal--pago {
+    max-width: 32rem;
+}
+
+/* Body con scroll del modal pago */
+.pdv-pago-body {
+    gap: 0;
+    padding: 0;
+}
+
+/* ── Sección genérica ───────────────────────────────────── */
+.pdv-pago-section {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--pdv-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.pdv-pago-section__label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--pdv-text-faint);
+    margin: 0;
+}
+
+/* ── Resumen de totales ─────────────────────────────────── */
+.pdv-pago-resumen {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--pdv-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.pdv-pago-resumen__fila {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.8125rem;
+    color: var(--pdv-text-muted);
+}
+
+.pdv-pago-resumen__fila--descuento {
+    color: #ef4444;
+}
+
+.dark .pdv-pago-resumen__fila--descuento {
+    color: #f87171;
+}
+
+.pdv-pago-resumen__fila--total {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--pdv-primary);
+    margin-top: 0.25rem;
+    padding-top: 0.375rem;
+    border-top: 1px solid var(--pdv-border);
+}
+
+/* ── Input con prefijo S/ ───────────────────────────────── */
+.pdv-pago-input-wrap {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--pdv-border);
+    border-radius: var(--pdv-radius-md);
+    background: var(--pdv-bg);
+    overflow: hidden;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.pdv-pago-input-wrap:focus-within {
+    border-color: var(--pdv-primary);
+    box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+    background: var(--pdv-surface);
+}
+
+.pdv-pago-input-wrap__prefix {
+    padding: 0.5rem 0.625rem 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--pdv-text-muted);
+    background: var(--pdv-gray-100);
+    border-right: 1px solid var(--pdv-border);
+    user-select: none;
+}
+
+.pdv-pago-input {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    background: transparent;
+    color: var(--pdv-text);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    outline: none;
+    min-width: 0;
+}
+
+.pdv-pago-input::placeholder {
+    color: var(--pdv-text-faint);
+    font-weight: 400;
+}
+
+/* Quitar flechas del input number */
+.pdv-pago-input::-webkit-outer-spin-button,
+.pdv-pago-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.pdv-pago-input[type=number] { -moz-appearance: textfield; }
+
+/* ── Grid de métodos de pago ─────────────────────────────── */
+.pdv-metodos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+    gap: 0.5rem;
+}
+
+.pdv-metodo-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.625rem 0.5rem;
+    border: 1.5px solid var(--pdv-border);
+    border-radius: var(--pdv-radius-md);
+    background: var(--pdv-bg);
+    cursor: pointer;
+    transition: border-color .12s, background .12s, box-shadow .12s;
+}
+
+.pdv-metodo-btn:hover {
+    border-color: var(--pdv-border-hover);
+    background: var(--pdv-gray-100);
+}
+
+.pdv-metodo-btn--activo {
+    border-color: var(--pdv-primary);
+    background: var(--pdv-primary-light);
+    box-shadow: 0 0 0 2px rgba(99,102,241,.2);
+}
+
+.pdv-metodo-btn__img {
+    width: 2.5rem;
+    height: 2.5rem;
+    object-fit: contain;
+    border-radius: var(--pdv-radius-sm);
+}
+
+.pdv-metodo-btn__avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--pdv-radius-sm);
+    background: linear-gradient(135deg, var(--pdv-primary) 0%, #818cf8 100%);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.pdv-metodo-btn__nombre {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--pdv-text-muted);
+    text-align: center;
+    line-height: 1.2;
+}
+
+.pdv-metodo-btn--activo .pdv-metodo-btn__nombre {
+    color: var(--pdv-primary-text);
+}
+
+.pdv-pago-referencia {
+    margin-top: 0.25rem;
+}
+
+.pdv-pago-empty {
+    font-size: 0.8125rem;
+    color: var(--pdv-text-faint);
+    margin: 0;
+    text-align: center;
+    padding: 0.5rem 0;
+}
+
+/* ── Botones rápidos de monto ────────────────────────────── */
+.pdv-quick-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+}
+
+.pdv-quick-btn {
+    padding: 0.35rem 0.75rem;
+    border: 1.5px solid var(--pdv-border);
+    border-radius: var(--pdv-radius-md);
+    background: var(--pdv-bg);
+    color: var(--pdv-text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color .12s, background .12s, color .12s;
+}
+
+.pdv-quick-btn:hover {
+    border-color: var(--pdv-primary);
+    background: var(--pdv-primary-light);
+    color: var(--pdv-primary-text);
+}
+
+.pdv-quick-btn--exacto {
+    background: var(--pdv-primary);
+    border-color: var(--pdv-primary);
+    color: #fff;
+}
+
+.pdv-quick-btn--exacto:hover {
+    background: var(--pdv-primary-dark);
+    border-color: var(--pdv-primary-dark);
+    color: #fff;
+}
+
+.pdv-pago-monto-row {
+    display: flex;
+    gap: 0.625rem;
+    align-items: stretch;
+}
+
+/* ── Botón agregar pago ──────────────────────────────────── */
+.pdv-btn-agregar-pago {
+    flex-shrink: 0;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: var(--pdv-radius-md);
+    background: var(--pdv-primary);
+    color: #fff;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s;
+}
+
+.pdv-btn-agregar-pago:hover {
+    background: var(--pdv-primary-dark);
+}
+
+/* ── Lista de pagos agregados ────────────────────────────── */
+.pdv-pagos-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.pdv-pago-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    background: var(--pdv-gray-100);
+    border-radius: var(--pdv-radius-md);
+}
+
+.pdv-pago-item__info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.pdv-pago-item__nombre {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--pdv-text);
+}
+
+.pdv-pago-item__ref {
+    font-size: 0.7rem;
+    color: var(--pdv-text-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pdv-pago-item__monto {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--pdv-text);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.pdv-pago-item__del {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    border-radius: var(--pdv-radius-sm);
+    background: none;
+    color: var(--pdv-text-faint);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background .12s, color .12s;
+}
+
+.pdv-pago-item__del:hover {
+    background: rgba(239,68,68,.12);
+    color: #ef4444;
+}
+
+.pdv-pago-item__del svg {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+/* ── Saldo / cambio ─────────────────────────────────────── */
+.pdv-pago-saldo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--pdv-radius-md);
+    background: var(--pdv-gray-100);
+    border: 1px solid var(--pdv-border);
+}
+
+.pdv-pago-saldo__fila {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.8125rem;
+    color: var(--pdv-text-muted);
+}
+
+.pdv-pago-saldo__ok {
+    font-weight: 700;
+    color: #15803d;
+}
+
+.dark .pdv-pago-saldo__ok {
+    color: #4ade80;
+}
+
+.pdv-pago-saldo__pend {
+    font-weight: 700;
+    color: #ef4444;
+}
+
+.pdv-pago-saldo__cambio {
+    font-weight: 700;
+    color: #15803d;
+}
+
+.dark .pdv-pago-saldo__cambio {
+    color: #4ade80;
+}
+
+/* ── Botón confirmar venta (variante verde) ─────────────── */
+.pdv-btn-confirmar--venta {
+    background: #16a34a;
+}
+
+.pdv-btn-confirmar--venta:hover:not(:disabled) {
+    background: #15803d;
+}

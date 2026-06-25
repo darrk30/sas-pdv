@@ -2,21 +2,36 @@
 
 namespace App\Filament\Pdv\Pages;
 
+use App\Enums\EstadoGeneral;
+use App\Enums\EstadoMovimiento;
 use App\Enums\EstadoPromocion;
+use App\Enums\EstadoSesion;
+use App\Enums\EstadoVenta;
 use App\Enums\TipoComprobante;
 use App\Enums\TipoDocumento;
+use App\Enums\TipoItem;
+use App\Enums\TipoMovimiento;
+use App\Enums\TipoPago;
 use App\Models\Categoria;
 use App\Models\Cliente;
+use App\Models\Inventario;
+use App\Models\MetodoPago;
 use App\Models\ProductoAtributoValor;
 use App\Models\Promocion;
 use App\Models\Producto;
 use App\Models\Serie;
+use App\Models\SesionCaja;
+use App\Models\Transaccion;
 use App\Models\Variante;
+use App\Models\Venta;
+use App\Models\VentaDetalle;
+use App\Models\VentaPago;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use UnitEnum;
 
 class PuntoDeVenta extends Page
@@ -69,6 +84,15 @@ class PuntoDeVenta extends Page
     public array $variantesInfo = [];
     public array $exclusionesMap = [];
     public array $valoresDeshabilitados = [];
+
+    // ── Modal pago ────────────────────────────────────────────────────────────
+    public bool $modalPago = false;
+    public array $metodosPagoDisponibles = [];
+    public ?int $metodoPagoId = null;
+    public string $montoPagoInput = '';
+    public string $pagoReferencia = '';
+    public array $pagosAgregados = [];
+    public string $descuentoInput = '0';
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -606,5 +630,334 @@ class PuntoDeVenta extends Page
     public function getItemCount(): int
     {
         return collect($this->carrito)->sum('cantidad');
+    }
+
+    // ── Modal pago ────────────────────────────────────────────────────────────
+
+    public function abrirModalPago(): void
+    {
+        if (empty($this->carrito)) {
+            Notification::make()->title('El carrito está vacío')->warning()->send();
+            return;
+        }
+
+        if (! $this->serieId) {
+            Notification::make()->title('No hay serie configurada para este comprobante')->warning()->send();
+            return;
+        }
+
+        $this->metodosPagoDisponibles = MetodoPago::where('empresa_id', Filament::getTenant()->id)
+            ->where('estado', EstadoGeneral::Activo->value)
+            ->orderBy('nombre')
+            ->get()
+            ->map(fn($m) => [
+                'id'                  => $m->id,
+                'nombre'              => $m->nombre,
+                'imagen'              => $m->imagen,
+                'requiere_referencia' => (bool) $m->requiere_referencia,
+            ])
+            ->values()
+            ->toArray();
+
+        $this->metodoPagoId    = null;
+        $this->montoPagoInput  = '';
+        $this->pagoReferencia  = '';
+        $this->pagosAgregados  = [];
+        $this->descuentoInput  = '0';
+        $this->modalPago       = true;
+    }
+
+    public function cerrarModalPago(): void
+    {
+        $this->modalPago              = false;
+        $this->metodosPagoDisponibles = [];
+        $this->metodoPagoId           = null;
+        $this->montoPagoInput         = '';
+        $this->pagoReferencia         = '';
+        $this->pagosAgregados         = [];
+        $this->descuentoInput         = '0';
+    }
+
+    public function seleccionarMetodoPago(int $id): void
+    {
+        $this->metodoPagoId   = $id;
+        $this->pagoReferencia = '';
+        $saldo = $this->getSaldoRestante();
+        $this->montoPagoInput = $saldo > 0 ? number_format($saldo, 2, '.', '') : '0.00';
+    }
+
+    public function setMontoExacto(): void
+    {
+        $saldo = $this->getSaldoRestante();
+        $this->montoPagoInput = number_format(max(0, $saldo), 2, '.', '');
+    }
+
+    public function ajustarMonto(float $delta): void
+    {
+        $actual = (float) str_replace(',', '.', $this->montoPagoInput ?: '0');
+        $this->montoPagoInput = number_format(max(0, $actual + $delta), 2, '.', '');
+    }
+
+    public function agregarPago(): void
+    {
+        $monto = (float) str_replace(',', '.', $this->montoPagoInput ?: '0');
+
+        if (! $this->metodoPagoId) {
+            Notification::make()->title('Selecciona un método de pago')->warning()->send();
+            return;
+        }
+
+        if ($monto <= 0) {
+            Notification::make()->title('El monto debe ser mayor a 0')->warning()->send();
+            return;
+        }
+
+        $metodo = collect($this->metodosPagoDisponibles)->firstWhere('id', $this->metodoPagoId);
+
+        if ($metodo && $metodo['requiere_referencia'] && blank($this->pagoReferencia)) {
+            Notification::make()->title('Este método requiere una referencia')->warning()->send();
+            return;
+        }
+
+        $this->pagosAgregados[] = [
+            'metodo_pago_id' => $this->metodoPagoId,
+            'nombre'         => $metodo['nombre'] ?? '',
+            'imagen'         => $metodo['imagen'] ?? null,
+            'monto'          => $monto,
+            'referencia'     => $this->pagoReferencia,
+        ];
+
+        $saldo = $this->getSaldoRestante();
+        $this->montoPagoInput = $saldo > 0 ? number_format($saldo, 2, '.', '') : '0.00';
+        $this->pagoReferencia = '';
+    }
+
+    public function eliminarPago(int $index): void
+    {
+        $pagos = $this->pagosAgregados;
+        unset($pagos[$index]);
+        $this->pagosAgregados = array_values($pagos);
+
+        $saldo = $this->getSaldoRestante();
+        if ($saldo > 0) {
+            $this->montoPagoInput = number_format($saldo, 2, '.', '');
+        }
+    }
+
+    public function getDescuento(): float
+    {
+        $d = (float) str_replace(',', '.', $this->descuentoInput ?: '0');
+        return max(0.0, min($d, $this->getTotal()));
+    }
+
+    public function getTotalConDescuento(): float
+    {
+        return round(max(0.0, $this->getTotal() - $this->getDescuento()), 2);
+    }
+
+    public function getOpGravadas(): float
+    {
+        return round($this->getTotalConDescuento() / 1.18, 2);
+    }
+
+    public function getIgv(): float
+    {
+        return round($this->getTotalConDescuento() - $this->getOpGravadas(), 2);
+    }
+
+    public function getTotalPagado(): float
+    {
+        return round(collect($this->pagosAgregados)->sum('monto'), 2);
+    }
+
+    public function getSaldoRestante(): float
+    {
+        return round($this->getTotalConDescuento() - $this->getTotalPagado(), 2);
+    }
+
+    public function procesarVenta(): void
+    {
+        if (empty($this->carrito)) {
+            Notification::make()->title('El carrito está vacío')->warning()->send();
+            return;
+        }
+
+        if (empty($this->pagosAgregados)) {
+            Notification::make()->title('Agrega al menos un pago')->warning()->send();
+            return;
+        }
+
+        if ($this->getSaldoRestante() > 0.01) {
+            Notification::make()->title('El monto pagado es insuficiente')->warning()->send();
+            return;
+        }
+
+        $empresaId         = Filament::getTenant()->id;
+        $descuento         = $this->getDescuento();
+        $totalConDescuento = $this->getTotalConDescuento();
+        $opGravadas        = $this->getOpGravadas();
+        $igv               = $this->getIgv();
+        $montoPagado       = min($this->getTotalPagado(), $totalConDescuento);
+        $pagosAgregados    = $this->pagosAgregados;
+        $carrito           = $this->carrito;
+        $clienteId         = $this->clienteId;
+        $clienteNombre     = $this->clienteNombre;
+        $clienteTipoDoc    = $this->clienteTipoDoc;
+        $serieId           = $this->serieId;
+
+        try {
+            DB::transaction(function () use (
+                $empresaId, $descuento, $totalConDescuento, $opGravadas, $igv,
+                $montoPagado, $pagosAgregados, $carrito,
+                $clienteId, $clienteNombre, $clienteTipoDoc, $serieId
+            ) {
+                $serie = Serie::lockForUpdate()->findOrFail($serieId);
+                $nuevoNumero = $serie->numero + 1;
+                $serie->update(['numero' => $nuevoNumero]);
+                $correlativo = str_pad($nuevoNumero, 8, '0', STR_PAD_LEFT);
+
+                $sesionCaja = SesionCaja::where('empresa_id', $empresaId)
+                    ->where('user_id', auth()->id())
+                    ->where('estado', EstadoSesion::Abierta->value)
+                    ->latest()
+                    ->first();
+
+                $cliente             = $clienteId ? Cliente::find($clienteId) : null;
+                $clienteNombreFinal  = $cliente?->nombre_completo ?? $clienteNombre;
+                $clienteTipoDocFinal = $cliente?->tipo_documento?->value ?? $clienteTipoDoc;
+                $clienteNumDoc       = $cliente?->numero_documento ?? null;
+
+                $venta = Venta::create([
+                    'empresa_id'       => $empresaId,
+                    'sesion_caja_id'   => $sesionCaja?->id,
+                    'cliente_id'       => $clienteId,
+                    'cliente_nombre'   => $clienteNombreFinal,
+                    'cliente_tipo_doc' => $clienteTipoDocFinal,
+                    'cliente_num_doc'  => $clienteNumDoc,
+                    'serie_id'         => $serieId,
+                    'correlativo'      => $correlativo,
+                    'tipo_pago'        => TipoPago::Contado,
+                    'op_gravadas'      => $opGravadas,
+                    'op_exoneradas'    => 0,
+                    'op_inafectas'     => 0,
+                    'descuento_total'  => $descuento,
+                    'igv'              => $igv,
+                    'total'            => $totalConDescuento,
+                    'costo_total'      => 0,
+                    'monto_pagado'     => $montoPagado,
+                    'saldo_pendiente'  => 0,
+                    'estado'           => EstadoVenta::Completada,
+                ]);
+
+                foreach ($carrito as $item) {
+                    $calc = VentaDetalle::calcular(
+                        cantidad: (float) $item['cantidad'],
+                        precioUnitario: (float) $item['precio'],
+                    );
+
+                    $tipoItem = match ($item['tipo']) {
+                        'variante'  => TipoItem::Variante,
+                        'promocion' => TipoItem::Promocion,
+                        default     => TipoItem::Producto,
+                    };
+
+                    $detalleData = [
+                        'venta_id'        => $venta->id,
+                        'tipo_item'       => $tipoItem,
+                        'descripcion'     => $item['nombre'],
+                        'cantidad'        => $item['cantidad'],
+                        'precio_unitario' => $item['precio'],
+                        'valor_unitario'  => $calc['valorUnitario'],
+                        'costo_unitario'  => 0,
+                        'descuento'       => 0,
+                        'subtotal'        => $calc['subtotal'],
+                        'valor_total'     => $calc['valorTotal'],
+                        'igv'             => $calc['igv'],
+                        'total'           => $calc['total'],
+                        'costo_total'     => 0,
+                    ];
+
+                    if ($item['tipo'] === 'producto') {
+                        $detalleData['producto_id'] = $item['id'];
+                    } elseif ($item['tipo'] === 'variante') {
+                        $detalleData['variante_id'] = $item['id'];
+                        $detalleData['producto_id'] = Variante::find($item['id'])?->producto_id;
+                    } elseif ($item['tipo'] === 'promocion') {
+                        $detalleData['promocion_id'] = $item['id'];
+                    }
+
+                    VentaDetalle::create($detalleData);
+                }
+
+                foreach ($pagosAgregados as $pago) {
+                    VentaPago::create([
+                        'venta_id'       => $venta->id,
+                        'metodo_pago_id' => $pago['metodo_pago_id'],
+                        'monto'          => $pago['monto'],
+                        'referencia'     => $pago['referencia'] ?: null,
+                    ]);
+
+                    Transaccion::create([
+                        'empresa_id'           => $empresaId,
+                        'sesion_caja_id'       => $sesionCaja?->id,
+                        'transaccionable_type' => Venta::class,
+                        'transaccionable_id'   => $venta->id,
+                        'tipo'                 => TipoMovimiento::Ingreso,
+                        'concepto'             => "Venta {$serie->serie}-{$correlativo}",
+                        'monto'                => $pago['monto'],
+                        'metodo_pago_id'       => $pago['metodo_pago_id'],
+                        'estado'               => EstadoMovimiento::Aprobado,
+                        'fecha'                => now(),
+                    ]);
+                }
+
+                foreach ($carrito as $item) {
+                    $cantidad = (float) $item['cantidad'];
+
+                    if ($item['tipo'] === 'producto') {
+                        $producto = Producto::find($item['id']);
+                        if ($producto?->control_de_stock) {
+                            $inv = Inventario::where('empresa_id', $empresaId)
+                                ->where('producto_id', $item['id'])
+                                ->whereNull('variante_id')
+                                ->lockForUpdate()
+                                ->first();
+                            if ($inv) {
+                                $inv->update(['stock_real' => (float) $inv->stock_real - $cantidad]);
+                            }
+                        }
+                    } elseif ($item['tipo'] === 'variante') {
+                        $variante = Variante::find($item['id']);
+                        if ($variante) {
+                            $prodVariante = Producto::find($variante->producto_id);
+                            if ($prodVariante?->control_de_stock) {
+                                $inv = Inventario::where('empresa_id', $empresaId)
+                                    ->where('producto_id', $variante->producto_id)
+                                    ->where('variante_id', $item['id'])
+                                    ->lockForUpdate()
+                                    ->first();
+                                if ($inv) {
+                                    $inv->update(['stock_real' => (float) $inv->stock_real - $cantidad]);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error al procesar la venta')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+            return;
+        }
+
+        $this->carrito = [];
+        $this->cerrarModalPago();
+        $this->autoSeleccionarComprobante();
+        $this->autoSeleccionarClienteGeneral();
+
+        Notification::make()->title('Venta procesada correctamente')->success()->send();
     }
 }
