@@ -12,6 +12,7 @@ use App\Enums\TipoDocumento;
 use App\Enums\TipoItem;
 use App\Enums\TipoMovimiento;
 use App\Enums\TipoPago;
+use App\Filament\Pdv\Resources\SesionCajas\SesionCajaResource;
 use App\Models\Categoria;
 use App\Models\Cliente;
 use App\Models\Inventario;
@@ -87,6 +88,7 @@ class PuntoDeVenta extends Page
 
     // ── Modal pago ────────────────────────────────────────────────────────────
     public bool $modalPago = false;
+    public bool $modalSinSesion = false;
     public array $metodosPagoDisponibles = [];
     public ?int $metodoPagoId = null;
     public string $montoPagoInput = '';
@@ -634,6 +636,11 @@ class PuntoDeVenta extends Page
 
     // ── Modal pago ────────────────────────────────────────────────────────────
 
+    public function getUrlAperturaCaja(): string
+    {
+        return SesionCajaResource::getUrl('create');
+    }
+
     public function abrirModalPago(): void
     {
         if (empty($this->carrito)) {
@@ -643,6 +650,16 @@ class PuntoDeVenta extends Page
 
         if (! $this->serieId) {
             Notification::make()->title('No hay serie configurada para este comprobante')->warning()->send();
+            return;
+        }
+
+        $sesionActiva = SesionCaja::where('empresa_id', Filament::getTenant()->id)
+            ->where('user_id', auth()->id())
+            ->where('estado', EstadoSesion::Abierta->value)
+            ->exists();
+
+        if (! $sesionActiva) {
+            $this->modalSinSesion = true;
             return;
         }
 
@@ -665,6 +682,11 @@ class PuntoDeVenta extends Page
         $this->pagosAgregados  = [];
         $this->descuentoInput  = '0';
         $this->modalPago       = true;
+    }
+
+    public function cerrarModalSinSesion(): void
+    {
+        $this->modalSinSesion = false;
     }
 
     public function cerrarModalPago(): void
@@ -792,7 +814,19 @@ class PuntoDeVenta extends Page
             return;
         }
 
-        $empresaId         = Filament::getTenant()->id;
+        $empresaId = Filament::getTenant()->id;
+
+        $sesionActiva = SesionCaja::where('empresa_id', $empresaId)
+            ->where('user_id', auth()->id())
+            ->where('estado', EstadoSesion::Abierta->value)
+            ->exists();
+
+        if (! $sesionActiva) {
+            $this->cerrarModalPago();
+            $this->modalSinSesion = true;
+            return;
+        }
+
         $descuento         = $this->getDescuento();
         $totalConDescuento = $this->getTotalConDescuento();
         $opGravadas        = $this->getOpGravadas();

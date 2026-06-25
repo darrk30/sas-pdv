@@ -1707,17 +1707,149 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
+   MODAL SIN SESIÓN DE CAJA
+   ═══════════════════════════════════════════════════════════ */
+
+.pdv-modal--sin-sesion {
+    max-width: 22rem;
+}
+
+.pdv-sin-sesion {
+    padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.75rem;
+}
+
+.pdv-sin-sesion__icono {
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: var(--pdv-radius-full);
+    background: rgba(245,158,11,.12);
+    color: var(--pdv-warning);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pdv-sin-sesion__icono svg {
+    width: 1.75rem;
+    height: 1.75rem;
+}
+
+.pdv-sin-sesion__titulo {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--pdv-text);
+    margin: 0;
+}
+
+.pdv-sin-sesion__desc {
+    font-size: 0.8125rem;
+    color: var(--pdv-text-muted);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.pdv-sin-sesion__btn-aperturar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 1.25rem;
+    border-radius: var(--pdv-radius-md);
+    background: var(--pdv-primary);
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background .15s;
+    margin-top: 0.25rem;
+}
+
+.pdv-sin-sesion__btn-aperturar:hover {
+    background: var(--pdv-primary-dark);
+}
+
+.pdv-sin-sesion__btn-aperturar svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.pdv-sin-sesion__btn-cancelar {
+    background: none;
+    border: none;
+    font-size: 0.8125rem;
+    color: var(--pdv-text-faint);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--pdv-radius-sm);
+    transition: color .12s;
+}
+
+.pdv-sin-sesion__btn-cancelar:hover {
+    color: var(--pdv-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════
    MODAL DE PAGO
    ═══════════════════════════════════════════════════════════ */
 
+/* Mobile: una columna */
 .pdv-modal--pago {
     max-width: 32rem;
 }
 
-/* Body con scroll del modal pago */
 .pdv-pago-body {
-    gap: 0;
-    padding: 0;
+    padding: 0 !important;
+    gap: 0 !important;
+    overflow-y: auto;
+}
+
+.pdv-pago-layout {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+/* PC: dos columnas */
+@media (min-width: 768px) {
+    .pdv-modal--pago {
+        max-width: 54rem;
+        max-height: 90vh;
+    }
+
+    .pdv-modal--pago .pdv-pago-body {
+        overflow: hidden !important;
+    }
+
+    .pdv-pago-layout {
+        flex-direction: row;
+        min-height: 0;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .pdv-pago-col-izq {
+        width: 16rem;
+        flex-shrink: 0;
+        border-right: 1px solid var(--pdv-border);
+        overflow-y: auto;
+    }
+
+    .pdv-pago-col-izq::-webkit-scrollbar { width: 4px; }
+    .pdv-pago-col-izq::-webkit-scrollbar-thumb { background: var(--pdv-border); border-radius: 99px; }
+
+    .pdv-pago-col-der {
+        flex: 1;
+        overflow-y: auto;
+        min-width: 0;
+    }
+
+    .pdv-pago-col-der::-webkit-scrollbar { width: 4px; }
+    .pdv-pago-col-der::-webkit-scrollbar-thumb { background: var(--pdv-border); border-radius: 99px; }
 }
 
 /* ── Sección genérica ───────────────────────────────────── */
@@ -1729,6 +1861,10 @@
     gap: 0.625rem;
 }
 
+.pdv-pago-section--resumen {
+    gap: 0.75rem;
+}
+
 .pdv-pago-section__label {
     font-size: 0.7rem;
     font-weight: 700;
@@ -1738,10 +1874,8 @@
     margin: 0;
 }
 
-/* ── Resumen de totales ─────────────────────────────────── */
+/* ── Resumen de totales (dentro de sección) ─────────────── */
 .pdv-pago-resumen {
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--pdv-border);
     display: flex;
     flex-direction: column;
     gap: 0.375rem;
@@ -1755,21 +1889,13 @@
     color: var(--pdv-text-muted);
 }
 
-.pdv-pago-resumen__fila--descuento {
-    color: #ef4444;
-}
-
-.dark .pdv-pago-resumen__fila--descuento {
-    color: #f87171;
-}
-
 .pdv-pago-resumen__fila--total {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 800;
     color: var(--pdv-primary);
-    margin-top: 0.25rem;
     padding-top: 0.375rem;
     border-top: 1px solid var(--pdv-border);
+    margin-top: 0.125rem;
 }
 
 /* ── Input con prefijo S/ ───────────────────────────────── */
@@ -1816,73 +1942,94 @@
     font-weight: 400;
 }
 
-/* Quitar flechas del input number */
 .pdv-pago-input::-webkit-outer-spin-button,
 .pdv-pago-input::-webkit-inner-spin-button { -webkit-appearance: none; }
 .pdv-pago-input[type=number] { -moz-appearance: textfield; }
 
-/* ── Grid de métodos de pago ─────────────────────────────── */
-.pdv-metodos-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
-    gap: 0.5rem;
+/* ── Input descuento compacto ────────────────────────────── */
+.pdv-pago-descuento-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
 }
 
-.pdv-metodo-btn {
+.pdv-pago-input-wrap--sm .pdv-pago-input {
+    font-size: 0.875rem;
+}
+
+/* ── Lista de métodos (columna izquierda en PC) ─────────── */
+.pdv-metodos-lista {
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 0.375rem;
-    padding: 0.625rem 0.5rem;
+}
+
+.pdv-metodo-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.625rem 0.75rem;
     border: 1.5px solid var(--pdv-border);
     border-radius: var(--pdv-radius-md);
     background: var(--pdv-bg);
     cursor: pointer;
+    text-align: left;
     transition: border-color .12s, background .12s, box-shadow .12s;
+    width: 100%;
 }
 
-.pdv-metodo-btn:hover {
+.pdv-metodo-item:hover {
     border-color: var(--pdv-border-hover);
     background: var(--pdv-gray-100);
 }
 
-.pdv-metodo-btn--activo {
+.pdv-metodo-item--activo {
     border-color: var(--pdv-primary);
     background: var(--pdv-primary-light);
-    box-shadow: 0 0 0 2px rgba(99,102,241,.2);
+    box-shadow: 0 0 0 2px rgba(99,102,241,.18);
 }
 
-.pdv-metodo-btn__img {
-    width: 2.5rem;
-    height: 2.5rem;
+.pdv-metodo-item__img {
+    width: 2.25rem;
+    height: 2.25rem;
     object-fit: contain;
     border-radius: var(--pdv-radius-sm);
+    flex-shrink: 0;
 }
 
-.pdv-metodo-btn__avatar {
-    width: 2.5rem;
-    height: 2.5rem;
+.pdv-metodo-item__avatar {
+    width: 2.25rem;
+    height: 2.25rem;
     border-radius: var(--pdv-radius-sm);
     background: linear-gradient(135deg, var(--pdv-primary) 0%, #818cf8 100%);
     color: #fff;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 800;
     display: flex;
     align-items: center;
     justify-content: center;
     user-select: none;
+    flex-shrink: 0;
 }
 
-.pdv-metodo-btn__nombre {
-    font-size: 0.7rem;
+.pdv-metodo-item__nombre {
+    flex: 1;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--pdv-text-muted);
-    text-align: center;
     line-height: 1.2;
 }
 
-.pdv-metodo-btn--activo .pdv-metodo-btn__nombre {
+.pdv-metodo-item--activo .pdv-metodo-item__nombre {
     color: var(--pdv-primary-text);
+}
+
+.pdv-metodo-item__check {
+    width: 1rem;
+    height: 1rem;
+    color: var(--pdv-primary);
+    flex-shrink: 0;
 }
 
 .pdv-pago-referencia {
