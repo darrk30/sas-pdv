@@ -371,7 +371,12 @@ class PuntoDeVenta extends Page
 
     public function seleccionarValor(int $productoAtributoId, int $productoAtributoValorId): void
     {
-        $this->seleccionados[$productoAtributoId] = $productoAtributoValorId;
+        if (isset($this->seleccionados[$productoAtributoId])
+            && (int) $this->seleccionados[$productoAtributoId] === $productoAtributoValorId) {
+            unset($this->seleccionados[$productoAtributoId]);
+        } else {
+            $this->seleccionados[$productoAtributoId] = $productoAtributoValorId;
+        }
         $this->recalcularPrecioAdicional();
         $this->calcularDeshabilitados();
     }
@@ -410,12 +415,16 @@ class PuntoDeVenta extends Page
         if ($this->productoControlStock && ! $this->productoVentaSinStock) {
             foreach ($this->atributosModal as $atributo) {
                 $paId = $atributo['id'];
-                if (isset($this->seleccionados[$paId])) {
-                    continue;
-                }
 
                 foreach ($atributo['valores'] as $valor) {
                     $pavId = (int) $valor['id'];
+
+                    // No deshabilitar el valor que ya está seleccionado en este atributo
+                    if (isset($this->seleccionados[$paId])
+                        && (int) $this->seleccionados[$paId] === $pavId) {
+                        continue;
+                    }
+
                     $tieneStock = false;
 
                     foreach ($this->variantesInfo as $varDatos) {
@@ -423,7 +432,11 @@ class PuntoDeVenta extends Page
                             continue;
                         }
                         $compatible = true;
-                        foreach ($this->seleccionados as $selPavId) {
+                        // Comparar contra selecciones de los OTROS atributos (no el propio)
+                        foreach ($this->seleccionados as $selPaId => $selPavId) {
+                            if ((int) $selPaId === (int) $paId) {
+                                continue;
+                            }
                             if (! in_array((int) $selPavId, $varDatos['pav_ids'])) {
                                 $compatible = false;
                                 break;
