@@ -68,7 +68,6 @@ class PuntoDeVenta extends Page
 
     public function mount(): void
     {
-        parent::mount();
         $this->autoSeleccionarComprobante();
     }
 
