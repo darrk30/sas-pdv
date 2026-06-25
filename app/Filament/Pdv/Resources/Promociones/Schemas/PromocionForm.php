@@ -6,7 +6,6 @@ use App\Enums\EstadoPromocion;
 use App\Models\AjusteDetalle;
 use App\Models\Producto;
 use App\Models\Variante;
-use Filament\Facades\Filament;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -139,11 +138,9 @@ class PromocionForm
                                             : null;
                                     })
                                     ->options(function (): array {
-                                        $empresaId = Filament::getTenant()->id;
-                                        $opciones  = [];
+                                        $opciones = [];
 
-                                        Producto::where('empresa_id', $empresaId)
-                                            ->doesntHave('variantes')
+                                        Producto::doesntHave('variantes')
                                             ->where('estado', '!=', 'archivado')
                                             ->orderBy('nombre')
                                             ->get()
@@ -151,7 +148,6 @@ class PromocionForm
 
                                         Variante::with(['producto', 'valores.valor'])
                                             ->whereHas('producto', fn($q) => $q
-                                                ->where('empresa_id', $empresaId)
                                                 ->where('estado', '!=', 'archivado'))
                                             ->get()
                                             ->each(fn($v) => $opciones["variante_{$v->id}"] = AjusteDetalle::generarNombre(null, $v));
