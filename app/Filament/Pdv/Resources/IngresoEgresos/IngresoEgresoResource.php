@@ -51,7 +51,7 @@ class IngresoEgresoResource extends Resource
         return [
             'index'  => ListIngresoEgresos::route('/'),
             'create' => CreateIngresoEgreso::route('/create'),
-            'edit'   => EditIngresoEgreso::route('/{record}/edit'),
+            //'edit'   => EditIngresoEgreso::route('/{record}/edit'),
         ];
     }
 }
