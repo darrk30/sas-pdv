@@ -1520,3 +1520,180 @@
         display: none !important;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   TARJETAS IMAGEN-FIRST
+   ═══════════════════════════════════════════════════════════ */
+
+.pdv-card {
+    padding: 0;
+    overflow: hidden;
+    align-items: stretch;
+}
+
+.pdv-card__img-wrap {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: var(--pdv-gray-100);
+    flex-shrink: 0;
+}
+
+.pdv-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    margin: 0;
+    border-radius: 0;
+}
+
+.pdv-card__avatar-grande {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--pdv-primary) 0%, #818cf8 100%);
+    color: #fff;
+    font-size: 2rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    line-height: 1;
+}
+
+.pdv-card__avatar-grande--promo {
+    background: linear-gradient(135deg, var(--pdv-warning) 0%, #fb923c 100%);
+}
+
+/* Stock badge — esquina superior derecha */
+.pdv-card__stock-badge {
+    position: absolute;
+    top: 0.375rem;
+    right: 0.375rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.15rem 0.4rem;
+    border-radius: var(--pdv-radius-full);
+    line-height: 1.2;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.pdv-card__stock-badge--ok {
+    background: rgba(34,197,94,.85);
+    color: #fff;
+}
+
+.pdv-card__stock-badge--bajo {
+    background: rgba(245,158,11,.9);
+    color: #fff;
+}
+
+.pdv-card__stock-badge--agotado {
+    background: rgba(239,68,68,.85);
+    color: #fff;
+}
+
+/* Overlay AGOTADO */
+.pdv-card__agotado-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(1px);
+    -webkit-backdrop-filter: blur(1px);
+}
+
+.pdv-card__agotado-overlay span {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: .1em;
+    color: #fff;
+    text-transform: uppercase;
+    border: 1.5px solid rgba(255,255,255,.7);
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--pdv-radius-sm);
+}
+
+/* Badge esquina superior izquierda (GRATIS, PROMO) */
+.pdv-card__badge {
+    position: absolute;
+    top: 0.375rem;
+    left: 0.375rem;
+    font-size: 0.55rem;
+    font-weight: 800;
+    letter-spacing: .05em;
+    padding: 0.2rem 0.4rem;
+    border-radius: var(--pdv-radius-full);
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.pdv-card__badge--cortesia {
+    background: #10b981;
+    color: #fff;
+}
+
+.pdv-card__badge--promo {
+    background: var(--pdv-warning);
+    color: #fff;
+}
+
+/* Cuerpo del card (debajo de la imagen) */
+.pdv-card__body {
+    padding: 0.5rem 0.625rem 0.625rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    flex: 1;
+}
+
+.pdv-card__body .pdv-card__nombre {
+    margin: 0;
+}
+
+.pdv-card__body .pdv-card__meta {
+    margin: 0;
+}
+
+.pdv-card__body .pdv-card__precio {
+    margin: 0;
+    padding-top: 0.25rem;
+    margin-top: auto;
+}
+
+.pdv-card--promo .pdv-card__body .pdv-card__precio {
+    color: var(--pdv-warning-text);
+}
+
+.dark .pdv-card--promo .pdv-card__body .pdv-card__precio {
+    color: var(--pdv-warning-text);
+}
+
+/* Estado agotado */
+.pdv-card--agotado {
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.pdv-card--agotado:hover {
+    border-color: var(--pdv-border) !important;
+    box-shadow: var(--pdv-shadow-sm) !important;
+    transform: none !important;
+}
+
+/* Botón de valor deshabilitado en modal */
+.pdv-valor-btn--deshabilitado {
+    opacity: 0.35;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+.pdv-valor-btn--deshabilitado:hover {
+    border-color: var(--pdv-border) !important;
+    background: var(--pdv-surface) !important;
+    color: var(--pdv-text-muted) !important;
+}

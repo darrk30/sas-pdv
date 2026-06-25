@@ -66,15 +66,19 @@
                     <div class="pdv-items-grid">
                         @foreach($promociones as $promo)
                             <button class="pdv-card pdv-card--promo" wire:click="agregarPromocion({{ $promo->id }})">
-                                <span class="pdv-badge-promo">PROMO</span>
-                                @if($promo->imagen)
-                                    <img class="pdv-card__imagen" src="{{ \Illuminate\Support\Facades\Storage::url($promo->imagen) }}" alt="{{ $promo->nombre }}"/>
-                                @else
-                                    <div class="pdv-card__avatar">{{ strtoupper(mb_substr($promo->nombre, 0, 1)) }}</div>
-                                @endif
-                                <p class="pdv-card__nombre">{{ $promo->nombre }}</p>
-                                <p class="pdv-card__meta">{{ $promo->detalles_count }} productos</p>
-                                <p class="pdv-card__precio">S/ {{ number_format($promo->precio, 2) }}</p>
+                                <div class="pdv-card__img-wrap">
+                                    @if($promo->imagen)
+                                        <img class="pdv-card__img" src="{{ \Illuminate\Support\Facades\Storage::url($promo->imagen) }}" alt="{{ $promo->nombre }}"/>
+                                    @else
+                                        <div class="pdv-card__avatar-grande pdv-card__avatar-grande--promo">{{ strtoupper(mb_substr($promo->nombre, 0, 1)) }}</div>
+                                    @endif
+                                    <span class="pdv-card__badge pdv-card__badge--promo">PROMO</span>
+                                </div>
+                                <div class="pdv-card__body">
+                                    <p class="pdv-card__nombre">{{ $promo->nombre }}</p>
+                                    <p class="pdv-card__meta">{{ $promo->detalles_count }} productos</p>
+                                    <p class="pdv-card__precio">S/ {{ number_format($promo->precio, 2) }}</p>
+                                </div>
                             </button>
                         @endforeach
                     </div>
@@ -95,26 +99,51 @@
                                     ? (float)($producto->inventario?->stock_real ?? 0) : null;
                                 $stockVariantes = $tieneVariantes && $producto->control_de_stock
                                     ? $producto->variantes->sum(fn($v) => (float)($v->inventario?->stock_real ?? 0)) : null;
-                                $stock = $stockSimple ?? $stockVariantes;
+                                $stock      = $stockSimple ?? $stockVariantes;
+                                $agotado    = $producto->control_de_stock
+                                    && ! $producto->venta_sin_stock
+                                    && $stock !== null
+                                    && $stock <= 0;
+                                $stockNivel = $stock === null ? null : ($stock <= 0 ? 'agotado' : ($stock <= 5 ? 'bajo' : 'ok'));
                             @endphp
-                            <button class="pdv-card" wire:click="abrirModalProducto({{ $producto->id }})">
-                                @if($producto->logo)
-                                    <img class="pdv-card__imagen" src="{{ \Illuminate\Support\Facades\Storage::url($producto->logo) }}" alt="{{ $producto->nombre }}"/>
-                                @else
-                                    <div class="pdv-card__avatar">{{ strtoupper(mb_substr($producto->nombre, 0, 1)) }}</div>
-                                @endif
-                                <p class="pdv-card__nombre">{{ $producto->nombre }}</p>
-                                @if($stock !== null)
-                                    <span class="pdv-card__stock {{ $stock <= 0 ? 'pdv-card__stock--agotado' : ($stock <= 5 ? 'pdv-card__stock--bajo' : 'pdv-card__stock--ok') }}">
-                                        Stock: {{ number_format($stock, 0) }}
-                                    </span>
-                                @endif
-                                @if($tieneVariantes)
-                                    <p class="pdv-card__meta">{{ $producto->variantes->count() }} variantes</p>
-                                    <p class="pdv-card__precio">Desde S/ {{ number_format($producto->variantes->min('precio_final'), 2) }}</p>
-                                @else
-                                    <p class="pdv-card__precio">S/ {{ number_format($producto->precio_venta, 2) }}</p>
-                                @endif
+                            <button
+                                class="pdv-card {{ $agotado ? 'pdv-card--agotado' : '' }}"
+                                wire:click="abrirModalProducto({{ $producto->id }})"
+                                @if($agotado) disabled @endif
+                            >
+                                <div class="pdv-card__img-wrap">
+                                    @if($producto->logo)
+                                        <img class="pdv-card__img" src="{{ \Illuminate\Support\Facades\Storage::url($producto->logo) }}" alt="{{ $producto->nombre }}"/>
+                                    @else
+                                        <div class="pdv-card__avatar-grande">{{ strtoupper(mb_substr($producto->nombre, 0, 1)) }}</div>
+                                    @endif
+                                    @if($agotado)
+                                        <div class="pdv-card__agotado-overlay"><span>AGOTADO</span></div>
+                                    @endif
+                                    @if($producto->es_cortesia)
+                                        <span class="pdv-card__badge pdv-card__badge--cortesia">GRATIS</span>
+                                    @endif
+                                    @if($stockNivel !== null && ! $agotado)
+                                        <span class="pdv-card__stock-badge pdv-card__stock-badge--{{ $stockNivel }}">
+                                            {{ number_format($stock, 0) }}
+                                        </span>
+                                    @endif
+                                </div>
+                                <div class="pdv-card__body">
+                                    <p class="pdv-card__nombre">{{ $producto->nombre }}</p>
+                                    @if($tieneVariantes)
+                                        <p class="pdv-card__meta">{{ $producto->variantes->count() }} variantes</p>
+                                    @endif
+                                    <p class="pdv-card__precio">
+                                        @if($producto->es_cortesia)
+                                            GRATIS
+                                        @elseif($tieneVariantes)
+                                            Desde S/ {{ number_format($producto->variantes->min('precio_final'), 2) }}
+                                        @else
+                                            S/ {{ number_format($producto->precio_venta, 2) }}
+                                        @endif
+                                    </p>
+                                </div>
                             </button>
                         @endforeach
                     </div>
@@ -345,11 +374,15 @@
                             </p>
                             <div class="pdv-atributo__opciones">
                                 @foreach($atributo['valores'] as $valor)
-                                    @php $activo = isset($seleccionados[$atributo['id']]) && (int)$seleccionados[$atributo['id']] === (int)$valor['id']; @endphp
+                                    @php
+                                        $activo        = isset($seleccionados[$atributo['id']]) && (int)$seleccionados[$atributo['id']] === (int)$valor['id'];
+                                        $deshabilitado = in_array((int)$valor['id'], $valoresDeshabilitados);
+                                    @endphp
                                     <button
-                                        class="pdv-valor-btn {{ $activo ? 'pdv-valor-btn--activo' : '' }}"
+                                        class="pdv-valor-btn {{ $activo ? 'pdv-valor-btn--activo' : '' }} {{ $deshabilitado ? 'pdv-valor-btn--deshabilitado' : '' }}"
                                         wire:click="seleccionarValor({{ $atributo['id'] }}, {{ $valor['id'] }})"
                                         wire:key="valor-{{ $atributo['id'] }}-{{ $valor['id'] }}"
+                                        @if($deshabilitado) disabled @endif
                                     >
                                         {{ $valor['nombre'] }}
                                         @if($valor['precio_adicional'] > 0)

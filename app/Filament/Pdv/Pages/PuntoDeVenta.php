@@ -63,6 +63,12 @@ class PuntoDeVenta extends Page
     public array $atributosModal = [];
     public array $seleccionados = [];
     public float $precioAdicionalTotal = 0;
+    public bool $productoControlStock = false;
+    public bool $productoVentaSinStock = false;
+    public bool $productoEsCortesia = false;
+    public array $variantesInfo = [];
+    public array $exclusionesMap = [];
+    public array $valoresDeshabilitados = [];
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -303,19 +309,26 @@ class PuntoDeVenta extends Page
     public function abrirModalProducto(int $productoId): void
     {
         $producto = Producto::with([
-            'variantes',
+            'variantes.inventario',
+            'variantes.valores',
             'atributos.atributo',
             'atributos.detallesPrecios.valor',
+            'atributos.detallesExclusiones',
         ])->findOrFail($productoId);
 
+        $this->productoControlStock  = (bool) $producto->control_de_stock;
+        $this->productoVentaSinStock = (bool) $producto->venta_sin_stock;
+        $this->productoEsCortesia    = (bool) $producto->es_cortesia;
+
         if ($producto->variantes->isEmpty()) {
-            $this->agregarProductoSimple($productoId, $producto->nombre, (float) $producto->precio_venta);
+            $precio = $producto->es_cortesia ? 0.0 : (float) $producto->precio_venta;
+            $this->agregarProductoSimple($productoId, $producto->nombre, $precio);
             return;
         }
 
         $this->productoModalId      = $productoId;
         $this->productoModalNombre  = $producto->nombre;
-        $this->precioBase           = (float) $producto->precio_venta;
+        $this->precioBase           = $producto->es_cortesia ? 0.0 : (float) $producto->precio_venta;
         $this->seleccionados        = [];
         $this->precioAdicionalTotal = 0;
 
@@ -326,6 +339,7 @@ class PuntoDeVenta extends Page
                 'valores' => $pa->detallesPrecios
                     ->map(fn($pav) => [
                         'id'               => $pav->id,
+                        'valor_id'         => $pav->valor_id,
                         'nombre'           => $pav->valor->nombre,
                         'precio_adicional' => (float) $pav->precio_adicional,
                     ])
@@ -335,6 +349,23 @@ class PuntoDeVenta extends Page
             ->values()
             ->toArray();
 
+        $this->variantesInfo = $producto->variantes
+            ->map(fn($v) => [
+                'pav_ids' => $v->valores->pluck('id')->toArray(),
+                'stock'   => (float) ($v->inventario?->stock_real ?? 0),
+            ])
+            ->values()
+            ->toArray();
+
+        $exclusionesMap = [];
+        foreach ($producto->atributos as $pa) {
+            foreach ($pa->detallesExclusiones as $ex) {
+                $exclusionesMap[$ex->valor_base_id][] = $ex->valor_exluido_id;
+            }
+        }
+        $this->exclusionesMap = $exclusionesMap;
+
+        $this->calcularDeshabilitados();
         $this->modalAbierto = true;
     }
 
@@ -342,6 +373,76 @@ class PuntoDeVenta extends Page
     {
         $this->seleccionados[$productoAtributoId] = $productoAtributoValorId;
         $this->recalcularPrecioAdicional();
+        $this->calcularDeshabilitados();
+    }
+
+    private function calcularDeshabilitados(): void
+    {
+        $deshabilitados = [];
+
+        foreach ($this->seleccionados as $paId => $pavId) {
+            $valorId = null;
+            foreach ($this->atributosModal as $atributo) {
+                if ((int) $atributo['id'] === (int) $paId) {
+                    foreach ($atributo['valores'] as $v) {
+                        if ((int) $v['id'] === (int) $pavId) {
+                            $valorId = $v['valor_id'];
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+
+            if ($valorId && isset($this->exclusionesMap[$valorId])) {
+                foreach ($this->exclusionesMap[$valorId] as $exclValorId) {
+                    foreach ($this->atributosModal as $atributo) {
+                        foreach ($atributo['valores'] as $v) {
+                            if ((int) $v['valor_id'] === (int) $exclValorId) {
+                                $deshabilitados[] = (int) $v['id'];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($this->productoControlStock && ! $this->productoVentaSinStock) {
+            foreach ($this->atributosModal as $atributo) {
+                $paId = $atributo['id'];
+                if (isset($this->seleccionados[$paId])) {
+                    continue;
+                }
+
+                foreach ($atributo['valores'] as $valor) {
+                    $pavId = (int) $valor['id'];
+                    $tieneStock = false;
+
+                    foreach ($this->variantesInfo as $varDatos) {
+                        if (! in_array($pavId, $varDatos['pav_ids'])) {
+                            continue;
+                        }
+                        $compatible = true;
+                        foreach ($this->seleccionados as $selPavId) {
+                            if (! in_array((int) $selPavId, $varDatos['pav_ids'])) {
+                                $compatible = false;
+                                break;
+                            }
+                        }
+                        if ($compatible && $varDatos['stock'] > 0) {
+                            $tieneStock = true;
+                            break;
+                        }
+                    }
+
+                    if (! $tieneStock) {
+                        $deshabilitados[] = $pavId;
+                    }
+                }
+            }
+        }
+
+        $this->valoresDeshabilitados = array_values(array_unique($deshabilitados));
     }
 
     private function recalcularPrecioAdicional(): void
@@ -387,18 +488,25 @@ class PuntoDeVenta extends Page
 
         $nombre = $sufijo ? "{$this->productoModalNombre} ({$sufijo})" : $this->productoModalNombre;
 
-        $this->agregarVariante($variante->id, $nombre, (float) $variante->precio_final);
+        $precio = $this->productoEsCortesia ? 0.0 : (float) $variante->precio_final;
+        $this->agregarVariante($variante->id, $nombre, $precio);
         $this->cerrarModal();
     }
 
     public function cerrarModal(): void
     {
-        $this->modalAbierto         = false;
-        $this->productoModalId      = null;
-        $this->productoModalNombre  = '';
-        $this->atributosModal       = [];
-        $this->seleccionados        = [];
-        $this->precioAdicionalTotal = 0;
+        $this->modalAbierto          = false;
+        $this->productoModalId       = null;
+        $this->productoModalNombre   = '';
+        $this->atributosModal        = [];
+        $this->seleccionados         = [];
+        $this->precioAdicionalTotal  = 0;
+        $this->productoControlStock  = false;
+        $this->productoVentaSinStock = false;
+        $this->productoEsCortesia    = false;
+        $this->variantesInfo         = [];
+        $this->exclusionesMap        = [];
+        $this->valoresDeshabilitados = [];
     }
 
     // ── Carrito: agregar ──────────────────────────────────────────────────────
