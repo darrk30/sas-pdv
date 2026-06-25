@@ -65,7 +65,12 @@
                     <p class="pdv-seccion-titulo pdv-seccion-titulo--promo">Promociones</p>
                     <div class="pdv-items-grid">
                         @foreach($promociones as $promo)
-                            <button class="pdv-card pdv-card--promo" wire:click="agregarPromocion({{ $promo->id }})">
+                            @php $stockPromo = $promo->stockPredictivo(); @endphp
+                            <button
+                                class="pdv-card pdv-card--promo {{ $stockPromo === 0 ? 'pdv-card--agotada' : '' }}"
+                                wire:click="agregarPromocion({{ $promo->id }})"
+                                {{ $stockPromo === 0 ? 'disabled' : '' }}
+                            >
                                 <div class="pdv-card__img-wrap">
                                     @if($promo->imagen)
                                         <img class="pdv-card__img" src="{{ \Illuminate\Support\Facades\Storage::url($promo->imagen) }}" alt="{{ $promo->nombre }}"/>
@@ -73,6 +78,11 @@
                                         <div class="pdv-card__avatar-grande pdv-card__avatar-grande--promo">{{ strtoupper(mb_substr($promo->nombre, 0, 1)) }}</div>
                                     @endif
                                     <span class="pdv-card__badge pdv-card__badge--promo">PROMO</span>
+                                    @if($stockPromo === 0)
+                                        <span class="pdv-card__badge-stock pdv-card__badge-stock--agotada">Agotada</span>
+                                    @elseif($stockPromo !== null && $stockPromo <= 5)
+                                        <span class="pdv-card__badge-stock pdv-card__badge-stock--pocas">{{ $stockPromo }} disp.</span>
+                                    @endif
                                 </div>
                                 <div class="pdv-card__body">
                                     <p class="pdv-card__nombre">{{ $promo->nombre }}</p>

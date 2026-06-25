@@ -93,4 +93,45 @@ class Promocion extends Model
     {
         static::where('id', $this->id)->increment('usos_actuales');
     }
+
+    /**
+     * Stock predictivo: cuántas unidades de esta promo se pueden vender.
+     * Devuelve null si es ilimitado, 0 si no hay disponibilidad, N si hay N unidades.
+     */
+    public function stockPredictivo(): ?int
+    {
+        if (! $this->estaVigente()) {
+            return 0;
+        }
+
+        $max = PHP_INT_MAX;
+
+        // Limitar por usos restantes
+        if ($this->limite_usos !== null) {
+            $max = min($max, max(0, $this->limite_usos - (int) $this->usos_actuales));
+        }
+
+        // Limitar por inventario de cada ítem del combo
+        foreach ($this->detalles as $detalle) {
+            if ($detalle->variante_id) {
+                $variante = $detalle->variante;
+                $producto = $variante?->producto;
+                $inventario = $variante?->inventario;
+            } else {
+                $variante = null;
+                $producto = $detalle->producto;
+                $inventario = $producto?->inventario;
+            }
+
+            if (! $producto || ! $producto->control_de_stock || $producto->venta_sin_stock) {
+                continue; // este ítem no restringe el stock
+            }
+
+            $stockReal = max(0.0, (float) ($inventario?->stock_real ?? 0));
+            $necesario = max(0.001, (float) $detalle->cantidad);
+            $max       = min($max, (int) floor($stockReal / $necesario));
+        }
+
+        return $max === PHP_INT_MAX ? null : $max;
+    }
 }

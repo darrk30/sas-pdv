@@ -326,6 +326,11 @@ class PuntoDeVenta extends Page
         return Promocion::where('empresa_id', Filament::getTenant()->id)
             ->where('estado', EstadoPromocion::Activo->value)
             ->withCount('detalles')
+            ->with([
+                'detalles.producto.inventario',
+                'detalles.variante.producto',
+                'detalles.variante.inventario',
+            ])
             ->orderBy('nombre')
             ->get();
     }
@@ -569,9 +574,22 @@ class PuntoDeVenta extends Page
 
     public function agregarPromocion(int $promocionId): void
     {
-        $promocion = Promocion::find($promocionId);
+        $promocion = Promocion::with([
+            'detalles.producto.inventario',
+            'detalles.variante.producto',
+            'detalles.variante.inventario',
+        ])->find($promocionId);
+
         if (! $promocion || ! $promocion->estaVigente()) {
             Notification::make()->title('Promoción no disponible')->warning()->send();
+            return;
+        }
+
+        $stock     = $promocion->stockPredictivo();
+        $enCarrito = (int) ($this->carrito["promocion_{$promocionId}"]['cantidad'] ?? 0);
+
+        if ($stock !== null && ($enCarrito + 1) > $stock) {
+            Notification::make()->title('Stock insuficiente para esta promoción')->warning()->send();
             return;
         }
 
@@ -982,6 +1000,44 @@ class PuntoDeVenta extends Page
                                     ->first();
                                 if ($inv) {
                                     $inv->update(['stock_real' => (float) $inv->stock_real - $cantidad]);
+                                }
+                            }
+                        }
+                    } elseif ($item['tipo'] === 'promocion') {
+                        // Incrementar usos y reducir stock de cada ítem del combo
+                        Promocion::where('id', $item['id'])->increment('usos_actuales', (int) $cantidad);
+
+                        $promo = Promocion::with([
+                            'detalles.producto',
+                            'detalles.variante.producto',
+                        ])->find($item['id']);
+
+                        if ($promo) {
+                            foreach ($promo->detalles as $detalle) {
+                                $cantidadDetalle = $cantidad * (float) $detalle->cantidad;
+
+                                if ($detalle->variante_id) {
+                                    $varianteDetalle = $detalle->variante;
+                                    $prodDetalle     = $varianteDetalle?->producto;
+                                    if ($prodDetalle?->control_de_stock) {
+                                        $inv = Inventario::where('empresa_id', $empresaId)
+                                            ->where('variante_id', $detalle->variante_id)
+                                            ->lockForUpdate()->first();
+                                        if ($inv) {
+                                            $inv->update(['stock_real' => max(0, (float) $inv->stock_real - $cantidadDetalle)]);
+                                        }
+                                    }
+                                } elseif ($detalle->producto_id) {
+                                    $prodDetalle = $detalle->producto;
+                                    if ($prodDetalle?->control_de_stock) {
+                                        $inv = Inventario::where('empresa_id', $empresaId)
+                                            ->where('producto_id', $detalle->producto_id)
+                                            ->whereNull('variante_id')
+                                            ->lockForUpdate()->first();
+                                        if ($inv) {
+                                            $inv->update(['stock_real' => max(0, (float) $inv->stock_real - $cantidadDetalle)]);
+                                        }
+                                    }
                                 }
                             }
                         }
