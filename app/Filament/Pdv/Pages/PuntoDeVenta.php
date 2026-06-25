@@ -40,6 +40,18 @@ class PuntoDeVenta extends Page
     public array $seleccionados = [];         // productoAtributoId => productoAtributoValorId
     public float $precioAdicionalTotal = 0;
 
+    // ── Filtros: métodos dedicados (evita $set mágico) ───────────────────────
+
+    public function seleccionarCategoria(?int $id): void
+    {
+        $this->categoriaId = $id;
+    }
+
+    public function limpiarBusqueda(): void
+    {
+        $this->busqueda = '';
+    }
+
     // ── Datos para la vista ───────────────────────────────────────────────────
 
     public function getCategorias(): Collection
@@ -225,10 +237,11 @@ class PuntoDeVenta extends Page
 
     private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio): void
     {
-        if (isset($this->carrito[$key])) {
-            $this->carrito[$key]['cantidad']++;
+        $carrito = $this->carrito;
+        if (isset($carrito[$key])) {
+            $carrito[$key]['cantidad']++;
         } else {
-            $this->carrito[$key] = [
+            $carrito[$key] = [
                 'key'      => $key,
                 'tipo'     => $tipo,
                 'id'       => $id,
@@ -237,28 +250,31 @@ class PuntoDeVenta extends Page
                 'cantidad' => 1,
             ];
         }
+        $this->carrito = $carrito;
     }
 
     // ── Carrito: gestión ──────────────────────────────────────────────────────
 
     public function aumentarCantidad(string $key): void
     {
-        if (isset($this->carrito[$key])) {
-            $this->carrito[$key]['cantidad']++;
+        $carrito = $this->carrito;
+        if (isset($carrito[$key])) {
+            $carrito[$key]['cantidad']++;
+            $this->carrito = $carrito;
         }
     }
 
     public function disminuirCantidad(string $key): void
     {
-        if (! isset($this->carrito[$key])) return;
+        $carrito = $this->carrito;
+        if (! isset($carrito[$key])) return;
 
-        if ($this->carrito[$key]['cantidad'] > 1) {
-            $this->carrito[$key]['cantidad']--;
+        if ($carrito[$key]['cantidad'] > 1) {
+            $carrito[$key]['cantidad']--;
         } else {
-            $carrito = $this->carrito;
             unset($carrito[$key]);
-            $this->carrito = $carrito;
         }
+        $this->carrito = $carrito;
     }
 
     public function eliminarItem(string $key): void

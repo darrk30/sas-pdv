@@ -1,6 +1,7 @@
-<link rel="stylesheet" href="{{ asset('css/punto-de-venta.css') }}">
-
 <x-filament-panels::page>
+
+    {{-- CSS cargado dentro del componente para no romper el root único de Livewire --}}
+    <link rel="stylesheet" href="{{ asset('css/punto-de-venta.css') }}">
 
     <div class="pdv-wrap">
 
@@ -19,7 +20,7 @@
                     placeholder="Buscar producto o promoción..."
                 />
                 @if($busqueda)
-                    <button class="pdv-busqueda__clear" wire:click="$set('busqueda', '')">
+                    <button class="pdv-busqueda__clear" wire:click="limpiarBusqueda">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
                         </svg>
@@ -31,14 +32,14 @@
             <div class="pdv-categorias">
                 <button
                     class="pdv-cat-btn {{ $categoriaId === null ? 'pdv-cat-btn--activo' : '' }}"
-                    wire:click="$set('categoriaId', null)"
+                    wire:click="seleccionarCategoria(null)"
                 >
                     Todos
                 </button>
                 @foreach($this->getCategorias() as $cat)
                     <button
                         class="pdv-cat-btn {{ $categoriaId === $cat->id ? 'pdv-cat-btn--activo' : '' }}"
-                        wire:click="$set('categoriaId', {{ $cat->id }})"
+                        wire:click="seleccionarCategoria({{ $cat->id }})"
                     >
                         {{ $cat->nombre }}
                     </button>
@@ -64,16 +65,13 @@
                                         alt="{{ $promo->nombre }}"
                                     />
                                 @else
-                                    <div class="pdv-card__icono">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z"/>
-                                        </svg>
+                                    <div class="pdv-card__avatar">
+                                        {{ strtoupper(mb_substr($promo->nombre, 0, 1)) }}
                                     </div>
                                 @endif
 
                                 <p class="pdv-card__nombre">{{ $promo->nombre }}</p>
-                                <p class="pdv-card__meta">{{ $promo->detalles_count }} {{ \Illuminate\Support\Str::plural('producto', $promo->detalles_count) }}</p>
+                                <p class="pdv-card__meta">{{ $promo->detalles_count }} productos</p>
                                 <p class="pdv-card__precio">S/ {{ number_format($promo->precio, 2) }}</p>
                             </button>
                         @endforeach
@@ -97,6 +95,7 @@
                                 $stockVariantes = $tieneVariantes && $producto->control_de_stock
                                     ? $producto->variantes->sum(fn($v) => (float)($v->inventario?->stock_real ?? 0))
                                     : null;
+                                $stock = $stockSimple ?? $stockVariantes;
                             @endphp
                             <button class="pdv-card" wire:click="abrirModalProducto({{ $producto->id }})">
 
@@ -116,13 +115,9 @@
                                 <p class="pdv-card__nombre">{{ $producto->nombre }}</p>
 
                                 {{-- Stock --}}
-                                @if($stockSimple !== null)
-                                    <span class="pdv-card__stock {{ $stockSimple <= 0 ? 'pdv-card__stock--agotado' : ($stockSimple <= 5 ? 'pdv-card__stock--bajo' : 'pdv-card__stock--ok') }}">
-                                        Stock: {{ number_format($stockSimple, 0) }}
-                                    </span>
-                                @elseif($stockVariantes !== null)
-                                    <span class="pdv-card__stock {{ $stockVariantes <= 0 ? 'pdv-card__stock--agotado' : ($stockVariantes <= 5 ? 'pdv-card__stock--bajo' : 'pdv-card__stock--ok') }}">
-                                        Stock: {{ number_format($stockVariantes, 0) }}
+                                @if($stock !== null)
+                                    <span class="pdv-card__stock {{ $stock <= 0 ? 'pdv-card__stock--agotado' : ($stock <= 5 ? 'pdv-card__stock--bajo' : 'pdv-card__stock--ok') }}">
+                                        Stock: {{ number_format($stock, 0) }}
                                     </span>
                                 @endif
 
@@ -143,7 +138,7 @@
                         </svg>
                         <p>No se encontraron productos</p>
                         @if($busqueda)
-                            <button class="pdv-vacio__link" wire:click="$set('busqueda', '')">Limpiar búsqueda</button>
+                            <button class="pdv-vacio__link" wire:click="limpiarBusqueda">Limpiar búsqueda</button>
                         @endif
                     </div>
                 @endif
@@ -167,11 +162,7 @@
                     @endif
                 </div>
                 @if(! empty($carrito))
-                    <button
-                        class="pdv-carrito__vaciar"
-                        wire:click="vaciarCarrito"
-                        wire:confirm="¿Vaciar todo el carrito?"
-                    >
+                    <button class="pdv-carrito__vaciar" wire:click="vaciarCarrito">
                         Vaciar
                     </button>
                 @endif
@@ -189,7 +180,7 @@
             @else
                 <div class="pdv-carrito__lista">
                     @foreach($carrito as $item)
-                        <div class="pdv-item">
+                        <div class="pdv-item" wire:key="item-{{ $item['key'] }}">
                             <div class="pdv-item__info">
                                 @if($item['tipo'] === 'promocion')
                                     <span class="pdv-item__badge-promo">PROMO</span>
@@ -227,9 +218,7 @@
                 <div class="pdv-carrito__footer">
                     <div class="pdv-carrito__totales">
                         <div class="pdv-carrito__fila">
-                            <span class="pdv-carrito__label">
-                                {{ $this->getItemCount() }} {{ \Illuminate\Support\Str::plural('producto', $this->getItemCount()) }}
-                            </span>
+                            <span class="pdv-carrito__label">{{ $this->getItemCount() }} ítems</span>
                             <span class="pdv-carrito__sublabel">Subtotal</span>
                         </div>
                         <div class="pdv-carrito__fila">
@@ -274,7 +263,7 @@
                 {{-- Body: atributos --}}
                 <div class="pdv-modal__body">
                     @foreach($atributosModal as $atributo)
-                        <div>
+                        <div wire:key="atributo-{{ $atributo['id'] }}">
                             <p class="pdv-atributo__label">
                                 {{ $atributo['nombre'] }}
                                 @if(! isset($seleccionados[$atributo['id']]))
@@ -285,11 +274,12 @@
                                 @foreach($atributo['valores'] as $valor)
                                     @php
                                         $activo = isset($seleccionados[$atributo['id']])
-                                            && $seleccionados[$atributo['id']] === $valor['id'];
+                                            && (int)$seleccionados[$atributo['id']] === (int)$valor['id'];
                                     @endphp
                                     <button
                                         class="pdv-valor-btn {{ $activo ? 'pdv-valor-btn--activo' : '' }}"
                                         wire:click="seleccionarValor({{ $atributo['id'] }}, {{ $valor['id'] }})"
+                                        wire:key="valor-{{ $atributo['id'] }}-{{ $valor['id'] }}"
                                     >
                                         {{ $valor['nombre'] }}
                                         @if($valor['precio_adicional'] > 0)
