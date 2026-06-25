@@ -2,15 +2,7 @@
 
     <link rel="stylesheet" href="{{ asset('css/punto-de-venta.css') }}">
 
-    <div class="pdv-root"
-         x-data="{}"
-         x-init="
-             const el = $el;
-             const fit = () => { el.style.height = (window.innerHeight - el.getBoundingClientRect().top) + 'px'; };
-             fit();
-             window.addEventListener('resize', fit);
-         "
-    >
+    <div class="pdv-root">
 
     {{-- ══ HEADER ══ --}}
     <div class="pdv-header">
