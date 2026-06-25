@@ -526,7 +526,99 @@ class ProductoForm
                                     ->addActionLabel('Agregar Atributo al Producto')
                                     ->collapsible()
                                     ->orderColumn(false)
-                                    ->columnSpanFull()
+                                    ->columnSpanFull(),
+
+                                // ── Variantes generadas ──────────────────────
+                                Section::make('Variantes generadas')
+                                    ->icon('heroicon-o-squares-2x2')
+                                    ->visible(fn(?Model $record): bool => (bool) $record?->exists)
+                                    ->collapsible()
+                                    ->schema([
+                                        Repeater::make('variantes')
+                                            ->relationship('variantes')
+                                            ->label('')
+                                            ->addable(false)
+                                            ->deletable(false)
+                                            ->reorderable(false)
+                                            ->modifyRelationshipQueryUsing(
+                                                fn($q) => $q->with(['valores.valor', 'producto'])
+                                            )
+                                            ->table([
+                                                TableColumn::make('Variante'),
+                                                TableColumn::make('Cód. Interno'),
+                                                TableColumn::make('Cód. de Barras'),
+                                                TableColumn::make('Precio Final'),
+                                                TableColumn::make('Estado'),
+                                            ])
+                                            ->schema([
+
+                                                TextInput::make('_nombre_display')
+                                                    ->label('Variante')
+                                                    ->readOnly()
+                                                    ->dehydrated(false)
+                                                    ->formatStateUsing(function ($state, ?Model $record): string {
+                                                        if (! $record) return '—';
+                                                        return $record->valores
+                                                            ->map(fn($pav) => $pav->valor?->nombre)
+                                                            ->filter()
+                                                            ->implode(' · ') ?: '—';
+                                                    }),
+
+                                                TextInput::make('codigo')
+                                                    ->label('Cód. Interno')
+                                                    ->nullable()
+                                                    ->maxLength(100),
+
+                                                TextInput::make('codigo_barras')
+                                                    ->label('Cód. de Barras')
+                                                    ->nullable()
+                                                    ->maxLength(100),
+
+                                                TextInput::make('precio_final')
+                                                    ->label('Precio Final')
+                                                    ->numeric()
+                                                    ->prefix('S/')
+                                                    ->required()
+                                                    ->live(onBlur: true)
+                                                    ->formatStateUsing(function ($state, ?Model $record) {
+                                                        // Si nunca se guardó, proponer precio base del producto
+                                                        if (blank($state) || (float) $state === 0.0) {
+                                                            return number_format((float) ($record?->producto?->precio_venta ?? 0), 2, '.', '');
+                                                        }
+                                                        return $state;
+                                                    })
+                                                    ->hint(function ($state, ?Model $record): string {
+                                                        $base  = (float) ($record?->producto?->precio_venta ?? 0);
+                                                        if ($base <= 0) return '';
+                                                        $final = (float) ($state ?? 0);
+                                                        $extra = round($final - $base, 2);
+                                                        if ($extra < 0) {
+                                                            return '⚠ No puede ser menor al precio base (S/ ' . number_format($base, 2) . ')';
+                                                        }
+                                                        return 'Base: S/ ' . number_format($base, 2) . ' · Extra: S/ ' . number_format($extra, 2);
+                                                    })
+                                                    ->hintColor(function ($state, ?Model $record): string {
+                                                        $base  = (float) ($record?->producto?->precio_venta ?? 0);
+                                                        $final = (float) ($state ?? 0);
+                                                        return ($base > 0 && $final < $base) ? 'danger' : 'gray';
+                                                    })
+                                                    ->afterStateUpdated(function (?string $state, Set $set, ?Model $record): void {
+                                                        $base  = (float) ($record?->producto?->precio_venta ?? 0);
+                                                        $final = (float) ($state ?? 0);
+                                                        if ($base > 0 && $final < $base) {
+                                                            $set('precio_final', number_format($base, 2, '.', ''));
+                                                        }
+                                                    }),
+
+                                                Select::make('estado')
+                                                    ->label('Estado')
+                                                    ->options(EstadoGeneral::class)
+                                                    ->native(false)
+                                                    ->required(),
+
+                                            ])
+                                            ->defaultItems(0),
+                                    ]),
                             ]),
 
                         // --- PESTAÑA 3: CONFIGURACIÓN ---

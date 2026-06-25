@@ -13,6 +13,7 @@ class Variante extends Model
         'empresa_id',
         'producto_id',
         'codigo',
+        'codigo_barras',
         'estado',
         'precio_final',
     ];
