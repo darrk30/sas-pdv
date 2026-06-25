@@ -21,7 +21,7 @@ class PuntoDeVenta extends Page
     protected static ?string $navigationGroup = 'Caja';
     protected static ?int $navigationSort = 1;
     protected string $view = 'filament.pdv.pages.punto-de-venta';
-    protected ?string $heading = 'Punto de Venta';
+    protected ?string $heading = null;
 
     // ── Filtros ──────────────────────────────────────────────────────────────
     public string $busqueda = '';
@@ -54,8 +54,8 @@ class PuntoDeVenta extends Page
         $empresaId = Filament::getTenant()->id;
 
         $query = Producto::where('empresa_id', $empresaId)
-            ->where('estado', '!=', 'archivado')
-            ->with(['variantes']);
+            ->where('estado', 'activo')
+            ->with(['variantes.inventario', 'inventario']);
 
         if ($this->busqueda !== '') {
             $query->where('nombre', 'like', "%{$this->busqueda}%");
@@ -254,13 +254,17 @@ class PuntoDeVenta extends Page
         if ($this->carrito[$key]['cantidad'] > 1) {
             $this->carrito[$key]['cantidad']--;
         } else {
-            unset($this->carrito[$key]);
+            $carrito = $this->carrito;
+            unset($carrito[$key]);
+            $this->carrito = $carrito;
         }
     }
 
     public function eliminarItem(string $key): void
     {
-        unset($this->carrito[$key]);
+        $carrito = $this->carrito;
+        unset($carrito[$key]);
+        $this->carrito = $carrito;
     }
 
     public function vaciarCarrito(): void
