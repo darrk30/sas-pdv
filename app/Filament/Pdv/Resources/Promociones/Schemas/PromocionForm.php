@@ -143,8 +143,8 @@ class PromocionForm
                                         $opciones = [];
 
                                         $simples = Producto::query()
-                                            ->doesntHave('variantes')
-                                            ->where('estado', '!=', 'archivado')
+                                            ->doesntHave('variantesActivas')
+                                            ->where('estado', 'activo')
                                             ->get();
                                         foreach ($simples as $producto) {
                                             $opciones["producto_{$producto->id}"] = $producto->nombre;
@@ -152,8 +152,9 @@ class PromocionForm
 
                                         $variantes = Variante::query()
                                             ->with(['producto', 'valores.valor'])
+                                            ->where('estado', 'activo')
                                             ->whereHas('producto', fn($q) => $q
-                                                ->where('estado', '!=', 'archivado'))
+                                                ->where('estado', 'activo'))
                                             ->get();
 
                                         foreach ($variantes as $variante) {
