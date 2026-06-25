@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EstadoPromocion;
 use App\Traits\BelongsToEmpresa;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
@@ -30,7 +31,7 @@ class Promocion extends Model
 
     protected $casts = [
         'precio'  => 'decimal:2',
-        'estado'  => 'boolean',
+        'estado'  => EstadoPromocion::class,
         'dias_semana'   => 'array',
         'fecha_inicio'  => 'date',
         'fecha_fin'     => 'date',
@@ -50,7 +51,7 @@ class Promocion extends Model
 
     public function estaVigente(): bool
     {
-        if (! $this->estado) {
+        if ($this->estado !== EstadoPromocion::Activo) {
             return false;
         }
 

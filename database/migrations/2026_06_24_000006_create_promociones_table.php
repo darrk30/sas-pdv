@@ -21,7 +21,7 @@ return new class extends Migration
             $table->json('dias_semana')->nullable();
             $table->date('fecha_inicio')->nullable();
             $table->date('fecha_fin')->nullable();
-            $table->boolean('estado')->default(true);
+            $table->string('estado', 20)->default('activo');
             $table->timestamps();
         });
     }

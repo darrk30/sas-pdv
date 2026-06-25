@@ -2,34 +2,40 @@
 
 namespace App\Filament\Pdv\Resources\Promociones\Tables;
 
+use App\Enums\EstadoPromocion;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PromocionesTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn(Builder $query) => $query
+                ->where('estado', '!=', EstadoPromocion::Archivado->value)
+                ->orderByRaw("CASE WHEN estado = ? THEN 1 ELSE 0 END", [EstadoPromocion::Inactivo->value])
+                ->orderBy('nombre')
+            )
             ->columns([
                 ImageColumn::make('imagen')
                     ->label('')
                     ->circular()
-                    ->defaultImageUrl(fn() => null)
                     ->size(40),
 
                 TextColumn::make('nombre')
                     ->label('Nombre')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->description(fn($record) => $record->descripcion),
 
                 TextColumn::make('precio')
-                    ->label('Precio (S/)')
+                    ->label('Precio')
                     ->money('PEN')
                     ->sortable(),
 
@@ -64,15 +70,18 @@ class PromocionesTable
                     ->placeholder('—')
                     ->toggleable(),
 
-                IconColumn::make('estado')
-                    ->label('Activa')
-                    ->boolean()
+                TextColumn::make('estado')
+                    ->label('Estado')
+                    ->badge()
                     ->sortable(),
             ])
-            ->defaultSort('created_at', 'desc')
             ->filters([
-                TernaryFilter::make('estado')
-                    ->label('Activa'),
+                SelectFilter::make('estado')
+                    ->label('Estado')
+                    ->options([
+                        EstadoPromocion::Activo->value   => EstadoPromocion::Activo->getLabel(),
+                        EstadoPromocion::Inactivo->value => EstadoPromocion::Inactivo->getLabel(),
+                    ]),
             ])
             ->recordActions([
                 EditAction::make(),
