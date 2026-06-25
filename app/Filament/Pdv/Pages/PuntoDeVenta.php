@@ -3,10 +3,14 @@
 namespace App\Filament\Pdv\Pages;
 
 use App\Enums\EstadoPromocion;
+use App\Enums\TipoComprobante;
+use App\Enums\TipoDocumento;
 use App\Models\Categoria;
+use App\Models\Cliente;
 use App\Models\ProductoAtributoValor;
 use App\Models\Promocion;
 use App\Models\Producto;
+use App\Models\Serie;
 use App\Models\Variante;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -22,25 +26,214 @@ class PuntoDeVenta extends Page
     protected static string|UnitEnum|null $navigationGroup = 'Caja';
     protected static ?int $navigationSort = 1;
     protected string $view = 'filament.pdv.pages.punto-de-venta';
-    protected ?string $heading = null;
 
-    // ── Filtros ──────────────────────────────────────────────────────────────
+    public function getHeading(): string { return ''; }
+    public function getMaxContentWidth(): ?string { return 'full'; }
+
+    // ── Filtros ───────────────────────────────────────────────────────────────
     public string $busqueda = '';
     public ?int $categoriaId = null;
 
-    // ── Carrito ──────────────────────────────────────────────────────────────
+    // ── Carrito ───────────────────────────────────────────────────────────────
     public array $carrito = [];
+
+    // ── Comprobante ───────────────────────────────────────────────────────────
+    public ?string $tipoComprobante = null;
+    public ?int $serieId = null;
+
+    // ── Cliente ───────────────────────────────────────────────────────────────
+    public ?int $clienteId = null;
+    public ?string $clienteNombre = null;
+    public ?string $clienteTipoDoc = null;
+    public string $clienteBusqueda = '';
+    public bool $mostrarSugerencias = false;
+
+    // ── Modal nuevo cliente ───────────────────────────────────────────────────
+    public bool $modalNuevoCliente = false;
+    public string $ncNombre = '';
+    public string $ncApellidos = '';
+    public string $ncTipoDoc = 'dni';
+    public string $ncNumeroDoc = '';
 
     // ── Modal variantes ───────────────────────────────────────────────────────
     public bool $modalAbierto = false;
     public ?int $productoModalId = null;
     public string $productoModalNombre = '';
     public float $precioBase = 0;
-    public array $atributosModal = [];        // [{id, nombre, valores:[{id, nombre, precio_adicional}]}]
-    public array $seleccionados = [];         // productoAtributoId => productoAtributoValorId
+    public array $atributosModal = [];
+    public array $seleccionados = [];
     public float $precioAdicionalTotal = 0;
 
-    // ── Filtros: métodos dedicados (evita $set mágico) ───────────────────────
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    public function mount(): void
+    {
+        parent::mount();
+        $this->autoSeleccionarComprobante();
+    }
+
+    // ── Series ────────────────────────────────────────────────────────────────
+
+    public function getSeries(): Collection
+    {
+        return Serie::where('empresa_id', Filament::getTenant()->id)
+            ->where('estado', true)
+            ->whereIn('tipo', [
+                TipoComprobante::Factura->value,
+                TipoComprobante::Boleta->value,
+                TipoComprobante::Ticket->value,
+            ])
+            ->get();
+    }
+
+    public function getSerieParaTipo(string $tipo): ?Serie
+    {
+        return $this->getSeries()->first(fn($s) => $s->tipo->value === $tipo);
+    }
+
+    public function getNumeroPreview(): string
+    {
+        if (! $this->serieId) return '---';
+        $serie = Serie::find($this->serieId);
+        if (! $serie) return '---';
+        return $serie->serie . '-' . str_pad($serie->numero + 1, 8, '0', STR_PAD_LEFT);
+    }
+
+    public function seleccionarComprobante(string $tipo): void
+    {
+        $serie = $this->getSerieParaTipo($tipo);
+        if (! $serie) return;
+        $this->tipoComprobante = $tipo;
+        $this->serieId = $serie->id;
+    }
+
+    private function autoSeleccionarComprobante(): void
+    {
+        foreach ([TipoComprobante::Boleta->value, TipoComprobante::Ticket->value, TipoComprobante::Factura->value] as $tipo) {
+            $serie = $this->getSerieParaTipo($tipo);
+            if ($serie) {
+                $this->tipoComprobante = $tipo;
+                $this->serieId = $serie->id;
+                return;
+            }
+        }
+    }
+
+    // ── Cliente ───────────────────────────────────────────────────────────────
+
+    public function updatedClienteBusqueda(): void
+    {
+        $this->mostrarSugerencias = strlen($this->clienteBusqueda) >= 2;
+        if ($this->clienteId && $this->clienteBusqueda !== $this->clienteNombre) {
+            $this->clienteId      = null;
+            $this->clienteNombre  = null;
+            $this->clienteTipoDoc = null;
+        }
+    }
+
+    public function getClientesSugeridos(): Collection
+    {
+        if (strlen($this->clienteBusqueda) < 2) return collect();
+
+        return Cliente::where('empresa_id', Filament::getTenant()->id)
+            ->where(function ($q) {
+                $q->where('nombre', 'like', "%{$this->clienteBusqueda}%")
+                  ->orWhere('apellidos', 'like', "%{$this->clienteBusqueda}%")
+                  ->orWhere('numero_documento', 'like', "%{$this->clienteBusqueda}%");
+            })
+            ->limit(8)
+            ->get();
+    }
+
+    public function seleccionarCliente(int $id): void
+    {
+        $cliente = Cliente::find($id);
+        if (! $cliente) return;
+
+        $this->clienteId      = $id;
+        $this->clienteNombre  = $cliente->nombre_completo;
+        $this->clienteTipoDoc = $cliente->tipo_documento->value;
+        $this->clienteBusqueda = $cliente->nombre_completo;
+        $this->mostrarSugerencias = false;
+
+        // Auto-suggest comprobante según tipo de documento
+        if ($cliente->tipo_documento === TipoDocumento::RUC) {
+            $this->seleccionarComprobante(TipoComprobante::Factura->value);
+        } elseif ($cliente->tipo_documento === TipoDocumento::DNI) {
+            $this->seleccionarComprobante(TipoComprobante::Boleta->value);
+        }
+    }
+
+    public function limpiarCliente(): void
+    {
+        $this->clienteId        = null;
+        $this->clienteNombre    = null;
+        $this->clienteTipoDoc   = null;
+        $this->clienteBusqueda  = '';
+        $this->mostrarSugerencias = false;
+    }
+
+    // ── Modal: nuevo cliente rápido ───────────────────────────────────────────
+
+    public function abrirModalNuevoCliente(): void
+    {
+        $this->ncNombre    = '';
+        $this->ncApellidos = '';
+        $this->ncTipoDoc   = 'dni';
+        $this->ncNumeroDoc = '';
+        $this->modalNuevoCliente = true;
+    }
+
+    public function cerrarModalNuevoCliente(): void
+    {
+        $this->modalNuevoCliente = false;
+    }
+
+    public function crearCliente(): void
+    {
+        if (blank($this->ncNombre) || blank($this->ncNumeroDoc)) {
+            Notification::make()->title('Nombre y número de documento son requeridos')->warning()->send();
+            return;
+        }
+
+        $longitud = $this->ncTipoDoc === 'ruc' ? 11 : 8;
+        if (strlen($this->ncNumeroDoc) !== $longitud) {
+            Notification::make()->title("El {$this->ncTipoDoc} debe tener {$longitud} dígitos")->warning()->send();
+            return;
+        }
+
+        $cliente = Cliente::create([
+            'empresa_id'       => Filament::getTenant()->id,
+            'user_id'          => auth()->id(),
+            'nombre'           => $this->ncNombre,
+            'apellidos'        => $this->ncApellidos,
+            'tipo_documento'   => $this->ncTipoDoc,
+            'numero_documento' => $this->ncNumeroDoc,
+        ]);
+
+        $this->cerrarModalNuevoCliente();
+        $this->seleccionarCliente($cliente->id);
+        Notification::make()->title('Cliente creado y seleccionado')->success()->send();
+    }
+
+    // ── Validación de comprobante ─────────────────────────────────────────────
+
+    public function tieneSerieActiva(string $tipo): bool
+    {
+        return $this->getSerieParaTipo($tipo) !== null;
+    }
+
+    public function comprobanteEsValidoParaCliente(string $tipo): bool
+    {
+        return match ($tipo) {
+            TipoComprobante::Factura->value => $this->clienteTipoDoc === TipoDocumento::RUC->value,
+            TipoComprobante::Boleta->value  => true,
+            TipoComprobante::Ticket->value  => true,
+            default                         => false,
+        };
+    }
+
+    // ── Filtros ───────────────────────────────────────────────────────────────
 
     public function seleccionarCategoria(?int $id): void
     {
@@ -104,7 +297,6 @@ class PuntoDeVenta extends Page
             'atributos.detallesPrecios.valor',
         ])->findOrFail($productoId);
 
-        // Producto sin variantes → agregar directo
         if ($producto->variantes->isEmpty()) {
             $this->agregarProductoSimple($productoId, $producto->nombre, (float) $producto->precio_venta);
             return;
@@ -177,7 +369,6 @@ class PuntoDeVenta extends Page
             return;
         }
 
-        // Nombre: "Producto (Rojo - S)"
         $sufijo = collect($this->atributosModal)
             ->map(fn($a) => collect($a['valores'])->firstWhere('id', $this->seleccionados[$a['id']] ?? null)['nombre'] ?? null)
             ->filter()
@@ -210,29 +401,23 @@ class PuntoDeVenta extends Page
             $precio = (float) $producto->precio_venta;
         }
 
-        $key = "producto_{$productoId}";
-        $this->pushCarrito($key, 'producto', $productoId, $nombre, $precio);
+        $this->pushCarrito("producto_{$productoId}", 'producto', $productoId, $nombre, $precio);
     }
 
     private function agregarVariante(int $varianteId, string $nombre, float $precio): void
     {
-        $key = "variante_{$varianteId}";
-        $this->pushCarrito($key, 'variante', $varianteId, $nombre, $precio);
+        $this->pushCarrito("variante_{$varianteId}", 'variante', $varianteId, $nombre, $precio);
     }
 
     public function agregarPromocion(int $promocionId): void
     {
         $promocion = Promocion::find($promocionId);
         if (! $promocion || ! $promocion->estaVigente()) {
-            Notification::make()
-                ->title('Promoción no disponible')
-                ->warning()
-                ->send();
+            Notification::make()->title('Promoción no disponible')->warning()->send();
             return;
         }
 
-        $key = "promocion_{$promocionId}";
-        $this->pushCarrito($key, 'promocion', $promocionId, $promocion->nombre, (float) $promocion->precio);
+        $this->pushCarrito("promocion_{$promocionId}", 'promocion', $promocionId, $promocion->nombre, (float) $promocion->precio);
     }
 
     private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio): void
@@ -241,14 +426,7 @@ class PuntoDeVenta extends Page
         if (isset($carrito[$key])) {
             $carrito[$key]['cantidad']++;
         } else {
-            $carrito[$key] = [
-                'key'      => $key,
-                'tipo'     => $tipo,
-                'id'       => $id,
-                'nombre'   => $nombre,
-                'precio'   => $precio,
-                'cantidad' => 1,
-            ];
+            $carrito[$key] = ['key' => $key, 'tipo' => $tipo, 'id' => $id, 'nombre' => $nombre, 'precio' => $precio, 'cantidad' => 1];
         }
         $this->carrito = $carrito;
     }
@@ -268,7 +446,6 @@ class PuntoDeVenta extends Page
     {
         $carrito = $this->carrito;
         if (! isset($carrito[$key])) return;
-
         if ($carrito[$key]['cantidad'] > 1) {
             $carrito[$key]['cantidad']--;
         } else {
