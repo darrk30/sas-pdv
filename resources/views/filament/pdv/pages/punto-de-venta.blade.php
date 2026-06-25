@@ -198,15 +198,6 @@
                     @endif
                 @endif
 
-                {{-- Cliente seleccionado --}}
-                @if($clienteId)
-                    <div class="pdv-cliente__seleccionado">
-                        <span class="pdv-cliente__sel-doc {{ $clienteTipoDoc === 'ruc' ? 'pdv-cliente__sel-doc--ruc' : 'pdv-cliente__sel-doc--dni' }}">
-                            {{ strtoupper($clienteTipoDoc ?? '') }}
-                        </span>
-                        <span class="pdv-cliente__sel-nombre">{{ $clienteNombre }}</span>
-                    </div>
-                @endif
             </div>
 
             {{-- ── TIPO DE COMPROBANTE ── --}}

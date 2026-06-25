@@ -69,6 +69,7 @@ class PuntoDeVenta extends Page
     public function mount(): void
     {
         $this->autoSeleccionarComprobante();
+        $this->autoSeleccionarClienteGeneral();
     }
 
     // ── Series ────────────────────────────────────────────────────────────────
@@ -108,7 +109,7 @@ class PuntoDeVenta extends Page
 
     private function autoSeleccionarComprobante(): void
     {
-        foreach ([TipoComprobante::Boleta->value, TipoComprobante::Ticket->value, TipoComprobante::Factura->value] as $tipo) {
+        foreach ([TipoComprobante::Ticket->value, TipoComprobante::Boleta->value, TipoComprobante::Factura->value] as $tipo) {
             $serie = $this->getSerieParaTipo($tipo);
             if ($serie) {
                 $this->tipoComprobante = $tipo;
@@ -116,6 +117,20 @@ class PuntoDeVenta extends Page
                 return;
             }
         }
+    }
+
+    private function autoSeleccionarClienteGeneral(): void
+    {
+        $cliente = Cliente::where('empresa_id', Filament::getTenant()->id)
+            ->where('numero_documento', '99999999')
+            ->first();
+
+        if (! $cliente) return;
+
+        $this->clienteId      = $cliente->id;
+        $this->clienteNombre  = $cliente->nombre_completo;
+        $this->clienteTipoDoc = $cliente->tipo_documento->value;
+        $this->clienteBusqueda = $cliente->nombre_completo;
     }
 
     // ── Cliente ───────────────────────────────────────────────────────────────
@@ -155,11 +170,8 @@ class PuntoDeVenta extends Page
         $this->clienteBusqueda = $cliente->nombre_completo;
         $this->mostrarSugerencias = false;
 
-        // Auto-suggest comprobante según tipo de documento
         if ($cliente->tipo_documento === TipoDocumento::RUC) {
             $this->seleccionarComprobante(TipoComprobante::Factura->value);
-        } elseif ($cliente->tipo_documento === TipoDocumento::DNI) {
-            $this->seleccionarComprobante(TipoComprobante::Boleta->value);
         }
     }
 
