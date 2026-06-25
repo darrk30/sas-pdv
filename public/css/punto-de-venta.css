@@ -67,12 +67,47 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
+   CONTENEDOR RAÍZ — ocupa todo el espacio disponible
+   ═══════════════════════════════════════════════════════════ */
+
+/* Impide scroll en la página cuando el PDV está activo */
+html:has(.pdv-root),
+body:has(.pdv-root) {
+    overflow: hidden;
+    height: 100%;
+}
+
+/* Contenedores de Filament: sin desbordamiento */
+body:has(.pdv-root) .fi-layout,
+body:has(.pdv-root) .fi-body,
+body:has(.pdv-root) .fi-main,
+body:has(.pdv-root) .fi-main-ctn,
+body:has(.pdv-root) .fi-page,
+body:has(.pdv-root) [class^="fi-simple-"],
+body:has(.pdv-root) section.fi-page {
+    overflow: hidden;
+    height: 100%;
+    min-height: 0;
+    padding-bottom: 0 !important;
+}
+
+/* Nuestro root ocupa el 100% del espacio que le da Filament */
+.pdv-root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════
    LAYOUT PRINCIPAL
    ═══════════════════════════════════════════════════════════ */
 .pdv-wrap {
     display: flex;
+    flex: 1;
+    min-height: 0;  /* crítico: permite que flex shrink funcione */
     gap: 1rem;
-    height: calc(100vh - 10rem);
+    overflow: hidden;
 }
 
 /* ── Columna izquierda: productos ───────────────────────── */
@@ -1448,11 +1483,8 @@
    ═══════════════════════════════════════════════════════════ */
 @media (max-width: 1023px) {
 
-    /* Quita el alto fijo en mobile para que el scroll sea natural */
     .pdv-wrap {
-        height: auto;
-        min-height: calc(100vh - 12rem);
-        padding-bottom: 5rem; /* espacio para el FAB */
+        padding-bottom: 4.5rem; /* espacio bajo el FAB */
     }
 
     /* Carrito: drawer fijo desde la derecha */

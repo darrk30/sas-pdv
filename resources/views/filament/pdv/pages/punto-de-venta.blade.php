@@ -2,6 +2,8 @@
 
     <link rel="stylesheet" href="{{ asset('css/punto-de-venta.css') }}">
 
+    <div class="pdv-root">
+
     {{-- ══ HEADER ══ --}}
     <div class="pdv-header">
         <div class="pdv-header__left">
@@ -312,6 +314,8 @@
         </button>
 
     </div>{{-- /pdv-wrap --}}
+
+    </div>{{-- /pdv-root --}}
 
 
     {{-- ══ MODAL: variantes ══ --}}
