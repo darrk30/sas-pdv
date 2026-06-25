@@ -108,6 +108,7 @@ class PromocionForm
                                     ->label('Producto / Variante')
                                     ->placeholder('Buscar producto...')
                                     ->searchable()
+                                    ->minCharactersToSearch(0)
                                     ->required()
                                     ->live()
                                     ->formatStateUsing(function (?Model $record): ?string {
@@ -137,18 +138,23 @@ class PromocionForm
                                             ? AjusteDetalle::generarNombre(null, $variante)
                                             : null;
                                     })
-                                    ->options(function (): array {
+                                    ->getSearchResultsUsing(function (string $search): array {
                                         $opciones = [];
+                                        $term     = '%' . mb_strtolower(trim($search)) . '%';
 
                                         Producto::doesntHave('variantes')
                                             ->where('estado', '!=', 'archivado')
+                                            ->whereRaw('LOWER(nombre) LIKE ?', [$term])
                                             ->orderBy('nombre')
+                                            ->limit(50)
                                             ->get()
                                             ->each(fn($p) => $opciones["producto_{$p->id}"] = $p->nombre);
 
                                         Variante::with(['producto', 'valores.valor'])
                                             ->whereHas('producto', fn($q) => $q
-                                                ->where('estado', '!=', 'archivado'))
+                                                ->where('estado', '!=', 'archivado')
+                                                ->whereRaw('LOWER(nombre) LIKE ?', [$term]))
+                                            ->limit(50)
                                             ->get()
                                             ->each(fn($v) => $opciones["variante_{$v->id}"] = AjusteDetalle::generarNombre(null, $v));
 
