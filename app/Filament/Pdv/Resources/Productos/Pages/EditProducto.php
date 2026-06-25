@@ -27,6 +27,11 @@ class EditProducto extends EditRecord
         ];
     }
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('edit', ['record' => $this->getRecord()]);
+    }
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['slug'] = Str::slug($data['nombre']) . '-' . $this->getRecord()->id;

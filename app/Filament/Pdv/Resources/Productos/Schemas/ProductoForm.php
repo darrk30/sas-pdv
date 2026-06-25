@@ -547,7 +547,6 @@ class ProductoForm
                                         TableColumn::make('Cód. Interno'),
                                         TableColumn::make('Cód. de Barras'),
                                         TableColumn::make('Precio Final'),
-                                        TableColumn::make('Estado'),
                                     ])
                                     ->schema([
 
@@ -575,44 +574,9 @@ class ProductoForm
 
                                         TextInput::make('precio_final')
                                             ->label('Precio Final')
-                                            ->numeric()
                                             ->prefix('S/')
-                                            ->required()
-                                            ->live(onBlur: true)
-                                            ->formatStateUsing(function ($state, ?Model $record) {
-                                                if (blank($state) || (float) $state === 0.0) {
-                                                    return number_format((float) ($record?->producto?->precio_venta ?? 0), 2, '.', '');
-                                                }
-                                                return $state;
-                                            })
-                                            ->hint(function ($state, ?Model $record): string {
-                                                $base  = (float) ($record?->producto?->precio_venta ?? 0);
-                                                if ($base <= 0) return '';
-                                                $final = (float) ($state ?? 0);
-                                                $extra = round($final - $base, 2);
-                                                if ($extra < 0) {
-                                                    return '⚠ No puede ser menor al precio base (S/ ' . number_format($base, 2) . ')';
-                                                }
-                                                return 'Base: S/ ' . number_format($base, 2) . ' · Extra: S/ ' . number_format($extra, 2);
-                                            })
-                                            ->hintColor(function ($state, ?Model $record): string {
-                                                $base  = (float) ($record?->producto?->precio_venta ?? 0);
-                                                $final = (float) ($state ?? 0);
-                                                return ($base > 0 && $final < $base) ? 'danger' : 'gray';
-                                            })
-                                            ->afterStateUpdated(function (?string $state, Set $set, ?Model $record): void {
-                                                $base  = (float) ($record?->producto?->precio_venta ?? 0);
-                                                $final = (float) ($state ?? 0);
-                                                if ($base > 0 && $final < $base) {
-                                                    $set('precio_final', number_format($base, 2, '.', ''));
-                                                }
-                                            }),
-
-                                        Select::make('estado')
-                                            ->label('Estado')
-                                            ->options(EstadoGeneral::class)
-                                            ->native(false)
-                                            ->required(),
+                                            ->readOnly()
+                                            ->dehydrated(false),
 
                                     ])
                                     ->defaultItems(0),
