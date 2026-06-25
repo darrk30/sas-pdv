@@ -14,7 +14,7 @@
         </div>
     </div>
 
-    <div class="pdv-wrap">
+    <div class="pdv-wrap" x-data="{ carritoOpen: false }">
 
         {{-- ══ ÁREA DE PRODUCTOS (izquierda) ══ --}}
         <div class="pdv-productos">
@@ -133,7 +133,15 @@
 
 
         {{-- ══ CARRITO (derecha) ══ --}}
-        <div class="pdv-carrito">
+        {{-- Backdrop mobile --}}
+        <div
+            class="pdv-cart-backdrop"
+            x-show="carritoOpen"
+            @click="carritoOpen = false"
+            style="display:none"
+        ></div>
+
+        <div class="pdv-carrito" :class="{ 'pdv-carrito--open': carritoOpen }">
 
             {{-- Header carrito --}}
             <div class="pdv-carrito__header">
@@ -146,9 +154,16 @@
                         <span class="pdv-carrito__count">{{ $this->getItemCount() }}</span>
                     @endif
                 </div>
-                @if(! empty($carrito))
-                    <button class="pdv-carrito__vaciar" wire:click="vaciarCarrito">Vaciar</button>
-                @endif
+                <div class="pdv-carrito__header-actions">
+                    @if(! empty($carrito))
+                        <button class="pdv-carrito__vaciar" wire:click="vaciarCarrito">Vaciar</button>
+                    @endif
+                    <button class="pdv-carrito__cerrar-mobile" @click="carritoOpen = false" title="Cerrar">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {{-- ── CLIENTE ── --}}
@@ -285,6 +300,16 @@
             @endif
 
         </div>{{-- /pdv-carrito --}}
+
+        {{-- ══ FAB carrito (solo mobile) ══ --}}
+        <button class="pdv-fab" @click="carritoOpen = true">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
+            </svg>
+            @if($this->getItemCount() > 0)
+                <span class="pdv-fab__badge">{{ $this->getItemCount() }}</span>
+            @endif
+        </button>
 
     </div>{{-- /pdv-wrap --}}
 

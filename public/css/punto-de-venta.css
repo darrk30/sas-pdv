@@ -944,8 +944,8 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    padding: 0.75rem 1rem;
-    margin-bottom: 0.75rem;
+    padding: 0.625rem 1rem;
+    margin-bottom: 0.35rem;
     background: var(--pdv-surface);
     border: 1px solid var(--pdv-border);
     border-radius: var(--pdv-radius-lg);
@@ -1343,4 +1343,159 @@
     background: var(--pdv-primary-light);
     color: var(--pdv-primary-text);
     box-shadow: 0 0 0 2px rgba(99,102,241,.18);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ACCIONES DEL HEADER DEL CARRITO
+   ═══════════════════════════════════════════════════════════ */
+.pdv-carrito__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pdv-carrito__cerrar-mobile {
+    display: none;
+    padding: 0.25rem;
+    border: none;
+    background: none;
+    color: var(--pdv-text-faint);
+    cursor: pointer;
+    border-radius: var(--pdv-radius-sm);
+    align-items: center;
+    justify-content: center;
+    transition: background .12s, color .12s;
+}
+
+.pdv-carrito__cerrar-mobile svg {
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+.pdv-carrito__cerrar-mobile:hover {
+    background: var(--pdv-gray-100);
+    color: var(--pdv-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FAB CARRITO (solo mobile)
+   ═══════════════════════════════════════════════════════════ */
+.pdv-fab {
+    display: none;
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 900;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: var(--pdv-radius-full);
+    border: none;
+    background: var(--pdv-primary);
+    color: #fff;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(99,102,241,.45);
+    transition: background .15s, transform .1s;
+}
+
+.pdv-fab:hover {
+    background: var(--pdv-primary-dark);
+}
+
+.pdv-fab:active {
+    transform: scale(.92);
+}
+
+.pdv-fab svg {
+    width: 1.625rem;
+    height: 1.625rem;
+}
+
+.pdv-fab__badge {
+    position: absolute;
+    top: -0.25rem;
+    right: -0.25rem;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.3rem;
+    border-radius: var(--pdv-radius-full);
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--pdv-surface);
+    line-height: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BACKDROP CARRITO MOBILE
+   ═══════════════════════════════════════════════════════════ */
+.pdv-cart-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 990;
+    background: rgba(0,0,0,.5);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE — CARRITO COMO DRAWER EN MOBILE
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+
+    /* Quita el alto fijo en mobile para que el scroll sea natural */
+    .pdv-wrap {
+        height: auto;
+        min-height: calc(100vh - 12rem);
+        padding-bottom: 5rem; /* espacio para el FAB */
+    }
+
+    /* Carrito: drawer fijo desde la derecha */
+    .pdv-carrito {
+        position: fixed;
+        top: 0;
+        right: 0;
+        height: 100dvh;
+        width: min(22rem, 92vw);
+        border-radius: 0;
+        border: none;
+        border-left: 1px solid var(--pdv-border);
+        box-shadow: var(--pdv-shadow-xl);
+        z-index: 1000;
+        transform: translateX(110%);
+        transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+    }
+
+    .pdv-carrito--open {
+        transform: translateX(0);
+    }
+
+    /* Muestra FAB y botón cerrar */
+    .pdv-fab {
+        display: flex;
+    }
+
+    .pdv-carrito__cerrar-mobile {
+        display: flex;
+    }
+}
+
+@media (min-width: 1024px) {
+    /* En desktop el carrito siempre visible */
+    .pdv-carrito {
+        transform: none !important;
+    }
+
+    .pdv-cart-backdrop {
+        display: none !important;
+    }
+
+    .pdv-fab {
+        display: none !important;
+    }
 }
