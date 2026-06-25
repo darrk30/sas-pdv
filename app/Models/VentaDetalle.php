@@ -22,7 +22,6 @@ class VentaDetalle extends Model
         'valor_unitario',
         'costo_unitario',
         'descuento',
-        'afecto_igv',
         'subtotal',
         'valor_total',
         'igv',
@@ -32,13 +31,12 @@ class VentaDetalle extends Model
 
     protected $casts = [
         'tipo_item'       => TipoItem::class,
-        'afecto_igv'      => 'boolean',
         'cantidad'        => 'decimal:3',
         'precio_unitario' => 'decimal:4',
         'valor_unitario'  => 'decimal:4',
         'costo_unitario'  => 'decimal:4',
-        'descuento'       => 'decimal:2',
-        'subtotal'        => 'decimal:2',
+        'descuento'  => 'decimal:2',
+        'subtotal'   => 'decimal:2',
         'valor_total'     => 'decimal:2',
         'igv'             => 'decimal:2',
         'total'           => 'decimal:2',
@@ -74,26 +72,15 @@ class VentaDetalle extends Model
         float $precioUnitario,
         float $costoUnitario = 0,
         float $descuento = 0,
-        bool  $afectoIgv = true,
         float $tasaIgv = 0.18,
     ): array {
-        $valorUnitario = $afectoIgv
-            ? round($precioUnitario / (1 + $tasaIgv), 4)
-            : $precioUnitario;
+        $valorUnitario = round($precioUnitario / (1 + $tasaIgv), 4);
+        $subtotal      = round($cantidad * $valorUnitario, 2);
+        $valorTotal    = round($subtotal - $descuento, 2);
+        $igv           = round($valorTotal * $tasaIgv, 2);
+        $total         = round($valorTotal + $igv, 2);
+        $costoTotal    = round($cantidad * $costoUnitario, 2);
 
-        $subtotal   = round($cantidad * $valorUnitario, 2);
-        $valorTotal = round($subtotal - $descuento, 2);
-        $igv        = $afectoIgv ? round($valorTotal * $tasaIgv, 2) : 0;
-        $total      = round($valorTotal + $igv, 2);
-        $costoTotal = round($cantidad * $costoUnitario, 2);
-
-        return compact(
-            'valorUnitario',
-            'subtotal',
-            'valorTotal',
-            'igv',
-            'total',
-            'costoTotal',
-        );
+        return compact('valorUnitario', 'subtotal', 'valorTotal', 'igv', 'total', 'costoTotal');
     }
 }

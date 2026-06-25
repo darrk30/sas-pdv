@@ -27,7 +27,6 @@ return new class extends Migration
             $table->decimal('valor_unitario', 12, 4);                                 // sin IGV
             $table->decimal('costo_unitario', 12, 4)->default(0);                     // costo de compra
             $table->decimal('descuento', 12, 2)->default(0);
-            $table->boolean('afecto_igv')->default(true);
 
             // ── Totales calculados ───────────────────────────────────────
             $table->decimal('subtotal', 12, 2);                                       // cantidad × valor_unitario

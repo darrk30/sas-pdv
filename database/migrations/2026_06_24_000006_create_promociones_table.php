@@ -15,7 +15,6 @@ return new class extends Migration
             $table->text('descripcion')->nullable();
             $table->string('imagen')->nullable();
             $table->decimal('precio', 12, 2);
-            $table->boolean('afecto_igv')->default(true);
             $table->string('codigo_promo', 20)->nullable();
             $table->unsignedInteger('limite_usos')->nullable();
             $table->unsignedInteger('usos_actuales')->default(0);

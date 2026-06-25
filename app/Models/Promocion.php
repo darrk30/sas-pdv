@@ -19,7 +19,6 @@ class Promocion extends Model
         'descripcion',
         'imagen',
         'precio',
-        'afecto_igv',
         'codigo_promo',
         'limite_usos',
         'usos_actuales',
@@ -30,9 +29,8 @@ class Promocion extends Model
     ];
 
     protected $casts = [
-        'precio'        => 'decimal:2',
-        'afecto_igv'    => 'boolean',
-        'estado'        => 'boolean',
+        'precio'  => 'decimal:2',
+        'estado'  => 'boolean',
         'dias_semana'   => 'array',
         'fecha_inicio'  => 'date',
         'fecha_fin'     => 'date',
