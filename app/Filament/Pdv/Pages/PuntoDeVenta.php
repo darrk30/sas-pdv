@@ -488,7 +488,7 @@ class PuntoDeVenta extends Page
 
         $nombre = $sufijo ? "{$this->productoModalNombre} ({$sufijo})" : $this->productoModalNombre;
 
-        $precio = $this->productoEsCortesia ? 0.0 : (float) $variante->precio_final;
+        $precio = $this->productoEsCortesia ? 0.0 : ($this->precioBase + $this->precioAdicionalTotal);
         $this->agregarVariante($variante->id, $nombre, $precio);
         $this->cerrarModal();
     }
