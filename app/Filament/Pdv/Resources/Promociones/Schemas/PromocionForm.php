@@ -2,12 +2,14 @@
 
 namespace App\Filament\Pdv\Resources\Promociones\Schemas;
 
+use App\Models\AjusteDetalle;
 use App\Models\Producto;
 use App\Models\Variante;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -15,6 +17,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
 
 class PromocionForm
 {
@@ -58,47 +61,99 @@ class PromocionForm
 
             // ── PRODUCTOS DEL COMBO ──────────────────────────────────────
             Section::make('Productos que incluye el combo')
-                ->description('Define qué productos y cantidades forman esta promoción.')
+                ->description('Selecciona cada producto o variante y la cantidad que incluye la promoción.')
                 ->schema([
                     Repeater::make('detalles')
                         ->relationship('detalles')
                         ->label('')
+                        ->mutateRelationshipDataBeforeCreateUsing(
+                            fn(array $data) => collect($data)->except('item_id')->toArray()
+                        )
+                        ->mutateRelationshipDataBeforeSaveUsing(
+                            fn(array $data) => collect($data)->except('item_id')->toArray()
+                        )
                         ->schema([
-                            Grid::make(['default' => 1, 'md' => 3])->schema([
+                            Grid::make(['default' => 1, 'md' => 2])->schema([
 
-                                Select::make('producto_id')
-                                    ->label('Producto')
-                                    ->options(fn() => Producto::where('empresa_id', Filament::getTenant()->id)
-                                        ->where('estado', 'activo')
-                                        ->orderBy('nombre')
-                                        ->pluck('nombre', 'id'))
-                                    ->required()
+                                // ── Select unificado producto simple / variante ──
+                                Select::make('item_id')
+                                    ->label('Producto / Variante')
+                                    ->placeholder('Buscar producto...')
                                     ->searchable()
-                                    ->native(false)
+                                    ->required()
                                     ->live()
-                                    ->afterStateUpdated(fn($set) => $set('variante_id', null)),
+                                    ->columnSpanFull()
+                                    // Reconstruye el valor al editar un registro existente
+                                    ->formatStateUsing(function (?Model $record): ?string {
+                                        if (! $record) {
+                                            return null;
+                                        }
+                                        if ($record->variante_id) {
+                                            return 'variante_' . $record->variante_id;
+                                        }
+                                        if ($record->producto_id) {
+                                            return 'producto_' . $record->producto_id;
+                                        }
+                                        return null;
+                                    })
+                                    ->getOptionLabelUsing(function ($value): ?string {
+                                        if (blank($value)) {
+                                            return null;
+                                        }
+                                        [$tipo, $id] = explode('_', $value, 2);
 
-                                Select::make('variante_id')
-                                    ->label('Variante')
-                                    ->options(function ($get) {
-                                        $productoId = $get('producto_id');
-                                        if (! $productoId) {
-                                            return [];
+                                        if ($tipo === 'producto') {
+                                            return Producto::find($id)?->nombre;
                                         }
 
-                                        return Variante::where('producto_id', $productoId)
-                                            ->where('estado', true)
-                                            ->with('valores.productoAtributoValor')
-                                            ->get()
-                                            ->mapWithKeys(fn($v) => [
-                                                $v->id => $v->codigo,
-                                            ]);
+                                        $variante = Variante::with(['producto', 'valores.valor'])->find($id);
+                                        return $variante
+                                            ? AjusteDetalle::generarNombre(null, $variante)
+                                            : null;
                                     })
-                                    ->native(false)
-                                    ->searchable()
-                                    ->placeholder('Sin variante')
-                                    ->visible(fn($get) => $get('producto_id') &&
-                                        Variante::where('producto_id', $get('producto_id'))->exists()),
+                                    ->options(function (): array {
+                                        $empresaId = Filament::getTenant()->id;
+                                        $opciones  = [];
+
+                                        // Productos simples (sin variantes)
+                                        Producto::where('empresa_id', $empresaId)
+                                            ->doesntHave('variantes')
+                                            ->where('estado', '!=', 'archivado')
+                                            ->orderBy('nombre')
+                                            ->get()
+                                            ->each(function ($p) use (&$opciones) {
+                                                $opciones["producto_{$p->id}"] = $p->nombre;
+                                            });
+
+                                        // Variantes
+                                        Variante::with(['producto', 'valores.valor'])
+                                            ->whereHas('producto', fn($q) => $q
+                                                ->where('empresa_id', $empresaId)
+                                                ->where('estado', '!=', 'archivado'))
+                                            ->get()
+                                            ->each(function ($v) use (&$opciones) {
+                                                $opciones["variante_{$v->id}"] = AjusteDetalle::generarNombre(null, $v);
+                                            });
+
+                                        return $opciones;
+                                    })
+                                    ->afterStateUpdated(function (?string $state, $set): void {
+                                        if (blank($state)) {
+                                            $set('producto_id', null);
+                                            $set('variante_id', null);
+                                            return;
+                                        }
+
+                                        [$tipo, $id] = explode('_', $state, 2);
+
+                                        if ($tipo === 'producto') {
+                                            $set('producto_id', (int) $id);
+                                            $set('variante_id', null);
+                                        } else {
+                                            $set('producto_id', null);
+                                            $set('variante_id', (int) $id);
+                                        }
+                                    }),
 
                                 TextInput::make('cantidad')
                                     ->label('Cantidad')
@@ -107,6 +162,10 @@ class PromocionForm
                                     ->default(1)
                                     ->minValue(0.001)
                                     ->step(1),
+
+                                // Campos ocultos que se guardan en BD
+                                Hidden::make('producto_id'),
+                                Hidden::make('variante_id'),
 
                             ]),
                         ])
