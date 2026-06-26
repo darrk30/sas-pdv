@@ -4,8 +4,10 @@ namespace App\Filament\Pdv\Resources\Compras\Pages;
 
 use App\Filament\Pdv\Resources\Compras\CompraResource;
 use App\Services\InventarioCoreService;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -62,7 +64,37 @@ class EditCompra extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            Action::make('anular')
+                ->label('Anular compra')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading('¿Anular compra?')
+                ->modalDescription(fn() => $this->record->estaRecibida()
+                    ? 'La compra está recibida: se revertirá el stock ingresado. Esta acción no se puede deshacer.'
+                    : 'La compra será marcada como anulada. Esta acción no se puede deshacer.')
+                ->modalSubmitActionLabel('Sí, anular')
+                ->visible(fn() => ! $this->record->estaAnulada())
+                ->action(function (): void {
+                    $record      = $this->record;
+                    $eraRecibida = $record->estaRecibida();
+
+                    if ($eraRecibida) {
+                        app(InventarioCoreService::class)->revertirCompra($record);
+                    }
+                    $record->update(['estado' => 'anulado']);
+
+                    Notification::make()
+                        ->warning()
+                        ->title('Compra ' . $record->codigo . ' anulada')
+                        ->body($eraRecibida ? 'La compra fue anulada y el stock revertido.' : 'La compra fue anulada.')
+                        ->send();
+
+                    $this->redirect(static::getResource()::getUrl('index'));
+                }),
+
+            DeleteAction::make()
+                ->visible(fn() => ! $this->record->estaAnulada()),
         ];
     }
 

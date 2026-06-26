@@ -35,7 +35,7 @@ class CompraObserver
 
     public function deleting(Compra $compra): void
     {
-        if ($compra->estaRecibida()) {
+        if ($compra->estaRecibida() && ! $compra->estaAnulada()) {
             app(InventarioCoreService::class)->revertirCompra($compra);
         }
     }

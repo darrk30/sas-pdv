@@ -6,6 +6,8 @@ use App\Enums\EstadoDespacho;
 use App\Enums\EstadoPago;
 use App\Enums\TipoComprobante;
 use App\Models\Compra;
+use App\Services\InventarioCoreService;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -132,6 +134,31 @@ class ComprasTable
 
                 EditAction::make()
                     ->visible(fn(Compra $record): bool => ! $record->estaAnulada()),
+
+                Action::make('anular')
+                    ->label('Anular')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('¿Anular compra?')
+                    ->modalDescription(fn(Compra $record): string => $record->estaRecibida()
+                        ? 'La compra está recibida: se revertirá el stock ingresado. Esta acción no se puede deshacer.'
+                        : 'La compra será marcada como anulada. Esta acción no se puede deshacer.')
+                    ->modalSubmitActionLabel('Sí, anular')
+                    ->visible(fn(Compra $record): bool => ! $record->estaAnulada())
+                    ->action(function (Compra $record): void {
+                        $eraRecibida = $record->estaRecibida();
+                        if ($eraRecibida) {
+                            app(InventarioCoreService::class)->revertirCompra($record);
+                        }
+                        $record->update(['estado' => 'anulado']);
+
+                        Notification::make()
+                            ->warning()
+                            ->title('Compra ' . $record->codigo . ' anulada')
+                            ->body($eraRecibida ? 'La compra fue anulada y el stock revertido.' : 'La compra fue anulada.')
+                            ->send();
+                    }),
 
                 DeleteAction::make()
                     ->visible(fn(Compra $record): bool => ! $record->estaAnulada()),

@@ -140,6 +140,27 @@ class AjustesTable
                             ->send();
                     }),
 
+                // Anular: solo confirmados → revierte stock y bloquea
+                Action::make('anular')
+                    ->label('Anular')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('¿Anular ajuste?')
+                    ->modalDescription('Se revertirá el movimiento de stock aplicado. Esta acción no se puede deshacer.')
+                    ->modalSubmitActionLabel('Sí, anular')
+                    ->visible(fn(Ajuste $record): bool => $record->estado === 'confirmado')
+                    ->action(function (Ajuste $record): void {
+                        app(InventarioCoreService::class)->revertirAjuste($record);
+                        $record->update(['estado' => 'anulado']);
+
+                        Notification::make()
+                            ->warning()
+                            ->title('Ajuste ' . $record->codigo . ' anulado')
+                            ->body('El movimiento de stock fue revertido.')
+                            ->send();
+                    }),
+
                 // Editar: solo borradores
                 EditAction::make()
                     ->visible(fn(Ajuste $record): bool => $record->estado === 'borrador'),
