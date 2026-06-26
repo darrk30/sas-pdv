@@ -69,7 +69,11 @@ window._barcodeScanner = function () {
 
         _onSuccess(code) {
             this._stop(false);
-            if (this.targetPath) {
+            if (!this.targetPath) return;
+
+            if (this.targetPath === '__pdv__') {
+                Livewire.dispatch('pdv-barcode', { code });
+            } else {
                 var formPath = this.targetPath.replace(/^data\./, '');
                 Livewire.dispatch('barcode-result', { path: formPath, code });
             }

@@ -33,6 +33,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 use UnitEnum;
 
 class PuntoDeVenta extends Page
@@ -288,6 +289,12 @@ class PuntoDeVenta extends Page
         $this->busqueda = '';
     }
 
+    #[On('pdv-barcode')]
+    public function recibirBarcode(string $code): void
+    {
+        $this->busqueda = $code;
+    }
+
     // ── Datos para la vista ───────────────────────────────────────────────────
 
     public function getCategorias(): Collection
@@ -310,7 +317,12 @@ class PuntoDeVenta extends Page
             ]);
 
         if ($this->busqueda !== '') {
-            $query->where('nombre', 'like', "%{$this->busqueda}%");
+            $b = $this->busqueda;
+            $query->where(function ($q) use ($b) {
+                $q->where('nombre', 'like', "%{$b}%")
+                  ->orWhere('codigo_interno', 'like', "%{$b}%")
+                  ->orWhere('codigo_barras', 'like', "%{$b}%");
+            });
         }
 
         if ($this->categoriaId !== null) {

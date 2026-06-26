@@ -143,6 +143,10 @@
     box-shadow: 0 0 0 3px rgba(99,102,241,.15);
 }
 
+.pdv-busqueda__input--con-scan {
+    padding-right: 4.25rem;
+}
+
 .pdv-busqueda__clear {
     position: absolute;
     right: 0.75rem;
@@ -158,6 +162,10 @@
     justify-content: center;
 }
 
+.pdv-busqueda__clear--con-scan {
+    right: 2.375rem;
+}
+
 .pdv-busqueda__clear:hover {
     color: var(--pdv-text-muted);
 }
@@ -165,6 +173,33 @@
 .pdv-busqueda__clear svg {
     width: 1rem;
     height: 1rem;
+}
+
+.pdv-busqueda__scan {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 0.125rem;
+    cursor: pointer;
+    color: var(--pdv-text-faint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.25rem;
+    transition: color .15s, background-color .15s;
+}
+
+.pdv-busqueda__scan:hover {
+    color: var(--pdv-primary);
+    background-color: var(--pdv-hover, rgba(99,102,241,.08));
+}
+
+.pdv-busqueda__scan svg {
+    width: 1.125rem;
+    height: 1.125rem;
 }
 
 /* ═══════════════════════════════════════════════════════════
