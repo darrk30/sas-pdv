@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete(); // quien registra
+            $table->foreignId('sesion_caja_id')->nullable()->constrained('sesion_cajas')->nullOnDelete();
             $table->dateTime('fecha_hora');
             $table->string('tipo', 20);                   // ingreso | egreso
             $table->string('categoria', 30)->nullable();  // solo egreso: remuneracion|compra|servicio|otro_gasto
@@ -22,6 +23,7 @@ return new class extends Migration
                 ->nullOnDelete();
             $table->decimal('monto', 12, 2);
             $table->text('motivo');
+            $table->string('estado', 20)->default('aprobado');
             $table->timestamps();
         });
     }
