@@ -52,7 +52,8 @@
                         <option value="">Todos los productos</option>
                         @foreach ($productos as $prod)
                             <option value="{{ $prod->id }}">
-                                {{ $prod->nombre }}{{ $prod->estado !== 'activo' ? ' ('.$prod->estado.')' : '' }}
+                                @php $estadoVal = $prod->estado instanceof \BackedEnum ? $prod->estado->value : (string) $prod->estado; @endphp
+                                {{ $prod->nombre }}{{ $estadoVal !== 'activo' ? ' ('.$estadoVal.')' : '' }}
                             </option>
                         @endforeach
                     </select>
