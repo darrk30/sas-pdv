@@ -115,7 +115,7 @@
                 @php $productos = $this->getProductos(); @endphp
 
                 @if($productos->isNotEmpty())
-                    <div class="pdv-items-grid">
+                    <div class="pdv-items-grid" id="pdv-productos-grid">
                         @foreach($productos as $producto)
                             @php
                                 $tieneVariantes = $producto->variantesActivas->isNotEmpty();
@@ -171,6 +171,21 @@
                             </button>
                         @endforeach
                     </div>
+
+                    {{-- Sentinel: dispara cargarMas() cuando entra al viewport --}}
+                    @if($productos->count() >= $this->perPage)
+                        <div
+                            wire:key="sentinel-{{ $this->perPage }}"
+                            x-intersect.margin.300px="$wire.cargarMas()"
+                            class="pdv-sentinel"
+                        ></div>
+                        <div wire:loading.delay wire:target="cargarMas" class="pdv-sentinel__loading">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="pdv-sentinel__spinner">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
+                            </svg>
+                            Cargando más productos...
+                        </div>
+                    @endif
                 @else
                     <div class="pdv-vacio">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">

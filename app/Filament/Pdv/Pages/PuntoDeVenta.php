@@ -49,8 +49,9 @@ class PuntoDeVenta extends Page
     public function getMaxContentWidth(): ?string { return 'full'; }
 
     // ── Filtros ───────────────────────────────────────────────────────────────
-    public string $busqueda = '';
-    public ?int $categoriaId = null;
+    public string $busqueda    = '';
+    public ?int $categoriaId   = null;
+    public int $perPage        = 48;
 
     // ── Carrito ───────────────────────────────────────────────────────────────
     public array $carrito = [];
@@ -284,6 +285,17 @@ class PuntoDeVenta extends Page
     public function seleccionarCategoria(?int $id): void
     {
         $this->categoriaId = $id;
+        $this->perPage     = 48;
+    }
+
+    public function updatedBusqueda(): void
+    {
+        $this->perPage = 48;
+    }
+
+    public function cargarMas(): void
+    {
+        $this->perPage += 48;
     }
 
     public function limpiarBusqueda(): void
@@ -345,7 +357,7 @@ class PuntoDeVenta extends Page
             $query->where('categoria_id', $this->categoriaId);
         }
 
-        return $query->orderBy('nombre')->get();
+        return $query->orderBy('nombre')->take($this->perPage)->get();
     }
 
     public function getPromociones(): Collection
