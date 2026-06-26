@@ -238,28 +238,13 @@ class VentasSesionPage extends Page
                 $venta->update(['estado' => EstadoVenta::Anulada]);
 
                 // 2 ── Anular transacciones de ingreso originales
+                // (suficiente para quitar el monto del saldo de caja;
+                //  no se crea egreso para evitar doble descuento)
                 Transaccion::where('transaccionable_type', Venta::class)
                     ->where('transaccionable_id', $venta->id)
-                    ->where('tipo', TipoMovimiento::Ingreso->value)
                     ->update(['estado' => EstadoMovimiento::Anulado->value]);
 
-                // 3 ── Registrar devolución (egreso) por cada método de pago
-                foreach ($venta->pagos as $pago) {
-                    Transaccion::create([
-                        'empresa_id'           => $empresaId,
-                        'sesion_caja_id'       => $sesion?->id,
-                        'transaccionable_type' => Venta::class,
-                        'transaccionable_id'   => $venta->id,
-                        'tipo'                 => TipoMovimiento::Egreso,
-                        'concepto'             => "Devolución {$comprobante}",
-                        'monto'                => $pago->monto,
-                        'metodo_pago_id'       => $pago->metodo_pago_id,
-                        'estado'               => EstadoMovimiento::Aprobado,
-                        'fecha'                => now(),
-                    ]);
-                }
-
-                // 4 ── Revertir stock + kardex (solo si el usuario lo eligió)
+                // 3 ── Revertir stock + kardex (solo si el usuario lo eligió)
                 if ($revertir) {
                     $kardex      = app(KardexService::class);
                     $conceptoRev = "Reversión {$comprobante}";

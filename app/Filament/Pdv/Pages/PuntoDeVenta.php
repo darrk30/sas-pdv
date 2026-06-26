@@ -766,15 +766,7 @@ class PuntoDeVenta extends Page
 
     public function setMontoExacto(): void
     {
-        if (! $this->metodoPagoId) {
-            $efectivo = collect($this->metodosPagoDisponibles)
-                ->first(fn($m) => mb_strtolower($m['nombre']) === 'efectivo');
-
-            if ($efectivo) {
-                $this->seleccionarMetodoPago($efectivo['id']);
-                return;
-            }
-        }
+        $this->autoSeleccionarEfectivo();
 
         $saldo = $this->getSaldoRestante();
         $this->montoPagoInput = number_format(max(0, $saldo), 2, '.', '');
@@ -782,8 +774,23 @@ class PuntoDeVenta extends Page
 
     public function ajustarMonto(float $delta): void
     {
+        $this->autoSeleccionarEfectivo();
+
         $actual = (float) str_replace(',', '.', $this->montoPagoInput ?: '0');
         $this->montoPagoInput = number_format(max(0, $actual + $delta), 2, '.', '');
+    }
+
+    private function autoSeleccionarEfectivo(): void
+    {
+        if ($this->metodoPagoId) return;
+
+        $efectivo = collect($this->metodosPagoDisponibles)
+            ->first(fn($m) => mb_strtolower($m['nombre']) === 'efectivo');
+
+        if ($efectivo) {
+            $this->metodoPagoId   = $efectivo['id'];
+            $this->pagoReferencia = '';
+        }
     }
 
     public function agregarPago(): void

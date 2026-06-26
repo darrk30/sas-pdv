@@ -2279,15 +2279,16 @@
 }
 
 .pdv-quick-btn--exacto {
-    background: var(--pdv-primary);
+    background: var(--pdv-bg);
     border-color: var(--pdv-primary);
-    color: #fff;
+    color: var(--pdv-primary);
+    font-weight: 800;
 }
 
 .pdv-quick-btn--exacto:hover {
-    background: var(--pdv-primary-dark);
-    border-color: var(--pdv-primary-dark);
-    color: #fff;
+    background: var(--pdv-primary-light);
+    border-color: var(--pdv-primary);
+    color: var(--pdv-primary-text);
 }
 
 .pdv-pago-monto-row {

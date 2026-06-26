@@ -91,8 +91,10 @@
                                     <span class="pdv-card__badge pdv-card__badge--promo">PROMO</span>
                                     @if($stockPromo === 0)
                                         <span class="pdv-card__badge-stock pdv-card__badge-stock--agotada">Agotada</span>
-                                    @elseif($stockPromo !== null && $stockPromo <= 5)
-                                        <span class="pdv-card__badge-stock pdv-card__badge-stock--pocas">{{ $stockPromo }} disp.</span>
+                                    @elseif($stockPromo !== null)
+                                        <span class="pdv-card__stock-badge pdv-card__stock-badge--{{ $stockPromo <= 5 ? 'bajo' : 'ok' }}">
+                                            Stock {{ $stockPromo }}
+                                        </span>
                                     @endif
                                 </div>
                                 <div class="pdv-card__body">
@@ -146,7 +148,7 @@
                                     @endif
                                     @if($stockNivel !== null && ! $agotado)
                                         <span class="pdv-card__stock-badge pdv-card__stock-badge--{{ $stockNivel }}">
-                                            {{ number_format($stock, 0) }}
+                                            Stock {{ number_format($stock, 0) }}
                                         </span>
                                     @endif
                                 </div>
