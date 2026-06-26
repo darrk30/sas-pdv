@@ -237,6 +237,25 @@
     background: var(--pdv-primary-dark);
 }
 
+.pdv-cat-btn--promo {
+    color: #b45309;
+    border: 1px solid #fde68a;
+    background: #fefce8;
+}
+.pdv-cat-btn--promo:hover {
+    background: #fef9c3;
+}
+.pdv-cat-btn--promo.pdv-cat-btn--activo {
+    background: #f59e0b;
+    border-color: #f59e0b;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(245,158,11,.35);
+}
+.pdv-cat-btn--promo.pdv-cat-btn--activo:hover {
+    background: #d97706;
+    border-color: #d97706;
+}
+
 /* ═══════════════════════════════════════════════════════════
    GRID DE PRODUCTOS Y PROMOCIONES
    ═══════════════════════════════════════════════════════════ */

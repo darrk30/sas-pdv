@@ -319,6 +319,10 @@ class PuntoDeVenta extends Page
 
     public function getProductos(): Collection
     {
+        if ($this->categoriaId === -1) {
+            return collect();
+        }
+
         $empresaId = Filament::getTenant()->id;
 
         $query = Producto::where('empresa_id', $empresaId)
@@ -346,20 +350,37 @@ class PuntoDeVenta extends Page
 
     public function getPromociones(): Collection
     {
-        if ($this->categoriaId !== null || $this->busqueda !== '') {
+        $esVistaPromos = $this->categoriaId === -1;
+        $esTodos       = $this->categoriaId === null;
+
+        if (! $esVistaPromos && ! $esTodos) {
+            return collect();
+        }
+        if ($esTodos && $this->busqueda !== '') {
             return collect();
         }
 
-        return Promocion::where('empresa_id', Filament::getTenant()->id)
+        $query = Promocion::where('empresa_id', Filament::getTenant()->id)
             ->where('estado', EstadoPromocion::Activo->value)
             ->withCount('detalles')
             ->with([
                 'detalles.producto.inventario',
                 'detalles.variante.producto',
                 'detalles.variante.inventario',
-            ])
-            ->orderBy('nombre')
-            ->get();
+            ]);
+
+        if ($esVistaPromos && $this->busqueda !== '') {
+            $query->where('nombre', 'like', "%{$this->busqueda}%");
+        }
+
+        return $query->orderBy('nombre')->get();
+    }
+
+    public function getHayPromociones(): bool
+    {
+        return Promocion::where('empresa_id', Filament::getTenant()->id)
+            ->where('estado', EstadoPromocion::Activo->value)
+            ->exists();
     }
 
     // ── Modal variantes ───────────────────────────────────────────────────────

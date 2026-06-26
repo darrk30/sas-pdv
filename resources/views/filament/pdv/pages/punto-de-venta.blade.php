@@ -57,6 +57,11 @@
                 <button class="pdv-cat-btn {{ $categoriaId === null ? 'pdv-cat-btn--activo' : '' }}" wire:click="seleccionarCategoria(null)">
                     Todos
                 </button>
+                @if($this->getHayPromociones())
+                    <button class="pdv-cat-btn pdv-cat-btn--promo {{ $categoriaId === -1 ? 'pdv-cat-btn--activo' : '' }}" wire:click="seleccionarCategoria(-1)">
+                        Promos
+                    </button>
+                @endif
                 @foreach($this->getCategorias() as $cat)
                     <button
                         class="pdv-cat-btn {{ $categoriaId === $cat->id ? 'pdv-cat-btn--activo' : '' }}"
