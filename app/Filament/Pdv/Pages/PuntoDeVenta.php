@@ -350,13 +350,7 @@ class PuntoDeVenta extends Page
 
     public function getPromociones(): Collection
     {
-        $esVistaPromos = $this->categoriaId === -1;
-        $esTodos       = $this->categoriaId === null;
-
-        if (! $esVistaPromos && ! $esTodos) {
-            return collect();
-        }
-        if ($esTodos && $this->busqueda !== '') {
+        if ($this->categoriaId !== -1) {
             return collect();
         }
 
@@ -369,7 +363,7 @@ class PuntoDeVenta extends Page
                 'detalles.variante.inventario',
             ]);
 
-        if ($esVistaPromos && $this->busqueda !== '') {
+        if ($this->busqueda !== '') {
             $query->where('nombre', 'like', "%{$this->busqueda}%");
         }
 

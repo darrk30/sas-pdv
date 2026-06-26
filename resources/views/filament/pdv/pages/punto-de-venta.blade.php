@@ -78,7 +78,6 @@
                 {{-- Promociones --}}
                 @php $promociones = $this->getPromociones(); @endphp
                 @if($promociones->isNotEmpty())
-                    <p class="pdv-seccion-titulo pdv-seccion-titulo--promo">Promociones</p>
                     <div class="pdv-items-grid">
                         @foreach($promociones as $promo)
                             @php $stockPromo = $promo->stockPredictivo(); @endphp
@@ -114,9 +113,6 @@
 
                 {{-- Productos --}}
                 @php $productos = $this->getProductos(); @endphp
-                @if($promociones->isNotEmpty() && $productos->isNotEmpty())
-                    <p class="pdv-seccion-titulo pdv-seccion-titulo--productos">Productos</p>
-                @endif
 
                 @if($productos->isNotEmpty())
                     <div class="pdv-items-grid">
