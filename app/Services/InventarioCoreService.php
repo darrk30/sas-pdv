@@ -43,9 +43,15 @@ class InventarioCoreService
      * @param  Collection<int, Model|array>  $detalles
      * @param  string  $tipo  'entrada' | 'salida'
      */
-    public function aplicarDetalles(int $empresaId, string $tipo, Collection $detalles): void
-    {
-        DB::transaction(function () use ($empresaId, $tipo, $detalles) {
+    public function aplicarDetalles(
+        int $empresaId,
+        string $tipo,
+        Collection $detalles,
+        ?Model $movible = null,
+        ?string $concepto = null,
+        ?int $userId = null,
+    ): void {
+        DB::transaction(function () use ($empresaId, $tipo, $detalles, $movible, $concepto, $userId) {
             foreach ($detalles as $detalle) {
                 $unidad = $this->resolverUnidad($detalle);
 
@@ -57,9 +63,26 @@ class InventarioCoreService
                 }
 
                 [$productoId, $varianteId] = $this->resolverItem($detalle);
-                $cantidadBase = $this->convertirABase((float) $this->campo($detalle, 'cantidad'), $unidad);
+                $cantidadOrig = (float) $this->campo($detalle, 'cantidad');
+                $cantidadBase = $this->convertirABase($cantidadOrig, $unidad);
 
-                $this->actualizarStock($empresaId, $productoId, $varianteId, $cantidadBase, $tipo);
+                $kardexCtx = null;
+                if ($movible !== null) {
+                    $kardexCtx = [
+                        'user_id'           => $userId,
+                        'movible'           => $movible,
+                        'concepto'          => $concepto ?? '',
+                        'cantidad'          => $cantidadOrig,
+                        'unidad'            => $unidad->nombre ?? 'unidad',
+                        'factor_conversion' => $unidad->factor_base ?? 1,
+                        'costo_unitario'    => $this->campo($detalle, 'costo_unitario'),
+                        'costo_total'       => $this->campo($detalle, 'costo_total'),
+                        'precio_unitario'   => $this->campo($detalle, 'precio_unitario'),
+                        'precio_total'      => $this->campo($detalle, 'precio_total'),
+                    ];
+                }
+
+                $this->actualizarStock($empresaId, $productoId, $varianteId, $cantidadBase, $tipo, $kardexCtx);
             }
         });
     }
@@ -70,10 +93,16 @@ class InventarioCoreService
      * @param  Collection<int, Model|array>  $detalles
      * @param  string  $tipo  tipo ORIGINAL del movimiento ('entrada' | 'salida')
      */
-    public function revertirDetalles(int $empresaId, string $tipo, Collection $detalles): void
-    {
+    public function revertirDetalles(
+        int $empresaId,
+        string $tipo,
+        Collection $detalles,
+        ?Model $movible = null,
+        ?string $concepto = null,
+        ?int $userId = null,
+    ): void {
         $inverso = $tipo === 'entrada' ? 'salida' : 'entrada';
-        $this->aplicarDetalles($empresaId, $inverso, $detalles);
+        $this->aplicarDetalles($empresaId, $inverso, $detalles, $movible, $concepto, $userId);
     }
 
     // -------------------------------------------------------------------------
@@ -86,7 +115,8 @@ class InventarioCoreService
     public function aplicarAjuste(Ajuste $ajuste): void
     {
         $detalles = $ajuste->detalles()->with('unidad')->get();
-        $this->aplicarDetalles($ajuste->empresa_id, $ajuste->tipo, $detalles);
+        $concepto = $ajuste->codigo ?? ('AJU-' . str_pad($ajuste->id, 8, '0', STR_PAD_LEFT));
+        $this->aplicarDetalles($ajuste->empresa_id, $ajuste->tipo, $detalles, $ajuste, $concepto, $ajuste->user_id);
     }
 
     /**
@@ -95,7 +125,8 @@ class InventarioCoreService
     public function revertirAjuste(Ajuste $ajuste): void
     {
         $detalles = $ajuste->detalles()->with('unidad')->get();
-        $this->revertirDetalles($ajuste->empresa_id, $ajuste->tipo, $detalles);
+        $concepto = ($ajuste->codigo ?? ('AJU-' . str_pad($ajuste->id, 8, '0', STR_PAD_LEFT))) . ' (reversión)';
+        $this->revertirDetalles($ajuste->empresa_id, $ajuste->tipo, $detalles, $ajuste, $concepto, $ajuste->user_id);
     }
 
     // -------------------------------------------------------------------------
@@ -108,7 +139,8 @@ class InventarioCoreService
     public function aplicarCompra(Compra $compra): void
     {
         $detalles = $compra->detalles()->with('unidad')->get();
-        $this->aplicarDetalles($compra->empresa_id, 'entrada', $detalles);
+        $concepto = $compra->codigo ?? ('COMPRA-' . str_pad($compra->id, 8, '0', STR_PAD_LEFT));
+        $this->aplicarDetalles($compra->empresa_id, 'entrada', $detalles, $compra, $concepto, $compra->user_id);
     }
 
     /**
@@ -117,7 +149,8 @@ class InventarioCoreService
     public function revertirCompra(Compra $compra): void
     {
         $detalles = $compra->detalles()->with('unidad')->get();
-        $this->revertirDetalles($compra->empresa_id, 'entrada', $detalles);
+        $concepto = ($compra->codigo ?? ('COMPRA-' . str_pad($compra->id, 8, '0', STR_PAD_LEFT))) . ' (reversión)';
+        $this->revertirDetalles($compra->empresa_id, 'entrada', $detalles, $compra, $concepto, $compra->user_id);
     }
 
     // -------------------------------------------------------------------------
@@ -128,6 +161,7 @@ class InventarioCoreService
      * Actualiza el stock_real del registro de Inventario correspondiente.
      * Usa SELECT FOR UPDATE para evitar condiciones de carrera concurrentes.
      * El registro se crea si no existe.
+     * Si se provee $kardexCtx, registra el movimiento en el Kardex.
      *
      * Nota: debe llamarse siempre dentro de un DB::transaction().
      */
@@ -137,6 +171,7 @@ class InventarioCoreService
         ?int $varianteId,
         float $cantidadBase,
         string $tipo,
+        ?array $kardexCtx = null,
     ): void {
         $inv = Inventario::where('empresa_id', $empresaId)
             ->where('producto_id', $productoId)
@@ -156,12 +191,37 @@ class InventarioCoreService
             ]);
         }
 
-        $nuevoStock = (float) $inv->stock_real + ($tipo === 'entrada' ? $cantidadBase : -$cantidadBase);
+        $stockAntes = (float) $inv->stock_real;
+        $nuevoStock = $stockAntes + ($tipo === 'entrada' ? $cantidadBase : -$cantidadBase);
 
         $inv->update([
             'stock_real'        => $nuevoStock,
             'estado_inventario' => $this->calcularEstado($nuevoStock, (float) $inv->stock_minimo),
         ]);
+
+        if ($kardexCtx !== null) {
+            app(KardexService::class)->registrar([
+                'empresa_id'        => $empresaId,
+                'user_id'           => $kardexCtx['user_id'] ?? null,
+                'movible'           => $kardexCtx['movible'] ?? null,
+                'producto_id'       => $productoId,
+                'variante_id'       => $varianteId,
+                'tipo'              => $tipo,
+                'concepto'          => $kardexCtx['concepto'] ?? '',
+                'notas'             => $kardexCtx['notas'] ?? null,
+                'cantidad'          => $kardexCtx['cantidad'] ?? $cantidadBase,
+                'unidad'            => $kardexCtx['unidad'] ?? 'unidad',
+                'factor_conversion' => $kardexCtx['factor_conversion'] ?? 1,
+                'cantidad_base'     => $cantidadBase,
+                'costo_unitario'    => $kardexCtx['costo_unitario'] ?? null,
+                'costo_total'       => $kardexCtx['costo_total'] ?? null,
+                'precio_unitario'   => $kardexCtx['precio_unitario'] ?? null,
+                'precio_total'      => $kardexCtx['precio_total'] ?? null,
+                'stock_antes'       => $stockAntes,
+                'stock_despues'     => $nuevoStock,
+                'fecha'             => now(),
+            ]);
+        }
     }
 
     /**

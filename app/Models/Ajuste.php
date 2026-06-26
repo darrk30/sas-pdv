@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 #[ObservedBy(AjusteObserver::class)]
 class Ajuste extends Model
@@ -45,6 +46,11 @@ class Ajuste extends Model
     public function detalles(): HasMany
     {
         return $this->hasMany(AjusteDetalle::class);
+    }
+
+    public function kardex(): MorphMany
+    {
+        return $this->morphMany(Kardex::class, 'movible');
     }
 
     // -------------------------------------------------------------------------

@@ -64,10 +64,6 @@ class CreateCompra extends CreateRecord
 
         $record = $this->getRecord();
 
-        app(InventarioCoreService::class)->aplicarDetalles(
-            $record->empresa_id,
-            'entrada',
-            $record->detalles()->with('unidad')->get(),
-        );
+        app(InventarioCoreService::class)->aplicarCompra($record);
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 #[ObservedBy(CompraObserver::class)]
 class Compra extends Model
@@ -71,6 +72,11 @@ class Compra extends Model
     public function pagos(): HasMany
     {
         return $this->hasMany(CompraPago::class);
+    }
+
+    public function kardex(): MorphMany
+    {
+        return $this->morphMany(Kardex::class, 'movible');
     }
 
     // -------------------------------------------------------------------------

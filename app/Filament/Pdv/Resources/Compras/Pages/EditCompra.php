@@ -94,29 +94,30 @@ class EditCompra extends EditRecord
         $estadoViejo = $this->snapshotEstado;
         $estadoNuevo = $record->estado_despacho;
         $service     = app(InventarioCoreService::class);
+        $concepto    = $record->codigo ?? ('COMPRA-' . str_pad($record->id, 8, '0', STR_PAD_LEFT));
+        $userId      = auth()->id();
 
         if ($estadoViejo !== $estadoNuevo) {
             if ($estadoNuevo === 'recibido') {
-                // pendiente → recibido: aplicar cantidades actuales (ya en BD)
-                $service->aplicarDetalles(
-                    $record->empresa_id,
-                    'entrada',
-                    $record->detalles()->with('unidad')->get(),
-                );
+                // pendiente → recibido: aplicar cantidades actuales con kardex
+                $service->aplicarCompra($record);
             } else {
                 // recibido → pendiente: revertir exactamente lo que se recibió (snapshot)
                 $service->revertirDetalles(
                     $record->empresa_id,
                     'entrada',
                     collect($this->snapshotDetalles),
+                    $record,
+                    $concepto . ' (reversión)',
+                    $userId,
                 );
             }
         } elseif ($estadoNuevo === 'recibido') {
             // recibido → recibido con cambios: revertir snapshot + aplicar nuevos en una sola tx
             $nuevos = $record->detalles()->with('unidad')->get();
-            DB::transaction(function () use ($record, $service, $nuevos): void {
-                $service->revertirDetalles($record->empresa_id, 'entrada', collect($this->snapshotDetalles));
-                $service->aplicarDetalles($record->empresa_id, 'entrada', $nuevos);
+            DB::transaction(function () use ($record, $service, $nuevos, $concepto, $userId): void {
+                $service->revertirDetalles($record->empresa_id, 'entrada', collect($this->snapshotDetalles), $record, $concepto . ' (reversión)', $userId);
+                $service->aplicarDetalles($record->empresa_id, 'entrada', $nuevos, $record, $concepto, $userId);
             });
         }
         // pendiente → pendiente: sin acción de stock

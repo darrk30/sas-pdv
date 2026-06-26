@@ -27,6 +27,7 @@ use App\Models\Variante;
 use App\Models\Venta;
 use App\Models\VentaDetalle;
 use App\Models\VentaPago;
+use App\Services\KardexService;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
@@ -997,6 +998,9 @@ class PuntoDeVenta extends Page
                     ]);
                 }
 
+                $kardex  = app(KardexService::class);
+                $concepto = $serie->serie . '-' . $correlativo;
+
                 foreach ($carrito as $item) {
                     $cantidad = (float) $item['cantidad'];
 
@@ -1009,7 +1013,27 @@ class PuntoDeVenta extends Page
                                 ->lockForUpdate()
                                 ->first();
                             if ($inv) {
-                                $inv->update(['stock_real' => (float) $inv->stock_real - $cantidad]);
+                                $stockAntes   = (float) $inv->stock_real;
+                                $stockDespues = $stockAntes - $cantidad;
+                                $inv->update(['stock_real' => $stockDespues]);
+                                $kardex->registrar([
+                                    'empresa_id'        => $empresaId,
+                                    'user_id'           => auth()->id(),
+                                    'movible'           => $venta,
+                                    'producto_id'       => $item['id'],
+                                    'variante_id'       => null,
+                                    'producto_nombre'   => $item['nombre'],
+                                    'tipo'              => 'salida',
+                                    'concepto'          => $concepto,
+                                    'cantidad'          => $cantidad,
+                                    'unidad'            => 'unidad',
+                                    'factor_conversion' => 1,
+                                    'cantidad_base'     => $cantidad,
+                                    'precio_unitario'   => $item['precio'],
+                                    'precio_total'      => $item['precio'] * $cantidad,
+                                    'stock_antes'       => $stockAntes,
+                                    'stock_despues'     => $stockDespues,
+                                ]);
                             }
                         }
                     } elseif ($item['tipo'] === 'variante') {
@@ -1023,7 +1047,27 @@ class PuntoDeVenta extends Page
                                     ->lockForUpdate()
                                     ->first();
                                 if ($inv) {
-                                    $inv->update(['stock_real' => (float) $inv->stock_real - $cantidad]);
+                                    $stockAntes   = (float) $inv->stock_real;
+                                    $stockDespues = $stockAntes - $cantidad;
+                                    $inv->update(['stock_real' => $stockDespues]);
+                                    $kardex->registrar([
+                                        'empresa_id'        => $empresaId,
+                                        'user_id'           => auth()->id(),
+                                        'movible'           => $venta,
+                                        'producto_id'       => $variante->producto_id,
+                                        'variante_id'       => $item['id'],
+                                        'producto_nombre'   => $item['nombre'],
+                                        'tipo'              => 'salida',
+                                        'concepto'          => $concepto,
+                                        'cantidad'          => $cantidad,
+                                        'unidad'            => 'unidad',
+                                        'factor_conversion' => 1,
+                                        'cantidad_base'     => $cantidad,
+                                        'precio_unitario'   => $item['precio'],
+                                        'precio_total'      => $item['precio'] * $cantidad,
+                                        'stock_antes'       => $stockAntes,
+                                        'stock_despues'     => $stockDespues,
+                                    ]);
                                 }
                             }
                         }
@@ -1048,7 +1092,25 @@ class PuntoDeVenta extends Page
                                             ->where('variante_id', $detalle->variante_id)
                                             ->lockForUpdate()->first();
                                         if ($inv) {
-                                            $inv->update(['stock_real' => max(0, (float) $inv->stock_real - $cantidadDetalle)]);
+                                            $stockAntes   = (float) $inv->stock_real;
+                                            $stockDespues = max(0, $stockAntes - $cantidadDetalle);
+                                            $inv->update(['stock_real' => $stockDespues]);
+                                            $kardex->registrar([
+                                                'empresa_id'        => $empresaId,
+                                                'user_id'           => auth()->id(),
+                                                'movible'           => $venta,
+                                                'producto_id'       => $varianteDetalle->producto_id,
+                                                'variante_id'       => $detalle->variante_id,
+                                                'tipo'              => 'salida',
+                                                'concepto'          => $concepto,
+                                                'notas'             => "Promo: {$item['nombre']}",
+                                                'cantidad'          => $cantidadDetalle,
+                                                'unidad'            => 'unidad',
+                                                'factor_conversion' => 1,
+                                                'cantidad_base'     => $cantidadDetalle,
+                                                'stock_antes'       => $stockAntes,
+                                                'stock_despues'     => $stockDespues,
+                                            ]);
                                         }
                                     }
                                 } elseif ($detalle->producto_id) {
@@ -1059,7 +1121,25 @@ class PuntoDeVenta extends Page
                                             ->whereNull('variante_id')
                                             ->lockForUpdate()->first();
                                         if ($inv) {
-                                            $inv->update(['stock_real' => max(0, (float) $inv->stock_real - $cantidadDetalle)]);
+                                            $stockAntes   = (float) $inv->stock_real;
+                                            $stockDespues = max(0, $stockAntes - $cantidadDetalle);
+                                            $inv->update(['stock_real' => $stockDespues]);
+                                            $kardex->registrar([
+                                                'empresa_id'        => $empresaId,
+                                                'user_id'           => auth()->id(),
+                                                'movible'           => $venta,
+                                                'producto_id'       => $detalle->producto_id,
+                                                'variante_id'       => null,
+                                                'tipo'              => 'salida',
+                                                'concepto'          => $concepto,
+                                                'notas'             => "Promo: {$item['nombre']}",
+                                                'cantidad'          => $cantidadDetalle,
+                                                'unidad'            => 'unidad',
+                                                'factor_conversion' => 1,
+                                                'cantidad_base'     => $cantidadDetalle,
+                                                'stock_antes'       => $stockAntes,
+                                                'stock_despues'     => $stockDespues,
+                                            ]);
                                         }
                                     }
                                 }

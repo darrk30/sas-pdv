@@ -118,6 +118,11 @@ class Venta extends Model
         return $this->morphMany(Transaccion::class, 'transaccionable');
     }
 
+    public function kardex(): MorphMany
+    {
+        return $this->morphMany(Kardex::class, 'movible');
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     public function estaCompletada(): bool
