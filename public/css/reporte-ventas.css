@@ -1,0 +1,55 @@
+/* ============================================================
+   reporte-ventas.css — Reporte de Ventas
+   Complementa ventas-sesion.css (que provee tabla, modales, cards)
+   ============================================================ */
+
+/* ── Contenedor del form de filtros Filament ───────────────── */
+.rv-form-wrap {
+    background: var(--vs-bg);
+    border: 1px solid var(--vs-border);
+    border-radius: var(--vs-radius);
+    padding: 1rem 1.125rem 1.25rem;
+    box-shadow: var(--vs-shadow);
+}
+
+/* Botón limpiar debajo del form */
+.rv-form-limpiar {
+    margin-top: 0.625rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.rv-form-limpiar .vs-filter-reset {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+/* ── Columna fecha en la tabla ─────────────────────────────── */
+.rv-col-fecha { width: 7rem; }
+
+.rv-fecha {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.rv-fecha__dia {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--vs-text);
+    font-family: monospace;
+}
+
+.rv-fecha__hora {
+    font-size: 0.7rem;
+    color: var(--vs-text-faint);
+    font-family: monospace;
+}
+
+/* ══ RESPONSIVE ════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+    .rv-form-wrap { padding: 0.75rem; }
+    .rv-form-limpiar { justify-content: stretch; }
+    .rv-form-limpiar .vs-filter-reset { width: 100%; justify-content: center; }
+}

@@ -16,6 +16,12 @@ class Variante extends Model
         'codigo_barras',
         'estado',
         'precio_final',
+        'precio_costo',
+    ];
+
+    protected $casts = [
+        'precio_final' => 'decimal:2',
+        'precio_costo' => 'decimal:2',
     ];
 
     public function producto()

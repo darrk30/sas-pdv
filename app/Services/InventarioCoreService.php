@@ -6,6 +6,7 @@ use App\Enums\EstadoStock;
 use App\Models\Ajuste;
 use App\Models\Compra;
 use App\Models\Inventario;
+use App\Models\Producto;
 use App\Models\UnidadesMedida;
 use App\Models\Variante;
 use Illuminate\Database\Eloquent\Model;
@@ -180,13 +181,17 @@ class InventarioCoreService
             ->first();
 
         if (! $inv) {
+            $stockMinimo = (int) (Inventario::where('empresa_id', $empresaId)
+                ->where('producto_id', $productoId)
+                ->max('stock_minimo') ?? 0);
+
             $inv = Inventario::create([
-                'empresa_id'       => $empresaId,
-                'producto_id'      => $productoId,
-                'variante_id'      => $varianteId,
-                'stock_real'       => 0,
-                'stock_reserva'    => 0,
-                'stock_minimo'     => 0,
+                'empresa_id'        => $empresaId,
+                'producto_id'       => $productoId,
+                'variante_id'       => $varianteId,
+                'stock_real'        => 0,
+                'stock_reserva'     => 0,
+                'stock_minimo'      => $stockMinimo,
                 'estado_inventario' => EstadoStock::Agotado,
             ]);
         }
@@ -198,6 +203,13 @@ class InventarioCoreService
             'stock_real'        => $nuevoStock,
             'estado_inventario' => $this->calcularEstado($nuevoStock, (float) $inv->stock_minimo),
         ]);
+
+        if ($tipo === 'entrada' && $kardexCtx !== null) {
+            $costoNuevo = (float) ($kardexCtx['costo_unitario'] ?? 0);
+            if ($costoNuevo > 0) {
+                $this->actualizarCostoPromedio($productoId, $varianteId, $stockAntes, $cantidadBase, $costoNuevo);
+            }
+        }
 
         if ($kardexCtx !== null) {
             app(KardexService::class)->registrar([
@@ -286,5 +298,52 @@ class InventarioCoreService
     private function campo(mixed $item, string $campo): mixed
     {
         return $item instanceof Model ? $item->{$campo} : ($item[$campo] ?? null);
+    }
+
+    /**
+     * Recalcula y persiste el costo promedio ponderado del producto o variante
+     * después de registrar una entrada de stock.
+     *
+     * Fórmula: (stock_antes × costo_actual + cantidad_nueva × costo_nuevo) / (stock_antes + cantidad_nueva)
+     * Si no había stock previo (o costo previo = 0), el costo nuevo pasa directo.
+     */
+    private function actualizarCostoPromedio(
+        int $productoId,
+        ?int $varianteId,
+        float $stockAntes,
+        float $cantidadNueva,
+        float $costoNuevo,
+    ): void {
+        if ($varianteId) {
+            $variante = Variante::find($varianteId);
+            if (! $variante) return;
+
+            $costoActual = (float) ($variante->precio_costo ?? $variante->producto?->precio_costo ?? 0);
+            $promedio    = $this->calcularPromedioPonderado($stockAntes, $costoActual, $cantidadNueva, $costoNuevo);
+            $variante->update(['precio_costo' => $promedio]);
+        } else {
+            $producto = Producto::find($productoId);
+            if (! $producto) return;
+
+            $costoActual = (float) ($producto->precio_costo ?? 0);
+            $promedio    = $this->calcularPromedioPonderado($stockAntes, $costoActual, $cantidadNueva, $costoNuevo);
+            $producto->update(['precio_costo' => $promedio]);
+        }
+    }
+
+    private function calcularPromedioPonderado(
+        float $stockAntes,
+        float $costoActual,
+        float $cantidadNueva,
+        float $costoNuevo,
+    ): float {
+        if ($stockAntes <= 0 || $costoActual <= 0) {
+            return round($costoNuevo, 2);
+        }
+
+        $valorActual = $stockAntes * $costoActual;
+        $valorNuevo  = $cantidadNueva * $costoNuevo;
+
+        return round(($valorActual + $valorNuevo) / ($stockAntes + $cantidadNueva), 2);
     }
 }

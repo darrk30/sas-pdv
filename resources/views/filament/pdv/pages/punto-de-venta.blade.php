@@ -308,16 +308,35 @@
             @else
                 <div class="pdv-carrito__lista">
                     @foreach($carrito as $item)
-                        <div class="pdv-item" wire:key="item-{{ $item['key'] }}">
+                        @php $esCortesia = $item['cortesia'] ?? false; @endphp
+                        <div class="pdv-item {{ $esCortesia ? 'pdv-item--cortesia' : '' }}" wire:key="item-{{ $item['key'] }}">
                             <div class="pdv-item__info">
-                                @if($item['tipo'] === 'promocion')
-                                    <span class="pdv-item__badge-promo">PROMO</span>
-                                @endif
+                                <div class="pdv-item__badges">
+                                    @if($item['tipo'] === 'promocion')
+                                        <span class="pdv-item__badge-promo">PROMO</span>
+                                    @endif
+                                    @if($esCortesia)
+                                        <span class="pdv-item__badge-cortesia">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="10" height="10">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
+                                            </svg>
+                                            Cortesía
+                                        </span>
+                                    @endif
+                                </div>
                                 <p class="pdv-item__nombre">{{ $item['nombre'] }}</p>
-                                <p class="pdv-item__precio-unit">S/ {{ number_format($item['precio'], 2) }} c/u</p>
+                                <p class="pdv-item__precio-unit">
+                                    @if($esCortesia)
+                                        <span class="pdv-item__precio-gratis">Gratis</span>
+                                    @else
+                                        S/ {{ number_format($item['precio'], 2) }} c/u
+                                    @endif
+                                </p>
                             </div>
                             <div class="pdv-item__controles">
-                                <span class="pdv-item__subtotal">S/ {{ number_format($item['precio'] * $item['cantidad'], 2) }}</span>
+                                <span class="pdv-item__subtotal {{ $esCortesia ? 'pdv-item__subtotal--gratis' : '' }}">
+                                    S/ {{ number_format($item['precio'] * $item['cantidad'], 2) }}
+                                </span>
                                 <div class="pdv-qty">
                                     <button class="pdv-qty__btn pdv-qty__btn--menos" wire:click="disminuirCantidad('{{ $item['key'] }}')">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
@@ -476,6 +495,24 @@
                         <h3 class="pdv-modal__titulo">Procesar Venta</h3>
                         <p class="pdv-modal__subtitulo">Selecciona método y completa el pago</p>
                     </div>
+                    <div class="pdv-despacho-wrap">
+                        <label class="pdv-despacho-label">
+                            <input
+                                type="checkbox"
+                                class="pdv-despacho-check"
+                                wire:model.live="despachoRequerido"
+                            />
+                            <span class="pdv-despacho-text">¿Despacho pendiente?</span>
+                        </label>
+                        @if($despachoRequerido)
+                            <span class="pdv-despacho-badge">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="12" height="12">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/>
+                                </svg>
+                                Pendiente de envío
+                            </span>
+                        @endif
+                    </div>
                     <button class="pdv-modal__cerrar" wire:click="cerrarModalPago">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
@@ -590,6 +627,18 @@
                                 <p class="pdv-pago-section__label">Resumen</p>
 
                                 <div class="pdv-pago-resumen">
+                                    @php $itemsCortesia = collect($carrito)->where('cortesia', true); @endphp
+                                    @if($itemsCortesia->isNotEmpty())
+                                        <div class="pdv-pago-resumen__fila pdv-pago-resumen__fila--cortesia">
+                                            <span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="12" height="12" style="display:inline;vertical-align:middle;margin-right:2px">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
+                                                </svg>
+                                                Cortesía ({{ $itemsCortesia->count() }} ítem{{ $itemsCortesia->count() > 1 ? 's' : '' }})
+                                            </span>
+                                            <span>Gratis</span>
+                                        </div>
+                                    @endif
                                     <div class="pdv-pago-resumen__fila">
                                         <span>Op. Gravada</span>
                                         <span>S/ {{ number_format($this->getOpGravadas(), 2) }}</span>
@@ -647,7 +696,7 @@
                 </div>{{-- /body --}}
 
                 <div class="pdv-modal__footer">
-                    @php $listo = $this->getSaldoRestante() <= 0.01 && ! empty($pagosAgregados); @endphp
+                    @php $listo = ($this->getSaldoRestante() <= 0.01 && ! empty($pagosAgregados)) || $this->totalEsCero(); @endphp
                     <button
                         class="pdv-btn-confirmar {{ $listo ? 'pdv-btn-confirmar--venta' : '' }}"
                         wire:click="procesarVenta"

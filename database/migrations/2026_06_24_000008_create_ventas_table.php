@@ -57,6 +57,7 @@ return new class extends Migration
 
             // ── Estado ──────────────────────────────────────────────────
             $table->string('estado', 20)->default('borrador');
+            $table->string('estado_despacho', 30)->nullable()->default(null);
             $table->text('notas')->nullable();
 
             $table->timestamps();

@@ -49,6 +49,7 @@ class Venta extends Model
         'sunat_descripcion',
         'sunat_mensaje',
         'estado',
+        'estado_despacho',
         'notas',
     ];
 
@@ -57,6 +58,7 @@ class Venta extends Model
         'fecha_vencimiento'=> 'date',
         'tipo_pago'        => TipoPago::class,
         'estado'           => EstadoVenta::class,
+        'estado_despacho'  => EstadoVenta::class,
         'op_gravadas'      => 'decimal:2',
         'op_exoneradas'    => 'decimal:2',
         'op_inafectas'     => 'decimal:2',

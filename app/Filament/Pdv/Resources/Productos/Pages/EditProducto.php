@@ -4,14 +4,17 @@ namespace App\Filament\Pdv\Resources\Productos\Pages;
 
 use App\Filament\Pdv\Resources\Productos\ProductoResource;
 use App\Models\Inventario;
+use App\Models\Kardex;
 use App\Models\ProductoAtributo;
 use App\Models\ProductoAtributoValor;
 use App\Models\Variante;
+use App\Services\InventarioCoreService;
 use App\Services\ProductoAtributoService;
 use App\Services\VarianteService;
 use App\Traits\GestionaVariantes;
 use App\Traits\HasBarcodeScanner;
 use Filament\Actions\DeleteAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Str;
 
@@ -160,6 +163,49 @@ class EditProducto extends EditRecord
         if ($producto->tiene_variantes !== $tieneVariantes) {
             $producto->update(['tiene_variantes' => $tieneVariantes]);
         }
+
+        $this->procesarStockInicialSimple($producto, $estadoFormulario, $tieneVariantes);
+    }
+
+    private function procesarStockInicialSimple(
+        \App\Models\Producto $producto,
+        array $estadoFormulario,
+        bool $tieneVariantes,
+    ): void {
+        if ($tieneVariantes) return;
+
+        $stockInicial = (float) ($estadoFormulario['stock_inicial'] ?? 0);
+        if ($stockInicial <= 0) return;
+        if (Kardex::where('producto_id', $producto->id)->whereNull('variante_id')->exists()) return;
+
+        if (! $producto->unidad_medida_id) {
+            Notification::make()
+                ->title('Stock inicial no aplicado')
+                ->body("El producto \"{$producto->nombre}\" no tiene unidad de medida configurada.")
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $costoInicial = (float) ($producto->precio_costo ?? 0);
+
+        app(InventarioCoreService::class)->aplicarDetalles(
+            empresaId: $producto->empresa_id,
+            tipo: 'entrada',
+            detalles: collect([[
+                'producto_id'     => $producto->id,
+                'variante_id'     => null,
+                'unidad_id'       => $producto->unidad_medida_id,
+                'cantidad'        => $stockInicial,
+                'costo_unitario'  => $costoInicial,
+                'costo_total'     => round($costoInicial * $stockInicial, 2),
+                'precio_unitario' => (float) $producto->precio_con_descuento,
+                'precio_total'    => round((float) $producto->precio_con_descuento * $stockInicial, 2),
+            ]]),
+            movible: $producto,
+            concepto: 'Stock inicial',
+            userId: auth()->id(),
+        );
     }
 
     private function recalcularPreciosVariantes($producto): void

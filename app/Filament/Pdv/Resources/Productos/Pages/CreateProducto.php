@@ -4,10 +4,12 @@ namespace App\Filament\Pdv\Resources\Productos\Pages;
 
 use App\Filament\Pdv\Resources\Productos\ProductoResource;
 use App\Models\Inventario;
+use App\Services\InventarioCoreService;
 use App\Services\ProductoAtributoService;
 use App\Services\VarianteService;
 use App\Traits\GestionaVariantes;
 use App\Traits\HasBarcodeScanner;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Str;
 
@@ -28,6 +30,7 @@ class CreateProducto extends CreateRecord
         $producto          = $this->getRecord();
         $estadoFormulario  = $this->form->getRawState();
         $stockMinimo       = $estadoFormulario['stock_minimo'] ?? 0;
+        $stockInicial      = (float) ($estadoFormulario['stock_inicial'] ?? 0);
         $atributosForm     = $estadoFormulario['atributos'] ?? [];
 
         // Slug definitivo usando el ID real
@@ -77,5 +80,36 @@ class CreateProducto extends CreateRecord
 
         $tieneVariantes = $producto->variantes()->where('estado', 'activo')->exists();
         $producto->update(['tiene_variantes' => $tieneVariantes]);
+
+        // Stock inicial para productos simples (sin variantes)
+        if (! $esComplejo && $stockInicial > 0) {
+            if (! $producto->unidad_medida_id) {
+                Notification::make()
+                    ->title('Stock inicial no aplicado')
+                    ->body("El producto \"{$producto->nombre}\" no tiene unidad de medida configurada.")
+                    ->warning()
+                    ->send();
+                return;
+            }
+
+            $costoInicial = (float) ($producto->precio_costo ?? 0);
+            app(InventarioCoreService::class)->aplicarDetalles(
+                empresaId: $producto->empresa_id,
+                tipo: 'entrada',
+                detalles: collect([[
+                    'producto_id'     => $producto->id,
+                    'variante_id'     => null,
+                    'unidad_id'       => $producto->unidad_medida_id,
+                    'cantidad'        => $stockInicial,
+                    'costo_unitario'  => $costoInicial,
+                    'costo_total'     => round($costoInicial * $stockInicial, 2),
+                    'precio_unitario' => (float) $producto->precio_con_descuento,
+                    'precio_total'    => round((float) $producto->precio_con_descuento * $stockInicial, 2),
+                ]]),
+                movible: $producto,
+                concepto: 'Stock inicial',
+                userId: auth()->id(),
+            );
+        }
     }
 }

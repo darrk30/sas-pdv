@@ -7,10 +7,15 @@ use App\Enums\ProductoEtiqueta;
 use App\Models\Atributo;
 use App\Models\ProductoAtributo;
 use App\Models\ProductoAtributoValor;
+use App\Models\Inventario;
+use App\Models\Kardex;
 use App\Models\UnidadesMedida;
+use App\Models\Variante;
+use App\Services\InventarioCoreService;
 use App\Models\Valor;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -78,6 +83,7 @@ class ProductoForm
 
                                     TextInput::make('precio_costo')
                                         ->numeric()
+                                        ->step(0.01)
                                         ->prefix('S/ ')
                                         ->default(0),
 
@@ -137,9 +143,8 @@ class ProductoForm
                                 ]),
 
                                 Grid::make([
-                                    'default' => 2,
-                                    'md' => 2,
-                                    'lg' => 2,
+                                    'default' => 1,
+                                    'md' => 3,
                                 ])->schema([
                                     TextInput::make('stock_minimo')
                                         ->numeric()
@@ -147,7 +152,7 @@ class ProductoForm
                                         ->dehydrated(false)
                                         ->formatStateUsing(function (?Model $record) {
                                             if (!$record) return 0;
-                                            $inventarioGlobal = \App\Models\Inventario::where('producto_id', $record->id)
+                                            $inventarioGlobal = Inventario::where('producto_id', $record->id)
                                                 ->whereNull('variante_id')
                                                 ->first();
                                             return $inventarioGlobal ? $inventarioGlobal->stock_minimo : 0;
@@ -159,6 +164,26 @@ class ProductoForm
                                         ->dehydrated(false)
                                         ->default(0)
                                         ->formatStateUsing(fn(?Model $record) => $record ? $record->calcularStockTotal() : 0),
+
+                                    TextInput::make('stock_inicial')
+                                        ->label('Stock inicial')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->default(0)
+                                        ->dehydrated(false)
+                                        ->helperText('Solo disponible cuando no hay movimientos previos')
+                                        ->visible(fn (?Model $record): bool =>
+                                            $record === null ||
+                                            (
+                                                ! $record->tiene_variantes &&
+                                                (float) (Inventario::where('producto_id', $record->id)
+                                                    ->whereNull('variante_id')
+                                                    ->value('stock_real') ?? 0) <= 0 &&
+                                                ! Kardex::where('producto_id', $record->id)
+                                                    ->whereNull('variante_id')
+                                                    ->exists()
+                                            )
+                                        ),
                                 ]),
 
                                 Grid::make([
@@ -551,13 +576,65 @@ class ProductoForm
                                     ->addable(false)
                                     ->deletable(false)
                                     ->reorderable(false)
-                                    ->table([
-                                        TableColumn::make('Variante'),
-                                        TableColumn::make('Cód. Interno'),
-                                        TableColumn::make('Cód. de Barras'),
-                                        TableColumn::make('Precio Final'),
-                                        TableColumn::make('Stock'),
-                                    ])
+                                    ->mutateRelationshipDataBeforeSaveUsing(function (array $data, Model $record): array {
+                                        $stockInicial = (float) ($data['stock_inicial'] ?? 0);
+
+                                        if ($stockInicial > 0 && ! Kardex::where('variante_id', $record->id)->exists()) {
+                                            $record->loadMissing('producto');
+
+                                            if (! $record->producto?->unidad_medida_id) {
+                                                Notification::make()
+                                                    ->title('Stock inicial no aplicado')
+                                                    ->body("El producto \"{$record->producto?->nombre}\" no tiene unidad de medida configurada.")
+                                                    ->warning()
+                                                    ->send();
+                                                unset($data['stock_inicial']);
+                                                return $data;
+                                            }
+
+                                            $costoInicial = (float) ($data['precio_costo'] ?? $record->precio_costo ?? $record->producto?->precio_costo ?? 0);
+
+                                            app(InventarioCoreService::class)->aplicarDetalles(
+                                                empresaId: $record->empresa_id,
+                                                tipo: 'entrada',
+                                                detalles: collect([[
+                                                    'producto_id'     => $record->producto_id,
+                                                    'variante_id'     => $record->id,
+                                                    'unidad_id'       => $record->producto?->unidad_medida_id,
+                                                    'cantidad'        => $stockInicial,
+                                                    'costo_unitario'  => $costoInicial,
+                                                    'costo_total'     => round($costoInicial * $stockInicial, 2),
+                                                    'precio_unitario' => (float) $record->precio_final,
+                                                    'precio_total'    => round((float) $record->precio_final * $stockInicial, 2),
+                                                ]]),
+                                                movible: $record->producto,
+                                                concepto: 'Stock inicial',
+                                                userId: auth()->id(),
+                                            );
+                                        }
+
+                                        unset($data['stock_inicial']);
+                                        return $data;
+                                    })
+                                    ->table(function (?Model $record): array {
+                                        if ($record === null) {
+                                            $mostrarStockInicial = true;
+                                        } else {
+                                            $varianteIds         = $record->variantes()->where('estado', 'activo')->pluck('id');
+                                            $idsConKardex        = Kardex::whereIn('variante_id', $varianteIds)->pluck('variante_id');
+                                            $mostrarStockInicial = $varianteIds->diff($idsConKardex)->isNotEmpty();
+                                        }
+
+                                        return array_values(array_filter([
+                                            TableColumn::make('Variante'),
+                                            TableColumn::make('Cód. Interno'),
+                                            TableColumn::make('Cód. de Barras'),
+                                            TableColumn::make('Precio Final'),
+                                            TableColumn::make('Costo'),
+                                            TableColumn::make('Stock'),
+                                            $mostrarStockInicial ? TableColumn::make('Stock inicial') : null,
+                                        ]));
+                                    })
                                     ->schema([
 
                                         TextInput::make('_nombre_display')
@@ -597,6 +674,14 @@ class ProductoForm
                                             ->readOnly()
                                             ->dehydrated(false),
 
+                                        TextInput::make('precio_costo')
+                                            ->label('Costo')
+                                            ->prefix('S/')
+                                            ->numeric()
+                                            ->step(0.01)
+                                            ->minValue(0)
+                                            ->nullable(),
+
                                         TextInput::make('_stock_display')
                                             ->label('Stock')
                                             ->readOnly()
@@ -604,6 +689,19 @@ class ProductoForm
                                             ->formatStateUsing(function ($state, ?Model $record): string {
                                                 return number_format((float) ($record?->inventario?->stock_real ?? 0), 2);
                                             }),
+
+                                        TextInput::make('stock_inicial')
+                                            ->label('Stock inicial')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->default(0)
+                                            ->visible(fn (?Model $record): bool =>
+                                                $record === null ||
+                                                (
+                                                    (float) ($record->inventario?->stock_real ?? 0) <= 0 &&
+                                                    ! Kardex::where('variante_id', $record->id)->exists()
+                                                )
+                                            ),
 
                                     ])
                                     ->defaultItems(0),

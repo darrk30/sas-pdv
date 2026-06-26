@@ -9,6 +9,7 @@ use Database\Seeders\ConfiguracionInicialSeeder;
 use Database\Seeders\DimensionSeeder;
 use Database\Seeders\MetodoPagoSeeder;
 use Database\Seeders\ProveedorGeneralSeeder;
+use Database\Seeders\SeriesSeeder;
 use Database\Seeders\TurnoSeeder;
 
 class EmpresaObserver
@@ -21,15 +22,18 @@ class EmpresaObserver
     {
         app()->instance('bypass_tenant_scope', true);
 
-        (new DimensionSeeder())->runForEmpresa($empresa);
-        (new ConfiguracionInicialSeeder())->runForEmpresa($empresa);
-        (new ProveedorGeneralSeeder())->runForEmpresa($empresa);
-        (new MetodoPagoSeeder())->runForEmpresa($empresa);
-        (new TurnoSeeder())->runForEmpresa($empresa);
-        (new CajaPrincipalSeeder())->runForEmpresa($empresa);
-        (new ClienteGeneralSeeder())->runForEmpresa($empresa);
-
-        app()->forgetInstance('bypass_tenant_scope');
+        try {
+            (new DimensionSeeder())->runForEmpresa($empresa);
+            (new ConfiguracionInicialSeeder())->runForEmpresa($empresa);
+            (new ProveedorGeneralSeeder())->runForEmpresa($empresa);
+            (new MetodoPagoSeeder())->runForEmpresa($empresa);
+            (new TurnoSeeder())->runForEmpresa($empresa);
+            (new CajaPrincipalSeeder())->runForEmpresa($empresa);
+            (new ClienteGeneralSeeder())->runForEmpresa($empresa);
+            (new SeriesSeeder())->runForEmpresa($empresa);
+        } finally {
+            app()->forgetInstance('bypass_tenant_scope');
+        }
     }
 
     /**

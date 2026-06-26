@@ -97,6 +97,7 @@ class PuntoDeVenta extends Page
     public string $pagoReferencia = '';
     public array $pagosAgregados = [];
     public string $descuentoInput = '0';
+    public bool $despachoRequerido = false;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -377,8 +378,9 @@ class PuntoDeVenta extends Page
         $this->productoEsCortesia    = (bool) $producto->es_cortesia;
 
         if ($producto->variantesActivas->isEmpty()) {
-            $precio = $producto->es_cortesia ? 0.0 : (float) $producto->precio_venta;
-            $this->agregarProductoSimple($productoId, $producto->nombre, $precio);
+            $esCortesia = (bool) $producto->es_cortesia;
+            $precio     = $esCortesia ? 0.0 : (float) $producto->precio_venta;
+            $this->agregarProductoSimple($productoId, $producto->nombre, $precio, $esCortesia);
             return;
         }
 
@@ -558,7 +560,7 @@ class PuntoDeVenta extends Page
         $nombre = $sufijo ? "{$this->productoModalNombre} ({$sufijo})" : $this->productoModalNombre;
 
         $precio = $this->productoEsCortesia ? 0.0 : ($this->precioBase + $this->precioAdicionalTotal);
-        $this->agregarVariante($variante->id, $nombre, $precio);
+        $this->agregarVariante($variante->id, $nombre, $precio, $this->productoEsCortesia);
         $this->cerrarModal();
     }
 
@@ -580,21 +582,22 @@ class PuntoDeVenta extends Page
 
     // ── Carrito: agregar ──────────────────────────────────────────────────────
 
-    public function agregarProductoSimple(int $productoId, string $nombre = '', float $precio = 0): void
+    public function agregarProductoSimple(int $productoId, string $nombre = '', float $precio = 0, bool $esCortesia = false): void
     {
         if ($nombre === '') {
             $producto = Producto::find($productoId);
             if (! $producto) return;
-            $nombre = $producto->nombre;
-            $precio = (float) $producto->precio_venta;
+            $nombre     = $producto->nombre;
+            $esCortesia = (bool) $producto->es_cortesia;
+            $precio     = $esCortesia ? 0.0 : (float) $producto->precio_venta;
         }
 
-        $this->pushCarrito("producto_{$productoId}", 'producto', $productoId, $nombre, $precio);
+        $this->pushCarrito("producto_{$productoId}", 'producto', $productoId, $nombre, $precio, $esCortesia);
     }
 
-    private function agregarVariante(int $varianteId, string $nombre, float $precio): void
+    private function agregarVariante(int $varianteId, string $nombre, float $precio, bool $esCortesia = false): void
     {
-        $this->pushCarrito("variante_{$varianteId}", 'variante', $varianteId, $nombre, $precio);
+        $this->pushCarrito("variante_{$varianteId}", 'variante', $varianteId, $nombre, $precio, $esCortesia);
     }
 
     public function agregarPromocion(int $promocionId): void
@@ -621,13 +624,21 @@ class PuntoDeVenta extends Page
         $this->pushCarrito("promocion_{$promocionId}", 'promocion', $promocionId, $promocion->nombre, (float) $promocion->precio);
     }
 
-    private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio): void
+    private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio, bool $esCortesia = false): void
     {
         $carrito = $this->carrito;
         if (isset($carrito[$key])) {
             $carrito[$key]['cantidad']++;
         } else {
-            $carrito[$key] = ['key' => $key, 'tipo' => $tipo, 'id' => $id, 'nombre' => $nombre, 'precio' => $precio, 'cantidad' => 1];
+            $carrito[$key] = [
+                'key'      => $key,
+                'tipo'     => $tipo,
+                'id'       => $id,
+                'nombre'   => $nombre,
+                'precio'   => $precio,
+                'cortesia' => $esCortesia,
+                'cantidad' => 1,
+            ];
         }
         $this->carrito = $carrito;
     }
@@ -719,12 +730,13 @@ class PuntoDeVenta extends Page
             ->values()
             ->toArray();
 
-        $this->metodoPagoId    = null;
-        $this->montoPagoInput  = '';
-        $this->pagoReferencia  = '';
-        $this->pagosAgregados  = [];
-        $this->descuentoInput  = '0';
-        $this->modalPago       = true;
+        $this->metodoPagoId      = null;
+        $this->montoPagoInput    = '';
+        $this->pagoReferencia    = '';
+        $this->pagosAgregados    = [];
+        $this->descuentoInput    = '0';
+        $this->despachoRequerido = false;
+        $this->modalPago         = true;
     }
 
     public function cerrarModalSinSesion(): void
@@ -741,6 +753,7 @@ class PuntoDeVenta extends Page
         $this->pagoReferencia         = '';
         $this->pagosAgregados         = [];
         $this->descuentoInput         = '0';
+        $this->despachoRequerido      = false;
     }
 
     public function seleccionarMetodoPago(int $id): void
@@ -850,6 +863,11 @@ class PuntoDeVenta extends Page
         return round($this->getTotalConDescuento() - $this->getTotalPagado(), 2);
     }
 
+    public function totalEsCero(): bool
+    {
+        return $this->getTotalConDescuento() <= 0.01;
+    }
+
     public function procesarVenta(): void
     {
         if (empty($this->carrito)) {
@@ -857,7 +875,7 @@ class PuntoDeVenta extends Page
             return;
         }
 
-        if (empty($this->pagosAgregados)) {
+        if (empty($this->pagosAgregados) && ! $this->totalEsCero()) {
             Notification::make()->title('Agrega al menos un pago')->warning()->send();
             return;
         }
@@ -891,12 +909,13 @@ class PuntoDeVenta extends Page
         $clienteNombre     = $this->clienteNombre;
         $clienteTipoDoc    = $this->clienteTipoDoc;
         $serieId           = $this->serieId;
+        $despachoRequerido = $this->despachoRequerido;
 
         try {
             DB::transaction(function () use (
                 $empresaId, $descuento, $totalConDescuento, $opGravadas, $igv,
                 $montoPagado, $pagosAgregados, $carrito,
-                $clienteId, $clienteNombre, $clienteTipoDoc, $serieId
+                $clienteId, $clienteNombre, $clienteTipoDoc, $serieId, $despachoRequerido
             ) {
                 $serie = Serie::lockForUpdate()->findOrFail($serieId);
                 $nuevoNumero = $serie->numero + 1;
@@ -907,7 +926,12 @@ class PuntoDeVenta extends Page
                     ->where('user_id', auth()->id())
                     ->where('estado', EstadoSesion::Abierta->value)
                     ->latest()
+                    ->lockForUpdate()
                     ->first();
+
+                if (! $sesionCaja) {
+                    throw new \RuntimeException('__SIN_SESION__');
+                }
 
                 $cliente             = $clienteId ? Cliente::find($clienteId) : null;
                 $clienteNombreFinal  = $cliente?->nombre_completo ?? $clienteNombre;
@@ -916,7 +940,7 @@ class PuntoDeVenta extends Page
 
                 $venta = Venta::create([
                     'empresa_id'       => $empresaId,
-                    'sesion_caja_id'   => $sesionCaja?->id,
+                    'sesion_caja_id'   => $sesionCaja->id,
                     'cliente_id'       => $clienteId,
                     'cliente_nombre'   => $clienteNombreFinal,
                     'cliente_tipo_doc' => $clienteTipoDocFinal,
@@ -934,12 +958,26 @@ class PuntoDeVenta extends Page
                     'monto_pagado'     => $montoPagado,
                     'saldo_pendiente'  => 0,
                     'estado'           => EstadoVenta::Completada,
+                    'estado_despacho'  => $despachoRequerido ? EstadoVenta::PendienteEnvio : null,
                 ]);
 
+                $costoTotalVenta = 0.0;
+
                 foreach ($carrito as $item) {
+                    $variante = $item['tipo'] === 'variante'
+                        ? Variante::with('producto')->find($item['id'])
+                        : null;
+
+                    $costoUnitario = match ($item['tipo']) {
+                        'producto' => (float) (Producto::find($item['id'])?->precio_costo ?? 0),
+                        'variante' => (float) ($variante?->precio_costo ?? $variante?->producto?->precio_costo ?? 0),
+                        default    => 0.0,
+                    };
+
                     $calc = VentaDetalle::calcular(
                         cantidad: (float) $item['cantidad'],
                         precioUnitario: (float) $item['precio'],
+                        costoUnitario: $costoUnitario,
                     );
 
                     $tipoItem = match ($item['tipo']) {
@@ -948,33 +986,38 @@ class PuntoDeVenta extends Page
                         default     => TipoItem::Producto,
                     };
 
+                    $esCortesiaItem = $item['cortesia'] ?? false;
+
                     $detalleData = [
                         'venta_id'        => $venta->id,
                         'tipo_item'       => $tipoItem,
-                        'descripcion'     => $item['nombre'],
+                        'descripcion'     => $esCortesiaItem ? $item['nombre'] . ' (Cortesía)' : $item['nombre'],
                         'cantidad'        => $item['cantidad'],
                         'precio_unitario' => $item['precio'],
                         'valor_unitario'  => $calc['valorUnitario'],
-                        'costo_unitario'  => 0,
+                        'costo_unitario'  => $costoUnitario,
                         'descuento'       => 0,
                         'subtotal'        => $calc['subtotal'],
                         'valor_total'     => $calc['valorTotal'],
                         'igv'             => $calc['igv'],
                         'total'           => $calc['total'],
-                        'costo_total'     => 0,
+                        'costo_total'     => $calc['costoTotal'],
                     ];
 
                     if ($item['tipo'] === 'producto') {
                         $detalleData['producto_id'] = $item['id'];
                     } elseif ($item['tipo'] === 'variante') {
                         $detalleData['variante_id'] = $item['id'];
-                        $detalleData['producto_id'] = Variante::find($item['id'])?->producto_id;
+                        $detalleData['producto_id'] = $variante?->producto_id;
                     } elseif ($item['tipo'] === 'promocion') {
                         $detalleData['promocion_id'] = $item['id'];
                     }
 
                     VentaDetalle::create($detalleData);
+                    $costoTotalVenta += $calc['costoTotal'];
                 }
+
+                $venta->update(['costo_total' => round($costoTotalVenta, 2)]);
 
                 foreach ($pagosAgregados as $pago) {
                     VentaPago::create([
@@ -986,7 +1029,7 @@ class PuntoDeVenta extends Page
 
                     Transaccion::create([
                         'empresa_id'           => $empresaId,
-                        'sesion_caja_id'       => $sesionCaja?->id,
+                        'sesion_caja_id'       => $sesionCaja->id,
                         'transaccionable_type' => Venta::class,
                         'transaccionable_id'   => $venta->id,
                         'tipo'                 => TipoMovimiento::Ingreso,
@@ -1014,7 +1057,7 @@ class PuntoDeVenta extends Page
                                 ->first();
                             if ($inv) {
                                 $stockAntes   = (float) $inv->stock_real;
-                                $stockDespues = $stockAntes - $cantidad;
+                                $stockDespues = max(0, $stockAntes - $cantidad);
                                 $inv->update(['stock_real' => $stockDespues]);
                                 $kardex->registrar([
                                     'empresa_id'        => $empresaId,
@@ -1048,7 +1091,7 @@ class PuntoDeVenta extends Page
                                     ->first();
                                 if ($inv) {
                                     $stockAntes   = (float) $inv->stock_real;
-                                    $stockDespues = $stockAntes - $cantidad;
+                                    $stockDespues = max(0, $stockAntes - $cantidad);
                                     $inv->update(['stock_real' => $stockDespues]);
                                     $kardex->registrar([
                                         'empresa_id'        => $empresaId,
@@ -1149,6 +1192,11 @@ class PuntoDeVenta extends Page
                 }
             });
         } catch (\Exception $e) {
+            if ($e->getMessage() === '__SIN_SESION__') {
+                $this->cerrarModalPago();
+                $this->modalSinSesion = true;
+                return;
+            }
             Notification::make()
                 ->title('Error al procesar la venta')
                 ->body($e->getMessage())
