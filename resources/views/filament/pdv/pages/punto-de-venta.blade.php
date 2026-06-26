@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <div class="pdv-wrap" x-data="{ carritoOpen: false }">
+    <div class="pdv-wrap" x-data="{ carritoOpen: false }" @cerrar-carrito-mobile.window="carritoOpen = false">
 
         {{-- ══ ÁREA DE PRODUCTOS (izquierda) ══ --}}
         <div class="pdv-productos">

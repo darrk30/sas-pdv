@@ -1216,6 +1216,7 @@ class PuntoDeVenta extends Page
         $this->cerrarModalPago();
         $this->autoSeleccionarComprobante();
         $this->autoSeleccionarClienteGeneral();
+        $this->dispatch('cerrar-carrito-mobile');
 
         Notification::make()->title('Venta procesada correctamente')->success()->send();
     }
