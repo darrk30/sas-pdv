@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use Filament\Notifications\Notification;
 use Livewire\Attributes\On;
 
 trait HasBarcodeScanner
@@ -9,7 +10,16 @@ trait HasBarcodeScanner
     #[On('barcode-result')]
     public function handleBarcodeResult(string $path, string $code): void
     {
-        // $path llega sin el prefijo 'data.' (ya se quita en el JS)
         data_set($this->data, $path, $code);
+    }
+
+    #[On('camera-not-available')]
+    public function handleCameraNotAvailable(): void
+    {
+        Notification::make()
+            ->title('Cámara no disponible')
+            ->body('Activa los permisos de cámara en el navegador o usa un escáner USB conectado al equipo.')
+            ->warning()
+            ->send();
     }
 }

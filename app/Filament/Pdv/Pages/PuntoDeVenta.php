@@ -295,6 +295,16 @@ class PuntoDeVenta extends Page
         $this->busqueda = $code;
     }
 
+    #[On('camera-not-available')]
+    public function cameraNoDiponible(): void
+    {
+        Notification::make()
+            ->title('Cámara no disponible')
+            ->body('Activa los permisos de cámara en el navegador o usa un escáner USB conectado al equipo.')
+            ->warning()
+            ->send();
+    }
+
     // ── Datos para la vista ───────────────────────────────────────────────────
 
     public function getCategorias(): Collection
