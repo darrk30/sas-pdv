@@ -1,4 +1,102 @@
-<div x-data="barcodeScanner()" wire:ignore x-cloak>
+{{--
+    html5-qrcode desde CDN con defer: se ejecuta antes que los módulos ES (Alpine),
+    por lo que Html5Qrcode estará disponible cuando el usuario abra el scanner.
+--}}
+<script defer src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+{{--
+    Script síncrono (no es módulo): se ejecuta DURANTE el parseo del HTML,
+    antes de cualquier script type="module" (incluyendo Alpine y app.js).
+    Así window._barcodeScanner existe cuando Alpine evalúa x-data.
+--}}
+<script>
+window._barcodeScanner = function () {
+    return {
+        open: false,
+        scanning: false,
+        targetPath: null,
+        error: null,
+        _scanner: null,
+
+        init() {
+            window.addEventListener('open-barcode-scanner', (e) => {
+                this.targetPath = e.detail?.path ?? null;
+                this.error = null;
+                this.open = true;
+                this.$nextTick(() => this._startCamera());
+            });
+        },
+
+        _startCamera() {
+            var id = 'barcode-reader-preview';
+            if (!document.getElementById(id)) return;
+
+            var FORMATS = [
+                window.Html5QrcodeSupportedFormats.EAN_13,
+                window.Html5QrcodeSupportedFormats.EAN_8,
+                window.Html5QrcodeSupportedFormats.CODE_128,
+                window.Html5QrcodeSupportedFormats.CODE_39,
+                window.Html5QrcodeSupportedFormats.UPC_A,
+                window.Html5QrcodeSupportedFormats.UPC_E,
+                window.Html5QrcodeSupportedFormats.QR_CODE,
+            ];
+
+            this._scanner = new window.Html5Qrcode(id, { formatsToSupport: FORMATS, verbose: false });
+
+            this._scanner
+                .start(
+                    { facingMode: { exact: 'environment' } },
+                    { fps: 10, qrbox: { width: 260, height: 110 } },
+                    (code) => this._onSuccess(code),
+                    () => {}
+                )
+                .then(() => { this.scanning = true; })
+                .catch(() => {
+                    this._scanner
+                        .start(
+                            { facingMode: 'environment' },
+                            { fps: 10, qrbox: { width: 260, height: 110 } },
+                            (code) => this._onSuccess(code),
+                            () => {}
+                        )
+                        .then(() => { this.scanning = true; })
+                        .catch((err) => {
+                            this.error = 'No se pudo acceder a la cámara. Verifica los permisos del navegador.';
+                            console.error('[BarcodeScanner]', err);
+                        });
+                });
+        },
+
+        _onSuccess(code) {
+            this._stop(false);
+            if (this.targetPath) {
+                var formPath = this.targetPath.replace(/^data\./, '');
+                Livewire.dispatch('barcode-result', { path: formPath, code });
+            }
+        },
+
+        _stop(andClose) {
+            if (andClose === undefined) andClose = true;
+            if (this._scanner && this.scanning) {
+                this.scanning = false;
+                this._scanner.stop()
+                    .catch(function () {})
+                    .finally(() => {
+                        this._scanner = null;
+                        if (andClose) this.open = false;
+                    });
+            } else {
+                this._scanner = null;
+                if (andClose) this.open = false;
+            }
+        },
+
+        close() { this._stop(true); },
+    };
+};
+</script>
+
+<div x-data="window._barcodeScanner()" wire:ignore x-cloak>
 
     <template x-teleport="body">
         {{-- Overlay --}}
