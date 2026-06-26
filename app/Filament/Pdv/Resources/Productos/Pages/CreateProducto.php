@@ -7,12 +7,13 @@ use App\Models\Inventario;
 use App\Services\ProductoAtributoService;
 use App\Services\VarianteService;
 use App\Traits\GestionaVariantes;
+use App\Traits\HasBarcodeScanner;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Str;
 
 class CreateProducto extends CreateRecord
 {
-    use GestionaVariantes;
+    use GestionaVariantes, HasBarcodeScanner;
 
     protected static string $resource = ProductoResource::class;
 

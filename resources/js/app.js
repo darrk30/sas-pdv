@@ -1,1 +1,1 @@
-//
+import './barcode-scanner';

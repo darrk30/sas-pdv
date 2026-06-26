@@ -10,13 +10,14 @@ use App\Models\Variante;
 use App\Services\ProductoAtributoService;
 use App\Services\VarianteService;
 use App\Traits\GestionaVariantes;
+use App\Traits\HasBarcodeScanner;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Str;
 
 class EditProducto extends EditRecord
 {
-    use GestionaVariantes;
+    use GestionaVariantes, HasBarcodeScanner;
 
     protected static string $resource = ProductoResource::class;
 

@@ -172,7 +172,16 @@ class ProductoForm
                                         ->unique(ignoreRecord: true, modifyRuleUsing: fn($rule) => $rule->where('empresa_id', Filament::getTenant()->id))
                                         ->required(),
                                     TextInput::make('codigo_barras')
-                                        ->label('Código de Barras'),
+                                        ->label('Código de Barras')
+                                        ->suffixAction(
+                                            Action::make('scan_product_barcode')
+                                                ->icon('heroicon-o-camera')
+                                                ->label('')
+                                                ->color('gray')
+                                                ->action(function ($component, $livewire): void {
+                                                    $livewire->dispatch('open-barcode-scanner', path: $component->getStatePath());
+                                                })
+                                        ),
 
                                 ]),
 
@@ -571,7 +580,16 @@ class ProductoForm
                                         TextInput::make('codigo_barras')
                                             ->label('Cód. de Barras')
                                             ->nullable()
-                                            ->maxLength(100),
+                                            ->maxLength(100)
+                                            ->suffixAction(
+                                                Action::make('scan_variante_barcode')
+                                                    ->icon('heroicon-o-camera')
+                                                    ->label('')
+                                                    ->color('gray')
+                                                    ->action(function ($component, $livewire): void {
+                                                        $livewire->dispatch('open-barcode-scanner', path: $component->getStatePath());
+                                                    })
+                                            ),
 
                                         TextInput::make('precio_final')
                                             ->label('Precio Final')
