@@ -4,22 +4,25 @@ namespace App\Filament\Pdv\Pages;
 
 use App\Models\Kardex;
 use App\Models\Producto;
+use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Livewire\WithPagination;
+use UnitEnum;
 
 class KardexPage extends Page
 {
     use WithPagination;
 
-    protected static string $view = 'filament.pdv.pages.kardex';
-    protected static ?string $navigationIcon  = 'heroicon-o-clipboard-document-list';
+    protected string $view = 'filament.pdv.pages.kardex';
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
     protected static ?string $navigationLabel = 'Kardex';
-    protected static ?string $navigationGroup = 'Inventario';
+    protected static string|UnitEnum|null $navigationGroup = 'Inventario';
     protected static ?int    $navigationSort  = 10;
-    protected static ?string $title           = 'Kardex de Inventario';
+    protected static ?string $title = 'Kardex de Inventario';
 
     public function getHeading(): string { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
