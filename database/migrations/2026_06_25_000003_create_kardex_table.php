@@ -99,8 +99,7 @@ return new class extends Migration
             $table->index(['empresa_id', 'variante_id', 'fecha']);
             // Consulta todos los movimientos de una empresa por fecha
             $table->index(['empresa_id', 'fecha']);
-            // Rastrear todos los kardex generados por un origen (Compra, Venta, Ajuste)
-            $table->index(['movible_type', 'movible_id']);
+            // nullableMorphs('movible') ya crea el índice compuesto movible_type+movible_id
         });
     }
 

@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('empresa_id')->constrained('empresas');
             $table->foreignId('producto_id')->constrained('productos')->onDelete('cascade');
             $table->string('codigo')->unique();
+            $table->string('codigo_barras', 100)->nullable();
             $table->string('estado')->default('activo');
             $table->decimal('precio_final', 12, 2)->default(0);
             $table->timestamps();
