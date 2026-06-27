@@ -357,6 +357,7 @@ class PuntoDeVenta extends Page
             ->with([
                 'variantesActivas' => fn($q) => $q->with('inventario'),
                 'inventario',
+                'unidadMedida',
             ]);
 
         if ($this->busqueda !== '') {
@@ -626,12 +627,25 @@ class PuntoDeVenta extends Page
 
     public function agregarProductoSimple(int $productoId, string $nombre = '', float $precio = 0, bool $esCortesia = false): void
     {
+        $producto = Producto::with('inventario')->find($productoId);
+        if (! $producto) return;
+
         if ($nombre === '') {
-            $producto = Producto::find($productoId);
-            if (! $producto) return;
             $nombre     = $producto->nombre;
             $esCortesia = (bool) $producto->es_cortesia;
             $precio     = $esCortesia ? 0.0 : (float) $producto->precio_venta;
+        }
+
+        if (! $esCortesia && $producto->control_de_stock && ! $producto->venta_sin_stock) {
+            $stock     = (float) ($producto->inventario?->stock_real ?? 0);
+            $enCarrito = (int) ($this->carrito["producto_{$productoId}"]['cantidad'] ?? 0);
+            if ($enCarrito + 1 > $stock) {
+                Notification::make()
+                    ->title('Stock insuficiente')
+                    ->body("Disponible: {$stock} unidad(es).")
+                    ->warning()->send();
+                return;
+            }
         }
 
         $this->pushCarrito("producto_{$productoId}", 'producto', $productoId, $nombre, $precio, $esCortesia);
@@ -639,6 +653,19 @@ class PuntoDeVenta extends Page
 
     private function agregarVariante(int $varianteId, string $nombre, float $precio, bool $esCortesia = false): void
     {
+        if (! $esCortesia && $this->productoControlStock && ! $this->productoVentaSinStock) {
+            $inv       = Inventario::where('variante_id', $varianteId)->first();
+            $stock     = (float) ($inv?->stock_real ?? 0);
+            $enCarrito = (int) ($this->carrito["variante_{$varianteId}"]['cantidad'] ?? 0);
+            if ($enCarrito + 1 > $stock) {
+                Notification::make()
+                    ->title('Stock insuficiente')
+                    ->body("Disponible: {$stock} unidad(es).")
+                    ->warning()->send();
+                return;
+            }
+        }
+
         $this->pushCarrito("variante_{$varianteId}", 'variante', $varianteId, $nombre, $precio, $esCortesia);
     }
 
@@ -690,10 +717,41 @@ class PuntoDeVenta extends Page
     public function aumentarCantidad(string $key): void
     {
         $carrito = $this->carrito;
-        if (isset($carrito[$key])) {
-            $carrito[$key]['cantidad']++;
-            $this->carrito = $carrito;
+        if (! isset($carrito[$key])) return;
+
+        $item = $carrito[$key];
+
+        if (! ($item['cortesia'] ?? false)) {
+            if ($item['tipo'] === 'producto') {
+                $prod = Producto::with('inventario')->find($item['id']);
+                if ($prod && $prod->control_de_stock && ! $prod->venta_sin_stock) {
+                    $stock = (float) ($prod->inventario?->stock_real ?? 0);
+                    if ($item['cantidad'] + 1 > $stock) {
+                        Notification::make()
+                            ->title('Stock insuficiente')
+                            ->body("Disponible: {$stock} unidad(es).")
+                            ->warning()->send();
+                        return;
+                    }
+                }
+            } elseif ($item['tipo'] === 'variante') {
+                $inv  = Inventario::where('variante_id', $item['id'])->first();
+                $var  = Variante::with('producto')->find($item['id']);
+                if ($var && $var->producto?->control_de_stock && ! $var->producto?->venta_sin_stock) {
+                    $stock = (float) ($inv?->stock_real ?? 0);
+                    if ($item['cantidad'] + 1 > $stock) {
+                        Notification::make()
+                            ->title('Stock insuficiente')
+                            ->body("Disponible: {$stock} unidad(es).")
+                            ->warning()->send();
+                        return;
+                    }
+                }
+            }
         }
+
+        $carrito[$key]['cantidad']++;
+        $this->carrito = $carrito;
     }
 
     public function disminuirCantidad(string $key): void

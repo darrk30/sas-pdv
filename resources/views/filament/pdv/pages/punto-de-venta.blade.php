@@ -119,16 +119,36 @@
                         @foreach($productos as $producto)
                             @php
                                 $tieneVariantes = $producto->variantesActivas->isNotEmpty();
+                                $simbolo        = $producto->unidadMedida?->simbolo;
+
+                                // Stock real en BD
                                 $stockSimple    = ! $tieneVariantes && $producto->control_de_stock
                                     ? (float)($producto->inventario?->stock_real ?? 0) : null;
                                 $stockVariantes = $tieneVariantes && $producto->control_de_stock
                                     ? $producto->variantesActivas->sum(fn($v) => (float)($v->inventario?->stock_real ?? 0)) : null;
-                                $stock      = $stockSimple ?? $stockVariantes;
+                                $stock          = $stockSimple ?? $stockVariantes;
+
+                                // Descontar lo que ya está en el carrito
+                                $enCarrito = 0;
+                                if ($stock !== null) {
+                                    if (! $tieneVariantes) {
+                                        $enCarrito = (int) ($carrito["producto_{$producto->id}"]['cantidad'] ?? 0);
+                                    } else {
+                                        $varIds = $producto->variantesActivas->pluck('id');
+                                        foreach ($carrito as $ci) {
+                                            if ($ci['tipo'] === 'variante' && $varIds->contains($ci['id'])) {
+                                                $enCarrito += $ci['cantidad'];
+                                            }
+                                        }
+                                    }
+                                }
+                                $stockVisible = $stock !== null ? max(0, $stock - $enCarrito) : null;
+
                                 $agotado    = $producto->control_de_stock
                                     && ! $producto->venta_sin_stock
-                                    && $stock !== null
-                                    && $stock <= 0;
-                                $stockNivel = $stock === null ? null : ($stock <= 0 ? 'agotado' : ($stock <= 5 ? 'bajo' : 'ok'));
+                                    && $stockVisible !== null
+                                    && $stockVisible <= 0;
+                                $stockNivel = $stockVisible === null ? null : ($stockVisible <= 0 ? 'agotado' : ($stockVisible <= 5 ? 'bajo' : 'ok'));
                             @endphp
                             <button
                                 class="pdv-card {{ $agotado ? 'pdv-card--agotado' : '' }}"
@@ -149,7 +169,7 @@
                                     @endif
                                     @if($stockNivel !== null && ! $agotado)
                                         <span class="pdv-card__stock-badge pdv-card__stock-badge--{{ $stockNivel }}">
-                                            Stock {{ number_format($stock, 0) }}
+                                            {{ number_format($stockVisible, 0) }}@if($simbolo)<small class="pdv-card__stock-unit"> {{ $simbolo }}</small>@endif
                                         </span>
                                     @endif
                                 </div>
