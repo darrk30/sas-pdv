@@ -1,0 +1,438 @@
+/* ============================================================
+   cierres-caja.css — Historial y Reporte de Cierre de Caja
+   Depende de ventas-sesion.css para vs-* base
+   ============================================================ */
+
+/* ── Lista de sesiones ─────────────────────────────────────── */
+.cc-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.cc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+    color: var(--vs-text);
+}
+
+.cc-table th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--vs-text-muted);
+    border-bottom: 1.5px solid var(--vs-border);
+    padding: 0.625rem 0.75rem;
+    white-space: nowrap;
+}
+
+.cc-table td {
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--vs-border);
+    vertical-align: middle;
+}
+
+.cc-table tbody tr:last-child td { border-bottom: none; }
+.cc-table tbody tr:hover          { background: var(--vs-bg-subtle); }
+
+.cc-td-right  { text-align: right; }
+.cc-td-center { text-align: center; }
+
+.cc-cajero {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+.cc-cajero__nombre { font-size: .8rem; font-weight: 600; }
+.cc-cajero__caja   { font-size: .7rem; color: var(--vs-text-muted); }
+
+.cc-fecha {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+}
+.cc-fecha__valor { font-size: .8rem; font-weight: 600; }
+.cc-fecha__hora  { font-size: .7rem; color: var(--vs-text-muted); }
+
+.cc-monto       { font-size: .8rem; font-weight: 600; white-space: nowrap; }
+.cc-monto--neg  { color: #dc2626; }
+.cc-monto--pos  { color: #15803d; }
+
+.cc-dif-badge {
+    display: inline-block;
+    padding: .15rem .45rem;
+    border-radius: 99px;
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.cc-dif-badge--ok  { background: #dcfce7; color: #15803d; }
+.cc-dif-badge--mal { background: #fee2e2; color: #991b1b; }
+.cc-dif-badge--nd  { background: #f3f4f6; color: #6b7280; }
+
+.cc-badge-abierta { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.cc-badge-cerrada { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+.cc-badge {
+    display: inline-block;
+    padding: .2rem .55rem;
+    border-radius: 99px;
+    font-size: .7rem;
+    font-weight: 700;
+}
+
+.cc-btn-ver {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .3rem .7rem;
+    border-radius: .4rem;
+    border: 1.5px solid #6366f1;
+    background: transparent;
+    color: #6366f1;
+    font-size: .75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .12s, color .12s;
+    white-space: nowrap;
+}
+.cc-btn-ver:hover { background: #6366f1; color: #fff; }
+.cc-btn-ver svg   { width: 14px; height: 14px; }
+
+.cc-form-wrap {
+    background: var(--vs-bg);
+    border: 1px solid var(--vs-border);
+    border-radius: var(--vs-radius);
+    padding: 1rem 1.125rem 1.25rem;
+    box-shadow: var(--vs-shadow);
+}
+.cc-form-limpiar { margin-top: .625rem; display: flex; justify-content: flex-end; }
+
+/* ── Paginación ─────────────────────────────────────────────── */
+.cc-pagination { padding: 1rem; border-top: 1px solid var(--vs-border); }
+
+/* ══ OVERLAY / MODAL DEL REPORTE ══════════════════════════════ */
+
+.cc-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+}
+
+.cc-overlay__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+}
+
+.cc-modal {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 64rem;
+    margin: 1rem;
+    background: var(--vs-bg);
+    border-radius: 1rem;
+    box-shadow: 0 25px 60px rgba(0,0,0,.25);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 2rem);
+    overflow: hidden;
+}
+
+/* ── Header del modal ───────────────────────────────────────── */
+.cc-modal__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.125rem 1.5rem;
+    border-bottom: 1px solid var(--vs-border);
+    flex-shrink: 0;
+}
+
+.cc-modal__titulo {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--vs-text);
+    margin: 0 0 .25rem;
+}
+
+.cc-modal__subtitulo {
+    font-size: .8rem;
+    color: var(--vs-text-muted);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+}
+
+.cc-modal__actions {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-shrink: 0;
+}
+
+.cc-modal__btn-print {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .4rem .85rem;
+    border-radius: .5rem;
+    border: 1.5px solid #6366f1;
+    background: transparent;
+    color: #6366f1;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .12s, color .12s;
+}
+.cc-modal__btn-print:hover { background: #6366f1; color: #fff; }
+.cc-modal__btn-print svg   { width: 15px; height: 15px; }
+
+.cc-modal__btn-cerrar {
+    width: 2rem; height: 2rem;
+    border-radius: .5rem;
+    border: 1.5px solid var(--vs-border);
+    background: transparent;
+    color: var(--vs-text-muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .12s;
+}
+.cc-modal__btn-cerrar:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+.cc-modal__btn-cerrar svg   { width: 15px; height: 15px; }
+
+/* ── Cuerpo scrollable ──────────────────────────────────────── */
+.cc-modal__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ── Secciones del reporte ──────────────────────────────────── */
+.cc-section {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+}
+
+.cc-section__title {
+    font-size: .7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--vs-text-muted);
+    padding-bottom: .35rem;
+    border-bottom: 1.5px solid var(--vs-border);
+    margin: 0;
+}
+
+/* ── Info de sesión ─────────────────────────────────────────── */
+.cc-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    gap: .75rem;
+}
+
+.cc-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+}
+.cc-info-item__label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--vs-text-muted); }
+.cc-info-item__value { font-size: .875rem; font-weight: 700; color: var(--vs-text); }
+.cc-info-item__value--mono { font-family: ui-monospace, monospace; }
+
+.cc-notas {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: .5rem;
+    padding: .625rem .875rem;
+    font-size: .8rem;
+    color: #78350f;
+}
+.dark .cc-notas { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.3); color: #fbbf24; }
+
+/* ── Chips de resumen ───────────────────────────────────────── */
+.cc-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .625rem;
+}
+
+.cc-chip {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    background: var(--vs-bg-subtle);
+    border: 1px solid var(--vs-border);
+    border-radius: .625rem;
+    padding: .625rem .875rem;
+    flex: 1;
+    min-width: 9rem;
+}
+
+.cc-chip__icon {
+    width: 2rem; height: 2rem;
+    border-radius: .5rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.cc-chip__icon svg { width: 1rem; height: 1rem; }
+.cc-chip__icon--green  { background: #dcfce7; color: #15803d; }
+.cc-chip__icon--red    { background: #fee2e2; color: #dc2626; }
+.cc-chip__icon--yellow { background: #fef9c3; color: #854d0e; }
+.cc-chip__icon--blue   { background: #dbeafe; color: #1d4ed8; }
+
+.cc-chip__body { display: flex; flex-direction: column; gap: .1rem; }
+.cc-chip__label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--vs-text-muted); }
+.cc-chip__value { font-size: .95rem; font-weight: 800; color: var(--vs-text); }
+.cc-chip__sub   { font-size: .68rem; color: var(--vs-text-muted); }
+
+/* ── Tabla interna genérica ─────────────────────────────────── */
+.cc-inner-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .8rem;
+}
+.cc-inner-table th {
+    text-align: left;
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--vs-text-muted);
+    border-bottom: 1px solid var(--vs-border);
+    padding: .4rem .625rem;
+}
+.cc-inner-table td {
+    padding: .5rem .625rem;
+    border-bottom: 1px solid var(--vs-border);
+    vertical-align: middle;
+}
+.cc-inner-table tbody tr:last-child td { border-bottom: none; }
+.cc-inner-table .cc-td-right           { text-align: right; }
+
+/* ── Cuadre de pagos ────────────────────────────────────────── */
+.cc-cuadre-dif--ok  { color: #15803d; font-weight: 700; }
+.cc-cuadre-dif--mal { color: #dc2626; font-weight: 700; }
+
+/* ── Totales de sección ─────────────────────────────────────── */
+.cc-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .5rem .625rem;
+    background: var(--vs-bg-subtle);
+    border-radius: .4rem;
+    font-size: .8rem;
+    font-weight: 700;
+    color: var(--vs-text);
+}
+.cc-total-row--green { background: #f0fdf4; color: #15803d; }
+.cc-total-row--red   { background: #fef2f2; color: #dc2626; }
+
+/* ── Ganancia turno ─────────────────────────────────────────── */
+.cc-gan-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: .625rem;
+}
+
+.cc-gan-item {
+    background: var(--vs-bg-subtle);
+    border: 1px solid var(--vs-border);
+    border-radius: .5rem;
+    padding: .625rem .875rem;
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+}
+.cc-gan-item--green { background: #f0fdf4; border-color: #bbf7d0; }
+.cc-gan-item--orange { background: #fff7ed; border-color: #fed7aa; }
+.cc-gan-item__label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--vs-text-muted); }
+.cc-gan-item--green .cc-gan-item__label { color: #15803d; }
+.cc-gan-item--orange .cc-gan-item__label { color: #c2410c; }
+.cc-gan-item__value { font-size: 1rem; font-weight: 800; color: var(--vs-text); }
+.cc-gan-item--green  .cc-gan-item__value { color: #15803d; }
+.cc-gan-item--orange .cc-gan-item__value { color: #c2410c; }
+
+/* ── Badge tipo comprobante ─────────────────────────────────── */
+.cc-tipo-badge {
+    display: inline-block;
+    padding: .15rem .5rem;
+    border-radius: 99px;
+    font-size: .7rem;
+    font-weight: 700;
+}
+.cc-tipo-badge--factura { background: #dbeafe; color: #1d4ed8; }
+.cc-tipo-badge--boleta  { background: #dcfce7; color: #15803d; }
+.cc-tipo-badge--ticket  { background: #fef9c3; color: #854d0e; }
+
+/* ── Lista ventas compacta ──────────────────────────────────── */
+.cc-venta-row--anulada td { opacity: .55; text-decoration: line-through; }
+.cc-venta-row--anulada .cc-badge-estado { text-decoration: none; }
+
+.cc-badge-estado {
+    display: inline-block;
+    padding: .15rem .45rem;
+    border-radius: 99px;
+    font-size: .68rem;
+    font-weight: 700;
+}
+.cc-badge-estado--ok  { background: #dcfce7; color: #15803d; }
+.cc-badge-estado--anu { background: #fee2e2; color: #991b1b; }
+.cc-badge-estado--dep { background: #fef9c3; color: #854d0e; }
+
+/* ── Empty ──────────────────────────────────────────────────── */
+.cc-empty {
+    display: flex; align-items: center; justify-content: center;
+    padding: 4rem 1rem;
+    flex-direction: column; gap: .5rem;
+    color: var(--vs-text-muted);
+}
+.cc-empty svg { width: 2.5rem; height: 2.5rem; opacity: .3; }
+.cc-empty p   { font-size: .875rem; margin: 0; }
+
+/* ══ PRINT ═════════════════════════════════════════════════════ */
+@media print {
+    .cc-modal {
+        position: static;
+        max-height: none;
+        overflow: visible;
+        box-shadow: none;
+        border-radius: 0;
+        margin: 0;
+        max-width: 100%;
+    }
+    .cc-overlay,
+    .cc-overlay__backdrop { position: static; background: transparent; }
+    .cc-modal__actions,
+    .cc-modal__btn-cerrar,
+    .cc-modal__btn-print { display: none !important; }
+    .cc-modal__body { overflow: visible; }
+    .cc-inner-table td,
+    .cc-inner-table th { font-size: .75rem; padding: .3rem .5rem; }
+}
+
+/* ── Dark mode ──────────────────────────────────────────────── */
+.dark .cc-modal       { background: #1f2937; }
+.dark .cc-modal__header { border-color: #374151; }
+.dark .cc-section__title { border-color: #374151; }
+.dark .cc-chip        { background: #111827; border-color: #374151; }
+.dark .cc-info-item__value { color: #f9fafb; }
+.dark .cc-inner-table th   { border-color: #374151; }
+.dark .cc-inner-table td   { border-color: #374151; color: #f9fafb; }
+.dark .cc-total-row    { background: #111827; }
+.dark .cc-gan-item     { background: #111827; border-color: #374151; }
+.dark .cc-table th    { border-color: #374151; }
+.dark .cc-table td    { border-color: #374151; color: #f9fafb; }
+.dark .cc-table tbody tr:hover { background: #111827; }
+.dark .cc-form-wrap   { background: #1f2937; border-color: #374151; }
