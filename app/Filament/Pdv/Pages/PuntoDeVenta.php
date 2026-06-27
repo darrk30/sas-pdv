@@ -1163,7 +1163,7 @@ class PuntoDeVenta extends Page
                     $cantidad = (float) $item['cantidad'];
 
                     if ($item['tipo'] === 'producto') {
-                        $producto = Producto::find($item['id']);
+                        $producto = Producto::with('unidadMedida')->find($item['id']);
                         if ($producto?->control_de_stock) {
                             $inv = Inventario::where('empresa_id', $empresaId)
                                 ->where('producto_id', $item['id'])
@@ -1184,7 +1184,7 @@ class PuntoDeVenta extends Page
                                     'tipo'              => 'salida',
                                     'concepto'          => $concepto,
                                     'cantidad'          => $cantidad,
-                                    'unidad'            => 'unidad',
+                                    'unidad'            => $producto->unidadMedida?->nombre ?? 'unidad',
                                     'factor_conversion' => 1,
                                     'cantidad_base'     => $cantidad,
                                     'precio_unitario'   => $item['precio'],
@@ -1197,7 +1197,7 @@ class PuntoDeVenta extends Page
                     } elseif ($item['tipo'] === 'variante') {
                         $variante = Variante::find($item['id']);
                         if ($variante) {
-                            $prodVariante = Producto::find($variante->producto_id);
+                            $prodVariante = Producto::with('unidadMedida')->find($variante->producto_id);
                             if ($prodVariante?->control_de_stock) {
                                 $inv = Inventario::where('empresa_id', $empresaId)
                                     ->where('producto_id', $variante->producto_id)
@@ -1218,7 +1218,7 @@ class PuntoDeVenta extends Page
                                         'tipo'              => 'salida',
                                         'concepto'          => $concepto,
                                         'cantidad'          => $cantidad,
-                                        'unidad'            => 'unidad',
+                                        'unidad'            => $prodVariante->unidadMedida?->nombre ?? 'unidad',
                                         'factor_conversion' => 1,
                                         'cantidad_base'     => $cantidad,
                                         'precio_unitario'   => $item['precio'],
@@ -1234,8 +1234,8 @@ class PuntoDeVenta extends Page
                         Promocion::where('id', $item['id'])->increment('usos_actuales', (int) $cantidad);
 
                         $promo = Promocion::with([
-                            'detalles.producto',
-                            'detalles.variante.producto',
+                            'detalles.producto.unidadMedida',
+                            'detalles.variante.producto.unidadMedida',
                         ])->find($item['id']);
 
                         if ($promo) {
@@ -1263,7 +1263,7 @@ class PuntoDeVenta extends Page
                                                 'concepto'          => $concepto,
                                                 'notas'             => "Promo: {$item['nombre']}",
                                                 'cantidad'          => $cantidadDetalle,
-                                                'unidad'            => 'unidad',
+                                                'unidad'            => $prodDetalle?->unidadMedida?->nombre ?? 'unidad',
                                                 'factor_conversion' => 1,
                                                 'cantidad_base'     => $cantidadDetalle,
                                                 'stock_antes'       => $stockAntes,
@@ -1292,7 +1292,7 @@ class PuntoDeVenta extends Page
                                                 'concepto'          => $concepto,
                                                 'notas'             => "Promo: {$item['nombre']}",
                                                 'cantidad'          => $cantidadDetalle,
-                                                'unidad'            => 'unidad',
+                                                'unidad'            => $prodDetalle?->unidadMedida?->nombre ?? 'unidad',
                                                 'factor_conversion' => 1,
                                                 'cantidad_base'     => $cantidadDetalle,
                                                 'stock_antes'       => $stockAntes,
