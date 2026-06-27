@@ -18,29 +18,32 @@ class ProductosPruebaSeeder extends Seeder
         $empresa = Empresa::first();
 
         if (! $empresa) {
-            $this->command->error('No hay empresas registradas. Inicia sesión y crea una primero.');
+            $this->command->error('No hay empresas registradas.');
             return;
         }
 
+        $this->runForEmpresa($empresa);
+    }
+
+    public function runForEmpresa(Empresa $empresa): void
+    {
         $yaExisten = DB::table('productos')
             ->where('empresa_id', $empresa->id)
             ->where('codigo_interno', 'like', self::PREFIX . '%')
             ->count();
 
         if ($yaExisten > 0) {
-            $this->command->warn("Ya existen {$yaExisten} productos de prueba para \"{$empresa->nombre}\". Usa --fresh para limpiarlos primero.");
             return;
         }
 
         $unidad = UnidadesMedida::where('empresa_id', $empresa->id)->first();
 
         if (! $unidad) {
-            $this->command->error('La empresa no tiene unidades de medida configuradas.');
             return;
         }
 
-        $ahora    = now();
-        $factory  = new \Database\Factories\ProductoFactory();
+        $ahora   = now();
+        $factory = new \Database\Factories\ProductoFactory();
         $productos = [];
 
         for ($i = 1; $i <= self::TOTAL; $i++) {
@@ -66,18 +69,15 @@ class ProductosPruebaSeeder extends Seeder
             ];
         }
 
-        // Bulk insert en chunks de 100 (evita límite de parámetros PDO)
         foreach (array_chunk($productos, 100) as $chunk) {
             DB::table('productos')->insert($chunk);
         }
 
-        // Recuperar IDs insertados
         $ids = DB::table('productos')
             ->where('empresa_id', $empresa->id)
             ->where('codigo_interno', 'like', self::PREFIX . '%')
             ->pluck('id');
 
-        // Bulk insert inventarios con stock aleatorio
         $inventarios = $ids->map(fn ($id) => [
             'empresa_id'        => $empresa->id,
             'producto_id'       => $id,
@@ -93,9 +93,5 @@ class ProductosPruebaSeeder extends Seeder
         foreach (array_chunk($inventarios, 100) as $chunk) {
             DB::table('inventarios')->insert($chunk);
         }
-
-        $this->command->info("✓ " . self::TOTAL . " productos de prueba creados para \"{$empresa->nombre}\".");
-        $this->command->line("  Para eliminarlos: php artisan db:seed --class=ProductosPruebaSeeder --fresh");
-        $this->command->line("  O ejecuta:        php artisan tinker --execute=\"DB::table('productos')->where('codigo_interno','like','PT-TEST-%')->delete();\"");
     }
 }
