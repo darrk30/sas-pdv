@@ -65,7 +65,14 @@ class InventarioCoreService
 
                 [$productoId, $varianteId] = $this->resolverItem($detalle);
                 $cantidadOrig = (float) $this->campo($detalle, 'cantidad');
-                $cantidadBase = $this->convertirABase($cantidadOrig, $unidad);
+
+                // Convertir a la unidad REGISTRADA del producto (no a la base absoluta
+                // de la dimensión). Si operación y producto usan la misma unidad → factor = 1.
+                $unidadProducto = $this->resolverUnidadProducto($productoId, $varianteId);
+                $factorOp       = $unidad->factor_base ?? 1;
+                $factorProd     = $unidadProducto?->factor_base ?: 1;
+                $relFactor      = $factorOp / $factorProd;
+                $cantidadBase   = round($cantidadOrig * $relFactor, 4);
 
                 $kardexCtx = null;
                 if ($movible !== null) {
@@ -75,7 +82,7 @@ class InventarioCoreService
                         'concepto'          => $concepto ?? '',
                         'cantidad'          => $cantidadOrig,
                         'unidad'            => $unidad->nombre ?? 'unidad',
-                        'factor_conversion' => $unidad->factor_base ?? 1,
+                        'factor_conversion' => $relFactor,
                         'costo_unitario'    => $this->campo($detalle, 'costo_unitario'),
                         'costo_total'       => $this->campo($detalle, 'costo_total'),
                         'precio_unitario'   => $this->campo($detalle, 'precio_unitario'),
@@ -205,7 +212,13 @@ class InventarioCoreService
         ]);
 
         if ($tipo === 'entrada' && $kardexCtx !== null) {
-            $costoNuevo = (float) ($kardexCtx['costo_unitario'] ?? 0);
+            // Derivar costo por unidad-producto desde costo_total para que sea correcto
+            // incluso cuando la unidad de operación difiere de la unidad del producto.
+            $costoTotal = (float) ($kardexCtx['costo_total'] ?? 0);
+            $costoNuevo = ($costoTotal > 0 && $cantidadBase > 0)
+                ? round($costoTotal / $cantidadBase, 2)
+                : (float) ($kardexCtx['costo_unitario'] ?? 0);
+
             if ($costoNuevo > 0) {
                 $this->actualizarCostoPromedio($productoId, $varianteId, $stockAntes, $cantidadBase, $costoNuevo);
             }
@@ -275,6 +288,16 @@ class InventarioCoreService
         }
 
         return [$productoId, $varianteId];
+    }
+
+    /**
+     * Resuelve la unidad de medida REGISTRADA en el producto (no la de la operación).
+     * Es la unidad en la que se almacena el stock_real en inventarios.
+     */
+    private function resolverUnidadProducto(int $productoId, ?int $varianteId): ?UnidadesMedida
+    {
+        $unidadId = Producto::where('id', $productoId)->value('unidad_medida_id');
+        return $unidadId ? UnidadesMedida::find($unidadId) : null;
     }
 
     /**
