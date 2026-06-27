@@ -1,0 +1,279 @@
+/* ============================================================
+   reporte-ganancias.css — Reporte de Ganancias
+   Depende de ventas-sesion.css para vs-* base
+   ============================================================ */
+
+/* ── KPI grid ──────────────────────────────────────────────── */
+.rg-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.875rem;
+}
+
+.rg-kpi {
+    background: var(--vs-bg);
+    border: 1px solid var(--vs-border);
+    border-radius: var(--vs-radius);
+    padding: 1rem 1.125rem;
+    box-shadow: var(--vs-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.rg-kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+}
+
+.rg-kpi--blue::before   { background: #3b82f6; }
+.rg-kpi--purple::before { background: #8b5cf6; }
+.rg-kpi--orange::before { background: #f97316; }
+.rg-kpi--green::before  { background: #22c55e; }
+.rg-kpi--teal::before   { background: #14b8a6; }
+.rg-kpi--gray::before   { background: #6b7280; }
+
+.rg-kpi__label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--vs-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.rg-kpi__value {
+    font-size: 1.375rem;
+    font-weight: 800;
+    color: var(--vs-text);
+    line-height: 1.1;
+}
+
+.rg-kpi--green  .rg-kpi__value { color: #15803d; }
+.rg-kpi--orange .rg-kpi__value { color: #c2410c; }
+
+.rg-kpi__sub {
+    font-size: 0.7rem;
+    color: var(--vs-text-faint);
+}
+
+/* ── Contenedor filtros ─────────────────────────────────────── */
+.rg-form-wrap {
+    background: var(--vs-bg);
+    border: 1px solid var(--vs-border);
+    border-radius: var(--vs-radius);
+    padding: 1rem 1.125rem 1.25rem;
+    box-shadow: var(--vs-shadow);
+}
+
+.rg-form-limpiar {
+    margin-top: 0.625rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* ── Tabla ganancias ───────────────────────────────────────── */
+.rg-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.rg-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+    color: var(--vs-text);
+}
+
+.rg-table th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--vs-text-muted);
+    border-bottom: 1.5px solid var(--vs-border);
+    padding: 0.625rem 0.75rem;
+    white-space: nowrap;
+}
+
+.rg-table th.rg-th-right { text-align: right; }
+
+.rg-table td {
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--vs-border);
+    vertical-align: middle;
+}
+
+.rg-table tbody tr:last-child td { border-bottom: none; }
+
+.rg-table tbody tr:hover { background: var(--vs-bg-subtle); }
+
+.rg-td-right { text-align: right; }
+.rg-td-center { text-align: center; }
+
+/* ── Celda de comprobante ───────────────────────────────────── */
+.rg-comprobante {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--vs-text);
+    font-family: ui-monospace, monospace;
+}
+
+/* ── Celda de fecha ─────────────────────────────────────────── */
+.rg-fecha {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+.rg-fecha__dia  { font-size: 0.8rem; font-weight: 600; color: var(--vs-text); }
+.rg-fecha__hora { font-size: 0.7rem; color: var(--vs-text-muted); }
+
+/* ── Montos ─────────────────────────────────────────────────── */
+.rg-monto {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--vs-text);
+    white-space: nowrap;
+}
+
+.rg-monto--costo   { color: #c2410c; }
+.rg-monto--neta    { color: #1d4ed8; }
+.rg-monto--util    { font-weight: 700; }
+.rg-monto--pos     { color: #15803d; }
+.rg-monto--neg     { color: #dc2626; }
+
+/* ── Margen badge ───────────────────────────────────────────── */
+.rg-margen {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.rg-margen--alto    { background: #dcfce7; color: #15803d; }
+.rg-margen--medio   { background: #fef9c3; color: #854d0e; }
+.rg-margen--bajo    { background: #fee2e2; color: #991b1b; }
+.rg-margen--cero    { background: #f3f4f6; color: #6b7280; }
+
+/* ── Top productos ──────────────────────────────────────────── */
+.rg-top {
+    background: var(--vs-bg);
+    border: 1px solid var(--vs-border);
+    border-radius: var(--vs-radius);
+    box-shadow: var(--vs-shadow);
+    overflow: hidden;
+}
+
+.rg-top__header {
+    padding: 0.875rem 1.125rem;
+    border-bottom: 1px solid var(--vs-border);
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--vs-text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rg-top__list {
+    display: flex;
+    flex-direction: column;
+}
+
+.rg-top__item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.625rem 1.125rem;
+    border-bottom: 1px solid var(--vs-border);
+}
+
+.rg-top__item:last-child { border-bottom: none; }
+
+.rg-top__rank {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--vs-bg-subtle);
+    border: 1px solid var(--vs-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--vs-text-muted);
+    flex-shrink: 0;
+}
+
+.rg-top__nombre {
+    flex: 1;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--vs-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rg-top__veces {
+    font-size: 0.72rem;
+    color: var(--vs-text-muted);
+    white-space: nowrap;
+}
+
+.rg-top__util {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #15803d;
+    white-space: nowrap;
+}
+
+/* ── Sin datos ──────────────────────────────────────────────── */
+.rg-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 4rem 1rem;
+    color: var(--vs-text-muted);
+}
+
+.rg-empty svg {
+    width: 2.5rem;
+    height: 2.5rem;
+    opacity: .35;
+}
+
+.rg-empty p { font-size: 0.875rem; margin: 0; }
+
+/* ── Paginación ─────────────────────────────────────────────── */
+.rg-pagination {
+    padding: 1rem;
+    border-top: 1px solid var(--vs-border);
+}
+
+/* ── Columnas tabla ─────────────────────────────────────────── */
+.rg-col-comp   { width: 8rem; }
+.rg-col-fecha  { width: 7rem; }
+.rg-col-monto  { width: 7.5rem; }
+.rg-col-margen { width: 6rem; }
+.rg-col-estado { width: 6rem; }
+
+/* ── Dark mode ──────────────────────────────────────────────── */
+.dark .rg-kpi         { background: #1f2937; border-color: #374151; }
+.dark .rg-kpi__label  { color: #9ca3af; }
+.dark .rg-kpi__value  { color: #f9fafb; }
+.dark .rg-top         { background: #1f2937; border-color: #374151; }
+.dark .rg-top__header { color: #f9fafb; border-color: #374151; }
+.dark .rg-top__item   { border-color: #374151; }
+.dark .rg-top__rank   { background: #111827; border-color: #374151; }
+.dark .rg-table th    { color: #9ca3af; border-color: #374151; }
+.dark .rg-table td    { border-color: #374151; color: #f9fafb; }
+.dark .rg-table tbody tr:hover { background: #111827; }
+.dark .rg-form-wrap   { background: #1f2937; border-color: #374151; }
