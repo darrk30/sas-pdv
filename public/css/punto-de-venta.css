@@ -1590,6 +1590,21 @@
     background: var(--pdv-surface);
 }
 
+.pdv-field__input--error {
+    border-color: #ef4444;
+}
+
+.pdv-field__input--error:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.12);
+}
+
+.pdv-field__error {
+    margin: 0.25rem 0 0;
+    font-size: 0.72rem;
+    color: #ef4444;
+}
+
 /* ── Toggle DNI / RUC ───────────────────────────────────── */
 .pdv-doc-tipo {
     display: flex;

@@ -792,16 +792,22 @@
                         <label class="pdv-field__label">Número de documento <span class="pdv-field__req">*</span></label>
                         <input
                             type="text"
-                            class="pdv-field__input"
+                            class="pdv-field__input {{ $errors->has('ncNumeroDoc') ? 'pdv-field__input--error' : '' }}"
                             wire:model.live="ncNumeroDoc"
                             placeholder="{{ $ncTipoDoc === 'ruc' ? '11 dígitos' : '8 dígitos' }}"
                             maxlength="{{ $ncTipoDoc === 'ruc' ? 11 : 8 }}"
                         />
+                        @error('ncNumeroDoc')
+                            <p class="pdv-field__error">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <div class="pdv-field">
                         <label class="pdv-field__label">Nombre / Razón Social <span class="pdv-field__req">*</span></label>
-                        <input type="text" class="pdv-field__input" wire:model.live="ncNombre" placeholder="Nombre"/>
+                        <input type="text" class="pdv-field__input {{ $errors->has('ncNombre') ? 'pdv-field__input--error' : '' }}" wire:model.live="ncNombre" placeholder="Nombre"/>
+                        @error('ncNombre')
+                            <p class="pdv-field__error">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     @if($ncTipoDoc === 'dni')

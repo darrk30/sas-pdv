@@ -34,6 +34,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use UnitEnum;
 
@@ -224,11 +225,18 @@ class PuntoDeVenta extends Page
 
     public function abrirModalNuevoCliente(): void
     {
-        $this->ncNombre    = '';
-        $this->ncApellidos = '';
-        $this->ncTipoDoc   = 'dni';
-        $this->ncNumeroDoc = '';
+        $this->ncNombre          = '';
+        $this->ncApellidos       = '';
+        $this->ncTipoDoc         = 'dni';
+        $this->ncNumeroDoc       = '';
         $this->modalNuevoCliente = true;
+        $this->resetValidation(['ncNombre', 'ncNumeroDoc']);
+    }
+
+    public function updatedNcTipoDoc(): void
+    {
+        $this->ncNumeroDoc = '';
+        $this->resetValidation('ncNumeroDoc');
     }
 
     public function cerrarModalNuevoCliente(): void
@@ -238,16 +246,23 @@ class PuntoDeVenta extends Page
 
     public function crearCliente(): void
     {
-        if (blank($this->ncNombre) || blank($this->ncNumeroDoc)) {
-            Notification::make()->title('Nombre y número de documento son requeridos')->warning()->send();
-            return;
-        }
+        $longitud  = $this->ncTipoDoc === 'ruc' ? 11 : 8;
+        $tipoLabel = strtoupper($this->ncTipoDoc);
 
-        $longitud = $this->ncTipoDoc === 'ruc' ? 11 : 8;
-        if (strlen($this->ncNumeroDoc) !== $longitud) {
-            Notification::make()->title("El {$this->ncTipoDoc} debe tener {$longitud} dígitos")->warning()->send();
-            return;
-        }
+        $this->validate([
+            'ncNombre'    => 'required|string|max:255',
+            'ncNumeroDoc' => [
+                'required',
+                "digits:{$longitud}",
+                Rule::unique('clientes', 'numero_documento')
+                    ->where('empresa_id', Filament::getTenant()->id),
+            ],
+        ], [
+            'ncNombre.required'    => 'El nombre es requerido.',
+            'ncNumeroDoc.required' => 'El número de documento es requerido.',
+            'ncNumeroDoc.digits'   => "El {$tipoLabel} debe tener {$longitud} dígitos.",
+            'ncNumeroDoc.unique'   => 'Este número de documento ya está registrado.',
+        ]);
 
         $cliente = Cliente::create([
             'empresa_id'       => Filament::getTenant()->id,
