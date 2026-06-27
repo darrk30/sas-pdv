@@ -347,7 +347,29 @@
                                     @if($esCortesia)
                                         <span class="pdv-item__precio-gratis">Gratis</span>
                                     @else
-                                        S/ {{ number_format($item['precio'], 2) }} c/u
+                                        <span
+                                            x-data="{ editing: false, val: '{{ number_format($item['precio'], 2, '.', '') }}' }"
+                                            class="pdv-item__precio-editable"
+                                        >
+                                            <span
+                                                x-show="!editing"
+                                                @click="editing = true; $nextTick(() => $refs.inp_{{ $item['key'] }}.select())"
+                                                class="pdv-item__precio-valor"
+                                                title="Toca para editar el precio"
+                                            >S/ <span x-text="parseFloat(val).toFixed(2)"></span> c/u</span>
+                                            <input
+                                                x-ref="inp_{{ $item['key'] }}"
+                                                x-show="editing"
+                                                x-model="val"
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                class="pdv-item__precio-input"
+                                                @blur="editing = false; $wire.actualizarPrecio('{{ $item['key'] }}', parseFloat(val) || 0)"
+                                                @keydown.enter="$el.blur()"
+                                                @keydown.escape="editing = false; val = '{{ number_format($item['precio'], 2, '.', '') }}'"
+                                            />
+                                        </span>
                                     @endif
                                 </p>
                             </div>

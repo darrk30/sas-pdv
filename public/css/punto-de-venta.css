@@ -802,6 +802,39 @@
     font-size: 0.7rem;
 }
 
+.pdv-item__precio-editable {
+    display: inline-flex;
+    align-items: center;
+}
+
+.pdv-item__precio-valor {
+    cursor: pointer;
+    border-bottom: 1px dashed var(--pdv-text-faint);
+    padding-bottom: 1px;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.pdv-item__precio-valor:hover {
+    color: var(--pdv-primary);
+    border-color: var(--pdv-primary);
+}
+
+.pdv-item__precio-input {
+    width: 5.5rem;
+    padding: 0.1rem 0.3rem;
+    font-size: 0.7rem;
+    border: 1px solid var(--pdv-primary);
+    border-radius: 4px;
+    background: var(--pdv-bg);
+    color: var(--pdv-text);
+    outline: none;
+    text-align: right;
+}
+
+.pdv-item__precio-input:focus {
+    box-shadow: 0 0 0 2px var(--pdv-primary-light);
+}
+
 .pdv-item__subtotal--gratis {
     color: #d97706;
     font-weight: 700;

@@ -693,6 +693,14 @@ class PuntoDeVenta extends Page
         $this->carrito = $carrito;
     }
 
+    public function actualizarPrecio(string $key, float $precio): void
+    {
+        if (! isset($this->carrito[$key])) return;
+        $carrito = $this->carrito;
+        $carrito[$key]['precio'] = round(max(0, $precio), 2);
+        $this->carrito = $carrito;
+    }
+
     public function eliminarItem(string $key): void
     {
         $carrito = $this->carrito;
