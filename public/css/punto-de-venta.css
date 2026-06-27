@@ -764,6 +764,36 @@
     color: var(--pdv-text);
 }
 
+.pdv-qty--decimal {
+    display: flex;
+    align-items: center;
+}
+
+.pdv-qty__decimal-input {
+    width: 4.5rem;
+    height: 1.75rem;
+    border: 1.5px solid var(--pdv-primary);
+    border-radius: 0.375rem;
+    background: var(--pdv-primary-light);
+    color: var(--pdv-primary-text);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 0 0.25rem;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.pdv-qty__decimal-input:focus {
+    border-color: var(--pdv-primary-dark);
+    box-shadow: 0 0 0 2px rgba(99,102,241,.2);
+}
+
+.pdv-qty__decimal-input::-webkit-inner-spin-button,
+.pdv-qty__decimal-input::-webkit-outer-spin-button {
+    opacity: 1;
+}
+
 /* ── Modo dar / cortesía ────────────────────────────────── */
 .pdv-item--cortesia {
     background: #fffbeb;

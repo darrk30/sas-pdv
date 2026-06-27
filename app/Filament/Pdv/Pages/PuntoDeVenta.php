@@ -83,9 +83,10 @@ class PuntoDeVenta extends Page
     public array $atributosModal = [];
     public array $seleccionados = [];
     public float $precioAdicionalTotal = 0;
-    public bool $productoControlStock = false;
+    public bool $productoControlStock  = false;
     public bool $productoVentaSinStock = false;
-    public bool $productoEsCortesia = false;
+    public bool $productoEsCortesia    = false;
+    public bool $productoEsDecimal     = false;
     public array $variantesInfo = [];
     public array $exclusionesMap = [];
     public array $valoresDeshabilitados = [];
@@ -414,11 +415,13 @@ class PuntoDeVenta extends Page
             'atributos.atributo',
             'atributos.detallesPrecios.valor',
             'atributos.detallesExclusiones',
+            'unidadMedida.dimension',
         ])->findOrFail($productoId);
 
         $this->productoControlStock  = (bool) $producto->control_de_stock;
         $this->productoVentaSinStock = (bool) $producto->venta_sin_stock;
         $this->productoEsCortesia    = (bool) $producto->es_cortesia;
+        $this->productoEsDecimal     = $producto->unidadMedida?->esContinua() ?? false;
 
         if ($producto->variantesActivas->isEmpty()) {
             $esCortesia = (bool) $producto->es_cortesia;
@@ -618,6 +621,7 @@ class PuntoDeVenta extends Page
         $this->productoControlStock  = false;
         $this->productoVentaSinStock = false;
         $this->productoEsCortesia    = false;
+        $this->productoEsDecimal     = false;
         $this->variantesInfo         = [];
         $this->exclusionesMap        = [];
         $this->valoresDeshabilitados = [];
@@ -627,7 +631,7 @@ class PuntoDeVenta extends Page
 
     public function agregarProductoSimple(int $productoId, string $nombre = '', float $precio = 0, bool $esCortesia = false): void
     {
-        $producto = Producto::with('inventario')->find($productoId);
+        $producto = Producto::with(['inventario', 'unidadMedida.dimension'])->find($productoId);
         if (! $producto) return;
 
         if ($nombre === '') {
@@ -638,17 +642,18 @@ class PuntoDeVenta extends Page
 
         if (! $esCortesia && $producto->control_de_stock && ! $producto->venta_sin_stock) {
             $stock     = (float) ($producto->inventario?->stock_real ?? 0);
-            $enCarrito = (int) ($this->carrito["producto_{$productoId}"]['cantidad'] ?? 0);
+            $enCarrito = (float) ($this->carrito["producto_{$productoId}"]['cantidad'] ?? 0);
             if ($enCarrito + 1 > $stock) {
                 Notification::make()
                     ->title('Stock insuficiente')
-                    ->body("Disponible: {$stock} unidad(es).")
+                    ->body("Disponible: {$stock}.")
                     ->warning()->send();
                 return;
             }
         }
 
-        $this->pushCarrito("producto_{$productoId}", 'producto', $productoId, $nombre, $precio, $esCortesia);
+        $esDecimal = $producto->unidadMedida?->esContinua() ?? false;
+        $this->pushCarrito("producto_{$productoId}", 'producto', $productoId, $nombre, $precio, $esCortesia, $esDecimal);
     }
 
     private function agregarVariante(int $varianteId, string $nombre, float $precio, bool $esCortesia = false): void
@@ -656,17 +661,17 @@ class PuntoDeVenta extends Page
         if (! $esCortesia && $this->productoControlStock && ! $this->productoVentaSinStock) {
             $inv       = Inventario::where('variante_id', $varianteId)->first();
             $stock     = (float) ($inv?->stock_real ?? 0);
-            $enCarrito = (int) ($this->carrito["variante_{$varianteId}"]['cantidad'] ?? 0);
+            $enCarrito = (float) ($this->carrito["variante_{$varianteId}"]['cantidad'] ?? 0);
             if ($enCarrito + 1 > $stock) {
                 Notification::make()
                     ->title('Stock insuficiente')
-                    ->body("Disponible: {$stock} unidad(es).")
+                    ->body("Disponible: {$stock}.")
                     ->warning()->send();
                 return;
             }
         }
 
-        $this->pushCarrito("variante_{$varianteId}", 'variante', $varianteId, $nombre, $precio, $esCortesia);
+        $this->pushCarrito("variante_{$varianteId}", 'variante', $varianteId, $nombre, $precio, $esCortesia, $this->productoEsDecimal);
     }
 
     public function agregarPromocion(int $promocionId): void
@@ -693,11 +698,11 @@ class PuntoDeVenta extends Page
         $this->pushCarrito("promocion_{$promocionId}", 'promocion', $promocionId, $promocion->nombre, (float) $promocion->precio);
     }
 
-    private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio, bool $esCortesia = false): void
+    private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio, bool $esCortesia = false, bool $esDecimal = false): void
     {
         $carrito = $this->carrito;
         if (isset($carrito[$key])) {
-            $carrito[$key]['cantidad']++;
+            $carrito[$key]['cantidad'] += $esDecimal ? 1.0 : 1;
         } else {
             $carrito[$key] = [
                 'key'      => $key,
@@ -706,7 +711,8 @@ class PuntoDeVenta extends Page
                 'nombre'   => $nombre,
                 'precio'   => $precio,
                 'cortesia' => $esCortesia,
-                'cantidad' => 1,
+                'decimal'  => $esDecimal,
+                'cantidad' => $esDecimal ? 1.0 : 1,
             ];
         }
         $this->carrito = $carrito;
@@ -772,6 +778,46 @@ class PuntoDeVenta extends Page
         $carrito = $this->carrito;
         $carrito[$key]['precio'] = round(max(0, $precio), 2);
         $this->carrito = $carrito;
+    }
+
+    public function actualizarCantidad(string $key, float $cant): void
+    {
+        if (! isset($this->carrito[$key])) return;
+        $cant  = max(0.001, round($cant, 3));
+        $item  = $this->carrito[$key];
+
+        if (! ($item['cortesia'] ?? false)) {
+            if ($item['tipo'] === 'producto') {
+                $prod = Producto::with('inventario')->find($item['id']);
+                if ($prod && $prod->control_de_stock && ! $prod->venta_sin_stock) {
+                    $stock = (float) ($prod->inventario?->stock_real ?? 0);
+                    if ($cant > $stock) {
+                        Notification::make()
+                            ->title('Stock insuficiente')
+                            ->body("Disponible: {$stock}.")
+                            ->warning()->send();
+                        $cant = $stock;
+                    }
+                }
+            } elseif ($item['tipo'] === 'variante') {
+                $inv = Inventario::where('variante_id', $item['id'])->first();
+                $var = Variante::with('producto')->find($item['id']);
+                if ($var && $var->producto?->control_de_stock && ! $var->producto?->venta_sin_stock) {
+                    $stock = (float) ($inv?->stock_real ?? 0);
+                    if ($cant > $stock) {
+                        Notification::make()
+                            ->title('Stock insuficiente')
+                            ->body("Disponible: {$stock}.")
+                            ->warning()->send();
+                        $cant = $stock;
+                    }
+                }
+            }
+        }
+
+        $carrito         = $this->carrito;
+        $carrito[$key]['cantidad'] = $cant;
+        $this->carrito   = $carrito;
     }
 
     public function eliminarItem(string $key): void

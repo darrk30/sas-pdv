@@ -64,6 +64,16 @@ class UnidadesMedida extends Model
         return $this->factor_conversion * $this->unidadPadre->factor_base;
     }
 
+    /**
+     * Retorna true para unidades de magnitudes continuas (Masas, Volúmenes…).
+     * Las unidades de Cantidades (Unidad, Docena…) son discretas → false.
+     */
+    public function esContinua(): bool
+    {
+        $dim = $this->relationLoaded('dimension') ? $this->dimension : $this->dimension()->first();
+        return $dim?->nombre !== 'Cantidades';
+    }
+
     public function productos()
     {
         return $this->hasMany(Producto::class);
