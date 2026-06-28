@@ -38,6 +38,7 @@ class Venta extends Model
         'costo_total',
         'monto_pagado',
         'saldo_pendiente',
+        'estado_pago',
         'total_letras',
         'qr_data',
         'hash',
@@ -58,7 +59,7 @@ class Venta extends Model
         'fecha_vencimiento'=> 'date',
         'tipo_pago'        => TipoPago::class,
         'estado'           => EstadoVenta::class,
-        'estado_despacho'  => EstadoVenta::class,
+        'estado_despacho'  => 'string',
         'op_gravadas'      => 'decimal:2',
         'op_exoneradas'    => 'decimal:2',
         'op_inafectas'     => 'decimal:2',
@@ -68,6 +69,7 @@ class Venta extends Model
         'costo_total'      => 'decimal:2',
         'monto_pagado'     => 'decimal:2',
         'saldo_pendiente'  => 'decimal:2',
+        'estado_pago'      => 'string',
         'sunat_success'    => 'boolean',
     ];
 

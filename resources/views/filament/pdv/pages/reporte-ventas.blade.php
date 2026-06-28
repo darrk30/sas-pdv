@@ -44,6 +44,20 @@
             </div>
         </div>
 
+        @if(($resumen['creditoPendiente'] ?? 0) > 0)
+        <div class="vs-card vs-card--amber">
+            <div class="vs-card__icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                </svg>
+            </div>
+            <div class="vs-card__body">
+                <span class="vs-card__label">Crédito pendiente</span>
+                <span class="vs-card__value">S/ {{ number_format($resumen['creditoPendiente'], 2) }}</span>
+            </div>
+        </div>
+        @endif
+
         @if($resumen['anuladas'] > 0)
         <div class="vs-card vs-card--red">
             <div class="vs-card__icon">
@@ -131,7 +145,12 @@
                             @php
                                 $esAnulada   = $venta->estado === \App\Enums\EstadoVenta::Anulada;
                                 $esDespacho  = $venta->estado_despacho === \App\Enums\EstadoVenta::PendienteEnvio;
-                                $metodosTxt  = $venta->pagos->map(fn($p) => $p->metodoPago?->nombre)->filter()->unique()->implode(', ');
+                                $metodosTxt  = $venta->pagos
+                                    ->filter(fn($p) =>
+                                        $p->metodoPago?->condicion_pago !== \App\Enums\CondicionPago::Credito
+                                        || $venta->estado_pago === 'pendiente')
+                                    ->map(fn($p) => $p->metodoPago?->nombre)
+                                    ->filter()->unique()->implode(', ');
                                 $comprobante = ($venta->serie?->serie ?? '---') . '-' . $venta->correlativo;
                             @endphp
                             <tr class="vs-vrow {{ $esAnulada ? 'vs-vrow--anulada' : '' }}" wire:key="rv-{{ $venta->id }}">
@@ -190,6 +209,9 @@
                                         <span class="vs-badge vs-badge--anulada">Anulada</span>
                                     @else
                                         <span class="vs-badge vs-badge--ok">Completada</span>
+                                        @if(($venta->estado_pago ?? 'pagado') === 'pendiente')
+                                            <span class="vs-badge vs-badge--credito" style="display:block;margin-top:.2rem">Crédito</span>
+                                        @endif
                                     @endif
                                 </td>
 
@@ -285,9 +307,23 @@
                         </thead>
                         <tbody>
                             @foreach($vm->detalles as $d)
+                                @php
+                                    $cant    = (float) $d->cantidad;
+                                    $cantFmt = $cant == floor($cant)
+                                        ? number_format($cant, 0)
+                                        : rtrim(rtrim(number_format($cant, 3), '0'), '.');
+                                    $simbolo = $d->producto?->unidadMedida?->simbolo
+                                        ?? $d->variante?->producto?->unidadMedida?->simbolo
+                                        ?? null;
+                                @endphp
                                 <tr>
                                     <td>{{ $d->descripcion }}</td>
-                                    <td class="vs-ta-right">{{ number_format($d->cantidad, 0) }}</td>
+                                    <td class="vs-ta-right" style="white-space:nowrap">
+                                        {{ $cantFmt }}
+                                        @if($simbolo)
+                                            <span style="font-size:.72rem;color:var(--vs-text-muted);margin-left:.15rem">{{ $simbolo }}</span>
+                                        @endif
+                                    </td>
                                     <td class="vs-ta-right">S/ {{ number_format($d->precio_unitario, 2) }}</td>
                                     <td class="vs-ta-right">S/ {{ number_format($d->total, 2) }}</td>
                                 </tr>
@@ -303,14 +339,18 @@
                             <span>- S/ {{ number_format($vm->descuento_total, 2) }}</span>
                         </div>
                     @endif
+                    @if($vm->op_gravadas > 0)
                     <div class="vs-modal__total-fila">
                         <span>Op. Gravada</span>
                         <span>S/ {{ number_format($vm->op_gravadas, 2) }}</span>
                     </div>
+                    @endif
+                    @if($vm->igv > 0)
                     <div class="vs-modal__total-fila">
                         <span>IGV (18%)</span>
                         <span>S/ {{ number_format($vm->igv, 2) }}</span>
                     </div>
+                    @endif
                     <div class="vs-modal__total-fila vs-modal__total-fila--grande">
                         <span>Total</span>
                         <span>S/ {{ number_format($vm->total, 2) }}</span>
@@ -319,7 +359,7 @@
 
                 <p class="vs-modal__section-label" style="margin-top:1rem">Pagos</p>
                 <div class="vs-modal__pagos">
-                    @foreach($vm->pagos as $pago)
+                    @foreach($vm->pagos->filter(fn($p) => $p->metodoPago?->condicion_pago !== \App\Enums\CondicionPago::Credito || $vm->estado_pago === 'pendiente') as $pago)
                         <div class="vs-modal__pago-item">
                             <div class="vs-modal__pago-info">
                                 <span class="vs-modal__pago-metodo">{{ $pago->metodoPago?->nombre ?? '—' }}</span>

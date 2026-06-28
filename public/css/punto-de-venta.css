@@ -813,11 +813,30 @@
     align-items: center;
     gap: 0.2rem;
     padding: 0.1rem 0.375rem;
-    background: rgba(245,158,11,.2);
-    color: #92400e;
     font-size: 0.6rem;
     font-weight: 800;
     border-radius: 99px;
+    border: none;
+    cursor: pointer;
+    transition: background .15s, color .15s, opacity .15s;
+    line-height: 1.4;
+}
+.pdv-item__badge-cortesia--off {
+    background: transparent;
+    color: var(--pdv-text-faint);
+    border: 1px dashed var(--pdv-border);
+    opacity: .7;
+}
+.pdv-item__badge-cortesia--off:hover {
+    background: rgba(245,158,11,.1);
+    color: #92400e;
+    opacity: 1;
+    border-style: solid;
+}
+.pdv-item__badge-cortesia--on {
+    background: rgba(245,158,11,.2);
+    color: #92400e;
+    border: 1px solid rgba(245,158,11,.4);
 }
 
 .pdv-item__precio-tachado {
@@ -2570,4 +2589,24 @@
 
 .pdv-btn-confirmar--venta:hover:not(:disabled) {
     background: #15803d;
+}
+
+/* ── Badge crédito en lista de pagos ───────────────────── */
+.pdv-credito-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.4rem;
+    border-radius: 99px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    background: #fef9c3;
+    color: #854d0e;
+    margin-left: 0.35rem;
+    vertical-align: middle;
+}
+
+.dark .pdv-credito-badge {
+    background: #713f12;
+    color: #fde047;
 }

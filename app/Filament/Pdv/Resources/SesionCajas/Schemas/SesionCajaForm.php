@@ -51,6 +51,15 @@ class SesionCajaForm
                             ->native(false),
 
                     ]),
+
+                    TextInput::make('monto_apertura')
+                        ->label('Fondo de apertura (S/)')
+                        ->numeric()
+                        ->default(0)
+                        ->minValue(0)
+                        ->helperText('Monto en efectivo con el que se abre la caja.')
+                        ->required(),
+
                 ])->columnSpanFull(),
         ]);
     }
@@ -80,23 +89,48 @@ class SesionCajaForm
                     ]),
                 ])->columnSpanFull(),
 
-            // ── TOTAL DEL SISTEMA ────────────────────────────────────────
-            Section::make('Resumen del sistema')
+            // ── TOTALES Y NOTAS ──────────────────────────────────────────
+            Section::make('Resumen del cierre')
                 ->schema([
-                    Grid::make(['default' => 1, 'md' => 2])->schema([
+                    Grid::make(['default' => 1, 'sm' => 2, 'lg' => 5])->schema([
+
+                        TextInput::make('monto_apertura')
+                            ->label('Fondo de apertura (S/)')
+                            ->numeric()
+                            ->readOnly()
+                            ->helperText('Efectivo con el que se abrió la caja.'),
 
                         TextInput::make('total_sistema')
                             ->label('Total sistema (S/)')
                             ->numeric()
                             ->readOnly()
-                            ->helperText('Calculado automáticamente de las transacciones aprobadas.'),
+                            ->helperText('Transacciones aprobadas (incluye fondo de apertura).'),
 
-                        Textarea::make('notas_cierre')
-                            ->label('Notas de cierre')
-                            ->rows(3)
-                            ->placeholder('Observaciones al cerrar la caja...'),
+                        TextInput::make('total_cajero')
+                            ->label('Total cajero (S/)')
+                            ->numeric()
+                            ->readOnly()
+                            ->helperText('Suma de los montos contados por método.'),
+
+                        TextInput::make('diferencia_total')
+                            ->label('Diferencia (S/)')
+                            ->numeric()
+                            ->readOnly()
+                            ->helperText('Cajero − Sistema.'),
+
+                        TextInput::make('total_creditos')
+                            ->label('Créditos otorgados (S/)')
+                            ->numeric()
+                            ->readOnly()
+                            ->helperText('No se cuentan como efectivo físico.'),
 
                     ]),
+
+                    Textarea::make('notas_cierre')
+                        ->label('Notas de cierre')
+                        ->rows(3)
+                        ->placeholder('Observaciones al cerrar la caja...'),
+
                 ])->columnSpanFull(),
 
             // ── DESGLOSE POR MÉTODO DE PAGO ─────────────────────────────
@@ -106,6 +140,13 @@ class SesionCajaForm
                     Repeater::make('pagos')
                         ->relationship('pagos')
                         ->label('')
+                        ->live()
+                        ->afterStateUpdated(function (array $state, callable $set, callable $get) {
+                            $cajero  = round(collect($state)->sum(fn($p) => (float)($p['importe_cajero'] ?? 0)), 2);
+                            $sistema = round((float)($get('total_sistema') ?? 0), 2);
+                            $set('total_cajero',     $cajero);
+                            $set('diferencia_total', round($cajero - $sistema, 2));
+                        })
                         ->schema([
                             Grid::make(['default' => 2, 'md' => 4])->schema([
 

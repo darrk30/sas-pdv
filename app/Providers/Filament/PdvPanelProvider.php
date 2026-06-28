@@ -36,6 +36,13 @@ class PdvPanelProvider extends PanelProvider
             PanelsRenderHook::BODY_END,
             fn () => view('filament.pdv.components.barcode-scanner'),
         );
+
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::HEAD_END,
+            fn () => new \Illuminate\Support\HtmlString(
+                '<style>.fi-no{z-index:10000!important}</style>'
+            ),
+        );
     }
 
     public function panel(Panel $panel): Panel

@@ -424,15 +424,15 @@ class PuntoDeVenta extends Page
         $this->productoEsDecimal     = $producto->unidadMedida?->esContinua() ?? false;
 
         if ($producto->variantesActivas->isEmpty()) {
-            $esCortesia = (bool) $producto->es_cortesia;
-            $precio     = $esCortesia ? 0.0 : (float) $producto->precio_venta;
-            $this->agregarProductoSimple($productoId, $producto->nombre, $precio, $esCortesia);
+            $puedeCortesia = (bool) $producto->es_cortesia;
+            $precio        = (float) $producto->precio_venta;
+            $this->agregarProductoSimple($productoId, $producto->nombre, $precio, false, $precio, $puedeCortesia);
             return;
         }
 
         $this->productoModalId      = $productoId;
         $this->productoModalNombre  = $producto->nombre;
-        $this->precioBase           = $producto->es_cortesia ? 0.0 : (float) $producto->precio_venta;
+        $this->precioBase           = (float) $producto->precio_venta;
         $this->seleccionados        = [];
         $this->precioAdicionalTotal = 0;
 
@@ -605,8 +605,8 @@ class PuntoDeVenta extends Page
 
         $nombre = $sufijo ? "{$this->productoModalNombre} ({$sufijo})" : $this->productoModalNombre;
 
-        $precio = $this->productoEsCortesia ? 0.0 : ($this->precioBase + $this->precioAdicionalTotal);
-        $this->agregarVariante($variante->id, $nombre, $precio, $this->productoEsCortesia);
+        $precioNormal = $this->precioBase + $this->precioAdicionalTotal;
+        $this->agregarVariante($variante->id, $nombre, $precioNormal, false, $precioNormal, $this->productoEsCortesia);
         $this->cerrarModal();
     }
 
@@ -629,18 +629,20 @@ class PuntoDeVenta extends Page
 
     // ── Carrito: agregar ──────────────────────────────────────────────────────
 
-    public function agregarProductoSimple(int $productoId, string $nombre = '', float $precio = 0, bool $esCortesia = false): void
+    public function agregarProductoSimple(int $productoId, string $nombre = '', float $precio = 0, bool $esCortesia = false, float $precioNormal = 0, bool $puedeCortesia = false): void
     {
         $producto = Producto::with(['inventario', 'unidadMedida.dimension'])->find($productoId);
         if (! $producto) return;
 
         if ($nombre === '') {
-            $nombre     = $producto->nombre;
-            $esCortesia = (bool) $producto->es_cortesia;
-            $precio     = $esCortesia ? 0.0 : (float) $producto->precio_venta;
+            $nombre        = $producto->nombre;
+            $puedeCortesia = (bool) $producto->es_cortesia;
+            $precio        = (float) $producto->precio_venta;
+            $precioNormal  = $precio;
+            $esCortesia    = false;
         }
 
-        if (! $esCortesia && $producto->control_de_stock && ! $producto->venta_sin_stock) {
+        if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
             $stock     = (float) ($producto->inventario?->stock_real ?? 0);
             $enCarrito = (float) ($this->carrito["producto_{$productoId}"]['cantidad'] ?? 0);
             if ($enCarrito + 1 > $stock) {
@@ -653,12 +655,12 @@ class PuntoDeVenta extends Page
         }
 
         $esDecimal = $producto->unidadMedida?->esContinua() ?? false;
-        $this->pushCarrito("producto_{$productoId}", 'producto', $productoId, $nombre, $precio, $esCortesia, $esDecimal);
+        $this->pushCarrito("producto_{$productoId}", 'producto', $productoId, $nombre, $precio, $esCortesia, $esDecimal, $precioNormal, $puedeCortesia);
     }
 
-    private function agregarVariante(int $varianteId, string $nombre, float $precio, bool $esCortesia = false): void
+    private function agregarVariante(int $varianteId, string $nombre, float $precio, bool $esCortesia = false, float $precioNormal = 0, bool $puedeCortesia = false): void
     {
-        if (! $esCortesia && $this->productoControlStock && ! $this->productoVentaSinStock) {
+        if ($this->productoControlStock && ! $this->productoVentaSinStock) {
             $inv       = Inventario::where('variante_id', $varianteId)->first();
             $stock     = (float) ($inv?->stock_real ?? 0);
             $enCarrito = (float) ($this->carrito["variante_{$varianteId}"]['cantidad'] ?? 0);
@@ -671,7 +673,7 @@ class PuntoDeVenta extends Page
             }
         }
 
-        $this->pushCarrito("variante_{$varianteId}", 'variante', $varianteId, $nombre, $precio, $esCortesia, $this->productoEsDecimal);
+        $this->pushCarrito("variante_{$varianteId}", 'variante', $varianteId, $nombre, $precio, $esCortesia, $this->productoEsDecimal, $precioNormal, $puedeCortesia);
     }
 
     public function agregarPromocion(int $promocionId): void
@@ -698,23 +700,37 @@ class PuntoDeVenta extends Page
         $this->pushCarrito("promocion_{$promocionId}", 'promocion', $promocionId, $promocion->nombre, (float) $promocion->precio);
     }
 
-    private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio, bool $esCortesia = false, bool $esDecimal = false): void
+    private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio, bool $esCortesia = false, bool $esDecimal = false, float $precioNormal = 0, bool $puedeCortesia = false): void
     {
         $carrito = $this->carrito;
         if (isset($carrito[$key])) {
             $carrito[$key]['cantidad'] += $esDecimal ? 1.0 : 1;
         } else {
             $carrito[$key] = [
-                'key'      => $key,
-                'tipo'     => $tipo,
-                'id'       => $id,
-                'nombre'   => $nombre,
-                'precio'   => $precio,
-                'cortesia' => $esCortesia,
-                'decimal'  => $esDecimal,
-                'cantidad' => $esDecimal ? 1.0 : 1,
+                'key'           => $key,
+                'tipo'          => $tipo,
+                'id'            => $id,
+                'nombre'        => $nombre,
+                'precio'        => $precio,
+                'precio_normal' => $precioNormal ?: $precio,
+                'cortesia'      => $esCortesia,
+                'puede_cortesia'=> $puedeCortesia,
+                'decimal'       => $esDecimal,
+                'cantidad'      => $esDecimal ? 1.0 : 1,
             ];
         }
+        $this->carrito = $carrito;
+    }
+
+    public function toggleCortesia(string $key): void
+    {
+        $carrito = $this->carrito;
+        if (! isset($carrito[$key])) return;
+        if (! ($carrito[$key]['puede_cortesia'] ?? false)) return;
+
+        $activo = ! ($carrito[$key]['cortesia'] ?? false);
+        $carrito[$key]['cortesia'] = $activo;
+        $carrito[$key]['precio']   = $activo ? 0.0 : (float) ($carrito[$key]['precio_normal'] ?? 0);
         $this->carrito = $carrito;
     }
 
@@ -880,6 +896,7 @@ class PuntoDeVenta extends Page
                 'nombre'              => $m->nombre,
                 'imagen'              => $m->imagen,
                 'requiere_referencia' => (bool) $m->requiere_referencia,
+                'condicion_pago'      => $m->condicion_pago->value,
             ])
             ->values()
             ->toArray();
@@ -969,11 +986,12 @@ class PuntoDeVenta extends Page
         }
 
         $this->pagosAgregados[] = [
-            'metodo_pago_id' => $this->metodoPagoId,
-            'nombre'         => $metodo['nombre'] ?? '',
-            'imagen'         => $metodo['imagen'] ?? null,
-            'monto'          => $monto,
-            'referencia'     => $this->pagoReferencia,
+            'metodo_pago_id'  => $this->metodoPagoId,
+            'nombre'          => $metodo['nombre'] ?? '',
+            'imagen'          => $metodo['imagen'] ?? null,
+            'monto'           => $monto,
+            'referencia'      => $this->pagoReferencia,
+            'condicion_pago'  => $metodo['condicion_pago'] ?? 'contado',
         ];
 
         $saldo = $this->getSaldoRestante();
@@ -1004,13 +1022,20 @@ class PuntoDeVenta extends Page
         return round(max(0.0, $this->getTotal() - $this->getDescuento()), 2);
     }
 
+    public function esTicket(): bool
+    {
+        return $this->tipoComprobante === TipoComprobante::Ticket->value;
+    }
+
     public function getOpGravadas(): float
     {
+        if ($this->esTicket()) return 0.0;
         return round($this->getTotalConDescuento() / 1.18, 2);
     }
 
     public function getIgv(): float
     {
+        if ($this->esTicket()) return 0.0;
         return round($this->getTotalConDescuento() - $this->getOpGravadas(), 2);
     }
 
@@ -1061,9 +1086,6 @@ class PuntoDeVenta extends Page
 
         $descuento         = $this->getDescuento();
         $totalConDescuento = $this->getTotalConDescuento();
-        $opGravadas        = $this->getOpGravadas();
-        $igv               = $this->getIgv();
-        $montoPagado       = min($this->getTotalPagado(), $totalConDescuento);
         $pagosAgregados    = $this->pagosAgregados;
         $carrito           = $this->carrito;
         $clienteId         = $this->clienteId;
@@ -1072,10 +1094,28 @@ class PuntoDeVenta extends Page
         $serieId           = $this->serieId;
         $despachoRequerido = $this->despachoRequerido;
 
+        // ── Ticket: sin IGV ───────────────────────────────────────────────
+        $esTicket    = $this->esTicket();
+        $tasaIgv     = $esTicket ? 0.0 : 0.18;
+        $opGravadas  = $esTicket ? 0.0 : $this->getOpGravadas();
+        $opInafectas = 0.0;
+        $igv         = $esTicket ? 0.0 : $this->getIgv();
+
+        // ── Crédito: separar pagos contado vs crédito ─────────────────────
+        $pagosContado  = array_values(array_filter($pagosAgregados, fn($p) => ($p['condicion_pago'] ?? 'contado') !== 'credito'));
+        $pagosCredito  = array_values(array_filter($pagosAgregados, fn($p) => ($p['condicion_pago'] ?? 'contado') === 'credito'));
+        $montoContado  = round(array_sum(array_column($pagosContado, 'monto')), 2);
+        $montoPagado   = min($montoContado, $totalConDescuento);
+        $saldoPendiente = round(max(0.0, $totalConDescuento - $montoPagado), 2);
+        $tipoPagoVenta = count($pagosCredito) > 0 ? TipoPago::Credito : TipoPago::Contado;
+        $estadoPago    = $saldoPendiente > 0.01 ? 'pendiente' : 'pagado';
+
         try {
             DB::transaction(function () use (
-                $empresaId, $descuento, $totalConDescuento, $opGravadas, $igv,
-                $montoPagado, $pagosAgregados, $carrito,
+                $empresaId, $descuento, $totalConDescuento,
+                $opGravadas, $opInafectas, $igv, $tasaIgv,
+                $montoPagado, $saldoPendiente, $tipoPagoVenta, $estadoPago,
+                $pagosContado, $pagosCredito, $carrito,
                 $clienteId, $clienteNombre, $clienteTipoDoc, $serieId, $despachoRequerido
             ) {
                 $serie = Serie::lockForUpdate()->findOrFail($serieId);
@@ -1108,18 +1148,19 @@ class PuntoDeVenta extends Page
                     'cliente_num_doc'  => $clienteNumDoc,
                     'serie_id'         => $serieId,
                     'correlativo'      => $correlativo,
-                    'tipo_pago'        => TipoPago::Contado,
+                    'tipo_pago'        => $tipoPagoVenta,
                     'op_gravadas'      => $opGravadas,
                     'op_exoneradas'    => 0,
-                    'op_inafectas'     => 0,
+                    'op_inafectas'     => $opInafectas,
                     'descuento_total'  => $descuento,
                     'igv'              => $igv,
                     'total'            => $totalConDescuento,
                     'costo_total'      => 0,
                     'monto_pagado'     => $montoPagado,
-                    'saldo_pendiente'  => 0,
+                    'saldo_pendiente'  => $saldoPendiente,
+                    'estado_pago'      => $estadoPago,
                     'estado'           => EstadoVenta::Completada,
-                    'estado_despacho'  => $despachoRequerido ? EstadoVenta::PendienteEnvio : null,
+                    'estado_despacho'  => $despachoRequerido ? 'pendiente_envio' : null,
                 ]);
 
                 $costoTotalVenta = 0.0;
@@ -1139,6 +1180,7 @@ class PuntoDeVenta extends Page
                         cantidad: (float) $item['cantidad'],
                         precioUnitario: (float) $item['precio'],
                         costoUnitario: $costoUnitario,
+                        tasaIgv: $tasaIgv,
                     );
 
                     $tipoItem = match ($item['tipo']) {
@@ -1180,9 +1222,11 @@ class PuntoDeVenta extends Page
 
                 $venta->update(['costo_total' => round($costoTotalVenta, 2)]);
 
-                foreach ($pagosAgregados as $pago) {
+                // Pagos al contado: registra VentaPago + Transaccion de caja
+                foreach ($pagosContado as $pago) {
                     VentaPago::create([
                         'venta_id'       => $venta->id,
+                        'sesion_caja_id' => $sesionCaja->id,
                         'metodo_pago_id' => $pago['metodo_pago_id'],
                         'monto'          => $pago['monto'],
                         'referencia'     => $pago['referencia'] ?: null,
@@ -1202,6 +1246,32 @@ class PuntoDeVenta extends Page
                     ]);
                 }
 
+                // Pagos a crédito: registra VentaPago + Transaccion con estado 'por_cobrar'.
+                // No cuenta como dinero físico en caja pero queda visible en el cuadre.
+                // Cuando el cliente pague se creará un nuevo VentaPago con la sesión de cobro.
+                foreach ($pagosCredito as $pago) {
+                    VentaPago::create([
+                        'venta_id'       => $venta->id,
+                        'sesion_caja_id' => $sesionCaja->id,
+                        'metodo_pago_id' => $pago['metodo_pago_id'],
+                        'monto'          => $pago['monto'],
+                        'referencia'     => $pago['referencia'] ?: null,
+                    ]);
+
+                    Transaccion::create([
+                        'empresa_id'           => $empresaId,
+                        'sesion_caja_id'       => $sesionCaja->id,
+                        'transaccionable_type' => Venta::class,
+                        'transaccionable_id'   => $venta->id,
+                        'tipo'                 => TipoMovimiento::Ingreso,
+                        'concepto'             => "Crédito {$serie->serie}-{$correlativo}",
+                        'monto'                => $pago['monto'],
+                        'metodo_pago_id'       => $pago['metodo_pago_id'],
+                        'estado'               => EstadoMovimiento::PorCobrar,
+                        'fecha'                => now(),
+                    ]);
+                }
+
                 $kardex  = app(KardexService::class);
                 $concepto = $serie->serie . '-' . $correlativo;
 
@@ -1217,7 +1287,12 @@ class PuntoDeVenta extends Page
                                 ->lockForUpdate()
                                 ->first();
                             if ($inv) {
-                                $stockAntes   = (float) $inv->stock_real;
+                                $stockAntes = (float) $inv->stock_real;
+                                if (! $producto->venta_sin_stock && $stockAntes < $cantidad) {
+                                    throw new \RuntimeException(
+                                        "Stock insuficiente para \"{$item['nombre']}\": disponible {$stockAntes}, solicitado {$cantidad}."
+                                    );
+                                }
                                 $stockDespues = max(0, $stockAntes - $cantidad);
                                 $inv->update(['stock_real' => $stockDespues]);
                                 $kardex->registrar([
@@ -1251,7 +1326,12 @@ class PuntoDeVenta extends Page
                                     ->lockForUpdate()
                                     ->first();
                                 if ($inv) {
-                                    $stockAntes   = (float) $inv->stock_real;
+                                    $stockAntes = (float) $inv->stock_real;
+                                    if (! $prodVariante->venta_sin_stock && $stockAntes < $cantidad) {
+                                        throw new \RuntimeException(
+                                            "Stock insuficiente para \"{$item['nombre']}\": disponible {$stockAntes}, solicitado {$cantidad}."
+                                        );
+                                    }
                                     $stockDespues = max(0, $stockAntes - $cantidad);
                                     $inv->update(['stock_real' => $stockDespues]);
                                     $kardex->registrar([
@@ -1296,7 +1376,12 @@ class PuntoDeVenta extends Page
                                             ->where('variante_id', $detalle->variante_id)
                                             ->lockForUpdate()->first();
                                         if ($inv) {
-                                            $stockAntes   = (float) $inv->stock_real;
+                                            $stockAntes = (float) $inv->stock_real;
+                                            if (! ($prodDetalle->venta_sin_stock ?? false) && $stockAntes < $cantidadDetalle) {
+                                                throw new \RuntimeException(
+                                                    "Stock insuficiente en combo \"{$item['nombre']}\": disponible {$stockAntes}, solicitado {$cantidadDetalle}."
+                                                );
+                                            }
                                             $stockDespues = max(0, $stockAntes - $cantidadDetalle);
                                             $inv->update(['stock_real' => $stockDespues]);
                                             $kardex->registrar([
@@ -1325,7 +1410,12 @@ class PuntoDeVenta extends Page
                                             ->whereNull('variante_id')
                                             ->lockForUpdate()->first();
                                         if ($inv) {
-                                            $stockAntes   = (float) $inv->stock_real;
+                                            $stockAntes = (float) $inv->stock_real;
+                                            if (! ($prodDetalle->venta_sin_stock ?? false) && $stockAntes < $cantidadDetalle) {
+                                                throw new \RuntimeException(
+                                                    "Stock insuficiente en combo \"{$item['nombre']}\": disponible {$stockAntes}, solicitado {$cantidadDetalle}."
+                                                );
+                                            }
                                             $stockDespues = max(0, $stockAntes - $cantidadDetalle);
                                             $inv->update(['stock_real' => $stockDespues]);
                                             $kardex->registrar([

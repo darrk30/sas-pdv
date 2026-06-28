@@ -23,18 +23,22 @@ class SesionCaja extends Model
         'fecha_cierre',
         'estado',
         'notas_cierre',
+        'monto_apertura',
         'total_sistema',
         'total_cajero',
         'diferencia_total',
+        'total_creditos',
     ];
 
     protected $casts = [
         'estado'          => EstadoSesion::class,
         'fecha_apertura'  => 'datetime',
         'fecha_cierre'    => 'datetime',
-        'total_sistema'   => 'decimal:2',
-        'total_cajero'    => 'decimal:2',
-        'diferencia_total'=> 'decimal:2',
+        'monto_apertura'  => 'decimal:2',
+        'total_sistema'    => 'decimal:2',
+        'total_cajero'     => 'decimal:2',
+        'diferencia_total' => 'decimal:2',
+        'total_creditos'   => 'decimal:2',
     ];
 
     public function caja(): BelongsTo

@@ -1,0 +1,419 @@
+/* ================================================================
+   despacho.css — Clases específicas de Despachos.
+   Depende de ventas-sesion.css + reporte-ganancias.css para
+   los estilos base (vs-*, rg-*).
+   ================================================================ */
+
+/* ── Badge de "pendientes" en el título ─────────────────────── */
+.dsp-total-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #c2410c;
+    border-radius: 99px;
+    font-size: .78rem;
+    font-weight: 700;
+    padding: .3rem .875rem;
+    white-space: nowrap;
+}
+.dsp-total-badge__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #f97316;
+    animation: dsp-pulse 2s infinite;
+}
+@keyframes dsp-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .35; }
+}
+
+/* ── Celda: cliente ─────────────────────────────────────────── */
+.dsp-cliente-nombre {
+    display: block;
+    font-weight: 600;
+    font-size: .82rem;
+    color: var(--vs-text);
+}
+.dsp-cliente-doc {
+    display: block;
+    font-size: .7rem;
+    color: var(--vs-text-faint);
+}
+
+/* ── Link WhatsApp ──────────────────────────────────────────── */
+.dsp-wsp-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    margin-top: .25rem;
+    padding: .18rem .55rem;
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+    border-radius: 99px;
+    font-size: .7rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background .15s, color .15s, border-color .15s;
+    white-space: nowrap;
+}
+.dsp-wsp-link:hover {
+    background: #16a34a;
+    color: #fff;
+    border-color: #16a34a;
+}
+.dsp-wsp-link--modal {
+    margin-top: .375rem;
+    padding: .28rem .7rem;
+    font-size: .78rem;
+}
+.dark .dsp-wsp-link {
+    background: #052e16;
+    color: #4ade80;
+    border-color: #14532d;
+}
+.dark .dsp-wsp-link:hover {
+    background: #16a34a;
+    color: #fff;
+    border-color: #16a34a;
+}
+
+/* ── Celda: lista de productos ──────────────────────────────── */
+.dsp-items-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .175rem;
+}
+.dsp-items-list li {
+    font-size: .78rem;
+    color: var(--vs-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+}
+.dsp-cant {
+    font-weight: 700;
+    color: var(--vs-text);
+    margin-right: .2rem;
+}
+.dsp-items-mas {
+    font-size: .7rem;
+    color: var(--vs-text-faint);
+    font-style: italic;
+}
+
+/* ── Badges ─────────────────────────────────────────────────── */
+.dsp-badge {
+    display: inline-block;
+    padding: .2rem .6rem;
+    border-radius: 99px;
+    font-size: .7rem;
+    font-weight: 700;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+/* Estado pago */
+.dsp-badge--credito { background:#fff7ed; color:#c2410c; border-color:#fed7aa; }
+.dsp-badge--pagado  { background:#f0fdf4; color:#15803d; border-color:#bbf7d0; }
+/* Estado despacho */
+.dsp-badge--gray    { background:#f3f4f6; color:#374151; border-color:#d1d5db; }
+.dsp-badge--blue    { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+.dsp-badge--purple  { background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe; }
+.dsp-badge--amber   { background:#fffbeb; color:#b45309; border-color:#fde68a; }
+.dsp-badge--green   { background:#f0fdf4; color:#15803d; border-color:#bbf7d0; }
+
+.dark .dsp-badge--gray   { background:#1e293b; color:#94a3b8; border-color:#334155; }
+.dark .dsp-badge--blue   { background:#1e3a8a22; color:#60a5fa; border-color:#1e40af; }
+.dark .dsp-badge--purple { background:#4c1d9522; color:#a78bfa; border-color:#4c1d95; }
+.dark .dsp-badge--amber  { background:#78350f22; color:#fbbf24; border-color:#78350f; }
+.dark .dsp-badge--green  { background:#052e16; color:#4ade80; border-color:#14532d; }
+.dark .dsp-badge--credito{ background:#431407; color:#fb923c; border-color:#7c2d12; }
+.dark .dsp-badge--pagado { background:#052e16; color:#4ade80; border-color:#14532d; }
+
+/* ── Botón "Ver" (fix icono) ────────────────────────────────── */
+.vdm-btn-ver svg { display:block; flex-shrink:0; }
+
+/* ── Select "Cambiar estado" ────────────────────────────────── */
+.dsp-select-estado {
+    margin-left: .375rem;
+    padding: .3rem .6rem;
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--vs-text, #374151);
+    background: var(--vs-bg, #fff);
+    border: 1px solid var(--vs-border, #d1d5db);
+    border-radius: .5rem;
+    cursor: pointer;
+    outline: none;
+    transition: border-color .15s;
+    max-width: 130px;
+    appearance: auto;          /* muestra la flecha nativa del browser */
+}
+.dsp-select-estado:hover  { border-color: #9ca3af; }
+.dsp-select-estado:focus  { border-color: #f97316; box-shadow: 0 0 0 2px rgba(249,115,22,.15); }
+.dark .dsp-select-estado {
+    background: #1e293b;
+    border-color: #475569;
+    color: #f1f5f9;
+}
+.dark .dsp-select-estado option { background: #1e293b; }
+
+/* ── Dark mode — barra de variables ─────────────────────────── */
+.dark {
+    --vs-bg:         #1e293b;
+    --vs-bg-subtle:  #0f172a;
+    --vs-border:     #334155;
+    --vs-text:       #f1f5f9;
+    --vs-text-muted: #94a3b8;
+    --vs-text-faint: #64748b;
+}
+.dark .dsp-total-badge {
+    background: #431407;
+    border-color: #7c2d12;
+    color: #fb923c;
+}
+.dark .dsp-drop-menu {
+    box-shadow: 0 8px 24px rgba(0,0,0,.45);
+}
+
+/* ── Modal overlay ───────────────────────────────────────────── */
+.dsp-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(0,0,0,.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    backdrop-filter: blur(2px);
+}
+
+/* ── Modal ───────────────────────────────────────────────────── */
+.dsp-modal {
+    background: var(--vs-bg, #fff);
+    border-radius: .875rem;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.dark .dsp-modal { box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+
+/* Cabecera */
+.dsp-modal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--vs-border, #e5e7eb);
+    background: var(--vs-bg-subtle, #f9fafb);
+}
+.dsp-modal__title {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+}
+.dsp-modal__title > svg { color: #f97316; flex-shrink: 0; }
+.dsp-modal__label {
+    display: block;
+    font-size: .9375rem;
+    font-weight: 700;
+    color: var(--vs-text, #111827);
+    line-height: 1.2;
+}
+.dsp-modal__sub {
+    display: block;
+    font-size: .78rem;
+    color: var(--vs-text-muted, #6b7280);
+    font-family: ui-monospace, monospace;
+}
+.dsp-modal__close {
+    padding: .375rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--vs-text-faint, #9ca3af);
+    border-radius: .375rem;
+    display: flex;
+    align-items: center;
+    transition: background .15s, color .15s;
+}
+.dsp-modal__close:hover {
+    background: var(--vs-border, #e5e7eb);
+    color: var(--vs-text, #111827);
+}
+
+/* Cuerpo */
+.dsp-modal__body {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: .875rem;
+}
+
+/* Transición de estados */
+.dsp-estado-transicion {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .875rem 1rem;
+    background: var(--vs-bg-subtle, #f9fafb);
+    border: 1px solid var(--vs-border, #e5e7eb);
+    border-radius: .625rem;
+}
+.dsp-estado-pill {
+    padding: .3rem .875rem;
+    border-radius: 99px;
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.dsp-estado-pill--gray   { background:#f3f4f6; color:#374151; border-color:#d1d5db; }
+.dsp-estado-pill--blue   { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+.dsp-estado-pill--purple { background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe; }
+.dsp-estado-pill--amber  { background:#fffbeb; color:#b45309; border-color:#fde68a; }
+.dsp-estado-pill--green  { background:#f0fdf4; color:#15803d; border-color:#bbf7d0; }
+
+.dsp-estado-pill--nuevo {
+    font-size: .875rem;
+    box-shadow: 0 0 0 3px currentColor;
+    box-shadow: 0 0 0 2px rgba(0,0,0,.08);
+}
+.dsp-estado-arrow {
+    flex-shrink: 0;
+    color: var(--vs-text-faint, #9ca3af);
+    display: flex;
+    align-items: center;
+}
+
+/* Tarjeta info cliente */
+.dsp-entrega-card {
+    background: var(--vs-bg-subtle, #f9fafb);
+    border: 1px solid var(--vs-border, #e5e7eb);
+    border-radius: .625rem;
+    padding: .75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .625rem;
+}
+.dsp-entrega-card__row {
+    display: flex;
+    align-items: flex-start;
+    gap: .625rem;
+}
+.dsp-entrega-card__row > svg { color: var(--vs-text-faint,#9ca3af); flex-shrink:0; margin-top:.1rem; }
+.dsp-entrega-card__label {
+    display: block;
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--vs-text-faint, #9ca3af);
+    margin-bottom: .1rem;
+}
+.dsp-entrega-card__val {
+    display: block;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--vs-text, #111827);
+}
+.dsp-entrega-card__val em {
+    font-style: normal;
+    font-weight: 400;
+    color: var(--vs-text-muted, #6b7280);
+}
+
+/* Aviso crédito pendiente */
+.dsp-aviso-credito {
+    display: flex;
+    align-items: flex-start;
+    gap: .625rem;
+    padding: .75rem 1rem;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: .625rem;
+    color: #92400e;
+    font-size: .8125rem;
+}
+.dsp-aviso-credito > svg { color: #d97706; flex-shrink:0; margin-top:.05rem; }
+.dsp-aviso-credito strong { display:block; margin-bottom:.15rem; font-weight:700; }
+.dsp-aviso-credito span  { color: #b45309; }
+.dark .dsp-aviso-credito {
+    background: #78350f22;
+    border-color: #78350f;
+    color: #fde68a;
+}
+.dark .dsp-aviso-credito > svg { color: #fbbf24; }
+.dark .dsp-aviso-credito span  { color: #fde68a; }
+
+/* Aviso irreversible */
+.dsp-aviso-irreversible {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .78rem;
+    color: var(--vs-text-faint, #9ca3af);
+    border-top: 1px dashed var(--vs-border, #e5e7eb);
+    padding-top: .75rem;
+}
+.dsp-aviso-irreversible > svg { flex-shrink:0; }
+
+/* Pie del modal */
+.dsp-modal__foot {
+    display: flex;
+    gap: .625rem;
+    justify-content: flex-end;
+    padding: .875rem 1.25rem;
+    border-top: 1px solid var(--vs-border, #e5e7eb);
+    background: var(--vs-bg-subtle, #f9fafb);
+}
+.dsp-btn-cancelar {
+    padding: .5rem 1rem;
+    font-size: .8125rem;
+    font-weight: 500;
+    color: var(--vs-text-muted, #374151);
+    background: var(--vs-bg, #fff);
+    border: 1px solid var(--vs-border, #d1d5db);
+    border-radius: .5rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.dsp-btn-cancelar:hover { background: var(--vs-border, #f3f4f6); }
+
+/* Botón confirmar — color dinámico según estado destino */
+.dsp-btn-confirmar {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    padding: .5rem 1.125rem;
+    font-size: .8125rem;
+    font-weight: 700;
+    color: #fff;
+    border: none;
+    border-radius: .5rem;
+    cursor: pointer;
+    transition: background .15s, opacity .15s;
+}
+.dsp-btn-confirmar--gray   { background: #4b5563; }
+.dsp-btn-confirmar--gray:hover   { background: #374151; }
+.dsp-btn-confirmar--blue   { background: #2563eb; }
+.dsp-btn-confirmar--blue:hover   { background: #1d4ed8; }
+.dsp-btn-confirmar--purple { background: #7c3aed; }
+.dsp-btn-confirmar--purple:hover { background: #6d28d9; }
+.dsp-btn-confirmar--amber  { background: #d97706; }
+.dsp-btn-confirmar--amber:hover  { background: #b45309; }
+.dsp-btn-confirmar--green  { background: #16a34a; }
+.dsp-btn-confirmar--green:hover  { background: #15803d; }
+.dsp-btn-confirmar--loading,
+.dsp-btn-confirmar:disabled { opacity: .6; cursor: not-allowed; }

@@ -3,7 +3,6 @@
 
     @php
         $movimientos = $this->getMovimientos();
-        $productos   = $this->getProductosParaFiltro();
         $resumen     = $this->getResumen();
 
         $origenMeta = [
@@ -19,89 +18,23 @@
         <p>Historial de movimientos de stock</p>
     </div>
 
-    {{-- ── Panel filtros + tabla ──────────────────────────────────────────── --}}
-    <div class="kdx-panel">
-
-        {{-- Filtros --}}
-        <div class="kdx-filters">
-            <div class="kdx-filters-grid">
-
-                {{-- Búsqueda --}}
-                <div class="kdx-field">
-                    <label>Buscar</label>
-                    <div class="kdx-input-wrap">
-                        <span class="kdx-input-icon">
-                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-                            </svg>
-                        </span>
-                        <input
-                            type="text"
-                            wire:model.live.debounce.300ms="busqueda"
-                            placeholder="Producto, variante, concepto…"
-                            class="kdx-input kdx-input--icon"
-                        />
-                    </div>
-                </div>
-
-                {{-- Producto --}}
-                <div class="kdx-field">
-                    <label>Producto</label>
-                    <select wire:model.live="productoId" class="kdx-select">
-                        <option value="">Todos los productos</option>
-                        @foreach ($productos as $prod)
-                            <option value="{{ $prod->id }}">
-                                @php $estadoVal = $prod->estado instanceof \BackedEnum ? $prod->estado->value : (string) $prod->estado; @endphp
-                                {{ $prod->nombre }}{{ $estadoVal !== 'activo' ? ' ('.$estadoVal.')' : '' }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                {{-- Fecha desde --}}
-                <div class="kdx-field">
-                    <label>Fecha desde</label>
-                    <input type="date" wire:model.live="fechaDesde" class="kdx-input" />
-                </div>
-
-                {{-- Fecha hasta --}}
-                <div class="kdx-field">
-                    <label>Fecha hasta</label>
-                    <input type="date" wire:model.live="fechaHasta" class="kdx-input" />
-                </div>
-
-                {{-- Tipo --}}
-                <div class="kdx-field">
-                    <label>Tipo</label>
-                    <select wire:model.live="tipo" class="kdx-select">
-                        <option value="">Todos</option>
-                        <option value="entrada">Entrada</option>
-                        <option value="salida">Salida</option>
-                    </select>
-                </div>
-
-                {{-- Origen --}}
-                <div class="kdx-field">
-                    <label>Origen</label>
-                    <select wire:model.live="origen" class="kdx-select">
-                        <option value="">Todos</option>
-                        <option value="App\Models\Ajuste">Ajuste</option>
-                        <option value="App\Models\Compra">Compra</option>
-                        <option value="App\Models\Venta">Venta</option>
-                    </select>
-                </div>
-
-                {{-- Limpiar --}}
-                <div class="kdx-field">
-                    <label>&nbsp;</label>
-                    <button wire:click="limpiarFiltros" class="kdx-btn-clear">
-                        Limpiar filtros
-                    </button>
-                </div>
-
+    {{-- ── Filtros ───────────────────────────────────────────────────────── --}}
+    <div class="kdx-form-wrap">
+        {{ $this->form }}
+        @if($this->hayFiltros())
+            <div class="kdx-form-limpiar">
+                <button wire:click="limpiarFiltros" class="kdx-btn-clear">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    Limpiar filtros
+                </button>
             </div>
-        </div>
+        @endif
+    </div>
+
+    {{-- ── Panel chips + tabla ────────────────────────────────────────────── --}}
+    <div class="kdx-panel">
 
         {{-- Chips de resumen --}}
         <div style="padding: .75rem 1rem; border-bottom: 1px solid var(--kdx-border);">

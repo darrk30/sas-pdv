@@ -14,6 +14,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
             $table->string('imagen')->nullable();
             $table->string('nombre');
+            $table->string('descripcion')->nullable();
             $table->boolean('requiere_referencia')->default(false);
             $table->string('condicion_pago')->default('contado');
             $table->string('estado')->default('activo');

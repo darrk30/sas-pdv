@@ -17,9 +17,11 @@ return new class extends Migration
             $table->dateTime('fecha_cierre')->nullable();
             $table->string('estado', 20)->default('abierta');
             $table->text('notas_cierre')->nullable();
+            $table->decimal('monto_apertura', 12, 2)->default(0);
             $table->decimal('total_sistema', 12, 2)->nullable();
             $table->decimal('total_cajero', 12, 2)->nullable();
             $table->decimal('diferencia_total', 12, 2)->nullable();
+            $table->decimal('total_creditos', 12, 2)->default(0);
             $table->timestamps();
         });
     }

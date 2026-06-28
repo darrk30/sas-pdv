@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pdv\Resources\SesionCajas\Pages;
 
+use App\Enums\EstadoMovimiento;
 use App\Enums\EstadoSesion;
 use App\Enums\TipoMovimiento;
 use App\Filament\Pdv\Resources\SesionCajas\SesionCajaResource;
@@ -50,43 +51,51 @@ class EditSesionCaja extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        // Mostrar total sistema calculado en el formulario
-        $totales               = $this->calcularTotalesPorMetodo($this->record);
-        $data['total_sistema'] = round($totales->sum(), 2);
+        $totales = $this->calcularTotalesPorMetodo($this->record);
+
+        $sistemaTotal             = round($totales->sum(), 2);
+        $data['total_sistema']    = $sistemaTotal;
+        $cajero                   = round((float) $this->record->pagos->sum('importe_cajero'), 2);
+        $data['total_cajero']     = $cajero;
+        $data['diferencia_total'] = round($cajero - $sistemaTotal, 2);
+        $data['total_creditos']   = $this->calcularCreditosSesion($this->record);
 
         return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // ── SEGURIDAD: siempre recalcular desde BD, ignorar valores enviados ──
-        $totales = $this->calcularTotalesPorMetodo($this->record);
-
-        $pagos       = $data['pagos'] ?? [];
-        $cajeroTotal = 0;
-
-        foreach ($pagos as &$pago) {
-            $mpId    = $pago['metodo_pago_id'];
-            $sistema = round((float) ($totales[$mpId] ?? 0), 2);
-            $cajero  = round((float) ($pago['importe_cajero'] ?? 0), 2);
-
-            $pago['importe_sistema'] = $sistema;          // sobrescribe lo enviado
-            $pago['diferencia']      = round($cajero - $sistema, 2);
-            $cajeroTotal            += $cajero;
-        }
-        unset($pago);
-
-        $sistemaTotal = round($totales->sum(), 2);
-        $cajeroTotal  = round($cajeroTotal, 2);
-
-        $data['pagos']            = $pagos;
-        $data['total_sistema']    = $sistemaTotal;
-        $data['total_cajero']     = $cajeroTotal;
-        $data['diferencia_total'] = round($cajeroTotal - $sistemaTotal, 2);
-        $data['estado']           = EstadoSesion::Cerrada->value;
-        $data['fecha_cierre']     = now();
+        $data['estado']       = EstadoSesion::Cerrada->value;
+        $data['fecha_cierre'] = now();
 
         return $data;
+    }
+
+    // Ejecuta DESPUÉS de que el Repeater sincroniza los SesionCajaPago en BD
+    protected function afterSave(): void
+    {
+        $sesion  = $this->record;
+        $totales = $this->calcularTotalesPorMetodo($sesion);
+
+        // Recalcular importe_sistema y diferencia por fila con valores reales de BD
+        foreach ($sesion->pagos as $pago) {
+            $sistema = round((float) ($totales[$pago->metodo_pago_id] ?? 0), 2);
+            $cajero  = round((float) ($pago->importe_cajero ?? 0), 2);
+            $pago->update([
+                'importe_sistema' => $sistema,
+                'diferencia'      => round($cajero - $sistema, 2),
+            ]);
+        }
+
+        $cajeroTotal  = round((float) $sesion->pagos()->sum('importe_cajero'), 2);
+        $sistemaTotal = round($totales->sum(), 2);
+
+        $sesion->update([
+            'total_sistema'    => $sistemaTotal,
+            'total_cajero'     => $cajeroTotal,
+            'diferencia_total' => round($cajeroTotal - $sistemaTotal, 2),
+            'total_creditos'   => $this->calcularCreditosSesion($sesion),
+        ]);
     }
 
     protected function getSavedNotificationTitle(): ?string
@@ -114,10 +123,14 @@ class EditSesionCaja extends EditRecord
         $totales = $this->calcularTotalesPorMetodo($sesion);
 
         foreach ($totales as $mpId => $importe) {
-            SesionCajaPago::updateOrCreate(
+            $importe = round($importe, 2);
+            // firstOrCreate: si ya existe, no toca importe_cajero; si es nuevo, lo inicializa en 0
+            $pago = SesionCajaPago::firstOrCreate(
                 ['sesion_caja_id' => $sesion->id, 'metodo_pago_id' => $mpId],
-                ['importe_sistema' => round($importe, 2)],
+                ['importe_sistema' => $importe, 'importe_cajero' => 0, 'diferencia' => 0],
             );
+            // Siempre actualizar importe_sistema (las ventas pueden haber cambiado)
+            $pago->update(['importe_sistema' => $importe]);
         }
 
         // Eliminar filas de métodos que ya no tienen transacciones
@@ -128,10 +141,18 @@ class EditSesionCaja extends EditRecord
         $q->delete();
     }
 
+    private function calcularCreditosSesion(SesionCaja $sesion): float
+    {
+        return round((float) Transaccion::where('sesion_caja_id', $sesion->id)
+            ->where('estado', EstadoMovimiento::PorCobrar->value)
+            ->sum('monto'), 2);
+    }
+
     private function calcularTotalesPorMetodo(SesionCaja $sesion): Collection
     {
         return Transaccion::where('sesion_caja_id', $sesion->id)
             ->where('estado', 'aprobado')
+            ->whereNotNull('metodo_pago_id')
             ->get()
             ->groupBy('metodo_pago_id')
             ->map(fn($rows) => $rows->sum(

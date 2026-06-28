@@ -20,6 +20,7 @@ class MetodoPago extends Model
         'user_id',
         'imagen',
         'nombre',
+        'descripcion',
         'requiere_referencia',
         'condicion_pago',
         'estado',

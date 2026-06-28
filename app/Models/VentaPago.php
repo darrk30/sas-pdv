@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\SesionCaja;
 
 class VentaPago extends Model
 {
@@ -11,6 +12,7 @@ class VentaPago extends Model
 
     protected $fillable = [
         'venta_id',
+        'sesion_caja_id',
         'metodo_pago_id',
         'monto',
         'referencia',
@@ -23,6 +25,11 @@ class VentaPago extends Model
     public function venta(): BelongsTo
     {
         return $this->belongsTo(Venta::class);
+    }
+
+    public function sesionCaja(): BelongsTo
+    {
+        return $this->belongsTo(SesionCaja::class);
     }
 
     public function metodoPago(): BelongsTo

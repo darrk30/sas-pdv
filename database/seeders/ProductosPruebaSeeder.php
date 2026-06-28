@@ -85,7 +85,7 @@ class ProductosPruebaSeeder extends Seeder
             'stock_real'        => fake()->numberBetween(5, 200),
             'stock_reserva'     => 0,
             'stock_minimo'      => 5,
-            'estado_inventario' => 'con_stock',
+            'estado_inventario' => 'disponible',
             'created_at'        => $ahora,
             'updated_at'        => $ahora,
         ])->toArray();

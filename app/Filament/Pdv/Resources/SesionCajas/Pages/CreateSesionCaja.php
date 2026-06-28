@@ -2,10 +2,14 @@
 
 namespace App\Filament\Pdv\Resources\SesionCajas\Pages;
 
+use App\Enums\EstadoMovimiento;
 use App\Enums\EstadoSesion;
+use App\Enums\TipoMovimiento;
 use App\Filament\Pdv\Resources\SesionCajas\SesionCajaResource;
 use App\Filament\Pdv\Resources\SesionCajas\Schemas\SesionCajaForm;
+use App\Models\MetodoPago;
 use App\Models\SesionCaja;
+use App\Models\Transaccion;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -59,6 +63,31 @@ class CreateSesionCaja extends CreateRecord
         $data['estado'] = EstadoSesion::Abierta->value;
 
         return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $sesion = $this->record;
+
+        if ((float) $sesion->monto_apertura <= 0) return;
+
+        // Buscar el método de pago efectivo de la empresa (por nombre, insensible a mayúsculas)
+        $efectivo = MetodoPago::where('empresa_id', $sesion->empresa_id)
+            ->whereRaw('LOWER(nombre) LIKE ?', ['%efectivo%'])
+            ->first();
+
+        Transaccion::create([
+            'empresa_id'           => $sesion->empresa_id,
+            'sesion_caja_id'       => $sesion->id,
+            'transaccionable_type' => SesionCaja::class,
+            'transaccionable_id'   => $sesion->id,
+            'tipo'                 => TipoMovimiento::Ingreso,
+            'concepto'             => 'Fondo de apertura',
+            'monto'                => $sesion->monto_apertura,
+            'metodo_pago_id'       => $efectivo?->id,
+            'estado'               => EstadoMovimiento::Aprobado,
+            'fecha'                => $sesion->fecha_apertura,
+        ]);
     }
 
     protected function getRedirectUrl(): string

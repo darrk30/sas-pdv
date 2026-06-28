@@ -126,63 +126,35 @@
     overflow: hidden;
 }
 
-/* ── Filtros ───────────────────────────────────────────────── */
-.kdx-filters {
-    padding: 1rem;
-    border-bottom: 1px solid var(--kdx-border);
+/* ── Form de filtros (card independiente sobre el panel) ───── */
+.kdx-form-wrap {
+    background: var(--kdx-bg);
+    border: 1px solid var(--kdx-border);
+    border-radius: .75rem;
+    box-shadow: var(--kdx-shadow);
+    padding: .875rem 1rem .875rem;
+    margin-bottom: 1rem;
 }
-.kdx-filters-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: .75rem;
-    align-items: end;
+
+/* Reduce el gap interno de Filament (por defecto gap-6 = 1.5rem) */
+.kdx-form-wrap .fi-sc-form {
+    gap: 0;
 }
-.kdx-field label {
-    display: block;
-    font-size: .75rem;
-    font-weight: 500;
-    color: var(--kdx-text-muted);
-    margin-bottom: .3rem;
+.kdx-form-wrap .fi-sc.fi-sc-has-gap {
+    gap: .625rem;
 }
-.kdx-input-wrap {
-    position: relative;
-}
-.kdx-input-icon {
-    position: absolute;
-    inset-block: 0;
-    left: .625rem;
+
+.kdx-form-limpiar {
+    margin-top: .625rem;
     display: flex;
-    align-items: center;
-    pointer-events: none;
-    color: var(--kdx-text-faint);
+    justify-content: flex-end;
 }
-.kdx-input,
-.kdx-select {
-    width: 100%;
-    padding: .45rem .625rem;
-    font-size: .8125rem;
-    border: 1px solid var(--kdx-input-border);
-    border-radius: .5rem;
-    background: var(--kdx-input-bg);
-    color: var(--kdx-input-text);
-    box-sizing: border-box;
-    transition: border-color .15s, box-shadow .15s;
-    outline: none;
-}
-.kdx-input--icon {
-    padding-left: 2.125rem;
-}
-.kdx-input:focus,
-.kdx-select:focus {
-    border-color: var(--kdx-input-focus);
-    box-shadow: 0 0 0 3px rgba(99,102,241,.15);
-}
-.kdx-input::placeholder {
-    color: var(--kdx-text-faint);
-}
+
 .kdx-btn-clear {
-    width: 100%;
-    padding: .45rem .75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .375rem .75rem;
     font-size: .8125rem;
     font-weight: 500;
     border: 1px solid var(--kdx-btn-border);
@@ -190,10 +162,11 @@
     background: var(--kdx-btn-bg);
     color: var(--kdx-btn-text);
     cursor: pointer;
-    transition: background .15s;
+    transition: background .15s, color .15s;
 }
 .kdx-btn-clear:hover {
     background: var(--kdx-btn-hover-bg);
+    color: var(--kdx-text);
 }
 
 /* ── Chips de resumen ──────────────────────────────────────── */

@@ -21,6 +21,11 @@ class Cliente extends Model
         'direccion',
         'correo',
         'telefono',
+        'departamento',
+        'provincia',
+        'distrito',
+        'codigo_postal',
+        'pais',
     ];
 
     protected $casts = [

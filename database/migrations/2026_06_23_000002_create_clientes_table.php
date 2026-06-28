@@ -19,6 +19,11 @@ return new class extends Migration
             $table->string('direccion', 255)->nullable();
             $table->string('correo', 255)->nullable();
             $table->string('telefono', 20)->nullable();
+            $table->string('departamento', 100)->nullable();
+            $table->string('provincia', 100)->nullable();
+            $table->string('distrito', 100)->nullable();
+            $table->string('codigo_postal', 20)->nullable();
+            $table->string('pais', 5)->default('PE');
             $table->timestamps();
 
             $table->unique(['empresa_id', 'numero_documento']);

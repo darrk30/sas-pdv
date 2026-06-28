@@ -117,24 +117,33 @@ class ReporteGananciasPage extends Page implements HasForms
     public function getResumen(): array
     {
         $row = (clone $this->baseQuery())
-            ->selectRaw('
-                COUNT(*)                                                        AS cantidad,
-                COALESCE(SUM(total), 0)                                         AS ingresos_brutos,
-                COALESCE(SUM(op_gravadas + op_exoneradas + op_inafectas), 0)    AS ventas_netas,
-                COALESCE(SUM(costo_total), 0)                                   AS costo_total
-            ')
+            ->selectRaw("
+                COUNT(*)                                                                                          AS cantidad,
+                COALESCE(SUM(total), 0)                                                                           AS ingresos_brutos,
+                COALESCE(SUM(total - igv), 0)                                                                     AS ventas_netas,
+                COALESCE(SUM(costo_total), 0)                                                                     AS costo_total,
+                COALESCE(SUM(CASE WHEN estado_pago = 'pendiente' THEN saldo_pendiente    ELSE 0 END), 0)          AS credito_pendiente,
+                COALESCE(SUM(CASE WHEN estado_pago = 'pendiente' THEN (total - igv - costo_total) ELSE 0 END), 0) AS utilidad_en_riesgo
+            ")
             ->first();
 
-        $cantidad       = (int)   $row->cantidad;
-        $ingresosBrutos = (float) $row->ingresos_brutos;
-        $ventasNetas    = (float) $row->ventas_netas;
-        $costoTotal     = (float) $row->costo_total;
-        $utilidadBruta  = $ventasNetas - $costoTotal;
-        $margenPct      = $ventasNetas > 0
-            ? round($utilidadBruta / $ventasNetas * 100, 1)
+        $cantidad          = (int)   $row->cantidad;
+        $ingresosBrutos    = (float) $row->ingresos_brutos;
+        $ventasNetas       = (float) $row->ventas_netas;
+        $costoTotal        = (float) $row->costo_total;
+        $creditoPendiente  = (float) $row->credito_pendiente;
+        $utilidadEnRiesgo  = (float) $row->utilidad_en_riesgo;
+        $utilidadBruta     = $ventasNetas - $costoTotal;
+        $utilidadRealizada = $utilidadBruta - $utilidadEnRiesgo;
+        $margenPct         = $ventasNetas > 0
+            ? round($utilidadRealizada / $ventasNetas * 100, 1)
             : 0.0;
 
-        return compact('cantidad', 'ingresosBrutos', 'ventasNetas', 'costoTotal', 'utilidadBruta', 'margenPct');
+        return compact(
+            'cantidad', 'ingresosBrutos', 'ventasNetas', 'costoTotal',
+            'utilidadBruta', 'utilidadRealizada', 'creditoPendiente', 'utilidadEnRiesgo',
+            'margenPct'
+        );
     }
 
     // ── Top productos más rentables ───────────────────────────────────────────
@@ -177,7 +186,7 @@ class ReporteGananciasPage extends Page implements HasForms
     {
         return (clone $this->baseQuery())
             ->with(['serie', 'vendedor:id,name'])
-            ->selectRaw('ventas.*, (op_gravadas + op_exoneradas + op_inafectas) AS venta_neta')
+            ->selectRaw('ventas.*, (total - igv) AS venta_neta')
             ->orderBy('created_at', 'desc')
             ->paginate(30);
     }

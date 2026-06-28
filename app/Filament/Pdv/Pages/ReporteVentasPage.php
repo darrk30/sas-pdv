@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pdv\Pages;
 
+use App\Enums\CondicionPago;
 use App\Enums\EstadoMovimiento;
 use App\Enums\EstadoSesion;
 use App\Enums\EstadoVenta;
@@ -214,17 +215,23 @@ class ReporteVentasPage extends Page implements HasForms
         $base = Venta::where('empresa_id', Filament::getTenant()->id);
         $this->aplicarFiltros($base);
 
-        $count    = (clone $base)->where('estado', EstadoVenta::Completada->value)->count();
-        $total    = (float) (clone $base)->where('estado', EstadoVenta::Completada->value)->sum('total');
-        $anuladas = (clone $base)->where('estado', EstadoVenta::Anulada->value)->count();
+        $completadas      = (clone $base)->where('estado', EstadoVenta::Completada->value);
+        $count            = (clone $completadas)->count();
+        $total            = (float) (clone $completadas)->sum('monto_pagado');
+        $creditoPendiente = (float) (clone $completadas)->where('estado_pago', 'pendiente')->sum('saldo_pendiente');
+        $anuladas         = (clone $base)->where('estado', EstadoVenta::Anulada->value)->count();
 
         $porMetodo = VentaPago::whereHas('venta', function ($q) {
                 $q->where('empresa_id', Filament::getTenant()->id)
                   ->where('estado', EstadoVenta::Completada->value);
                 $this->aplicarFiltros($q);
             })
-            ->with('metodoPago:id,nombre')
+            ->with(['metodoPago:id,nombre,condicion_pago', 'venta:id,estado_pago'])
             ->get()
+            ->filter(fn ($p) =>
+                $p->metodoPago?->condicion_pago !== CondicionPago::Credito
+                || $p->venta?->estado_pago === 'pendiente'
+            )
             ->groupBy('metodo_pago_id')
             ->map(fn($pagos) => [
                 'nombre' => $pagos->first()->metodoPago?->nombre ?? 'N/A',
@@ -233,7 +240,7 @@ class ReporteVentasPage extends Page implements HasForms
             ->values()
             ->toArray();
 
-        return compact('count', 'total', 'anuladas', 'porMetodo');
+        return compact('count', 'total', 'anuladas', 'porMetodo', 'creditoPendiente');
     }
 
     // ── Modal detalle ─────────────────────────────────────────────────────────
@@ -247,8 +254,12 @@ class ReporteVentasPage extends Page implements HasForms
     {
         if (! $this->ventaModalId) return null;
 
-        return Venta::with(['serie', 'detalles', 'pagos.metodoPago'])
-            ->find($this->ventaModalId);
+        return Venta::with([
+            'serie',
+            'detalles.producto.unidadMedida:id,simbolo',
+            'detalles.variante.producto.unidadMedida:id,simbolo',
+            'pagos.metodoPago',
+        ])->find($this->ventaModalId);
     }
 
     // ── Modal anular ──────────────────────────────────────────────────────────

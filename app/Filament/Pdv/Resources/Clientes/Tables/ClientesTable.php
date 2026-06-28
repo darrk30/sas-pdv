@@ -3,7 +3,12 @@
 namespace App\Filament\Pdv\Resources\Clientes\Tables;
 
 use App\Enums\TipoDocumento;
+use App\Enums\TipoPago;
+use App\Filament\Pdv\Pages\CuentasPorCobrarPage;
+use App\Filament\Pdv\Pages\ReporteClienteComprasPage;
 use App\Models\Cliente;
+use App\Models\Venta;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -17,6 +22,27 @@ class ClientesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->addSelect([
+                // Subquery: total facturado (ventas completadas)
+                'total_facturado' => Venta::selectRaw('COALESCE(SUM(total), 0)')
+                    ->whereColumn('cliente_id', 'clientes.id')
+                    ->whereColumn('empresa_id', 'clientes.empresa_id')
+                    ->where('estado', 'completada'),
+
+                // Subquery: crédito pendiente
+                'credito_pendiente' => Venta::selectRaw('COALESCE(SUM(saldo_pendiente), 0)')
+                    ->whereColumn('cliente_id', 'clientes.id')
+                    ->whereColumn('empresa_id', 'clientes.empresa_id')
+                    ->where('estado', 'completada')
+                    ->where('estado_pago', 'pendiente'),
+
+                // Subquery: total de ventas a crédito (pagadas + pendientes)
+                'total_creditos' => Venta::selectRaw('COUNT(*)')
+                    ->whereColumn('cliente_id', 'clientes.id')
+                    ->whereColumn('empresa_id', 'clientes.empresa_id')
+                    ->where('estado', 'completada')
+                    ->where('tipo_pago', TipoPago::Credito),
+            ]))
             ->columns([
                 TextColumn::make('nombre')
                     ->label('Nombre')
@@ -49,6 +75,23 @@ class ClientesTable
                     ->placeholder('—')
                     ->searchable()
                     ->toggleable(),
+
+                TextColumn::make('total_facturado')
+                    ->label('Facturado')
+                    ->money('PEN')
+                    ->sortable()
+                    ->alignRight()
+                    ->color('gray')
+                    ->placeholder('S/ 0.00'),
+
+                TextColumn::make('credito_pendiente')
+                    ->label('Crédito')
+                    ->money('PEN')
+                    ->sortable()
+                    ->alignRight()
+                    ->color(fn ($state) => $state > 0 ? 'warning' : 'gray')
+                    ->placeholder('—')
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('tipo_documento')
@@ -56,10 +99,34 @@ class ClientesTable
                     ->options(TipoDocumento::class),
             ])
             ->recordActions([
+                Action::make('compras')
+                    ->label('Compras')
+                    ->icon('heroicon-o-shopping-bag')
+                    ->color('info')
+                    ->url(fn (Cliente $record) =>
+                        ReporteClienteComprasPage::getUrl() . '?' . http_build_query([
+                            'clienteNombre' => $record->nombre_completo,
+                            'clienteNumDoc' => $record->numero_documento,
+                        ])
+                    ),
+
+                Action::make('creditos')
+                    ->label('Créditos')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('warning')
+                    ->visible(fn (Cliente $record) => (int) ($record->total_creditos ?? 0) > 0)
+                    ->url(fn (Cliente $record) =>
+                        CuentasPorCobrarPage::getUrl() . '?' . http_build_query([
+                            'filtroClienteId'     => $record->id,
+                            'filtroClienteNombre' => $record->nombre_completo,
+                        ])
+                    ),
+
                 EditAction::make()
-                    ->hidden(fn(Cliente $record) => $record->numero_documento === '99999999'),
+                    ->hidden(fn (Cliente $record) => $record->numero_documento === '99999999'),
+
                 DeleteAction::make()
-                    ->hidden(fn(Cliente $record) => $record->numero_documento === '99999999'),
+                    ->hidden(fn (Cliente $record) => $record->numero_documento === '99999999'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

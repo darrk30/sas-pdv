@@ -1,0 +1,247 @@
+/* ============================================================
+   reporte-compras.css
+   Depende de ventas-sesion.css (vs-*) y reporte-ganancias.css (rg-*)
+   ============================================================ */
+
+/* ── Badges de estado ───────────────────────────────────────── */
+.rc-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 99px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+.rc-badge--borrador    { background: #f3f4f6; color: #6b7280; }
+.rc-badge--confirmado  { background: #dcfce7; color: #15803d; }
+.rc-badge--anulado     { background: #fee2e2; color: #991b1b; }
+.rc-badge--pendiente   { background: #fef9c3; color: #854d0e; }
+.rc-badge--pagado      { background: #dcfce7; color: #15803d; }
+.rc-badge--recibido    { background: #dbeafe; color: #1d4ed8; }
+.rc-badge--factura     { background: #ede9fe; color: #5b21b6; }
+.rc-badge--boleta      { background: #dcfce7; color: #15803d; }
+.rc-badge--ticket      { background: #fef3c7; color: #92400e; }
+.rc-badge--sin         { background: #f3f4f6; color: #6b7280; }
+
+.rc-badge--entrada { background: #dcfce7; color: #15803d; }
+.rc-badge--salida  { background: #fee2e2; color: #991b1b; }
+
+.dark .rc-badge--borrador   { background: #374151; color: #d1d5db; }
+.dark .rc-badge--confirmado { background: #14532d; color: #86efac; }
+.dark .rc-badge--anulado    { background: #7f1d1d; color: #fca5a5; }
+.dark .rc-badge--pendiente  { background: #713f12; color: #fde047; }
+.dark .rc-badge--pagado     { background: #14532d; color: #86efac; }
+.dark .rc-badge--recibido   { background: #1e3a5f; color: #93c5fd; }
+.dark .rc-badge--entrada    { background: #14532d; color: #86efac; }
+.dark .rc-badge--salida     { background: #7f1d1d; color: #fca5a5; }
+
+/* ── Saldo pendiente ─────────────────────────────────────────── */
+.rc-saldo {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #dc2626;
+    margin-top: 0.15rem;
+}
+
+/* ── Botones de acción de fila ──────────────────────────────── */
+.rc-acciones {
+    display: flex;
+    gap: 0.375rem;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.rc-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.375rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: 1px solid;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+    background: transparent;
+}
+
+.rc-btn--detalle {
+    color: #2563eb;
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+.rc-btn--detalle:hover { background: #dbeafe; }
+
+.rc-btn--pagos {
+    color: #15803d;
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+.rc-btn--pagos:hover { background: #dcfce7; }
+.rc-btn--pagos-alerta {
+    color: #dc2626;
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+.rc-btn--pagos-alerta:hover { background: #fee2e2; }
+
+.dark .rc-btn--detalle { color: #93c5fd; background: #1e3a5f; border-color: #1d4ed8; }
+.dark .rc-btn--pagos   { color: #86efac; background: #14532d; border-color: #16a34a; }
+.dark .rc-btn--pagos-alerta { color: #fca5a5; background: #7f1d1d; border-color: #dc2626; }
+
+.rc-btn--cargando {
+    opacity: 0.65;
+    cursor: wait;
+    pointer-events: none;
+}
+.rc-btn--cargando::after {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: rc-spin .6s linear infinite;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
+/* ── Spinner inline ─────────────────────────────────────────── */
+.rc-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: rc-spin .6s linear infinite;
+    flex-shrink: 0;
+}
+@keyframes rc-spin { to { transform: rotate(360deg); } }
+
+/* ── Comprobante cell ────────────────────────────────────────── */
+.rc-comprobante {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--vs-text);
+    font-family: ui-monospace, monospace;
+}
+.rc-comprobante__tipo {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--vs-text-muted);
+    font-family: inherit;
+    margin-top: 0.1rem;
+}
+
+/* ── Proveedor cell ─────────────────────────────────────────── */
+.rc-proveedor {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--vs-text);
+}
+.rc-proveedor__user {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--vs-text-muted);
+    margin-top: 0.1rem;
+}
+
+/* ── Modal: detalle compra ──────────────────────────────────── */
+.rc-modal-section {
+    margin-bottom: 1rem;
+}
+.rc-modal-section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--vs-text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.rc-modal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+.rc-modal-table th {
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--vs-text-muted);
+    border-bottom: 1.5px solid var(--vs-border);
+    padding: 0.4rem 0.5rem;
+}
+.rc-modal-table th.rc-ta-right { text-align: right; }
+.rc-modal-table td {
+    padding: 0.5rem 0.5rem;
+    border-bottom: 1px solid var(--vs-border);
+    color: var(--vs-text);
+    vertical-align: middle;
+}
+.rc-modal-table td.rc-ta-right { text-align: right; }
+.rc-modal-table tbody tr:last-child td { border-bottom: none; }
+
+.rc-modal-totales {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    align-items: flex-end;
+}
+.rc-modal-total-fila {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.8rem;
+    color: var(--vs-text);
+}
+.rc-modal-total-fila span:first-child { color: var(--vs-text-muted); }
+.rc-modal-total-fila--grande {
+    font-size: 1rem;
+    font-weight: 800;
+    padding-top: 0.375rem;
+    border-top: 1.5px solid var(--vs-border);
+    margin-top: 0.25rem;
+}
+
+/* ── Modal: pagos ───────────────────────────────────────────── */
+.rc-saldo-pendiente {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+.rc-saldo-pendiente--ok {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+}
+.rc-saldo-pendiente--deuda {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+.rc-saldo-pendiente__label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--vs-text);
+}
+.rc-saldo-pendiente__monto {
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+.rc-saldo-pendiente--ok .rc-saldo-pendiente__monto   { color: #15803d; }
+.rc-saldo-pendiente--deuda .rc-saldo-pendiente__monto { color: #dc2626; }
+
+.dark .rc-saldo-pendiente--ok   { background: #14532d; border-color: #16a34a; }
+.dark .rc-saldo-pendiente--deuda { background: #7f1d1d; border-color: #dc2626; }
+
+/* ── Row anulado ────────────────────────────────────────────── */
+.rc-row--anulado td { opacity: 0.5; }

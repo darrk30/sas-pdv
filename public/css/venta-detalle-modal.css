@@ -1,0 +1,249 @@
+/* ============================================================
+   venta-detalle-modal.css — modal de detalle de venta (compartido)
+   ============================================================ */
+
+.vdm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.dark .vdm-overlay { background: rgba(0,0,0,.65); }
+
+.vdm-modal {
+    background: var(--modal-bg, #fff);
+    border: 1px solid var(--modal-border, #e5e7eb);
+    border-radius: .75rem;
+    box-shadow: 0 20px 60px rgba(0,0,0,.22);
+    width: 100%;
+    max-width: 580px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.dark .vdm-modal {
+    --modal-bg: #1f2937;
+    --modal-border: #374151;
+}
+
+/* ── Cabecera ──────────────────────────────────────────────── */
+.vdm-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--modal-border, #e5e7eb);
+    background: var(--modal-head-bg, #f9fafb);
+    flex-shrink: 0;
+}
+.dark .vdm-head { --modal-head-bg: #111827; }
+
+.vdm-titulo {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--modal-text, #111827);
+    margin: 0;
+    font-family: monospace;
+    letter-spacing: .02em;
+}
+.dark .vdm-titulo { --modal-text: #f9fafb; }
+
+.vdm-sub {
+    display: block;
+    font-size: .75rem;
+    color: var(--modal-muted, #6b7280);
+    margin-top: .2rem;
+}
+.dark .vdm-sub { --modal-muted: #9ca3af; }
+
+.vdm-cerrar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    min-width: 2rem;
+    border: none;
+    background: transparent;
+    color: var(--modal-muted, #6b7280);
+    border-radius: .375rem;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+.vdm-cerrar:hover { background: var(--modal-border, #e5e7eb); color: var(--modal-text, #111827); }
+
+/* ── Cuerpo ────────────────────────────────────────────────── */
+.vdm-body {
+    padding: 1.125rem 1.25rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* ── Meta (cliente + tipo pago) ────────────────────────────── */
+.vdm-meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    padding-bottom: .875rem;
+    border-bottom: 1px solid var(--modal-border, #e5e7eb);
+}
+.vdm-meta__item { display: flex; flex-direction: column; gap: .15rem; }
+.vdm-meta__label {
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--modal-muted, #6b7280);
+}
+.vdm-meta__val {
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--modal-text, #111827);
+}
+.vdm-meta__doc {
+    display: block;
+    font-size: .7rem;
+    font-weight: 400;
+    color: var(--modal-muted, #6b7280);
+}
+
+/* ── Badges tipo pago ──────────────────────────────────────── */
+.vdm-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: .75rem;
+    font-weight: 600;
+    padding: .2rem .6rem;
+    border-radius: 99px;
+}
+.vdm-badge--contado { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.vdm-badge--credito { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.dark .vdm-badge--contado { background: rgba(20,83,45,.25); color: #4ade80; border-color: #166534; }
+.dark .vdm-badge--credito { background: rgba(120,53,15,.25); color: #fbbf24; border-color: #92400e; }
+
+/* ── Tabla de ítems ────────────────────────────────────────── */
+.vdm-items-wrap {
+    overflow-x: auto;
+    margin-bottom: 1rem;
+    border: 1px solid var(--modal-border, #e5e7eb);
+    border-radius: .5rem;
+}
+.vdm-items {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .8125rem;
+}
+.vdm-items thead tr {
+    background: var(--modal-head-bg, #f9fafb);
+    border-bottom: 1px solid var(--modal-border, #e5e7eb);
+}
+.vdm-items th {
+    padding: .5rem .75rem;
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--modal-muted, #6b7280);
+    text-align: left;
+    white-space: nowrap;
+}
+.vdm-items th.text-right,
+.vdm-items td.text-right { text-align: right; }
+.vdm-items tbody tr { border-bottom: 1px solid var(--modal-border, #e5e7eb); }
+.vdm-items tbody tr:last-child { border-bottom: none; }
+.vdm-items tbody tr:hover { background: var(--modal-head-bg, #f9fafb); }
+.vdm-items td { padding: .5rem .75rem; color: var(--modal-text, #111827); }
+
+.vdm-num         { font-family: monospace; font-size: .8125rem; }
+.vdm-num--total  { font-weight: 700; }
+.vdm-num--desc   { color: #dc2626; }
+
+/* ── Totales ───────────────────────────────────────────────── */
+.vdm-totales {
+    background: var(--modal-head-bg, #f9fafb);
+    border: 1px solid var(--modal-border, #e5e7eb);
+    border-radius: .5rem;
+    padding: .75rem 1rem;
+}
+.vdm-totales__fila {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: .8125rem;
+    padding: .25rem 0;
+    color: var(--modal-muted, #6b7280);
+}
+.vdm-totales__fila span:last-child { font-family: monospace; font-weight: 600; }
+
+.vdm-totales__fila--total {
+    font-weight: 700;
+    font-size: .9375rem;
+    color: var(--modal-text, #111827);
+    padding-top: .5rem;
+    margin-top: .25rem;
+    border-top: 2px solid var(--modal-border, #e5e7eb);
+}
+.vdm-totales__fila--pago { color: var(--modal-text, #111827); }
+.vdm-totales__fila--pendiente {
+    color: #b45309;
+    font-weight: 700;
+}
+.dark .vdm-totales__fila--pendiente { color: #fbbf24; }
+
+.vdm-totales__sep {
+    border-top: 1px dashed var(--modal-border, #e5e7eb);
+    margin: .375rem 0;
+}
+
+/* ── Pie ───────────────────────────────────────────────────── */
+.vdm-foot {
+    display: flex;
+    justify-content: flex-end;
+    padding: .875rem 1.25rem;
+    border-top: 1px solid var(--modal-border, #e5e7eb);
+    background: var(--modal-head-bg, #f9fafb);
+    flex-shrink: 0;
+}
+.vdm-btn-cerrar {
+    padding: .5rem 1.25rem;
+    font-size: .875rem;
+    font-weight: 500;
+    border: 1px solid var(--modal-border, #e5e7eb);
+    border-radius: .5rem;
+    background: var(--modal-bg, #fff);
+    color: var(--modal-muted, #6b7280);
+    cursor: pointer;
+    transition: background .15s;
+}
+.vdm-btn-cerrar:hover { background: var(--modal-border, #e5e7eb); }
+
+/* ── Botón "Ver detalle" en tablas ─────────────────────────── */
+.vdm-btn-ver {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .3rem .6rem;
+    font-size: .75rem;
+    font-weight: 600;
+    border: 1px solid #bfdbfe;
+    border-radius: .4rem;
+    background: #eff6ff;
+    color: #1d4ed8;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s, color .15s;
+}
+.vdm-btn-ver:hover { background: #dbeafe; }
+.dark .vdm-btn-ver {
+    background: rgba(30,64,175,.25);
+    color: #60a5fa;
+    border-color: #1e40af;
+}
+.dark .vdm-btn-ver:hover { background: rgba(30,64,175,.4); }

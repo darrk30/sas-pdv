@@ -42,6 +42,7 @@ return new class extends Migration
             $table->decimal('costo_total', 12, 2)->default(0);
             $table->decimal('monto_pagado', 12, 2)->default(0);
             $table->decimal('saldo_pendiente', 12, 2)->default(0);
+            $table->string('estado_pago', 20)->default('pagado');
 
             // ── Comprobante electrónico (SUNAT — para implementar luego) ─
             $table->string('total_letras')->nullable();

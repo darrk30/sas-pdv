@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('venta_pagos', function (Blueprint $table) {
             $table->id();
             $table->foreignId('venta_id')->constrained('ventas')->cascadeOnDelete();
+            $table->foreignId('sesion_caja_id')->nullable()->constrained('sesion_cajas')->nullOnDelete();
             $table->foreignId('metodo_pago_id')->nullable()->constrained('metodos_pago')->nullOnDelete();
             $table->decimal('monto', 12, 2);
             $table->string('referencia')->nullable();

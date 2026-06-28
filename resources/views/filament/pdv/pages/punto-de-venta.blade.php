@@ -165,7 +165,7 @@
                                         <div class="pdv-card__agotado-overlay"><span>AGOTADO</span></div>
                                     @endif
                                     @if($producto->es_cortesia)
-                                        <span class="pdv-card__badge pdv-card__badge--cortesia">GRATIS</span>
+                                        <span class="pdv-card__badge pdv-card__badge--cortesia">CORTESÍA</span>
                                     @endif
                                     @if($stockNivel !== null && ! $agotado)
                                         @php
@@ -184,9 +184,7 @@
                                         <p class="pdv-card__meta">{{ $producto->variantesActivas->count() }} variantes</p>
                                     @endif
                                     <p class="pdv-card__precio">
-                                        @if($producto->es_cortesia)
-                                            GRATIS
-                                        @elseif($tieneVariantes)
+                                        @if($tieneVariantes)
                                             Desde S/ {{ number_format($producto->variantesActivas->min('precio_final'), 2) }}
                                         @else
                                             S/ {{ number_format($producto->precio_venta, 2) }}
@@ -351,20 +349,27 @@
             @else
                 <div class="pdv-carrito__lista">
                     @foreach($carrito as $item)
-                        @php $esCortesia = $item['cortesia'] ?? false; @endphp
+                        @php
+                            $esCortesia    = $item['cortesia'] ?? false;
+                            $puedeCortesia = $item['puede_cortesia'] ?? false;
+                        @endphp
                         <div class="pdv-item {{ $esCortesia ? 'pdv-item--cortesia' : '' }}" wire:key="item-{{ $item['key'] }}">
                             <div class="pdv-item__info">
                                 <div class="pdv-item__badges">
                                     @if($item['tipo'] === 'promocion')
                                         <span class="pdv-item__badge-promo">PROMO</span>
                                     @endif
-                                    @if($esCortesia)
-                                        <span class="pdv-item__badge-cortesia">
+                                    @if($puedeCortesia)
+                                        <button
+                                            wire:click="toggleCortesia('{{ $item['key'] }}')"
+                                            class="pdv-item__badge-cortesia {{ $esCortesia ? 'pdv-item__badge-cortesia--on' : 'pdv-item__badge-cortesia--off' }}"
+                                            title="{{ $esCortesia ? 'Quitar cortesía' : 'Aplicar como cortesía (gratis)' }}"
+                                        >
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="10" height="10">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
                                             </svg>
-                                            Cortesía
-                                        </span>
+                                            {{ $esCortesia ? 'Gratis' : 'Cortesía' }}
+                                        </button>
                                     @endif
                                 </div>
                                 <p class="pdv-item__nombre">{{ $item['nombre'] }}</p>
@@ -687,7 +692,12 @@
                                         @foreach($pagosAgregados as $idx => $pago)
                                             <div class="pdv-pago-item" wire:key="pago-{{ $idx }}">
                                                 <div class="pdv-pago-item__info">
-                                                    <span class="pdv-pago-item__nombre">{{ $pago['nombre'] }}</span>
+                                                    <span class="pdv-pago-item__nombre">
+                                                        {{ $pago['nombre'] }}
+                                                        @if(($pago['condicion_pago'] ?? 'contado') === 'credito')
+                                                            <span class="pdv-credito-badge">Crédito</span>
+                                                        @endif
+                                                    </span>
                                                     @if($pago['referencia'])
                                                         <span class="pdv-pago-item__ref">{{ $pago['referencia'] }}</span>
                                                     @endif
@@ -721,14 +731,16 @@
                                             <span>Gratis</span>
                                         </div>
                                     @endif
-                                    <div class="pdv-pago-resumen__fila">
-                                        <span>Op. Gravada</span>
-                                        <span>S/ {{ number_format($this->getOpGravadas(), 2) }}</span>
-                                    </div>
-                                    <div class="pdv-pago-resumen__fila">
-                                        <span>IGV (18%)</span>
-                                        <span>S/ {{ number_format($this->getIgv(), 2) }}</span>
-                                    </div>
+                                    @if($tipoComprobante !== 'ticket')
+                                        <div class="pdv-pago-resumen__fila">
+                                            <span>Op. Gravada</span>
+                                            <span>S/ {{ number_format($this->getOpGravadas(), 2) }}</span>
+                                        </div>
+                                        <div class="pdv-pago-resumen__fila">
+                                            <span>IGV (18%)</span>
+                                            <span>S/ {{ number_format($this->getIgv(), 2) }}</span>
+                                        </div>
+                                    @endif
                                     <div class="pdv-pago-resumen__fila pdv-pago-resumen__fila--total">
                                         <span>Total</span>
                                         <span>S/ {{ number_format($this->getTotalConDescuento(), 2) }}</span>
