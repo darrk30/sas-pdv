@@ -17,6 +17,7 @@ class Variante extends Model
         'estado',
         'precio_final',
         'precio_costo',
+        'imagen',
     ];
 
     protected $casts = [

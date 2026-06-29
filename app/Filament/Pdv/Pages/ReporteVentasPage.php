@@ -4,12 +4,14 @@ namespace App\Filament\Pdv\Pages;
 
 use App\Enums\CondicionPago;
 use App\Enums\EstadoMovimiento;
+use App\Enums\EstadoOrden;
 use App\Enums\EstadoSesion;
 use App\Enums\EstadoVenta;
 use App\Enums\TipoItem;
 use App\Enums\TipoMovimiento;
 use App\Models\Inventario;
 use App\Models\MetodoPago;
+use App\Models\Orden;
 use App\Models\Promocion;
 use App\Models\Serie;
 use App\Models\SesionCaja;
@@ -344,24 +346,30 @@ class ReporteVentasPage extends Page implements HasForms
 
                 $venta->update(['estado' => EstadoVenta::Anulada]);
 
+                Orden::where('venta_id', $venta->id)
+                    ->update(['estado' => EstadoOrden::Cancelada]);
+
                 Transaccion::where('transaccionable_type', Venta::class)
                     ->where('transaccionable_id', $venta->id)
                     ->where('tipo', TipoMovimiento::Ingreso->value)
                     ->update(['estado' => EstadoMovimiento::Anulado->value]);
 
-                foreach ($venta->pagos as $pago) {
-                    Transaccion::create([
-                        'empresa_id'           => $empresaId,
-                        'sesion_caja_id'       => $sesion?->id,
-                        'transaccionable_type' => Venta::class,
-                        'transaccionable_id'   => $venta->id,
-                        'tipo'                 => TipoMovimiento::Egreso,
-                        'concepto'             => "Devolución {$comprobante}",
-                        'monto'                => $pago->monto,
-                        'metodo_pago_id'       => $pago->metodo_pago_id,
-                        'estado'               => EstadoMovimiento::Aprobado,
-                        'fecha'                => now(),
-                    ]);
+                // Ventas web no tienen caja — se omite el egreso de devolución
+                if ($venta->tipo !== 'web' && $sesion) {
+                    foreach ($venta->pagos as $pago) {
+                        Transaccion::create([
+                            'empresa_id'           => $empresaId,
+                            'sesion_caja_id'       => $sesion->id,
+                            'transaccionable_type' => Venta::class,
+                            'transaccionable_id'   => $venta->id,
+                            'tipo'                 => TipoMovimiento::Egreso,
+                            'concepto'             => "Devolución {$comprobante}",
+                            'monto'                => $pago->monto,
+                            'metodo_pago_id'       => $pago->metodo_pago_id,
+                            'estado'               => EstadoMovimiento::Aprobado,
+                            'fecha'                => now(),
+                        ]);
+                    }
                 }
 
                 if ($revertir) {

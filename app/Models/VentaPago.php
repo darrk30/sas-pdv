@@ -14,6 +14,7 @@ class VentaPago extends Model
         'venta_id',
         'sesion_caja_id',
         'metodo_pago_id',
+        'tipo',
         'monto',
         'referencia',
     ];

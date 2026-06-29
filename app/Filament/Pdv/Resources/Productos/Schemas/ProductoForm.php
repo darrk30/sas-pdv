@@ -35,6 +35,9 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ProductoForm
 {
@@ -172,17 +175,18 @@ class ProductoForm
                                         ->default(0)
                                         ->dehydrated(false)
                                         ->helperText('Solo disponible cuando no hay movimientos previos')
-                                        ->visible(fn (?Model $record): bool =>
+                                        ->visible(
+                                            fn(?Model $record): bool =>
                                             $record === null ||
-                                            (
-                                                ! $record->tiene_variantes &&
-                                                (float) (Inventario::where('producto_id', $record->id)
-                                                    ->whereNull('variante_id')
-                                                    ->value('stock_real') ?? 0) <= 0 &&
-                                                ! Kardex::where('producto_id', $record->id)
-                                                    ->whereNull('variante_id')
-                                                    ->exists()
-                                            )
+                                                (
+                                                    ! $record->tiene_variantes &&
+                                                    (float) (Inventario::where('producto_id', $record->id)
+                                                        ->whereNull('variante_id')
+                                                        ->value('stock_real') ?? 0) <= 0 &&
+                                                    ! Kardex::where('producto_id', $record->id)
+                                                        ->whereNull('variante_id')
+                                                        ->exists()
+                                                )
                                         ),
                                 ]),
 
@@ -269,6 +273,49 @@ class ProductoForm
                                         ->options(ProductoEtiqueta::class)
                                         ->native(false),
                                 ]),
+
+
+                                FileUpload::make('imagenes_extras')
+                                    ->label('Galería de Imágenes')
+                                    ->multiple()
+                                    ->maxFiles(5)
+                                    ->image()
+                                    ->directory(function () {
+                                        $nombre = Str::slug(Auth::user()->name, '_');
+                                        $id     = Auth::id();
+                                        return "{$nombre}_{$id}/productos";
+                                    })
+                                    ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file): string {
+                                        return (string) str($file->getClientOriginalName());
+                                    })
+                                    ->reorderable()
+                                    ->panelLayout('grid')
+                                    ->extraAttributes(['class' => '[&_.filepond--item]:!w-[calc(33.333%-.5em)]'])
+                                    ->afterStateHydrated(function (FileUpload $component, $record) {
+                                        if ($record) {
+                                            $component->state(
+                                                $record->galeriaProductos()
+                                                    ->orderBy('orden')
+                                                    ->pluck('imagen_path')
+                                                    ->toArray()
+                                            );
+                                        }
+                                    })
+                                    ->dehydrated(false)
+                                    ->saveRelationshipsUsing(function ($record, $state) {
+                                        $state = array_values($state ?? []);
+
+                                        $record->galeriaProductos()->whereNotIn('imagen_path', $state)->delete();
+
+                                        foreach ($state as $index => $path) {
+                                            $record->galeriaProductos()->updateOrCreate(
+                                                ['imagen_path' => $path],
+                                                ['orden' => $index, 'empresa_id' => $record->empresa_id]
+                                            );
+                                        }
+                                    })
+                                    ->columnSpanFull(),
+
                             ]),
 
                         // --- PESTAÑA: VARIANTES ---
@@ -566,7 +613,8 @@ class ProductoForm
                         // --- PESTAÑA: VARIANTES GENERADAS ---
                         Tab::make('Variantes')
                             ->icon('heroicon-o-squares-2x2')
-                            ->visible(fn(?Model $record): bool =>
+                            ->visible(
+                                fn(?Model $record): bool =>
                                 $record?->exists && $record->variantesActivas()->exists()
                             )
                             ->schema([
@@ -576,6 +624,26 @@ class ProductoForm
                                     ->addable(false)
                                     ->deletable(false)
                                     ->reorderable(false)
+                                    ->afterStateHydrated(function (Repeater $component) {
+                                        $items = $component->getState() ?? [];
+                                        $ids   = collect($items)->pluck('id')->filter()->values()->all();
+
+                                        $variantes = Variante::with('valores.valor')
+                                            ->whereIn('id', $ids)
+                                            ->get()
+                                            ->keyBy('id');
+
+                                        $component->state(
+                                            collect($items)->map(function ($item) use ($variantes) {
+                                                $variante = $variantes->get($item['id'] ?? null);
+                                                $item['_nombre_display'] = $variante
+                                                    ? ($variante->valores->map(fn($pav) => $pav->valor?->nombre)->filter()->implode(' - ') ?: '—')
+                                                    : '—';
+                                                $item['_variante_id'] = $item['id'] ?? null;
+                                                return $item;
+                                            })->all()
+                                        );
+                                    })
                                     ->mutateRelationshipDataBeforeSaveUsing(function (array $data, Model $record): array {
                                         $stockInicial = (float) ($data['stock_inicial'] ?? 0);
 
@@ -613,41 +681,18 @@ class ProductoForm
                                             );
                                         }
 
-                                        unset($data['stock_inicial']);
+                                        unset($data['stock_inicial'], $data['_nombre_display'], $data['_variante_id']);
                                         return $data;
                                     })
-                                    ->table(function (?Model $record): array {
-                                        if ($record === null) {
-                                            $mostrarStockInicial = true;
-                                        } else {
-                                            $varianteIds         = $record->variantes()->where('estado', 'activo')->pluck('id');
-                                            $idsConKardex        = Kardex::whereIn('variante_id', $varianteIds)->pluck('variante_id');
-                                            $mostrarStockInicial = $varianteIds->diff($idsConKardex)->isNotEmpty();
-                                        }
-
-                                        return array_values(array_filter([
-                                            TableColumn::make('Variante'),
-                                            TableColumn::make('Cód. Interno'),
-                                            TableColumn::make('Cód. de Barras'),
-                                            TableColumn::make('Precio Final'),
-                                            TableColumn::make('Costo'),
-                                            TableColumn::make('Stock'),
-                                            $mostrarStockInicial ? TableColumn::make('Stock inicial') : null,
-                                        ]));
-                                    })
+                                    ->columns([
+                                        'default' => 2,
+                                        'md'      => 2,
+                                        'lg'      => 3,
+                                    ])
+                                    ->collapsible()
+                                    ->collapsed()
+                                    ->itemLabel(fn(array $state): ?string => $state['_nombre_display'] ?? '—')
                                     ->schema([
-
-                                        TextInput::make('_nombre_display')
-                                            ->label('Variante')
-                                            ->readOnly()
-                                            ->dehydrated(false)
-                                            ->formatStateUsing(function ($state, ?Model $record): string {
-                                                if (! $record) return '—';
-                                                return $record->valores
-                                                    ->map(fn($pav) => $pav->valor?->nombre)
-                                                    ->filter()
-                                                    ->implode(' · ') ?: '—';
-                                            }),
 
                                         TextInput::make('codigo')
                                             ->label('Cód. Interno')
@@ -695,14 +740,58 @@ class ProductoForm
                                             ->numeric()
                                             ->minValue(0)
                                             ->default(0)
-                                            ->visible(fn (?Model $record): bool =>
+                                            ->visible(
+                                                fn(?Model $record): bool =>
                                                 $record === null ||
-                                                (
-                                                    (float) ($record->inventario?->stock_real ?? 0) <= 0 &&
-                                                    ! Kardex::where('variante_id', $record->id)->exists()
-                                                )
+                                                    (
+                                                        (float) ($record->inventario?->stock_real ?? 0) <= 0 &&
+                                                        ! Kardex::where('variante_id', $record->id)->exists()
+                                                    )
                                             ),
 
+                                        Hidden::make('imagen'),
+
+                                        Hidden::make('_variante_id')
+                                            ->dehydrated(false),
+
+                                    ])
+                                    ->extraItemActions([
+                                        Action::make('imagen_variante')
+                                            ->label('Imagen')
+                                            ->icon('heroicon-o-photo')
+                                            ->color('gray')
+                                            ->modalHeading('Imagen de la Variante')
+                                            ->schema([
+                                                FileUpload::make('imagen')
+                                                    ->image()
+                                                    ->directory('variantes')
+                                                    ->hiddenLabel(),
+                                            ])
+                                            ->mountUsing(function ($form, $component, $arguments) {
+                                                $itemKey  = $arguments['item'] ?? null;
+                                                $allItems = $component->getState();
+                                                $item     = $allItems[$itemKey] ?? [];
+                                                $form->fill(['imagen' => $item['imagen'] ?? null]);
+                                            })
+                                            ->action(function ($component, $arguments, array $data) {
+                                                $itemKey  = $arguments['item'] ?? null;
+                                                $allItems = $component->getState();
+                                                $item     = $allItems[$itemKey] ?? [];
+
+                                                $varianteId = $item['_variante_id'] ?? null;
+                                                if ($varianteId) {
+                                                    Variante::find($varianteId)?->update(['imagen' => $data['imagen'] ?? null]);
+                                                }
+
+                                                $component->state(
+                                                    collect($allItems)->map(function ($it, $key) use ($itemKey, $data) {
+                                                        if ($key === $itemKey) {
+                                                            $it['imagen'] = $data['imagen'] ?? null;
+                                                        }
+                                                        return $it;
+                                                    })->toArray()
+                                                );
+                                            }),
                                     ])
                                     ->defaultItems(0),
                             ]),

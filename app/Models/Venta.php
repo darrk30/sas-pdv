@@ -21,6 +21,7 @@ class Venta extends Model
         'vendedor_id',
         'sesion_caja_id',
         'cliente_id',
+        'tipo',
         'cliente_nombre',
         'cliente_tipo_doc',
         'cliente_num_doc',

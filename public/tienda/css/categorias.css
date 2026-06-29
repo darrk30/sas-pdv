@@ -1,0 +1,99 @@
+/* ═══════════════════════════════════════════════════════════════
+   categorias.css — Sidebar de categorías
+   ═══════════════════════════════════════════════════════════════ */
+
+.catalogo__layout {
+    display: grid;
+    grid-template-columns: 12rem 1fr;
+    gap: 2.5rem;
+    align-items: start;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.cat-sidebar {
+    position: sticky;
+    top: 1.5rem;
+}
+
+.cat-sidebar__titulo {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--color-texto-muted);
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--color-borde);
+}
+
+.cat-sidebar__lista { list-style: none; }
+
+.cat-sidebar__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.45rem 0.625rem;
+    background: none;
+    border: none;
+    border-radius: var(--radio);
+    cursor: pointer;
+    text-align: left;
+    color: var(--color-texto-muted);
+    font-family: var(--font);
+    transition: background .12s, color .12s;
+}
+
+.cat-sidebar__item:hover {
+    background: var(--color-fondo-alt);
+    color: var(--color-texto);
+}
+
+.cat-sidebar__item--activo {
+    background: rgba(37,99,235,.07);
+    color: var(--color-primario);
+    font-weight: 600;
+}
+
+.cat-sidebar__item--activo .cat-sidebar__count {
+    color: var(--color-primario);
+}
+
+.cat-sidebar__nombre { font-size: 0.9375rem; }
+
+.cat-sidebar__count {
+    font-size: 0.75rem;
+    color: var(--color-texto-muted);
+    flex-shrink: 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .catalogo__layout {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .cat-sidebar { position: static; }
+
+    .cat-sidebar__lista {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+    }
+
+    .cat-sidebar__item {
+        padding: 0.35rem 0.875rem;
+        border: 1px solid var(--color-borde);
+        border-radius: 9999px;
+        width: auto;
+        font-size: 0.875rem;
+    }
+
+    .cat-sidebar__item:hover    { background: var(--color-fondo-alt); }
+    .cat-sidebar__item--activo  { border-color: var(--color-primario); background: rgba(37,99,235,.06); }
+
+    .cat-sidebar__count  { display: none; }
+    .cat-sidebar__titulo { display: none; }
+}

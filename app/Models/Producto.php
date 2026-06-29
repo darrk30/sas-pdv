@@ -73,6 +73,11 @@ class Producto extends Model
         return $this->belongsTo(UnidadesMedida::class);
     }
 
+    public function galeriaProductos()
+    {
+        return $this->hasMany(GaleriaProducto::class)->orderBy('orden');
+    }
+
     public function atributos()
     {
         return $this->hasMany(ProductoAtributo::class);

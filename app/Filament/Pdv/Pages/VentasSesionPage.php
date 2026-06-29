@@ -3,11 +3,13 @@
 namespace App\Filament\Pdv\Pages;
 
 use App\Enums\EstadoMovimiento;
+use App\Enums\EstadoOrden;
 use App\Enums\EstadoSesion;
 use App\Enums\EstadoVenta;
 use App\Enums\TipoItem;
 use App\Enums\TipoMovimiento;
 use App\Models\Inventario;
+use App\Models\Orden;
 use App\Models\Promocion;
 use App\Models\SesionCaja;
 use App\Models\Transaccion;
@@ -236,6 +238,9 @@ class VentasSesionPage extends Page
 
                 // 1 ── Marcar venta como anulada
                 $venta->update(['estado' => EstadoVenta::Anulada]);
+
+                Orden::where('venta_id', $venta->id)
+                    ->update(['estado' => EstadoOrden::Cancelada]);
 
                 // 2 ── Anular transacciones de ingreso originales
                 // (suficiente para quitar el monto del saldo de caja;

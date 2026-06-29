@@ -14,8 +14,11 @@ return new class extends Migration
             // ── Relaciones principales ──────────────────────────────────
             $table->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
             $table->foreignId('vendedor_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('sesion_caja_id')->constrained('sesion_cajas')->cascadeOnDelete();
+            $table->foreignId('sesion_caja_id')->nullable()->constrained('sesion_cajas')->nullOnDelete();
             $table->foreignId('cliente_id')->nullable()->constrained('clientes')->nullOnDelete();
+
+            // ── Canal de origen ─────────────────────────────────────────
+            $table->string('tipo', 10)->default('pdv'); // pdv | web
 
             // ── Snapshot del cliente (persiste si se elimina el registro) ─
             $table->string('cliente_nombre');

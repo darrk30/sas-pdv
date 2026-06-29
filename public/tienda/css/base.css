@@ -1,0 +1,59 @@
+/* ═══════════════════════════════════════════════════════════════
+   base.css — Reset, variables y layout raíz
+   ═══════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    /* Colores */
+    --color-primario:    #2563eb;
+    --color-primario-h:  #1d4ed8;
+    --color-fondo:       #f9fafb;
+    --color-fondo-card:  #ffffff;
+    --color-fondo-alt:   #f3f4f6;
+    --color-texto:       #111827;
+    --color-texto-2:     #374151;
+    --color-texto-muted: #6b7280;
+    --color-borde:       #e5e7eb;
+    --color-borde-dark:  #d1d5db;
+    --color-peligro:     #dc2626;
+
+    /* Forma */
+    --radio:     0.5rem;
+    --radio-lg:  0.75rem;
+
+    /* Sombras */
+    --sombra-xs: 0 1px 2px rgba(0,0,0,.05);
+    --sombra-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+    --sombra-md: 0 4px 16px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+
+    /* Layout */
+    --navbar-h:      4.25rem;
+    --contenido-max: 1280px;
+
+    /* Tipografía */
+    --font: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+    font-family: var(--font);
+    background: var(--color-fondo);
+    color: var(--color-texto);
+    line-height: 1.6;
+    min-height: 100vh;
+    font-size: 1rem;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.pagina {
+    max-width: var(--contenido-max);
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+}
+
+[x-cloak] { display: none !important; }

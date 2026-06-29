@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('venta_id')->constrained('ventas')->cascadeOnDelete();
             $table->foreignId('sesion_caja_id')->nullable()->constrained('sesion_cajas')->nullOnDelete();
             $table->foreignId('metodo_pago_id')->nullable()->constrained('metodos_pago')->nullOnDelete();
+            $table->string('tipo', 10)->default('pdv'); // pdv | web
             $table->decimal('monto', 12, 2);
             $table->string('referencia')->nullable();
             $table->timestamps();

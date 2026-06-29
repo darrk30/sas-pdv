@@ -27,6 +27,12 @@ class MetodoPagoForm
                             ->required()
                             ->maxLength(255),
 
+                        TextInput::make('descripcion')
+                            ->label('Descripción')
+                            ->nullable()
+                            ->maxLength(255)
+                            ->placeholder('Ej: Pago inmediato, sin comisión'),
+
                         FileUpload::make('imagen')
                             ->label('Imagen / Logo')
                             ->image()

@@ -5,11 +5,13 @@ namespace App\Models;
 use App\Enums\TipoDocumento;
 use App\Traits\BelongsToEmpresa;
 use App\Traits\BelongsToUser;
+use Illuminate\Auth\Authenticatable;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Model;
 
-class Cliente extends Model
+class Cliente extends Model implements AuthenticatableContract
 {
-    use BelongsToEmpresa, BelongsToUser;
+    use BelongsToEmpresa, BelongsToUser, Authenticatable;
 
     protected $fillable = [
         'empresa_id',
@@ -18,9 +20,11 @@ class Cliente extends Model
         'numero_documento',
         'nombre',
         'apellidos',
-        'direccion',
+        'email',
+        'password',
         'correo',
         'telefono',
+        'direccion',
         'departamento',
         'provincia',
         'distrito',
@@ -28,8 +32,14 @@ class Cliente extends Model
         'pais',
     ];
 
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
     protected $casts = [
         'tipo_documento' => TipoDocumento::class,
+        'password'       => 'hashed',
     ];
 
     public function getNombreCompletoAttribute(): string

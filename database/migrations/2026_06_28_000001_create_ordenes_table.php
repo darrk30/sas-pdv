@@ -13,7 +13,7 @@ return new class extends Migration
 
             // ── Relaciones ──────────────────────────────────────────────
             $table->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
-            $table->foreignId('vendedor_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('vendedor_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('cliente_id')->nullable()->constrained('clientes')->nullOnDelete();
 
             // ── Número de orden (secuencial por empresa) ────────────────
@@ -24,6 +24,8 @@ return new class extends Migration
             $table->string('cliente_nombre')->default('');
             $table->string('cliente_tipo_doc', 20)->default('');
             $table->string('cliente_num_doc', 20)->default('');
+            $table->string('cliente_telefono', 30)->nullable();
+            $table->string('cliente_direccion')->nullable();
 
             // ── Fechas ──────────────────────────────────────────────────
             $table->dateTime('fecha_orden');
@@ -42,6 +44,9 @@ return new class extends Migration
 
             // ── Estado ──────────────────────────────────────────────────
             $table->string('estado', 20)->default('borrador');
+
+            // ── Pago ────────────────────────────────────────────────────
+            $table->foreignId('metodo_pago_id')->nullable()->constrained('metodos_pago')->nullOnDelete();
 
             // ── Conversión a venta ──────────────────────────────────────
             $table->foreignId('venta_id')->nullable()->constrained('ventas')->nullOnDelete();

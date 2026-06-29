@@ -7,6 +7,7 @@ use App\Traits\BelongsToEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\MetodoPago;
 
 class Orden extends Model
 {
@@ -22,6 +23,8 @@ class Orden extends Model
         'cliente_nombre',
         'cliente_tipo_doc',
         'cliente_num_doc',
+        'cliente_telefono',
+        'cliente_direccion',
         'fecha_orden',
         'tipo_entrega',
         'metodo_envio_id',
@@ -32,6 +35,7 @@ class Orden extends Model
         'subtotal',
         'total',
         'estado',
+        'metodo_pago_id',
         'venta_id',
         'notas',
         'notas_internas',
@@ -62,7 +66,7 @@ class Orden extends Model
                 $orden->numero = static::where('empresa_id', $orden->empresa_id)->max('numero') + 1;
             }
             if (empty($orden->estado)) {
-                $orden->estado = EstadoOrden::Borrador;
+                $orden->estado = EstadoOrden::PendientePago;
             }
         });
     }
@@ -82,6 +86,11 @@ class Orden extends Model
     public function metodoEnvio(): BelongsTo
     {
         return $this->belongsTo(MetodoEnvio::class);
+    }
+
+    public function metodoPago(): BelongsTo
+    {
+        return $this->belongsTo(MetodoPago::class);
     }
 
     public function detalles(): HasMany
@@ -106,9 +115,14 @@ class Orden extends Model
         return $this->tipo_entrega === 'envio';
     }
 
-    public function puedeTransicionarA(EstadoOrden $nuevoEstado): bool
+    public function estaPagoConfirmado(): bool
     {
-        return in_array($nuevoEstado, $this->estado->transicionesPosibles());
+        return $this->estado === EstadoOrden::PagoConfirmado;
+    }
+
+    public function estaCancelada(): bool
+    {
+        return $this->estado === EstadoOrden::Cancelada;
     }
 
     /** Recalcula igv, subtotal y total a partir de los detalles + costo de envío. */

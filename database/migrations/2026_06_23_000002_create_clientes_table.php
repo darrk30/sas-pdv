@@ -11,14 +11,17 @@ return new class extends Migration
         Schema::create('clientes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('tipo_documento', 10);
-            $table->string('numero_documento', 20);
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('tipo_documento', 10)->nullable();
+            $table->string('numero_documento', 20)->nullable();
             $table->string('nombre', 255);
             $table->string('apellidos', 255)->nullable();
-            $table->string('direccion', 255)->nullable();
             $table->string('correo', 255)->nullable();
+            $table->string('email', 255)->nullable();
+            $table->string('password')->nullable();
+            $table->rememberToken();
             $table->string('telefono', 20)->nullable();
+            $table->string('direccion', 255)->nullable();
             $table->string('departamento', 100)->nullable();
             $table->string('provincia', 100)->nullable();
             $table->string('distrito', 100)->nullable();
@@ -26,6 +29,7 @@ return new class extends Migration
             $table->string('pais', 5)->default('PE');
             $table->timestamps();
 
+            $table->unique(['empresa_id', 'email']);
             $table->unique(['empresa_id', 'numero_documento']);
         });
     }

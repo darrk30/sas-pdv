@@ -77,6 +77,26 @@ class ClienteForm
                                 ->maxLength(255)
                                 ->columnSpanFull(),
 
+                            TextInput::make('departamento')
+                                ->label('Departamento')
+                                ->nullable()
+                                ->maxLength(100),
+
+                            TextInput::make('provincia')
+                                ->label('Provincia')
+                                ->nullable()
+                                ->maxLength(100),
+
+                            TextInput::make('distrito')
+                                ->label('Distrito')
+                                ->nullable()
+                                ->maxLength(100),
+
+                            TextInput::make('codigo_postal')
+                                ->label('Código postal')
+                                ->nullable()
+                                ->maxLength(20),
+
                         ]),
                     ])->columnSpanFull(),
             ]);
