@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Tienda\CarritoController;
 use App\Http\Middleware\TiendaEmpresa;
 use Illuminate\Support\Facades\Route;
 
@@ -11,6 +12,13 @@ Route::middleware([TiendaEmpresa::class])->group(function () {
     Route::livewire('/login',    'tienda.auth.login')->name('tienda.login');
     Route::livewire('/registro', 'tienda.auth.registro')->name('tienda.registro');
     Route::livewire('/carrito',  'tienda.carrito')->name('tienda.carrito');
+
+    // ── Carrito y lista de deseos (requieren login) ───────────────
+    Route::middleware('auth:cliente')->group(function () {
+        Route::post('/carrito/agregar',      [CarritoController::class, 'agregar']);
+        Route::post('/carrito/sincronizar',  [CarritoController::class, 'sincronizar']);
+        Route::post('/lista-deseos/toggle',  [CarritoController::class, 'toggleDeseo']);
+    });
 
     // Próximas rutas
     // Route::livewire('/producto/{id}', 'tienda.producto-detalle')->name('tienda.producto');

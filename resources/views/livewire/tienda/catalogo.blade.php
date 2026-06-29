@@ -41,14 +41,20 @@
             <div class="spinner__anillo"></div>
         </div>
 
-        {{-- Grid de productos --}}
+        {{-- Grid de productos + promociones --}}
         <div wire:loading.remove>
-            @if ($productos->isEmpty())
+            @if ($productos->isEmpty() && $promociones->isEmpty())
                 <p class="catalogo__estado">No se encontraron productos.</p>
             @else
                 <div class="catalogo__grid">
+                    {{-- Promociones vigentes primero (solo pág. 1) --}}
+                    @foreach ($promociones as $promo)
+                        <x-tienda.tarjeta-promo :promo="$promo" wire:key="promo-{{ $promo->id }}" />
+                    @endforeach
+
+                    {{-- Productos normales --}}
                     @foreach ($productos as $producto)
-                        <x-tienda.tarjeta :producto="$producto" />
+                        <x-tienda.tarjeta :producto="$producto" wire:key="producto-{{ $producto->id }}" />
                     @endforeach
                 </div>
             @endif

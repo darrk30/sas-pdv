@@ -39,6 +39,8 @@ class Login extends Component
 
         if ($ok) {
             session()->regenerate();
+            // El frontend sincronizará el localStorage con la DB al redirigir
+            $this->dispatch('carrito:sincronizar-local');
             $this->redirect(route('tienda.catalogo'), navigate: true);
             return;
         }

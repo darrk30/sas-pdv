@@ -84,18 +84,26 @@
          anterior() {
              if (this.imagenes.length > 1)
                  this.indice = (this.indice - 1 + this.imagenes.length) % this.imagenes.length;
+         },
+         touchX: 0,
+         tocarInicio(e) { this.touchX = e.touches[0].clientX; },
+         tocarFin(e) {
+             if (this.imgColor) return;
+             const dx = e.changedTouches[0].clientX - this.touchX;
+             if (Math.abs(dx) > 40) { if (dx < 0) this.siguiente(); else this.anterior(); }
          }
      }"
      @mouseenter="entrar()"
      @mouseleave="salir()">
 
     {{-- ── Imagen ──────────────────────────────────────────────── --}}
-    <div class="tarjeta__imagen">
+    <div class="tarjeta__imagen"
+         @touchstart.passive="tocarInicio($event)"
+         @touchend.passive="tocarFin($event)">
 
-        <template x-if="imgActual">
+        @if ($imagenes->isNotEmpty())
             <img :src="imgActual" alt="{{ $producto->nombre }}" class="tarjeta__img" loading="lazy">
-        </template>
-        <template x-if="!imgActual">
+        @else
             <div class="tarjeta__sin-imagen">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="tarjeta__sin-imagen-svg">
                     <rect x="3" y="3" width="18" height="18" rx="1.5"/>
@@ -103,7 +111,7 @@
                     <path d="m21 15-5-5L5 21"/>
                 </svg>
             </div>
-        </template>
+        @endif
 
         {{-- Flechas swiper --}}
         <div class="tarjeta__nav" x-show="hovering && imagenes.length > 1 && !imgColor">
@@ -144,6 +152,49 @@
         @if ($tieneDescuento && $pct > 0)
             <span class="tarjeta__badge-oferta">-{{ $pctFormateado }}%</span>
         @endif
+
+        {{-- ── Botones de acción ──────────────────────────────── --}}
+        <div class="tarjeta__acciones" x-show="hovering">
+
+            <button
+                type="button"
+                class="tarjeta__btn-carrito"
+                title="Agregar al carrito"
+                @click.prevent.stop="
+                    flyAlCarrito($el.closest('.tarjeta').querySelector('.tarjeta__img'));
+                    $store.carrito.agregar({
+                        producto_id:     {{ $producto->id }},
+                        variante_id:     null,
+                        nombre:          @js($producto->nombre),
+                        imagen:          @js($imagenes->first()),
+                        precio_unitario: {{ $precioFinal }},
+                    })
+                "
+            >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <circle cx="9"  cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                </svg>
+                <span>Agregar</span>
+            </button>
+
+            @auth('cliente')
+            <button
+                type="button"
+                class="tarjeta__btn-deseo"
+                title="Agregar a deseos"
+                :class="{ 'tarjeta__btn-deseo--activo': $store.carrito.enDeseos({{ $producto->id }}) }"
+                @click.prevent.stop="$store.carrito.toggleDeseo({{ $producto->id }})"
+            >
+                <svg viewBox="0 0 24 24"
+                     :fill="$store.carrito.enDeseos({{ $producto->id }}) ? 'currentColor' : 'none'"
+                     stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+            </button>
+            @endauth
+
+        </div>
     </div>
 
     {{-- ── Info ────────────────────────────────────────────────── --}}
@@ -177,6 +228,29 @@
                 <span class="tarjeta__precio-original">S/ {{ number_format($producto->precio_venta, 2) }}</span>
             @endif
         </div>
+
+        {{-- Botón móvil: siempre visible debajo del precio --}}
+        <button
+            type="button"
+            class="tarjeta__btn-carrito tarjeta__btn-carrito--movil"
+            title="Agregar al carrito"
+            @click.prevent.stop="
+                flyAlCarrito($el.closest('.tarjeta').querySelector('.tarjeta__img'));
+                $store.carrito.agregar({
+                    producto_id:     {{ $producto->id }},
+                    variante_id:     null,
+                    nombre:          @js($producto->nombre),
+                    imagen:          @js($imagenes->first()),
+                    precio_unitario: {{ $precioFinal }},
+                })
+            "
+        >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <circle cx="9"  cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            <span>Agregar</span>
+        </button>
 
     </div>
 </div>

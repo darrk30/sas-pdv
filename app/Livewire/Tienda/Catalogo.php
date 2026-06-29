@@ -2,9 +2,12 @@
 
 namespace App\Livewire\Tienda;
 
+use App\Enums\EstadoPromocion;
 use App\Models\Categoria;
 use App\Models\Marca;
 use App\Models\Producto;
+use App\Models\Promocion;
+use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -74,8 +77,25 @@ class Catalogo extends Component
             ->where('estado', true)
             ->exists();
 
+        // Promociones vigentes hoy (solo sin filtros activos para no confundir)
+        $hoy = Carbon::today();
+        $diaSemana = (string) Carbon::now()->dayOfWeekIso;
+
+        $promociones = (!$this->buscar && !$this->marcaId && !$this->categoriaId && $this->getPage() <= 1)
+            ? Promocion::where('empresa_id', $this->empresaId)
+                ->where('estado', EstadoPromocion::Activo)
+                ->where(fn($q) => $q->whereNull('fecha_inicio')->orWhere('fecha_inicio', '<=', $hoy))
+                ->where(fn($q) => $q->whereNull('fecha_fin')->orWhere('fecha_fin', '>=', $hoy))
+                ->where(fn($q) => $q->whereNull('limite_usos')->orWhereColumn('usos_actuales', '<', 'limite_usos'))
+                ->with(['detalles.producto', 'detalles.variante.producto'])
+                ->get()
+                ->filter(fn($p) => empty($p->dias_semana) ||
+                    in_array($diaSemana, array_map('strval', $p->dias_semana)))
+                ->values()
+            : collect();
+
         return view('livewire.tienda.catalogo', compact(
-            'productos', 'marcaActiva', 'categoriaActiva', 'tieneCategorias'
+            'productos', 'promociones', 'marcaActiva', 'categoriaActiva', 'tieneCategorias'
         ));
     }
 }
