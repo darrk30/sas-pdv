@@ -73,7 +73,8 @@ class CarritoController extends Controller
         $data = $request->validate([
             'empresa_id' => 'required|integer',
             'items'      => 'required|array',
-            'items.*.producto_id'     => 'required|integer',
+            'items.*.promocion_id'    => 'nullable|integer',
+            'items.*.producto_id'     => 'nullable|integer',
             'items.*.variante_id'     => 'nullable|integer',
             'items.*.precio_unitario' => 'required|numeric|min:0',
             'items.*.cantidad'        => 'required|integer|min:1',

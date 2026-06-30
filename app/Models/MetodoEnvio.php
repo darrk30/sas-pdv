@@ -17,11 +17,13 @@ class MetodoEnvio extends Model
         'nombre',
         'descripcion',
         'costo',
+        'con_direccion',
         'estado',
     ];
 
     protected $casts = [
-        'costo' => 'decimal:2',
+        'costo'         => 'decimal:2',
+        'con_direccion' => 'boolean',
     ];
 
     public function ordenes(): HasMany

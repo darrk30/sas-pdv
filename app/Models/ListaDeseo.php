@@ -9,7 +9,9 @@ class ListaDeseo extends Model
 {
     protected $table = 'lista_deseos';
 
-    protected $fillable = ['empresa_id', 'user_id', 'producto_id', 'variante_id'];
+    protected $fillable = ['empresa_id', 'user_id', 'producto_id', 'variante_id', 'cantidad'];
+
+    protected $casts = ['cantidad' => 'integer'];
 
     public function empresa(): BelongsTo
     {

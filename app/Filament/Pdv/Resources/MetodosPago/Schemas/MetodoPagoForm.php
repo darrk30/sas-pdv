@@ -4,7 +4,9 @@ namespace App\Filament\Pdv\Resources\MetodosPago\Schemas;
 
 use App\Enums\CondicionPago;
 use App\Enums\EstadoGeneral;
+use App\Enums\VisibilidadMetodoPago;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -27,11 +29,12 @@ class MetodoPagoForm
                             ->required()
                             ->maxLength(255),
 
-                        TextInput::make('descripcion')
+                        RichEditor::make('descripcion')
                             ->label('Descripción')
                             ->nullable()
-                            ->maxLength(255)
-                            ->placeholder('Ej: Pago inmediato, sin comisión'),
+                            ->placeholder('Ej: Pago inmediato, sin comisión')
+                            ->toolbarButtons(['bold', 'italic', 'link', 'bulletList'])
+                            ->columnSpanFull(),
 
                         FileUpload::make('imagen')
                             ->label('Imagen / Logo')
@@ -39,6 +42,14 @@ class MetodoPagoForm
                             ->directory('metodos-pago')
                             ->nullable()
                             ->columnSpanFull(),
+
+                        Select::make('visible_en')
+                            ->label('Visible en')
+                            ->options(VisibilidadMetodoPago::class)
+                            ->required()
+                            ->native(false)
+                            ->default(VisibilidadMetodoPago::Ambos->value)
+                            ->helperText('Define si este método aparece en la tienda web, el PDV o ambos.'),
 
                         Select::make('condicion_pago')
                             ->label('Condición de pago')

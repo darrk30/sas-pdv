@@ -13,12 +13,13 @@ class ProductoAtributo extends Model
         return $this->belongsTo(Atributo::class);
     }
 
-    // 1. Relación para el Select Múltiple (Guarda los IDs)
+    // 1. Relación para el Select Múltiple (Guarda los IDs) — solo valores activos
     public function valores()
     {
         return $this->belongsToMany(Valor::class, 'producto_atributo_valors', 'producto_atributo_id', 'valor_id')
             ->withPivot('precio_adicional')
-            ->withTimestamps();
+            ->withTimestamps()
+            ->wherePivot('estado', 'activo');
     }
 
     // 2. Relación para el Modal de Precios Extra (Edita la tabla pivote)

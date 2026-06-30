@@ -216,8 +216,15 @@
     white-space: nowrap;
 }
 
-.tarjeta__btn-carrito:hover  { background: #333; }
-.tarjeta__btn-carrito:active { transform: scale(.96); }
+.tarjeta__btn-carrito:hover:not(:disabled)  { background: #333; }
+.tarjeta__btn-carrito:active:not(:disabled) { transform: scale(.96); }
+
+.tarjeta__btn-carrito--agotado,
+.tarjeta__btn-carrito--agotado:hover {
+    background: #9ca3af;
+    cursor: not-allowed;
+    opacity: .8;
+}
 
 .tarjeta__btn-deseo {
     width: 2.1rem;

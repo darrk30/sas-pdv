@@ -8,6 +8,7 @@ use App\Traits\BelongsToEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Venta extends Model
@@ -106,6 +107,11 @@ class Venta extends Model
     public function serie(): BelongsTo
     {
         return $this->belongsTo(Serie::class);
+    }
+
+    public function orden(): HasOne
+    {
+        return $this->hasOne(Orden::class, 'venta_id');
     }
 
     public function detalles(): HasMany

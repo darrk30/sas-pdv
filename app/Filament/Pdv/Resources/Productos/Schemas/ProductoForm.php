@@ -303,11 +303,26 @@ class ProductoForm
                                     })
                                     ->dehydrated(false)
                                     ->saveRelationshipsUsing(function ($record, $state) {
-                                        $state = array_values($state ?? []);
+                                        // Construye el mismo directorio que usa ->directory()
+                                        $nombre    = Str::slug(Auth::user()->name, '_');
+                                        $directory = "{$nombre}_" . Auth::id() . '/productos';
 
-                                        $record->galeriaProductos()->whereNotIn('imagen_path', $state)->delete();
+                                        // Normaliza el estado: convierte TemporaryUploadedFile a rutas permanentes
+                                        $paths = collect($state ?? [])
+                                            ->map(function ($file) use ($directory) {
+                                                if ($file instanceof TemporaryUploadedFile) {
+                                                    $name = (string) str($file->getClientOriginalName());
+                                                    return $file->storeAs($directory, $name, 'public');
+                                                }
+                                                return is_string($file) ? $file : null;
+                                            })
+                                            ->filter()
+                                            ->values()
+                                            ->toArray();
 
-                                        foreach ($state as $index => $path) {
+                                        $record->galeriaProductos()->whereNotIn('imagen_path', $paths)->delete();
+
+                                        foreach ($paths as $index => $path) {
                                             $record->galeriaProductos()->updateOrCreate(
                                                 ['imagen_path' => $path],
                                                 ['orden' => $index, 'empresa_id' => $record->empresa_id]

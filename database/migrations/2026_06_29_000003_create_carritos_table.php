@@ -20,7 +20,9 @@ return new class extends Migration
         Schema::create('carrito_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('carrito_id')->constrained('carritos')->cascadeOnDelete();
-            $table->foreignId('producto_id')->constrained('productos')->cascadeOnDelete();
+            $table->foreignId('promocion_id')->nullable()->constrained('promociones')->cascadeOnDelete();
+            $table->unsignedBigInteger('producto_id')->nullable();
+            $table->foreign('producto_id')->references('id')->on('productos')->cascadeOnDelete();
             $table->foreignId('variante_id')->nullable()->constrained('variantes')->nullOnDelete();
             $table->unsignedSmallInteger('cantidad')->default(1);
             $table->decimal('precio_unitario', 10, 2);

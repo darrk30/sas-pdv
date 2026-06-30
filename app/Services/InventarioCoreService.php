@@ -203,11 +203,15 @@ class InventarioCoreService
             ]);
         }
 
-        $stockAntes = (float) $inv->stock_real;
-        $nuevoStock = $stockAntes + ($tipo === 'entrada' ? $cantidadBase : -$cantidadBase);
+        $stockAntes   = (float) $inv->stock_real;
+        $reservaAntes = (float) $inv->stock_reserva;
+        $delta        = $tipo === 'entrada' ? $cantidadBase : -$cantidadBase;
+        $nuevoStock   = $stockAntes + $delta;
+        $nuevoReserva = max(0, $reservaAntes + $delta);
 
         $inv->update([
             'stock_real'        => $nuevoStock,
+            'stock_reserva'     => $nuevoReserva,
             'estado_inventario' => $this->calcularEstado($nuevoStock, (float) $inv->stock_minimo),
         ]);
 

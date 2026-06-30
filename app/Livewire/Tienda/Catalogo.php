@@ -64,9 +64,8 @@ class Catalogo extends Component
                 'atributos.atributo',
                 'atributos.valores',
                 'galeriaProductos',
-                'variantes' => fn($q) => $q->where('estado', 'activo')
-                    ->whereNotNull('imagen')
-                    ->with('valores'),
+                'inventario',
+                'variantes' => fn($q) => $q->where('estado', 'activo')->with(['valores', 'inventario']),
             ])
             ->paginate(24);
 

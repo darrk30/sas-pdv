@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('nombre');
             $table->string('descripcion')->nullable();
             $table->decimal('costo', 10, 2)->default(0);
+            $table->boolean('con_direccion')->default(true);
             $table->string('estado', 20)->default('activo');
             $table->timestamps();
 

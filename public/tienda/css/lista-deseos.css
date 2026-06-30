@@ -1,0 +1,417 @@
+/* ═══════════════════════════════════════════════════════════════
+   lista-deseos.css — Vista de lista de deseos
+   ═══════════════════════════════════════════════════════════════ */
+
+.ld {
+    width: 100%;
+    padding: 1.75rem 0 3rem;
+}
+
+/* ── Estado guest (no autenticado) ──────────────────────────── */
+.ld-guest-page {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.ld__guest {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+.ld__guest-txt {
+    font-size: 1rem;
+    color: var(--color-texto-muted, #6b7280);
+    margin: 0;
+}
+
+.ld__guest-links {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+.ld__guest-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1.25rem;
+    background: var(--color-primario, #1d4ed8);
+    color: #fff;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity .15s;
+}
+
+.ld__guest-btn:hover { opacity: .88; }
+
+.ld__guest-link {
+    font-size: 0.8125rem;
+    color: var(--color-texto-muted, #6b7280);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* ── Cabecera ────────────────────────────────────────────────── */
+.ld__header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+    margin-bottom: 0.25rem;
+}
+
+.ld__titulo {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--color-texto);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.ld__count {
+    font-size: 0.78rem;
+    color: #9ca3af;
+}
+
+/* ── Lista ───────────────────────────────────────────────────── */
+.ld__lista {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Fila de ítem (desktop) ──────────────────────────────────── */
+.ld__item {
+    display: grid;
+    grid-template-columns: 1.5rem 4rem 1fr auto auto auto;
+    grid-template-areas: "chk img info qty precio del";
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.ld__item:last-child { border-bottom: none; }
+
+.ld__check-col   { grid-area: chk; display: flex; align-items: center; justify-content: center; }
+.ld__img-wrap    { grid-area: img; }
+.ld__info        { grid-area: info; min-width: 0; }
+.ld__cantidad    { grid-area: qty; }
+.ld__precio-wrap { grid-area: precio; }
+.ld__acciones    { grid-area: del; }
+
+/* Checkbox */
+.ld__check {
+    width: 1.05rem;
+    height: 1.05rem;
+    cursor: pointer;
+    accent-color: #111827;
+    flex-shrink: 0;
+}
+
+.ld__check--lg {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+/* Imagen */
+.ld__img-wrap {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f4f4f5;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ld__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.ld__sin-img { color: #d1d5db; }
+
+/* Info — nombre multilinea en desktop también */
+.ld__nombre {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-texto);
+    display: block;
+    line-height: 1.35;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.ld__variante {
+    font-size: 0.73rem;
+    color: #6b7280;
+    display: block;
+    margin-top: 0.2rem;
+}
+
+/* No disponible */
+.ld__no-disp-badge {
+    display: inline-block;
+    margin-top: 0.25rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #ef4444;
+    background: #fee2e2;
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    letter-spacing: .01em;
+}
+
+/* Controles cantidad */
+.ld__cantidad {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 7px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.ld__cant-btn {
+    width: 2rem;
+    height: 2.1rem;
+    border: none;
+    background: #f9fafb;
+    color: #374151;
+    font-size: 1.05rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s;
+    flex-shrink: 0;
+}
+
+.ld__cant-btn:hover:not(:disabled) { background: #f3f4f6; }
+.ld__cant-btn:disabled             { opacity: .4; cursor: not-allowed; }
+
+.ld__cant-num {
+    min-width: 2.25rem;
+    text-align: center;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-texto);
+    padding: 0 0.2rem;
+    border-left: 1.5px solid #e5e7eb;
+    border-right: 1.5px solid #e5e7eb;
+    line-height: 2.1rem;
+    white-space: nowrap;
+}
+
+/* Precio */
+.ld__precio-wrap {
+    text-align: right;
+    flex-shrink: 0;
+    min-width: 5rem;
+}
+
+.ld__precio {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--color-texto);
+    white-space: nowrap;
+    display: block;
+}
+
+.ld__precio-unit {
+    font-size: 0.68rem;
+    color: #9ca3af;
+    white-space: nowrap;
+    display: block;
+    margin-top: 0.1rem;
+}
+
+/* Acciones */
+.ld__acciones {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.ld__btn-eliminar {
+    width: 2.1rem;
+    height: 2.1rem;
+    border: none;
+    background: transparent;
+    border-radius: 7px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    transition: background .15s, color .15s;
+    flex-shrink: 0;
+}
+
+.ld__btn-eliminar:hover { background: #fee2e2; color: #ef4444; }
+
+/* ── No disponible ───────────────────────────────────────────── */
+.ld__item--no-disp {
+    opacity: .65;
+    background: #fafafa;
+    border-radius: 8px;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.ld__img--no-disp {
+    filter: grayscale(1);
+}
+
+/* ── Barra inferior de selección ─────────────────────────────── */
+.ld__barra {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 0.5rem 0.85rem 0;
+    border-top: 2px solid #f0f0f0;
+    margin-top: 0.1rem;
+    flex-wrap: wrap;
+}
+
+.ld__barra-todo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.ld__barra-todo-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+    white-space: nowrap;
+}
+
+.ld__barra-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.ld__barra-total {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--color-texto);
+    white-space: nowrap;
+}
+
+.ld__barra-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.6rem 1.1rem;
+    background: #111827;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, opacity .15s;
+    white-space: nowrap;
+}
+
+.ld__barra-btn:hover:not(:disabled) { background: #374151; }
+.ld__barra-btn:disabled             { opacity: .45; cursor: not-allowed; }
+
+/* ── Vacío ───────────────────────────────────────────────────── */
+.ld__vacio {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: #6b7280;
+}
+
+.ld__vacio-txt { font-size: 0.9rem; margin: 0 0 1.25rem; }
+
+.ld__vacio-link {
+    display: inline-block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-primario);
+    text-decoration: none;
+    border: 1.5px solid currentColor;
+    padding: 0.5rem 1.25rem;
+    border-radius: 8px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MÓVIL ≤ 640px — layout 2 filas:
+   Fila 1: [check] [img] [nombre+variante]  [borrar]
+   Fila 2:         [img] [qty]              [precio]
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+    .ld { padding: 0.75rem 0 4rem; }
+
+    .ld__item {
+        grid-template-columns: 1.5rem 3.5rem 1fr auto;
+        grid-template-rows: auto auto;
+        gap: 0.4rem 0.65rem;
+        padding: 0.85rem 0;
+        align-items: start;
+    }
+
+    /* Asignación explícita de celdas */
+    .ld__check-col   { grid-column: 1; grid-row: 1; align-self: center; }
+    .ld__img-wrap    { grid-column: 2; grid-row: 1 / 3; width: 3.5rem; height: 3.5rem; align-self: start; }
+    .ld__info        { grid-column: 3; grid-row: 1; align-self: center; }
+    .ld__acciones    { grid-column: 4; grid-row: 1; align-self: center; }
+    .ld__cantidad    { grid-column: 3; grid-row: 2; align-self: center; justify-self: start; }
+    .ld__precio-wrap { grid-column: 4; grid-row: 2; align-self: center; justify-self: end; min-width: auto; text-align: right; }
+
+    /* Nombre: sin truncar */
+    .ld__nombre {
+        font-size: 0.8125rem;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+    }
+
+    .ld__variante  { font-size: 0.7rem; }
+
+    /* Controles compactos */
+    .ld__cant-btn  { width: 1.8rem; height: 1.9rem; font-size: 0.95rem; }
+    .ld__cant-num  { min-width: 1.75rem; font-size: 0.75rem; line-height: 1.9rem; }
+
+    .ld__precio      { font-size: 0.875rem; }
+    .ld__precio-unit { display: none; }
+
+    /* Barra inferior */
+    .ld__barra       { gap: 0.5rem; padding: 0.75rem 0; }
+    .ld__barra-right { gap: 0.5rem; }
+    .ld__barra-btn   { padding: 0.5rem 0.85rem; font-size: 0.75rem; }
+    .ld__barra-total { font-size: 0.9375rem; }
+}
+
+@media (max-width: 380px) {
+    .ld__item { grid-template-columns: 0 3.25rem 1fr auto; }
+    .ld__check-col { visibility: hidden; overflow: hidden; }
+    .ld__img-wrap  { width: 3.25rem; height: 3.25rem; }
+}

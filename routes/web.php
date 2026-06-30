@@ -13,6 +13,8 @@ Route::middleware([TiendaEmpresa::class])->group(function () {
     Route::livewire('/registro', 'tienda.auth.registro')->name('tienda.registro');
     Route::livewire('/carrito',  'tienda.carrito')->name('tienda.carrito');
 
+    Route::livewire('/lista-deseos', 'tienda.lista-deseos')->name('tienda.deseos');
+
     // ── Carrito y lista de deseos (requieren login) ───────────────
     Route::middleware('auth:cliente')->group(function () {
         Route::post('/carrito/agregar',      [CarritoController::class, 'agregar']);
@@ -20,9 +22,9 @@ Route::middleware([TiendaEmpresa::class])->group(function () {
         Route::post('/lista-deseos/toggle',  [CarritoController::class, 'toggleDeseo']);
     });
 
+    Route::livewire('/mis-ordenes', 'tienda.mis-ordenes')->name('tienda.ordenes')->middleware('auth:cliente');
+
     // Próximas rutas
     // Route::livewire('/producto/{id}', 'tienda.producto-detalle')->name('tienda.producto');
     // Route::livewire('/checkout',      'tienda.checkout')->name('tienda.checkout')->middleware('auth:cliente');
-    // Route::livewire('/mis-ordenes',   'tienda.mis-ordenes')->name('tienda.ordenes')->middleware('auth:cliente');
-    // Route::livewire('/lista-deseos',  'tienda.lista-deseos')->name('tienda.deseos')->middleware('auth:cliente');
 });

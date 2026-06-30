@@ -2,8 +2,10 @@
 
 namespace App\Filament\Pdv\Resources\MetodosEnvio\Schemas;
 
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -23,11 +25,12 @@ class MetodoEnvioForm
                             ->required()
                             ->maxLength(255),
 
-                        TextInput::make('descripcion')
+                        RichEditor::make('descripcion')
                             ->label('Descripción')
                             ->placeholder('Ej: 3 a 5 días hábiles')
                             ->nullable()
-                            ->maxLength(255),
+                            ->toolbarButtons(['bold', 'italic', 'link', 'bulletList'])
+                            ->columnSpanFull(),
 
                         TextInput::make('costo')
                             ->label('Costo')
@@ -43,6 +46,12 @@ class MetodoEnvioForm
                             ->native(false)
                             ->default('activo')
                             ->required(),
+
+                        Toggle::make('con_direccion')
+                            ->label('Requiere dirección de entrega')
+                            ->helperText('Al activar, el checkout mostrará un campo para ingresar la dirección de envío.')
+                            ->default(true)
+                            ->columnSpanFull(),
 
                     ]),
             ]);

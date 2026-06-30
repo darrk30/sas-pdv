@@ -4,6 +4,18 @@
    los estilos base (vs-*, rg-*).
    ================================================================ */
 
+/* ── Enlace a orden web ──────────────────────────────────────── */
+.dsp-orden-link {
+    display: block;
+    margin-top: .2rem;
+    font-size: .7rem;
+    font-weight: 600;
+    color: #6366f1;
+    text-decoration: none;
+    letter-spacing: .02em;
+}
+.dsp-orden-link:hover { text-decoration: underline; color: #4f46e5; }
+
 /* ── Badge de "pendientes" en el título ─────────────────────── */
 .dsp-total-badge {
     display: inline-flex;

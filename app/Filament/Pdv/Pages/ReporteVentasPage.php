@@ -389,7 +389,10 @@ class ReporteVentasPage extends Page implements HasForms
                                 if ($inv) {
                                     $antes   = (float) $inv->stock_real;
                                     $despues = $antes + $cantidad;
-                                    $inv->update(['stock_real' => $despues]);
+                                    $inv->update([
+                                        'stock_real'    => $despues,
+                                        'stock_reserva' => max(0, (float) $inv->stock_reserva + ($despues - $antes)),
+                                    ]);
                                     $kardex->registrar([
                                         'empresa_id'        => $empresaId,
                                         'user_id'           => auth()->id(),
@@ -423,7 +426,10 @@ class ReporteVentasPage extends Page implements HasForms
                                 if ($inv) {
                                     $antes   = (float) $inv->stock_real;
                                     $despues = $antes + $cantidad;
-                                    $inv->update(['stock_real' => $despues]);
+                                    $inv->update([
+                                        'stock_real'    => $despues,
+                                        'stock_reserva' => max(0, (float) $inv->stock_reserva + ($despues - $antes)),
+                                    ]);
                                     $kardex->registrar([
                                         'empresa_id'        => $empresaId,
                                         'user_id'           => auth()->id(),
@@ -468,7 +474,10 @@ class ReporteVentasPage extends Page implements HasForms
                                         if ($inv) {
                                             $antes   = (float) $inv->stock_real;
                                             $despues = $antes + $cantComp;
-                                            $inv->update(['stock_real' => $despues]);
+                                            $inv->update([
+                                        'stock_real'    => $despues,
+                                        'stock_reserva' => max(0, (float) $inv->stock_reserva + ($despues - $antes)),
+                                    ]);
                                             $kardex->registrar([
                                                 'empresa_id'        => $empresaId,
                                                 'user_id'           => auth()->id(),
@@ -498,7 +507,10 @@ class ReporteVentasPage extends Page implements HasForms
                                         if ($inv) {
                                             $antes   = (float) $inv->stock_real;
                                             $despues = $antes + $cantComp;
-                                            $inv->update(['stock_real' => $despues]);
+                                            $inv->update([
+                                        'stock_real'    => $despues,
+                                        'stock_reserva' => max(0, (float) $inv->stock_reserva + ($despues - $antes)),
+                                    ]);
                                             $kardex->registrar([
                                                 'empresa_id'        => $empresaId,
                                                 'user_id'           => auth()->id(),

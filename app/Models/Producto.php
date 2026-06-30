@@ -116,6 +116,11 @@ class Producto extends Model
         return $this->inventario()->sum('stock_real');
     }
 
+    public function listaDeseos()
+    {
+        return $this->hasMany(ListaDeseo::class);
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';

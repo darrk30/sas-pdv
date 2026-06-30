@@ -8,7 +8,21 @@
 @endphp
 
 <div class="tarjeta tarjeta-promo"
-     x-data="{ hovering: false }"
+     x-data="{
+         hovering: false,
+         modalPromo: @js([
+             'id'           => null,
+             'promocion_id' => $promo->id,
+             'nombre'       => $promo->nombre,
+             'imagen'       => $imagen,
+             'precioBase'   => (float) $promo->precio,
+             'atributos'    => [],
+             'variantes'    => [],
+         ]),
+         abrirModal() {
+             window.dispatchEvent(new CustomEvent('abrir-modal-variante', { detail: this.modalPromo }));
+         }
+     }"
      @mouseenter="hovering = true"
      @mouseleave="hovering = false">
 
@@ -46,17 +60,7 @@
                 type="button"
                 class="tarjeta__btn-carrito"
                 title="Agregar al carrito"
-                @click.prevent.stop="
-                    flyAlCarrito($el.closest('.tarjeta').querySelector('img'));
-                    $store.carrito.agregar({
-                        promocion_id:    {{ $promo->id }},
-                        producto_id:     null,
-                        variante_id:     null,
-                        nombre:          @js($promo->nombre),
-                        imagen:          @js($imagen),
-                        precio_unitario: {{ (float) $promo->precio }},
-                    })
-                "
+                @click.prevent.stop="abrirModal()"
             >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                     <circle cx="9"  cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
@@ -109,17 +113,7 @@
             type="button"
             class="tarjeta__btn-carrito tarjeta__btn-carrito--movil"
             title="Agregar al carrito"
-            @click.prevent.stop="
-                flyAlCarrito($el.closest('.tarjeta').querySelector('img'));
-                $store.carrito.agregar({
-                    promocion_id:    {{ $promo->id }},
-                    producto_id:     null,
-                    variante_id:     null,
-                    nombre:          @js($promo->nombre),
-                    imagen:          @js($imagen),
-                    precio_unitario: {{ (float) $promo->precio }},
-                })
-            "
+            @click.prevent.stop="abrirModal()"
         >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                 <circle cx="9"  cy="21" r="1"/><circle cx="20" cy="21" r="1"/>

@@ -38,6 +38,25 @@ class DespachoPage extends Page implements HasForms
     public function getHeading(): string          { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
 
+    public static function getNavigationBadge(): ?string
+    {
+        $empresaId = Filament::getTenant()?->id;
+        if (! $empresaId) return null;
+
+        $count = Venta::where('empresa_id', $empresaId)
+            ->whereNotNull('estado_despacho')
+            ->whereNotIn('estado_despacho', ['entregado'])
+            ->where('estado', EstadoVenta::Completada)
+            ->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     // ── Filtros ───────────────────────────────────────────────────────────────
     public ?string $filtroCliente    = null;
     public ?string $filtroFechaDesde = null;
@@ -161,7 +180,7 @@ class DespachoPage extends Page implements HasForms
     public function getVentas(): LengthAwarePaginator
     {
         return $this->baseQuery()
-            ->with(['serie', 'detalles', 'cliente:id,telefono'])
+            ->with(['serie', 'detalles', 'cliente:id,telefono', 'orden:id,numero,venta_id'])
             ->orderBy('fecha_emision', 'asc')
             ->paginate(25);
     }

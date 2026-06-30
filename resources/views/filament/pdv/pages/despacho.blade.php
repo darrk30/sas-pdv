@@ -108,6 +108,12 @@
                                 {{-- Comprobante --}}
                                 <td>
                                     <span class="rg-comprobante">{{ $serie }}-{{ $corr }}</span>
+                                    @if($venta->orden)
+                                        <a href="{{ \App\Filament\Pdv\Resources\Ordenes\OrdenResource::getUrl('edit', ['record' => $venta->orden->id, 'tenant' => \Filament\Facades\Filament::getTenant()]) }}"
+                                           class="dsp-orden-link">
+                                            {{ $venta->orden->codigo }}
+                                        </a>
+                                    @endif
                                 </td>
 
                                 {{-- Fecha --}}

@@ -12,6 +12,7 @@ use App\Models\MetodoPago;
 use App\Models\Producto;
 use App\Models\Variante;
 use Filament\Facades\Filament;
+use Filament\Actions\Action as FormAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -37,6 +38,7 @@ class OrdenForm
                 // ── Cliente ───────────────────────────────────────────────
                 Section::make('Cliente')
                     ->columns(2)
+                    ->columnSpanFull()
                     ->schema([
 
                         Select::make('cliente_id')
@@ -140,7 +142,22 @@ class OrdenForm
                             ->label('Teléfono')
                             ->tel()
                             ->nullable()
-                            ->maxLength(30),
+                            ->maxLength(30)
+                            ->suffixAction(
+                                FormAction::make('whatsapp')
+                                    ->icon('heroicon-o-chat-bubble-left-right')
+                                    ->color('success')
+                                    ->url(function (?string $state): ?string {
+                                        if (blank($state)) return null;
+                                        $empresa = Filament::getTenant();
+                                        $nombreEmpresa = $empresa->nombre ?? $empresa->name ?? 'Nuestra tienda';
+                                        $tel = preg_replace('/\D/', '', $state);
+                                        if (strlen($tel) === 9) $tel = '51' . $tel;
+                                        $msg = urlencode("Hola, te saluda {$nombreEmpresa}. Hemos visto que realizaste un pedido por nuestra web. ¡Estamos aquí para ayudarte!");
+                                        return "https://wa.me/{$tel}?text={$msg}";
+                                    })
+                                    ->openUrlInNewTab()
+                            ),
 
                         TextInput::make('cliente_direccion')
                             ->label('Dirección')
@@ -159,7 +176,7 @@ class OrdenForm
                                     ->orderBy('nombre')
                                     ->get()
                                     ->mapWithKeys(fn(MetodoPago $m) => [
-                                        $m->id => $m->nombre . ($m->descripcion ? " — {$m->descripcion}" : ''),
+                                        $m->id => $m->nombre,
                                     ])
                                     ->all();
                             }),
@@ -174,6 +191,7 @@ class OrdenForm
                 // ── Entrega ───────────────────────────────────────────────
                 Section::make('Entrega')
                     ->columns(2)
+                    ->columnSpanFull()
                     ->schema([
 
                         ToggleButtons::make('tipo_entrega')
@@ -207,7 +225,7 @@ class OrdenForm
                                     ->where('estado', 'activo')
                                     ->get()
                                     ->mapWithKeys(fn(MetodoEnvio $m) => [
-                                        $m->id => "{$m->nombre}" . ($m->descripcion ? " — {$m->descripcion}" : '') . " (S/ {$m->costo})",
+                                        $m->id => "{$m->nombre} (S/ {$m->costo})",
                                     ])
                                     ->all();
                             })
@@ -254,7 +272,7 @@ class OrdenForm
                             ->mutateRelationshipDataBeforeCreateUsing(fn(array $data) => self::prepararDetalle($data))
                             ->mutateRelationshipDataBeforeSaveUsing(fn(array $data) => self::prepararDetalle($data))
                             ->table([
-                                TableColumn::make('Producto'),
+                                TableColumn::make('Producto')->width('40%'),
                                 TableColumn::make('Cant.'),
                                 TableColumn::make('Precio unit.'),
                                 TableColumn::make('Descuento'),
@@ -398,12 +416,12 @@ class OrdenForm
                             ])
                             ->addActionLabel('Agregar producto')
                             ->reorderable(false)
-                            ->defaultItems(1)
-                            ->cloneable(),
+                            ->defaultItems(1),
                     ])->columnSpanFull(),
 
                 // ── Totales ───────────────────────────────────────────────
                 Section::make('Totales')
+                    ->columnSpanFull()
                     ->schema([
                         Grid::make(4)->schema([
                             TextInput::make('igv')
@@ -441,6 +459,7 @@ class OrdenForm
                 // ── Estado y notas ────────────────────────────────────────
                 Section::make('Estado y notas')
                     ->columns(2)
+                    ->columnSpanFull()
                     ->schema([
 
                         Select::make('estado')

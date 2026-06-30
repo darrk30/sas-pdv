@@ -86,6 +86,7 @@
 }
 
 .auth-form__input {
+    width: 100%;
     padding: 0.625rem 0.875rem;
     border: 1px solid var(--color-borde);
     border-radius: var(--radio);
@@ -94,6 +95,7 @@
     color: var(--color-texto);
     background: #fff;
     outline: none;
+    box-sizing: border-box;
     transition: border-color .15s, box-shadow .15s;
 }
 
@@ -154,3 +156,32 @@
 }
 
 .auth-card__link:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── Registro: fila de 2 columnas ───────────────────────────── */
+.auth-form__fila {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.auth-form__fila > .auth-form__grupo {
+    min-width: 0;
+}
+
+@media (max-width: 480px) {
+    .auth-form__fila { grid-template-columns: 1fr; }
+}
+
+.auth-form__req {
+    color: var(--color-peligro, #ef4444);
+    margin-left: 1px;
+}
+
+.auth-form__hint {
+    font-size: 0.78rem;
+    color: var(--color-texto-muted, #6b7280);
+    margin-top: -0.125rem;
+}
+
+/* Ampliar el max-width de la card para registro (más campos) */
+.auth-card--wide { max-width: 30rem; }

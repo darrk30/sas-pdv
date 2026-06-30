@@ -6,13 +6,17 @@ use App\Enums\EstadoOrden;
 use App\Enums\EstadoVenta;
 use App\Enums\TipoPago;
 use App\Filament\Pdv\Resources\Ordenes\OrdenResource;
+use App\Models\Inventario;
 use App\Models\MetodoPago;
+use App\Models\Producto;
+use App\Models\Promocion;
 use App\Models\Serie;
+use App\Models\Variante;
 use App\Models\Venta;
 use App\Models\VentaDetalle;
 use App\Models\VentaPago;
+use App\Services\KardexService;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -185,6 +189,8 @@ class EditOrden extends EditRecord
                             'venta_id' => $venta->id,
                             'estado'   => EstadoOrden::PagoConfirmado,
                         ]);
+
+                        $this->descontarStockReal($orden, $empresa->id, $venta, "{$serie->serie}-{$correlativo}");
                     });
 
                     Notification::make()
@@ -215,9 +221,148 @@ class EditOrden extends EditRecord
 
                     $this->redirect(static::getResource()::getUrl('index'));
                 }),
-
-            DeleteAction::make()
-                ->visible(fn() => $this->record->estado === EstadoOrden::PendientePago),
         ];
+    }
+
+    // Descuenta stock_real y registra kardex al confirmar pago.
+    // stock_reserva NO se toca aquí (ya fue decrementado al crear la orden web).
+    private function descontarStockReal($orden, int $empresaId, Venta $venta, string $concepto): void
+    {
+        $kardex = app(KardexService::class);
+
+        foreach ($orden->detalles as $detalle) {
+            $cantidad = (float) $detalle->cantidad;
+            $precio   = (float) $detalle->precio_unitario;
+
+            // ── Promoción ─────────────────────────────────────────
+            if ($detalle->promocion_id) {
+                $promo = Promocion::with([
+                    'detalles.producto.unidadMedida',
+                    'detalles.variante.producto.unidadMedida',
+                ])->find($detalle->promocion_id);
+
+                if (! $promo) continue;
+
+                foreach ($promo->detalles as $pd) {
+                    $cantDet = $cantidad * (float) $pd->cantidad;
+
+                    if ($pd->variante_id) {
+                        $var  = $pd->variante;
+                        $prod = $var?->producto;
+                        if (! $prod?->control_de_stock) continue;
+                        $inv = Inventario::where('empresa_id', $empresaId)
+                            ->where('variante_id', $pd->variante_id)
+                            ->lockForUpdate()->first();
+                        if (! $inv) continue;
+                        $antes   = (float) $inv->stock_real;
+                        $despues = max(0, $antes - $cantDet);
+                        $inv->update(['stock_real' => $despues]);
+                        $kardex->registrar([
+                            'empresa_id'        => $empresaId,
+                            'movible'           => $venta,
+                            'producto_id'       => $var->producto_id,
+                            'variante_id'       => $pd->variante_id,
+                            'tipo'              => 'salida',
+                            'concepto'          => $concepto,
+                            'notas'             => "Promo: {$promo->nombre}",
+                            'cantidad'          => $cantDet,
+                            'unidad'            => $prod->unidadMedida?->nombre ?? 'unidad',
+                            'factor_conversion' => 1,
+                            'cantidad_base'     => $cantDet,
+                            'precio_unitario'   => $precio,
+                            'stock_antes'       => $antes,
+                            'stock_despues'     => $despues,
+                        ]);
+                    } elseif ($pd->producto_id) {
+                        $prod = $pd->producto;
+                        if (! $prod?->control_de_stock) continue;
+                        $inv = Inventario::where('empresa_id', $empresaId)
+                            ->where('producto_id', $pd->producto_id)
+                            ->whereNull('variante_id')
+                            ->lockForUpdate()->first();
+                        if (! $inv) continue;
+                        $antes   = (float) $inv->stock_real;
+                        $despues = max(0, $antes - $cantDet);
+                        $inv->update(['stock_real' => $despues]);
+                        $kardex->registrar([
+                            'empresa_id'        => $empresaId,
+                            'movible'           => $venta,
+                            'producto_id'       => $pd->producto_id,
+                            'variante_id'       => null,
+                            'tipo'              => 'salida',
+                            'concepto'          => $concepto,
+                            'notas'             => "Promo: {$promo->nombre}",
+                            'cantidad'          => $cantDet,
+                            'unidad'            => $prod->unidadMedida?->nombre ?? 'unidad',
+                            'factor_conversion' => 1,
+                            'cantidad_base'     => $cantDet,
+                            'precio_unitario'   => $precio,
+                            'stock_antes'       => $antes,
+                            'stock_despues'     => $despues,
+                        ]);
+                    }
+                }
+
+            // ── Variante ──────────────────────────────────────────
+            } elseif ($detalle->variante_id) {
+                $variante = Variante::with('producto.unidadMedida')->find($detalle->variante_id);
+                if (! $variante?->producto?->control_de_stock) continue;
+                $inv = Inventario::where('empresa_id', $empresaId)
+                    ->where('producto_id', $variante->producto_id)
+                    ->where('variante_id', $detalle->variante_id)
+                    ->lockForUpdate()->first();
+                if (! $inv) continue;
+                $antes   = (float) $inv->stock_real;
+                $despues = max(0, $antes - $cantidad);
+                $inv->update(['stock_real' => $despues]);
+                $kardex->registrar([
+                    'empresa_id'        => $empresaId,
+                    'movible'           => $venta,
+                    'producto_id'       => $variante->producto_id,
+                    'variante_id'       => $detalle->variante_id,
+                    'producto_nombre'   => $detalle->descripcion,
+                    'tipo'              => 'salida',
+                    'concepto'          => $concepto,
+                    'cantidad'          => $cantidad,
+                    'unidad'            => $variante->producto->unidadMedida?->nombre ?? 'unidad',
+                    'factor_conversion' => 1,
+                    'cantidad_base'     => $cantidad,
+                    'precio_unitario'   => $precio,
+                    'precio_total'      => $precio * $cantidad,
+                    'stock_antes'       => $antes,
+                    'stock_despues'     => $despues,
+                ]);
+
+            // ── Producto simple ────────────────────────────────────
+            } elseif ($detalle->producto_id) {
+                $producto = Producto::with('unidadMedida')->find($detalle->producto_id);
+                if (! $producto?->control_de_stock) continue;
+                $inv = Inventario::where('empresa_id', $empresaId)
+                    ->where('producto_id', $detalle->producto_id)
+                    ->whereNull('variante_id')
+                    ->lockForUpdate()->first();
+                if (! $inv) continue;
+                $antes   = (float) $inv->stock_real;
+                $despues = max(0, $antes - $cantidad);
+                $inv->update(['stock_real' => $despues]);
+                $kardex->registrar([
+                    'empresa_id'        => $empresaId,
+                    'movible'           => $venta,
+                    'producto_id'       => $detalle->producto_id,
+                    'variante_id'       => null,
+                    'producto_nombre'   => $detalle->descripcion,
+                    'tipo'              => 'salida',
+                    'concepto'          => $concepto,
+                    'cantidad'          => $cantidad,
+                    'unidad'            => $producto->unidadMedida?->nombre ?? 'unidad',
+                    'factor_conversion' => 1,
+                    'cantidad_base'     => $cantidad,
+                    'precio_unitario'   => $precio,
+                    'precio_total'      => $precio * $cantidad,
+                    'stock_antes'       => $antes,
+                    'stock_despues'     => $despues,
+                ]);
+            }
+        }
     }
 }

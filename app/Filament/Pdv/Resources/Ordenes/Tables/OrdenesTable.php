@@ -5,9 +5,6 @@ namespace App\Filament\Pdv\Resources\Ordenes\Tables;
 use App\Enums\EstadoOrden;
 use App\Models\Orden;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
@@ -124,44 +121,9 @@ class OrdenesTable
                             ->send();
                     }),
 
-                DeleteAction::make()
-                    ->visible(fn(Orden $record): bool => $record->estado === EstadoOrden::PendientePago),
 
             ])
 
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->action(function (\Illuminate\Support\Collection $records): void {
-                            $eliminados = 0;
-                            $omitidos   = 0;
-
-                            foreach ($records as $orden) {
-                                if ($orden->estado === EstadoOrden::PendientePago) {
-                                    $orden->delete();
-                                    $eliminados++;
-                                } else {
-                                    $omitidos++;
-                                }
-                            }
-
-                            if ($omitidos > 0) {
-                                Notification::make()
-                                    ->warning()
-                                    ->title("{$omitidos} orden(es) no eliminada(s)")
-                                    ->body('Solo se pueden eliminar órdenes pendientes de pago.')
-                                    ->send();
-                            }
-
-                            if ($eliminados > 0) {
-                                Notification::make()
-                                    ->success()
-                                    ->title("{$eliminados} orden(es) eliminada(s)")
-                                    ->send();
-                            }
-                        }),
-                ]),
-            ])
 
             ->defaultSort('created_at', 'desc')
             ->striped()

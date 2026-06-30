@@ -14,6 +14,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('producto_id')->constrained('productos')->cascadeOnDelete();
             $table->foreignId('variante_id')->nullable()->constrained('variantes')->nullOnDelete();
+            $table->unsignedInteger('cantidad')->default(1);
             $table->timestamps();
 
             $table->index(['empresa_id', 'user_id']);

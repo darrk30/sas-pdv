@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CondicionPago;
 use App\Enums\EstadoGeneral;
+use App\Enums\VisibilidadMetodoPago;
 use App\Traits\BelongsToEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +22,7 @@ class MetodoPago extends Model
         'imagen',
         'nombre',
         'descripcion',
+        'visible_en',
         'requiere_referencia',
         'condicion_pago',
         'estado',
@@ -29,6 +31,7 @@ class MetodoPago extends Model
     protected $casts = [
         'requiere_referencia' => 'boolean',
         'condicion_pago'      => CondicionPago::class,
+        'visible_en'          => VisibilidadMetodoPago::class,
         'estado'              => EstadoGeneral::class,
     ];
 

@@ -11,6 +11,11 @@
 
     $tieneExtraColor = $colores->some(fn($v) => (float)($v->pivot->precio_adicional ?? 0) > 0);
 
+    // "desde" si cualquier atributo (no solo color) tiene precio adicional
+    $tieneExtra = $producto->atributos
+        ->flatMap(fn($pa) => $pa->valores)
+        ->some(fn($v) => (float)($v->pivot->precio_adicional ?? 0) > 0);
+
     // ── Descuento ─────────────────────────────────────────────────
     $tieneDescuento = ($producto->porcentaje_descuento ?? 0) > 0 && $producto->precio_con_descuento;
     $precioFinal    = $tieneDescuento ? (float)$producto->precio_con_descuento : (float)$producto->precio_venta;
@@ -44,6 +49,42 @@
             }
         }
     }
+
+    // ── Datos para modal de variantes ─────────────────────────────
+    $variantesActivas = $producto->variantes ?? collect();
+    $tieneVariantes   = $variantesActivas->isNotEmpty();
+
+    // ── Disponibilidad / stock ─────────────────────────────────────
+    $productoAgotado = false;
+    if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
+        if ($tieneVariantes) {
+            $productoAgotado = $variantesActivas->every(
+                fn($v) => (float)($v->inventario?->stock_real ?? 0) <= 0
+            );
+        } else {
+            $productoAgotado = (float)($producto->inventario?->stock_real ?? 0) <= 0;
+        }
+    }
+
+    $atributosModal = $producto->atributos->map(fn($pa) => [
+        'id'     => $pa->atributo_id,
+        'nombre' => $pa->atributo?->nombre ?? '',
+        'tipo'   => strtolower($pa->atributo?->tipo ?? ''),
+        'valores' => $pa->valores->map(fn($v) => [
+            'id'               => $v->id,
+            'label'            => $v->nombre ?? $v->valor ?? '',
+            'valor'            => $v->valor ?? '',
+            'precio_adicional' => (float)($v->pivot->precio_adicional ?? 0),
+        ])->values()->all(),
+    ])->filter(fn($a) => $a['id'] && !empty($a['valores']))->values()->all();
+
+    $variantesModal = $variantesActivas->map(fn($var) => [
+        'id'          => $var->id,
+        'imagen'      => $var->imagen ? Storage::url($var->imagen) : null,
+        'valores_ids' => $var->valores->pluck('valor_id')->sort()->values()->all(),
+        'sin_stock'   => $producto->control_de_stock && ! $producto->venta_sin_stock
+                         && (float)($var->inventario?->stock_real ?? 0) <= 0,
+    ])->values()->all();
 @endphp
 
 <div class="tarjeta"
@@ -55,6 +96,16 @@
          colorSel: null,
          imgColor: null,
          hovering: false,
+         tieneVariantes: @js($tieneVariantes),
+         agotado: @js($productoAgotado),
+         modalProducto: @js([
+             'id'        => $producto->id,
+             'nombre'    => $producto->nombre,
+             'imagen'    => $imagenes->first(),
+             'precioBase' => $precioFinal,
+             'atributos' => $atributosModal,
+             'variantes' => $variantesModal,
+         ]),
          get imgActual() {
              return this.imgColor ?? this.imagenes[this.indice] ?? null;
          },
@@ -91,6 +142,26 @@
              if (this.imgColor) return;
              const dx = e.changedTouches[0].clientX - this.touchX;
              if (Math.abs(dx) > 40) { if (dx < 0) this.siguiente(); else this.anterior(); }
+         },
+         agregarOModal(el) {
+             if (this.tieneVariantes) {
+                 window.dispatchEvent(new CustomEvent('abrir-modal-variante', { detail: this.modalProducto }));
+             } else {
+                 flyAlCarrito(el);
+                 Alpine.store('carrito').agregar({
+                     promocion_id:    null,
+                     producto_id:     this.modalProducto.id,
+                     variante_id:     null,
+                     variante_nombre: null,
+                     nombre:          this.modalProducto.nombre,
+                     imagen:          this.modalProducto.imagen,
+                     precio_unitario: this.modalProducto.precioBase,
+                     cantidad:        1,
+                 });
+             }
+         },
+         agregarODeseo(el) {
+             window.dispatchEvent(new CustomEvent('abrir-modal-variante', { detail: this.modalProducto }));
          }
      }"
      @mouseenter="entrar()"
@@ -159,35 +230,29 @@
             <button
                 type="button"
                 class="tarjeta__btn-carrito"
-                title="Agregar al carrito"
-                @click.prevent.stop="
-                    flyAlCarrito($el.closest('.tarjeta').querySelector('.tarjeta__img'));
-                    $store.carrito.agregar({
-                        producto_id:     {{ $producto->id }},
-                        variante_id:     null,
-                        nombre:          @js($producto->nombre),
-                        imagen:          @js($imagenes->first()),
-                        precio_unitario: {{ $precioFinal }},
-                    })
-                "
+                :class="{ 'tarjeta__btn-carrito--agotado': agotado }"
+                :disabled="agotado"
+                :title="agotado ? 'Sin stock' : (tieneVariantes ? 'Seleccionar opciones' : 'Agregar al carrito')"
+                @click.prevent.stop="if (!agotado) agregarOModal($el)"
             >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                     <circle cx="9"  cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
                     <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
                 </svg>
-                <span>Agregar</span>
+                <span x-text="agotado ? 'Sin stock' : (tieneVariantes ? 'Ver opciones' : 'Agregar')"></span>
             </button>
 
             @auth('cliente')
             <button
                 type="button"
                 class="tarjeta__btn-deseo"
-                title="Agregar a deseos"
-                :class="{ 'tarjeta__btn-deseo--activo': $store.carrito.enDeseos({{ $producto->id }}) }"
-                @click.prevent.stop="$store.carrito.toggleDeseo({{ $producto->id }})"
+                :disabled="agotado"
+                title="Agregar a lista de deseos"
+                :class="{ 'tarjeta__btn-deseo--activo': !agotado && $store.carrito.enDeseos({{ $producto->id }}) }"
+                @click.prevent.stop="if (!agotado) agregarODeseo($el)"
             >
                 <svg viewBox="0 0 24 24"
-                     :fill="$store.carrito.enDeseos({{ $producto->id }}) ? 'currentColor' : 'none'"
+                     :fill="!agotado && $store.carrito.enDeseos({{ $producto->id }}) ? 'currentColor' : 'none'"
                      stroke="currentColor" stroke-width="2" width="16" height="16">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                 </svg>
@@ -221,7 +286,7 @@
 
         <div class="tarjeta__precio-wrap">
             <span class="tarjeta__precio">
-                @if ($tieneExtraColor)desde @endif
+                @if ($tieneExtra)desde @endif
                 S/ {{ number_format($precioFinal, 2) }}
             </span>
             @if ($tieneDescuento)
@@ -233,23 +298,16 @@
         <button
             type="button"
             class="tarjeta__btn-carrito tarjeta__btn-carrito--movil"
-            title="Agregar al carrito"
-            @click.prevent.stop="
-                flyAlCarrito($el.closest('.tarjeta').querySelector('.tarjeta__img'));
-                $store.carrito.agregar({
-                    producto_id:     {{ $producto->id }},
-                    variante_id:     null,
-                    nombre:          @js($producto->nombre),
-                    imagen:          @js($imagenes->first()),
-                    precio_unitario: {{ $precioFinal }},
-                })
-            "
+            :class="{ 'tarjeta__btn-carrito--agotado': agotado }"
+            :disabled="agotado"
+            :title="agotado ? 'Sin stock' : (tieneVariantes ? 'Seleccionar opciones' : 'Agregar al carrito')"
+            @click.prevent.stop="if (!agotado) agregarOModal($el)"
         >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                 <circle cx="9"  cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
             </svg>
-            <span>Agregar</span>
+            <span x-text="agotado ? 'Sin stock' : (tieneVariantes ? 'Ver opciones' : 'Agregar')"></span>
         </button>
 
     </div>

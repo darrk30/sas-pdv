@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('imagen')->nullable();
             $table->string('nombre');
             $table->string('descripcion')->nullable();
+            $table->string('visible_en')->default('ambos');
             $table->boolean('requiere_referencia')->default(false);
             $table->string('condicion_pago')->default('contado');
             $table->string('estado')->default('activo');

@@ -436,11 +436,28 @@ class PuntoDeVenta extends Page
         $this->seleccionados        = [];
         $this->precioAdicionalTotal = 0;
 
+        // PAV IDs realmente usados en variantes activas
+        $pavIdsUsados = $producto->variantesActivas
+            ->flatMap(fn($v) => $v->valores->pluck('id'))
+            ->unique()
+            ->flip()   // flip para lookup O(1)
+            ->toArray();
+
+        $this->variantesInfo = $producto->variantesActivas
+            ->map(fn($v) => [
+                'pav_ids' => $v->valores->pluck('id')->toArray(),
+                'stock'   => (float) ($v->inventario?->stock_real ?? 0),
+            ])
+            ->values()
+            ->toArray();
+
+        // Solo incluir atributos/valores que aparecen en al menos una variante activa
         $this->atributosModal = $producto->atributos
             ->map(fn($pa) => [
                 'id'     => $pa->id,
                 'nombre' => $pa->atributo->nombre,
                 'valores' => $pa->detallesPrecios
+                    ->filter(fn($pav) => isset($pavIdsUsados[$pav->id]))
                     ->map(fn($pav) => [
                         'id'               => $pav->id,
                         'valor_id'         => $pav->valor_id,
@@ -450,14 +467,7 @@ class PuntoDeVenta extends Page
                     ->values()
                     ->toArray(),
             ])
-            ->values()
-            ->toArray();
-
-        $this->variantesInfo = $producto->variantesActivas
-            ->map(fn($v) => [
-                'pav_ids' => $v->valores->pluck('id')->toArray(),
-                'stock'   => (float) ($v->inventario?->stock_real ?? 0),
-            ])
+            ->filter(fn($a) => count($a['valores']) > 0)
             ->values()
             ->toArray();
 
@@ -1294,7 +1304,10 @@ class PuntoDeVenta extends Page
                                     );
                                 }
                                 $stockDespues = max(0, $stockAntes - $cantidad);
-                                $inv->update(['stock_real' => $stockDespues]);
+                                $inv->update([
+                                    'stock_real'    => $stockDespues,
+                                    'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
+                                ]);
                                 $kardex->registrar([
                                     'empresa_id'        => $empresaId,
                                     'user_id'           => auth()->id(),
@@ -1333,7 +1346,10 @@ class PuntoDeVenta extends Page
                                         );
                                     }
                                     $stockDespues = max(0, $stockAntes - $cantidad);
-                                    $inv->update(['stock_real' => $stockDespues]);
+                                    $inv->update([
+                                    'stock_real'    => $stockDespues,
+                                    'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
+                                ]);
                                     $kardex->registrar([
                                         'empresa_id'        => $empresaId,
                                         'user_id'           => auth()->id(),
@@ -1383,7 +1399,10 @@ class PuntoDeVenta extends Page
                                                 );
                                             }
                                             $stockDespues = max(0, $stockAntes - $cantidadDetalle);
-                                            $inv->update(['stock_real' => $stockDespues]);
+                                            $inv->update([
+                                    'stock_real'    => $stockDespues,
+                                    'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
+                                ]);
                                             $kardex->registrar([
                                                 'empresa_id'        => $empresaId,
                                                 'user_id'           => auth()->id(),
@@ -1417,7 +1436,10 @@ class PuntoDeVenta extends Page
                                                 );
                                             }
                                             $stockDespues = max(0, $stockAntes - $cantidadDetalle);
-                                            $inv->update(['stock_real' => $stockDespues]);
+                                            $inv->update([
+                                    'stock_real'    => $stockDespues,
+                                    'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
+                                ]);
                                             $kardex->registrar([
                                                 'empresa_id'        => $empresaId,
                                                 'user_id'           => auth()->id(),

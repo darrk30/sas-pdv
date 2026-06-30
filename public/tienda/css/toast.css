@@ -1,0 +1,85 @@
+/* ═══════════════════════════════════════════════════════════════
+   toast.css — Notificaciones flotantes
+   ═══════════════════════════════════════════════════════════════ */
+
+.toast-wrap {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+    pointer-events: none;
+    max-width: calc(100vw - 2rem);
+}
+
+.toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.13), 0 1px 4px rgba(0,0,0,.08);
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #fff;
+    min-width: 220px;
+    max-width: 340px;
+    animation: toast-in .22s cubic-bezier(.2,1,.3,1);
+}
+
+.toast.saliendo {
+    animation: toast-out .18s ease forwards;
+}
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateX(1.5rem) scale(.96); }
+    to   { opacity: 1; transform: translateX(0)      scale(1); }
+}
+
+@keyframes toast-out {
+    from { opacity: 1; transform: translateX(0); max-height: 80px; margin-bottom: 0; }
+    to   { opacity: 0; transform: translateX(1rem); max-height: 0;  margin-bottom: -0.5rem; }
+}
+
+/* ── Tipos ───────────────────────────────────────────────────── */
+.toast--success { background: #16a34a; }
+.toast--error   { background: #dc2626; }
+.toast--info    { background: #2563eb; }
+.toast--warning { background: #d97706; }
+
+/* ── Icono ───────────────────────────────────────────────────── */
+.toast__icono {
+    flex-shrink: 0;
+    width: 1.1rem;
+    height: 1.1rem;
+    opacity: .95;
+}
+
+/* ── Mensaje ─────────────────────────────────────────────────── */
+.toast__msg {
+    flex: 1;
+    line-height: 1.35;
+}
+
+/* ── Cerrar ──────────────────────────────────────────────────── */
+.toast__cerrar {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,.7);
+    cursor: pointer;
+    padding: 0 0.1rem;
+    font-size: 1rem;
+    line-height: 1;
+    transition: color .15s;
+}
+
+.toast__cerrar:hover { color: #fff; }
+
+@media (max-width: 480px) {
+    .toast-wrap { bottom: 1rem; right: 1rem; left: 1rem; max-width: none; }
+    .toast      { max-width: none; }
+}

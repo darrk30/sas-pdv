@@ -218,8 +218,8 @@
 
 .navbar__badge {
     position: absolute;
-    top: 0.15rem;
-    right: 0.1rem;
+    top: -0.25rem;
+    right: -0.15rem;
     min-width: 1.15rem;
     height: 1.15rem;
     padding: 0 0.3rem;
@@ -233,6 +233,8 @@
     justify-content: center;
     line-height: 1;
 }
+
+.navbar__badge--deseo { background: #ef4444; }
 
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 700px) {

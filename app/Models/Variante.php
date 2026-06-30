@@ -32,7 +32,8 @@ class Variante extends Model
 
     public function valores()
     {
-        return $this->belongsToMany(ProductoAtributoValor::class, 'variante_valores', 'variante_id', 'producto_atributo_valors_id');
+        return $this->belongsToMany(ProductoAtributoValor::class, 'variante_valores', 'variante_id', 'producto_atributo_valors_id')
+            ->where('producto_atributo_valors.estado', 'activo');
     }
 
     public function inventario()
