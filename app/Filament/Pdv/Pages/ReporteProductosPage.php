@@ -30,6 +30,8 @@ class ReporteProductosPage extends Page implements HasForms
     protected static ?int $navigationSort = 3;
     protected static ?string $title            = 'Productos más vendidos';
 
+    public static function canAccess(): bool { return auth()->user()?->can('reportes.productos') ?? false; }
+
     public function getHeading(): string          { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
 

@@ -38,6 +38,10 @@ class ValidarEstadoUsuarioEmpresa
             }
         }
 
+        if ($empresa) {
+            app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($empresa->id);
+        }
+
         return $next($request);
     }
 }

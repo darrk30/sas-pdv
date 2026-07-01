@@ -29,6 +29,8 @@ class ReporteClientesPage extends Page implements HasForms
     protected static bool $shouldRegisterNavigation = false;
     protected static ?string $title = 'Reporte de Clientes';
 
+    public static function canAccess(): bool { return auth()->user()?->can('reportes.clientes') ?? false; }
+
     public function getHeading(): string          { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
 

@@ -101,4 +101,9 @@ class GestionInventario extends Page implements HasTable
                 // Acciones (se pueden añadir después)
             ]);
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can('inventario.ver') ?? false;
+    }
 }

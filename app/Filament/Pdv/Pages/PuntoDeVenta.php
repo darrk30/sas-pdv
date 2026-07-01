@@ -46,6 +46,8 @@ class PuntoDeVenta extends Page
     protected static ?int $navigationSort = 1;
     protected string $view = 'filament.pdv.pages.punto-de-venta';
 
+    public static function canAccess(): bool { return auth()->user()?->can('caja.punto_de_venta') ?? false; }
+
     public function getHeading(): string { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
 

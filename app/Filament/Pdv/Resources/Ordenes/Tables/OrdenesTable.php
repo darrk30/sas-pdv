@@ -111,6 +111,7 @@ class OrdenesTable
                     ->modalHeading('¿Cancelar esta orden?')
                     ->modalDescription('La orden será marcada como cancelada. Esta acción no se puede deshacer.')
                     ->modalSubmitActionLabel('Sí, cancelar')
+                    ->authorize(fn() => auth()->user()?->can('ordenes.cancelar'))
                     ->visible(fn(Orden $record): bool => $record->estado === EstadoOrden::PendientePago)
                     ->action(function (Orden $record): void {
                         $record->update(['estado' => EstadoOrden::Cancelada]);

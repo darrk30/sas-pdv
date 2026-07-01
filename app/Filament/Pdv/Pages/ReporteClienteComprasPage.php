@@ -34,6 +34,8 @@ class ReporteClienteComprasPage extends Page implements HasForms
     protected static ?string $title = 'Compras del cliente';
     protected static bool $shouldRegisterNavigation = false;
 
+    public static function canAccess(): bool { return auth()->user()?->can('reportes.clientes') ?? false; }
+
     public function getHeading(): string          { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
 

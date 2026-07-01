@@ -35,6 +35,8 @@ class DespachoPage extends Page implements HasForms
     protected static ?int $navigationSort = 7;
     protected static ?string $title = 'Despachos pendientes';
 
+    public static function canAccess(): bool { return auth()->user()?->can('ordenes.despacho') ?? false; }
+
     public function getHeading(): string          { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
 

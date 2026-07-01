@@ -48,6 +48,8 @@ class ReporteVentasPage extends Page implements HasForms
     protected static ?int $navigationSort = 7;
     protected static ?string $title = 'Reporte de Ventas';
 
+    public static function canAccess(): bool { return auth()->user()?->can('caja.reporte_ventas') ?? false; }
+
     public function getHeading(): string { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
 

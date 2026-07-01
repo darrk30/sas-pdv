@@ -43,6 +43,8 @@ class CuentasPorCobrarPage extends Page implements HasForms
     protected static ?int $navigationSort = 6;
     protected static bool $shouldRegisterNavigation = false;
 
+    public static function canAccess(): bool { return auth()->user()?->can('reportes.cuentas_cobrar') ?? false; }
+
     public function getHeading(): string { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
 

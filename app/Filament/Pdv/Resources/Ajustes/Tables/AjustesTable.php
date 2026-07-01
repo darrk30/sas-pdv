@@ -128,6 +128,7 @@ class AjustesTable
                     ->modalHeading('¿Confirmar ajuste?')
                     ->modalDescription('Al confirmar se aplicará el movimiento de stock. Esta acción no se puede deshacer.')
                     ->modalSubmitActionLabel('Sí, confirmar')
+                    ->authorize(fn() => auth()->user()?->can('ajustes.confirmar'))
                     ->visible(fn(Ajuste $record): bool => $record->estado === 'borrador')
                     ->action(function (Ajuste $record): void {
                         app(InventarioCoreService::class)->aplicarAjuste($record);
@@ -149,6 +150,7 @@ class AjustesTable
                     ->modalHeading('¿Anular ajuste?')
                     ->modalDescription('Se revertirá el movimiento de stock aplicado. Esta acción no se puede deshacer.')
                     ->modalSubmitActionLabel('Sí, anular')
+                    ->authorize(fn() => auth()->user()?->can('ajustes.anular'))
                     ->visible(fn(Ajuste $record): bool => $record->estado === 'confirmado')
                     ->action(function (Ajuste $record): void {
                         app(InventarioCoreService::class)->revertirAjuste($record);

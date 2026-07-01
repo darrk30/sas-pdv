@@ -32,6 +32,8 @@ class ReporteComprasPage extends Page implements HasForms
     protected static ?int $navigationSort = 3;
     protected static ?string $title = 'Reporte de Compras';
 
+    public static function canAccess(): bool { return auth()->user()?->can('compras.reporte') ?? false; }
+
     public function getHeading(): string          { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
 

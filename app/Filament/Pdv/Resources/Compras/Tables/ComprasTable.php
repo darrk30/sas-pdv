@@ -145,6 +145,7 @@ class ComprasTable
                         ? 'La compra está recibida: se revertirá el stock ingresado. Esta acción no se puede deshacer.'
                         : 'La compra será marcada como anulada. Esta acción no se puede deshacer.')
                     ->modalSubmitActionLabel('Sí, anular')
+                    ->authorize(fn() => auth()->user()?->can('compras.anular'))
                     ->visible(fn(Compra $record): bool => ! $record->estaAnulada())
                     ->action(function (Compra $record): void {
                         $eraRecibida = $record->estaRecibida();

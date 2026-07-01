@@ -39,6 +39,8 @@ class CierresCajaPage extends Page implements HasForms
     protected static ?int $navigationSort = 5;
     protected static ?string $title            = 'Cierres de Caja';
 
+    public static function canAccess(): bool { return auth()->user()?->can('caja.cierres') ?? false; }
+
     public function getHeading(): string         { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
 

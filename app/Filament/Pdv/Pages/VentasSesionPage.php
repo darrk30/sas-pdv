@@ -36,6 +36,8 @@ class VentasSesionPage extends Page
     protected static ?int $navigationSort = 3;
     protected static ?string $title = 'Ventas del Turno';
 
+    public static function canAccess(): bool { return auth()->user()?->can('caja.ventas_turno') ?? false; }
+
     public function getHeading(): string { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
 

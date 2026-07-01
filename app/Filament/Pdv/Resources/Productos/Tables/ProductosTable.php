@@ -94,6 +94,7 @@ class ProductosTable
                         ->label('Activar')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
+                        ->authorize(fn() => auth()->user()?->can('productos.activar'))
                         ->hidden(fn($record) => $record->estado === EstadoGeneral::Activo)
                         ->action(fn($record) => $record->update(['estado' => EstadoGeneral::Activo])),
 
@@ -101,6 +102,7 @@ class ProductosTable
                         ->label('Desactivar')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
+                        ->authorize(fn() => auth()->user()?->can('productos.activar'))
                         ->hidden(fn($record) => $record->estado === EstadoGeneral::Inactivo)
                         ->action(fn($record) => $record->update(['estado' => EstadoGeneral::Inactivo])),
 
@@ -108,6 +110,7 @@ class ProductosTable
                         ->label('Archivar')
                         ->icon('heroicon-o-archive-box')
                         ->color('gray')
+                        ->authorize(fn() => auth()->user()?->can('productos.activar'))
                         ->hidden(fn($record) => $record->estado === EstadoGeneral::Archivado)
                         ->action(fn($record) => $record->update(['estado' => EstadoGeneral::Archivado])),
                 ]),

@@ -32,6 +32,8 @@ class ReportePeriodoVentasPage extends Page implements HasForms
     protected static ?string $title = 'Ventas del período';
     protected static bool $shouldRegisterNavigation = false;
 
+    public static function canAccess(): bool { return auth()->user()?->can('reportes.ventas_periodo') ?? false; }
+
     public function getHeading(): string          { return ''; }
     public function getMaxContentWidth(): ?string { return 'full'; }
 
