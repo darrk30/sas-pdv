@@ -24,6 +24,7 @@ class CategoriaResource extends Resource
     protected static ?string $navigationLabel = 'Categorías';
 
     protected static string|UnitEnum|null $navigationGroup = 'Catálogo';
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $modelLabel = 'Categoría';
 

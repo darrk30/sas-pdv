@@ -24,6 +24,7 @@ class SesionCajaResource extends Resource
     protected static ?string $navigationLabel = 'Sesiones de Caja';
 
     protected static string|UnitEnum|null $navigationGroup = 'Caja';
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $modelLabel = 'Sesión de Caja';
 

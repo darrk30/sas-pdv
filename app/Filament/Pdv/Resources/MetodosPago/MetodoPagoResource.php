@@ -26,6 +26,7 @@ class MetodoPagoResource extends Resource
     protected static ?string $navigationLabel = 'Métodos de Pago';
 
     protected static string|UnitEnum|null $navigationGroup = 'Configuración';
+    protected static ?int $navigationSort = 3;
 
     protected static ?string $modelLabel = 'Método de Pago';
 

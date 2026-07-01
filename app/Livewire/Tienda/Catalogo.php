@@ -37,6 +37,12 @@ class Catalogo extends Component
     }
 
     public function updatingBuscar(): void    { $this->resetPage(); }
+
+    public function recibirBusqueda(string $q): void
+    {
+        $this->buscar = trim($q);
+        $this->resetPage();
+    }
     public function updatingMarcaId(): void   { $this->resetPage(); }
     public function updatingCategoriaId(): void { $this->resetPage(); }
 
@@ -67,7 +73,8 @@ class Catalogo extends Component
                 'inventario',
                 'variantes' => fn($q) => $q->where('estado', 'activo')->with(['valores', 'inventario']),
             ])
-            ->paginate(24);
+            ->latest()
+            ->paginate(25);
 
         $marcaActiva     = $this->marcaId     ? Marca::find($this->marcaId)?->nombre         : null;
         $categoriaActiva = $this->categoriaId ? Categoria::find($this->categoriaId)?->nombre : null;
@@ -86,7 +93,7 @@ class Catalogo extends Component
                 ->where(fn($q) => $q->whereNull('fecha_inicio')->orWhere('fecha_inicio', '<=', $hoy))
                 ->where(fn($q) => $q->whereNull('fecha_fin')->orWhere('fecha_fin', '>=', $hoy))
                 ->where(fn($q) => $q->whereNull('limite_usos')->orWhereColumn('usos_actuales', '<', 'limite_usos'))
-                ->with(['detalles.producto', 'detalles.variante.producto'])
+                ->with(['detalles.producto.inventario', 'detalles.variante.producto.inventario', 'detalles.variante.inventario'])
                 ->get()
                 ->filter(fn($p) => empty($p->dias_semana) ||
                     in_array($diaSemana, array_map('strval', $p->dias_semana)))

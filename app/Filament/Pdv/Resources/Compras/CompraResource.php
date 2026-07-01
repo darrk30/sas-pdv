@@ -24,6 +24,7 @@ class CompraResource extends Resource
     protected static ?string $navigationLabel = 'Compras';
 
     protected static string|UnitEnum|null $navigationGroup = 'Compras';
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $modelLabel = 'Compra';
 

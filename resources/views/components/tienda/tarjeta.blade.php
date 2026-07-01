@@ -38,14 +38,13 @@
     // Solo útil si hay logo Y al menos una imagen de galería.
     $indiceGaleria = ($producto->logo && $galeria->isNotEmpty()) ? 1 : null;
 
-    // ── Mapa color_id → imagen de variante ────────────────────────
+    // ── Mapa valor_id → imagen (desde ProductoAtributoValor.imagen) ──
     $colorImagenMap = [];
-    foreach ($producto->variantes ?? [] as $variante) {
-        if (! $variante->imagen) continue;
-        foreach ($variante->valores as $pav) {
-            $vid = $pav->valor_id ?? null;
-            if ($vid && ! isset($colorImagenMap[$vid])) {
-                $colorImagenMap[$vid] = Storage::url($variante->imagen);
+    foreach ($producto->atributos as $pa) {
+        foreach ($pa->valores as $valor) {
+            $img = $valor->pivot->imagen ?? null;
+            if ($img && ! isset($colorImagenMap[$valor->id])) {
+                $colorImagenMap[$valor->id] = Storage::url($img);
             }
         }
     }
@@ -59,10 +58,10 @@
     if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
         if ($tieneVariantes) {
             $productoAgotado = $variantesActivas->every(
-                fn($v) => (float)($v->inventario?->stock_real ?? 0) <= 0
+                fn($v) => (float)($v->inventario?->stock_reserva ?? 0) <= 0
             );
         } else {
-            $productoAgotado = (float)($producto->inventario?->stock_real ?? 0) <= 0;
+            $productoAgotado = (float)($producto->inventario?->stock_reserva ?? 0) <= 0;
         }
     }
 
@@ -75,6 +74,7 @@
             'label'            => $v->nombre ?? $v->valor ?? '',
             'valor'            => $v->valor ?? '',
             'precio_adicional' => (float)($v->pivot->precio_adicional ?? 0),
+            'imagen'           => ($v->pivot->imagen ?? null) ? Storage::url($v->pivot->imagen) : null,
         ])->values()->all(),
     ])->filter(fn($a) => $a['id'] && !empty($a['valores']))->values()->all();
 
@@ -83,11 +83,13 @@
         'imagen'      => $var->imagen ? Storage::url($var->imagen) : null,
         'valores_ids' => $var->valores->pluck('valor_id')->sort()->values()->all(),
         'sin_stock'   => $producto->control_de_stock && ! $producto->venta_sin_stock
-                         && (float)($var->inventario?->stock_real ?? 0) <= 0,
+                         && (float)($var->inventario?->stock_reserva ?? 0) <= 0,
     ])->values()->all();
 @endphp
 
-<div class="tarjeta"
+<div {{ $attributes->merge(['class' => 'tarjeta']) }}
+     style="cursor:pointer"
+     @click="if (!$event.target.closest('button') && !$event.target.closest('.tarjeta__color')) Livewire.navigate('/producto/{{ $producto->id }}')"
      x-data="{
          imagenes:      @js($imagenes->values()->all()),
          indiceGaleria: @js($indiceGaleria),
@@ -210,19 +212,8 @@
             </template>
         </div>
 
-        {{-- Ribbon de etiqueta (esquina superior izquierda, inclinado) --}}
-        @if ($producto->etiqueta)
-            <div class="tarjeta__ribbon-wrap">
-                <span class="tarjeta__ribbon tarjeta__ribbon--{{ $producto->etiqueta->value }}">
-                    {{ $producto->etiqueta->getLabel() }}
-                </span>
-            </div>
-        @endif
-
-        {{-- Badge de descuento (esquina superior derecha) --}}
-        @if ($tieneDescuento && $pct > 0)
-            <span class="tarjeta__badge-oferta">-{{ $pctFormateado }}%</span>
-        @endif
+        {{-- Etiqueta del producto --}}
+        <x-tienda.etiqueta-producto :etiqueta="$producto->etiqueta" />
 
         {{-- ── Botones de acción ──────────────────────────────── --}}
         <div class="tarjeta__acciones" x-show="hovering">
@@ -284,11 +275,35 @@
             </div>
         @endif
 
+        {{-- Stock disponible --}}
+        @if ($producto->control_de_stock && !$producto->venta_sin_stock)
+            @php
+                $stockDisp = $tieneVariantes
+                    ? $variantesActivas->sum(fn($v) => max(0, (float)($v->inventario?->stock_reserva ?? 0)))
+                    : max(0, (float)($producto->inventario?->stock_reserva ?? 0));
+            @endphp
+            <p class="tarjeta__stock {{ $productoAgotado ? 'tarjeta__stock--agotado' : ($stockDisp <= 5 ? 'tarjeta__stock--bajo' : '') }}">
+                @if ($productoAgotado)
+                    Sin stock
+                @elseif ($stockDisp <= 5)
+                    Últimas {{ number_format($stockDisp, 0) }} unidades
+                @else
+                    {{ number_format($stockDisp, 0) }} disponibles
+                @endif
+            </p>
+        @endif
+
+        {{-- Precios --}}
         <div class="tarjeta__precio-wrap">
-            <span class="tarjeta__precio">
-                @if ($tieneExtra)desde @endif
-                S/ {{ number_format($precioFinal, 2) }}
-            </span>
+            <div class="tarjeta__precio-fila">
+                <span class="tarjeta__precio">
+                    @if ($tieneExtra)desde @endif
+                    S/ {{ number_format($precioFinal, 2) }}
+                </span>
+                @if ($tieneDescuento && $pct > 0)
+                    <span class="tarjeta__badge-oferta">-{{ $pctFormateado }}%</span>
+                @endif
+            </div>
             @if ($tieneDescuento)
                 <span class="tarjeta__precio-original">S/ {{ number_format($producto->precio_venta, 2) }}</span>
             @endif

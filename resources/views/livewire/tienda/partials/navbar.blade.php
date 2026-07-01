@@ -11,14 +11,25 @@
     </a>
 
     {{-- ── Buscador centrado ───────────────────────────────────── --}}
-    <div class="navbar__busqueda" x-data="{ q: new URLSearchParams(window.location.search).get('q') ?? '' }">
+    <div class="navbar__busqueda" x-data="{
+        q: new URLSearchParams(window.location.search).get('q') ?? '',
+        _t: null,
+        lanzar() {
+            const ev = new CustomEvent('tienda-buscar', { detail: { q: this.q.trim() }, cancelable: true });
+            window.dispatchEvent(ev);
+            if (!ev.defaultPrevented) {
+                Livewire.navigate(this.q.trim() ? '/?q=' + encodeURIComponent(this.q.trim()) : '/');
+            }
+        }
+    }">
         <div class="navbar__busqueda-campo">
             <svg class="navbar__busqueda-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
             <input
                 x-model="q"
-                @keydown.enter.prevent="$wire.buscar(q)"
+                @input="clearTimeout(_t); _t = setTimeout(() => lanzar(), q.trim() === '' ? 0 : 400)"
+                @keydown.enter.prevent="clearTimeout(_t); lanzar()"
                 type="search"
                 class="navbar__busqueda-input"
                 placeholder="Buscar en {{ $empresaNombre }}"

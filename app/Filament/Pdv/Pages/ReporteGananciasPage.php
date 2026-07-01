@@ -29,8 +29,8 @@ class ReporteGananciasPage extends Page implements HasForms
     protected string $view = 'filament.pdv.pages.reporte-ganancias';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
     protected static ?string $navigationLabel = 'Reporte de Ganancias';
-    protected static string|UnitEnum|null $navigationGroup = 'Reportes';
-    protected static ?int $navigationSort = 2;
+    protected static string|UnitEnum|null $navigationGroup = 'Caja';
+    protected static ?int $navigationSort = 8;
     protected static ?string $title = 'Reporte de Ganancias';
 
     public function getHeading(): string { return ''; }

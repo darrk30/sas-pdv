@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductoAtributoValor extends Model
 {
-    protected $fillable = ['producto_atributo_id', 'valor_id', 'precio_adicional', 'estado'];
+    protected $fillable = ['producto_atributo_id', 'valor_id', 'precio_adicional', 'imagen', 'estado'];
 
     public function valor()
     {

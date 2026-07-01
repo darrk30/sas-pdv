@@ -27,7 +27,7 @@ class ReporteProductosPage extends Page implements HasForms
     protected static string|BackedEnum|null $navigationIcon  = 'heroicon-o-shopping-bag';
     protected static ?string $navigationLabel  = 'Productos más vendidos';
     protected static string|UnitEnum|null $navigationGroup  = 'Reportes';
-    protected static ?int    $navigationSort   = 3;
+    protected static ?int $navigationSort = 3;
     protected static ?string $title            = 'Productos más vendidos';
 
     public function getHeading(): string          { return ''; }

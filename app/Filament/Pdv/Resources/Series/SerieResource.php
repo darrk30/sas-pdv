@@ -24,6 +24,7 @@ class SerieResource extends Resource
     protected static ?string $navigationLabel = 'Series';
 
     protected static string|UnitEnum|null $navigationGroup = 'Configuración';
+    protected static ?int $navigationSort = 5;
 
     protected static ?string $modelLabel = 'Serie';
 

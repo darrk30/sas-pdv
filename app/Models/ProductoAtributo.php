@@ -17,7 +17,7 @@ class ProductoAtributo extends Model
     public function valores()
     {
         return $this->belongsToMany(Valor::class, 'producto_atributo_valors', 'producto_atributo_id', 'valor_id')
-            ->withPivot('precio_adicional')
+            ->withPivot('precio_adicional', 'imagen')
             ->withTimestamps()
             ->wherePivot('estado', 'activo');
     }

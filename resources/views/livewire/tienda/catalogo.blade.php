@@ -1,4 +1,5 @@
-<div class="{{ $tieneCategorias ? 'catalogo__layout' : '' }}">
+<div class="{{ $tieneCategorias ? 'catalogo__layout' : '' }}"
+     @tienda-buscar.window.prevent="$wire.recibirBusqueda($event.detail.q)">
 
     {{-- ── Sidebar de categorías (solo si existen) ────────────── --}}
     @if ($tieneCategorias)
@@ -38,7 +39,10 @@
 
         {{-- Spinner mientras carga --}}
         <div wire:loading class="spinner">
-            <div class="spinner__anillo"></div>
+            <div class="spinner__inner">
+                <div class="spinner__anillo"></div>
+                <span class="spinner__texto">Buscando...</span>
+            </div>
         </div>
 
         {{-- Grid de productos + promociones --}}

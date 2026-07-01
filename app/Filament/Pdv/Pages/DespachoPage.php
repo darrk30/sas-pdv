@@ -31,8 +31,8 @@ class DespachoPage extends Page implements HasForms
     protected string $view = 'filament.pdv.pages.despacho';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-cube';
     protected static ?string $navigationLabel = 'Despachos';
-    protected static string|UnitEnum|null $navigationGroup = 'Caja';
-    protected static ?int $navigationSort = 3;
+    protected static string|UnitEnum|null $navigationGroup = 'Productos';
+    protected static ?int $navigationSort = 7;
     protected static ?string $title = 'Despachos pendientes';
 
     public function getHeading(): string          { return ''; }

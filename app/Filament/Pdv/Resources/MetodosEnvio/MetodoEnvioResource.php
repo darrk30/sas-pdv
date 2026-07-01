@@ -24,6 +24,7 @@ class MetodoEnvioResource extends Resource
     protected static ?string $navigationLabel = 'Métodos de envío';
 
     protected static string|UnitEnum|null $navigationGroup = 'Configuración';
+    protected static ?int $navigationSort = 4;
 
     protected static ?string $modelLabel = 'Método de envío';
 

@@ -26,8 +26,7 @@ class EditCliente extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make()
-                ->hidden(fn() => $this->getRecord()->numero_documento === '99999999'),
+            DeleteAction::make()->hidden(fn() => $this->getRecord()->numero_documento === '99999999'),
         ];
     }
 }

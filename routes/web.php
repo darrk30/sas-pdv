@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Tienda\CarritoController;
 use App\Http\Middleware\TiendaEmpresa;
+use App\Livewire\Tienda\ProductoDetalle;
+use App\Livewire\Tienda\PromoDetalle;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/cuenta-suspendida', fn() => view('suspendido'))->name('suspendido');
@@ -24,7 +26,7 @@ Route::middleware([TiendaEmpresa::class])->group(function () {
 
     Route::livewire('/mis-ordenes', 'tienda.mis-ordenes')->name('tienda.ordenes')->middleware('auth:cliente');
 
-    // Próximas rutas
-    // Route::livewire('/producto/{id}', 'tienda.producto-detalle')->name('tienda.producto');
+    Route::get('/producto/{id}', ProductoDetalle::class)->name('tienda.producto');
+    Route::get('/promo/{id}',    PromoDetalle::class)->name('tienda.promo');
     // Route::livewire('/checkout',      'tienda.checkout')->name('tienda.checkout')->middleware('auth:cliente');
 });

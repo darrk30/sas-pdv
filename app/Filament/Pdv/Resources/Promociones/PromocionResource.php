@@ -23,7 +23,8 @@ class PromocionResource extends Resource
 
     protected static ?string $navigationLabel = 'Promociones';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Catálogo';
+    protected static string|UnitEnum|null $navigationGroup = 'Productos';
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $modelLabel = 'Promoción';
 

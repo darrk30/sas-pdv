@@ -28,7 +28,7 @@ class ReporteVentasPeriodoPage extends Page implements HasForms
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
     protected static ?string $navigationLabel = 'Ventas por período';
     protected static string|UnitEnum|null $navigationGroup = 'Reportes';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 1;
     protected static ?string $title = 'Ventas por período';
 
     public function getHeading(): string          { return ''; }

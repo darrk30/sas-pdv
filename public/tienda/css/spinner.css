@@ -3,9 +3,16 @@
    ═══════════════════════════════════════════════════════════════ */
 
 .spinner {
-    display: flex;
-    justify-content: center;
+    width: 100%;
+    text-align: center;
     padding: 4rem 0;
+}
+
+.spinner__inner {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.875rem;
 }
 
 .spinner__anillo {
@@ -15,6 +22,12 @@
     border-top-color: var(--color-primario);
     border-radius: 50%;
     animation: girar .7s linear infinite;
+}
+
+.spinner__texto {
+    font-size: 0.8125rem;
+    color: var(--color-texto-muted);
+    letter-spacing: .02em;
 }
 
 @keyframes girar { to { transform: rotate(360deg); } }

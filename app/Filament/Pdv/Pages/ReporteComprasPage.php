@@ -28,8 +28,8 @@ class ReporteComprasPage extends Page implements HasForms
     protected string $view = 'filament.pdv.pages.reporte-compras';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-shopping-cart';
     protected static ?string $navigationLabel = 'Reporte de Compras';
-    protected static string|UnitEnum|null $navigationGroup = 'Reportes';
-    protected static ?int $navigationSort = 7;
+    protected static string|UnitEnum|null $navigationGroup = 'Compras';
+    protected static ?int $navigationSort = 3;
     protected static ?string $title = 'Reporte de Compras';
 
     public function getHeading(): string          { return ''; }

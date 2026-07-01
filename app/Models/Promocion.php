@@ -127,9 +127,9 @@ class Promocion extends Model
                 continue; // este ítem no restringe el stock
             }
 
-            $stockReal = max(0.0, (float) ($inventario?->stock_real ?? 0));
+            $stockDisp = max(0.0, (float) ($inventario?->stock_reserva ?? 0));
             $necesario = max(0.001, (float) $detalle->cantidad);
-            $max       = min($max, (int) floor($stockReal / $necesario));
+            $max       = min($max, (int) floor($stockDisp / $necesario));
         }
 
         return $max === PHP_INT_MAX ? null : $max;

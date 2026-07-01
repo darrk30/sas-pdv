@@ -28,7 +28,7 @@ class ReporteAjustesPage extends Page implements HasForms
     protected string $view = 'filament.pdv.pages.reporte-ajustes';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrow-path';
     protected static ?string $navigationLabel = 'Reporte de Ajustes';
-    protected static string|UnitEnum|null $navigationGroup = 'Reportes';
+    protected static string|UnitEnum|null $navigationGroup = 'Productos';
     protected static ?int $navigationSort = 8;
     protected static ?string $title = 'Reporte de Ajustes de Stock';
 

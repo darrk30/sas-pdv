@@ -26,10 +26,7 @@ class ReporteClientesPage extends Page implements HasForms
     use WithPagination;
 
     protected string $view = 'filament.pdv.pages.reporte-clientes';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-users';
-    protected static ?string $navigationLabel = 'Clientes';
-    protected static string|UnitEnum|null $navigationGroup = 'Reportes';
-    protected static ?int $navigationSort = 6;
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?string $title = 'Reporte de Clientes';
 
     public function getHeading(): string          { return ''; }

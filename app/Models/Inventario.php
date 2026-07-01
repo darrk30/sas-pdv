@@ -3,8 +3,9 @@
 namespace App\Models;
 
 use App\Enums\EstadoGeneral;
+use App\Enums\EstadoStock;
+use App\Services\EtiquetaStockService;
 use App\Traits\BelongsToEmpresa;
-use App\Enums\EstadoStock; // Asegúrate de importar tu Enum
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -41,6 +42,16 @@ class Inventario extends Model
     public function variante(): BelongsTo
     {
         return $this->belongsTo(Variante::class, 'variante_id');
+    }
+
+    protected static function booted(): void
+    {
+        static::updated(function (Inventario $inventario): void {
+            if ($inventario->wasChanged(['stock_real', 'stock_reserva']) && $inventario->producto_id) {
+                app(EtiquetaStockService::class)
+                    ->sincronizar($inventario->producto_id, $inventario->empresa_id);
+            }
+        });
     }
 
     // Accesor para el estado dinámico (Laravel lo reconoce como $inventario->estado_stock)

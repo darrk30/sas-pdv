@@ -44,8 +44,8 @@ class ReporteVentasPage extends Page implements HasForms
     protected string $view = 'filament.pdv.pages.reporte-ventas';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-document-chart-bar';
     protected static ?string $navigationLabel = 'Reporte de Ventas';
-    protected static string|UnitEnum|null $navigationGroup = 'Reportes';
-    protected static ?int $navigationSort = 1;
+    protected static string|UnitEnum|null $navigationGroup = 'Caja';
+    protected static ?int $navigationSort = 7;
     protected static ?string $title = 'Reporte de Ventas';
 
     public function getHeading(): string { return ''; }

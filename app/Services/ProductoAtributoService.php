@@ -28,15 +28,22 @@ class ProductoAtributoService
     {
         $valoresNuevos = $item['valores_seleccionados'] ?? [];
         $extraPrices   = $item['extra_prices'] ?? [];
+        $valorImagenes = $item['valor_imagenes'] ?? [];
 
         $productoAtributo->detallesPrecios()
             ->whereNotIn('valor_id', $valoresNuevos)
             ->update(['estado' => 'inactivo']);
 
         foreach ($valoresNuevos as $valorId) {
+            $attrs = ['precio_adicional' => $extraPrices[$valorId] ?? 0, 'estado' => 'activo'];
+
+            if (array_key_exists($valorId, $valorImagenes)) {
+                $attrs['imagen'] = $valorImagenes[$valorId] ?: null;
+            }
+
             ProductoAtributoValor::updateOrCreate(
                 ['producto_atributo_id' => $productoAtributo->id, 'valor_id' => $valorId],
-                ['precio_adicional' => $extraPrices[$valorId] ?? 0, 'estado' => 'activo']
+                $attrs
             );
         }
     }

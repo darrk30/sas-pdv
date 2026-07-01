@@ -25,6 +25,7 @@ class DimensionResource extends Resource
     protected static ?string $navigationLabel = 'Dimensiones';
 
     protected static string|UnitEnum|null $navigationGroup = 'Catálogo';
+    protected static ?int $navigationSort = 5;
 
     protected static ?string $modelLabel = 'Dimensión';
 

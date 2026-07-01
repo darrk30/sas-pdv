@@ -24,6 +24,7 @@ class ClienteResource extends Resource
     protected static ?string $navigationLabel = 'Clientes';
 
     protected static string|UnitEnum|null $navigationGroup = 'Caja';
+    protected static ?int $navigationSort = 6;
 
     protected static ?string $modelLabel = 'Cliente';
 

@@ -33,7 +33,7 @@ class VentasSesionPage extends Page
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
     protected static ?string $navigationLabel = 'Ventas del Turno';
     protected static string|UnitEnum|null $navigationGroup = 'Caja';
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 3;
     protected static ?string $title = 'Ventas del Turno';
 
     public function getHeading(): string { return ''; }

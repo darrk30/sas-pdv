@@ -27,8 +27,8 @@ class ReporteVendedoresPage extends Page implements HasForms
     protected string $view = 'filament.pdv.pages.reporte-vendedores';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
     protected static ?string $navigationLabel = 'Vendedores';
-    protected static string|UnitEnum|null $navigationGroup = 'Reportes';
-    protected static ?int $navigationSort = 5;
+    protected static string|UnitEnum|null $navigationGroup = 'Caja';
+    protected static ?int $navigationSort = 9;
     protected static ?string $title = 'Reporte de Vendedores';
 
     public function getHeading(): string          { return ''; }

@@ -36,7 +36,7 @@ class CierresCajaPage extends Page implements HasForms
     protected static string|BackedEnum|null $navigationIcon  = 'heroicon-o-archive-box';
     protected static ?string $navigationLabel  = 'Cierres de Caja';
     protected static string|UnitEnum|null $navigationGroup  = 'Caja';
-    protected static ?int    $navigationSort   = 10;
+    protected static ?int $navigationSort = 5;
     protected static ?string $title            = 'Cierres de Caja';
 
     public function getHeading(): string         { return ''; }

@@ -5,9 +5,11 @@
     $precio    = number_format((float) $promo->precio, 2);
     $fechaFin  = $promo->fecha_fin?->format('d/m/Y');
     $tieneCode = ! is_null($promo->codigo_promo);
+    $agotado   = ($promo->stockPredictivo() ?? 1) <= 0;
 @endphp
 
 <div class="tarjeta tarjeta-promo"
+     style="cursor:pointer"
      x-data="{
          hovering: false,
          modalPromo: @js([
@@ -23,6 +25,7 @@
              window.dispatchEvent(new CustomEvent('abrir-modal-variante', { detail: this.modalPromo }));
          }
      }"
+     @click="if (!$event.target.closest('button')) Livewire.navigate('/promo/{{ $promo->id }}')"
      @mouseenter="hovering = true"
      @mouseleave="hovering = false">
 
@@ -35,9 +38,9 @@
             {{-- Fallback: mosaico de productos incluidos --}}
             <div class="tarjeta-promo__mosaico">
                 @foreach ($promo->detalles->take(4) as $detalle)
-                    @php $logo = $detalle->producto?->logo ? Storage::url($detalle->producto->logo) : null; @endphp
+                    @php $logo = ($detalle->variante?->producto ?? $detalle->producto)?->logo; @endphp
                     @if ($logo)
-                        <img src="{{ $logo }}" alt="{{ $detalle->producto->nombre }}" class="tarjeta-promo__mosaico-img">
+                        <img src="{{ Storage::url($logo) }}" alt="" class="tarjeta-promo__mosaico-img">
                     @else
                         <div class="tarjeta-promo__mosaico-vacio"></div>
                     @endif
@@ -45,10 +48,8 @@
             </div>
         @endif
 
-        {{-- Ribbon COMBO --}}
-        <div class="tarjeta__ribbon-wrap">
-            <span class="tarjeta__ribbon tarjeta-promo__ribbon">COMBO</span>
-        </div>
+        {{-- Badge COMBO --}}
+        <span class="prod-etiqueta prod-etiqueta--combo">Combo</span>
 
         @if ($fechaFin)
             <span class="tarjeta-promo__vence">Hasta {{ $fechaFin }}</span>
@@ -58,9 +59,10 @@
         <div class="tarjeta__acciones" x-show="hovering">
             <button
                 type="button"
-                class="tarjeta__btn-carrito"
-                title="Agregar al carrito"
-                @click.prevent.stop="abrirModal()"
+                class="tarjeta__btn-carrito {{ $agotado ? 'tarjeta__btn-carrito--agotado' : '' }}"
+                :disabled="{{ $agotado ? 'true' : 'false' }}"
+                title="{{ $agotado ? 'Sin stock' : 'Agregar al carrito' }}"
+                @click.prevent.stop="{{ $agotado ? '' : 'abrirModal()' }}"
             >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                     <circle cx="9"  cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
@@ -77,24 +79,6 @@
 
         <h3 class="tarjeta__nombre">{{ $promo->nombre }}</h3>
 
-        {{-- Productos incluidos --}}
-        <ul class="tarjeta-promo__items">
-            @foreach ($promo->detalles as $detalle)
-                <li class="tarjeta-promo__item">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                         width="11" height="11" class="tarjeta-promo__check">
-                        <path d="M20 6 9 17l-5-5"/>
-                    </svg>
-                    <span>
-                        {{ $detalle->producto?->nombre ?? $detalle->variante?->producto?->nombre ?? '—' }}
-                        @if ((float)$detalle->cantidad != 1)
-                            × {{ rtrim(rtrim(number_format((float)$detalle->cantidad, 3), '0'), '.') }}
-                        @endif
-                    </span>
-                </li>
-            @endforeach
-        </ul>
-
         {{-- Precio + código promo --}}
         <div class="tarjeta__precio-wrap">
             <span class="tarjeta__precio">S/ {{ $precio }}</span>
@@ -108,12 +92,18 @@
             @endif
         </div>
 
+        {{-- Stock --}}
+        @if ($agotado)
+            <p class="tarjeta__stock tarjeta__stock--agotado">Sin stock</p>
+        @endif
+
         {{-- Botón móvil: siempre visible debajo del precio --}}
         <button
             type="button"
-            class="tarjeta__btn-carrito tarjeta__btn-carrito--movil"
-            title="Agregar al carrito"
-            @click.prevent.stop="abrirModal()"
+            class="tarjeta__btn-carrito tarjeta__btn-carrito--movil {{ $agotado ? 'tarjeta__btn-carrito--agotado' : '' }}"
+            :disabled="{{ $agotado ? 'true' : 'false' }}"
+            title="{{ $agotado ? 'Sin stock' : 'Agregar al carrito' }}"
+            @click.prevent.stop="{{ $agotado ? '' : 'abrirModal()' }}"
         >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                 <circle cx="9"  cy="21" r="1"/><circle cx="20" cy="21" r="1"/>

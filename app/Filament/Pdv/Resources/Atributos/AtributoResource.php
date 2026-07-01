@@ -24,6 +24,7 @@ class AtributoResource extends Resource
     protected static ?string $navigationLabel = 'Atributos';
 
     protected static string|UnitEnum|null $navigationGroup = 'Catálogo';
+    protected static ?int $navigationSort = 3;
 
     protected static ?string $modelLabel = 'Atributo';
 

@@ -24,6 +24,7 @@ class IngresoEgresoResource extends Resource
     protected static ?string $navigationLabel = 'Ingresos y Egresos';
 
     protected static string|UnitEnum|null $navigationGroup = 'Caja';
+    protected static ?int $navigationSort = 4;
 
     protected static ?string $modelLabel = 'Movimiento';
 

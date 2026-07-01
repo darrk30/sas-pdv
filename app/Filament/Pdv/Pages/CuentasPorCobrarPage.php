@@ -39,8 +39,8 @@ class CuentasPorCobrarPage extends Page implements HasForms
 
     protected string $view = 'filament.pdv.pages.cuentas-por-cobrar';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
-    protected static string|UnitEnum|null $navigationGroup = 'Cuentas';
-    protected static ?int $navigationSort = 1;
+    protected static string|UnitEnum|null $navigationGroup = 'Reportes';
+    protected static ?int $navigationSort = 6;
     protected static bool $shouldRegisterNavigation = false;
 
     public function getHeading(): string { return ''; }

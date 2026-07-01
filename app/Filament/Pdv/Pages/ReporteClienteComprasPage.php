@@ -30,6 +30,7 @@ class ReporteClienteComprasPage extends Page implements HasForms
     protected string $view = 'filament.pdv.pages.reporte-cliente-compras';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
     protected static string|UnitEnum|null $navigationGroup = 'Reportes';
+    protected static ?int $navigationSort = 5;
     protected static ?string $title = 'Compras del cliente';
     protected static bool $shouldRegisterNavigation = false;
 

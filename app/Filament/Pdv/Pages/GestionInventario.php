@@ -24,7 +24,8 @@ class GestionInventario extends Page implements HasTable
 
     protected static ?string $navigationLabel = 'Inventario';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Inventario';
+    protected static string|UnitEnum|null $navigationGroup = 'Productos';
+    protected static ?int $navigationSort = 3;
     
     // ELIMINAMOS 'static' de aquí para evitar el Error Fatal de PHP
     protected string $view = 'filament.pdv.pages.gestion-inventario';

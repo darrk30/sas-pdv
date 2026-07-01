@@ -26,6 +26,7 @@ class ProveedorResource extends Resource
     protected static ?string $navigationLabel = 'Proveedores';
 
     protected static string|UnitEnum|null $navigationGroup = 'Compras';
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $modelLabel = 'Proveedor';
 

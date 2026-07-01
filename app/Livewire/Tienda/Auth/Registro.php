@@ -90,7 +90,7 @@ class Registro extends Component
                 'empresa_id'       => $this->empresaId,
                 'nombre'           => $this->nombre,
                 'apellidos'        => $this->apellidos,
-                'tipo_documento'   => 'DNI',
+                'tipo_documento'   => 'dni',
                 'numero_documento' => $this->dni,
                 'email'            => $this->email,
                 'correo'           => $this->email,

@@ -286,7 +286,10 @@ class ProductoForm
                                         return "{$nombre}_{$id}/productos";
                                     })
                                     ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file): string {
-                                        return (string) str($file->getClientOriginalName());
+                                        $ext  = $file->getClientOriginalExtension() ?: 'jpg';
+                                        $base = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                                        $slug = Str::slug($base);
+                                        return Str::limit($slug ?: 'imagen', 30, '') . '-' . uniqid() . '.' . $ext;
                                     })
                                     ->reorderable()
                                     ->panelLayout('grid')
@@ -311,7 +314,9 @@ class ProductoForm
                                         $paths = collect($state ?? [])
                                             ->map(function ($file) use ($directory) {
                                                 if ($file instanceof TemporaryUploadedFile) {
-                                                    $name = (string) str($file->getClientOriginalName());
+                                                    $ext  = $file->getClientOriginalExtension() ?: 'jpg';
+                                                    $base = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                                                    $name = Str::limit(Str::slug($base) ?: 'imagen', 30, '') . '-' . uniqid() . '.' . $ext;
                                                     return $file->storeAs($directory, $name, 'public');
                                                 }
                                                 return is_string($file) ? $file : null;
@@ -354,6 +359,7 @@ class ProductoForm
                                             ->afterStateUpdated(function (Set $set) {
                                                 $set('valores_seleccionados', []);
                                                 $set('extra_prices', []);
+                                                $set('valor_imagenes', []);
                                             })
                                             ->createOptionForm([
                                                 Grid::make(2)->schema([
@@ -403,6 +409,7 @@ class ProductoForm
 
                                         Hidden::make('extra_prices'),
                                         Hidden::make('exclusiones_guardadas'),
+                                        Hidden::make('valor_imagenes'),
                                     ])
                                     ->extraItemActions([
                                         // ACCIÓN DE PRECIOS
@@ -613,6 +620,68 @@ class ProductoForm
                                                     collect($allItems)->map(function ($it, $key) use ($itemKey, $exclusionesAGuardar) {
                                                         if ($key === $itemKey) {
                                                             $it['exclusiones_guardadas'] = $exclusionesAGuardar;
+                                                        }
+                                                        return $it;
+                                                    })->toArray()
+                                                );
+                                            }),
+                                        // ACCIÓN DE IMÁGENES POR VALOR
+                                        Action::make('imagenes_valores')
+                                            ->label('Imágenes')
+                                            ->icon('heroicon-o-photo')
+                                            ->color('info')
+                                            ->modalHeading('Imagen por Valor')
+                                            ->schema([
+                                                Repeater::make('imgs_repeater')
+                                                    ->hiddenLabel()
+                                                    ->addable(false)
+                                                    ->deletable(false)
+                                                    ->reorderable(false)
+                                                    ->schema([
+                                                        Grid::make(['default' => 2])->schema([
+                                                            TextInput::make('name_display')
+                                                                ->label('Valor')
+                                                                ->disabled()
+                                                                ->columnSpan(1),
+                                                            Hidden::make('value_id'),
+                                                            FileUpload::make('imagen')
+                                                                ->label('Imagen')
+                                                                ->image()
+                                                                ->directory('producto-atributo-valores')
+                                                                ->nullable()
+                                                                ->columnSpan(1),
+                                                        ]),
+                                                    ]),
+                                            ])
+                                            ->mountUsing(function ($form, $component, $arguments) {
+                                                $itemKey       = $arguments['item'] ?? null;
+                                                $allItems      = $component->getState();
+                                                $item          = $allItems[$itemKey] ?? [];
+                                                $selectedIds   = $item['valores_seleccionados'] ?? [];
+                                                $currentImages = $item['valor_imagenes'] ?? [];
+
+                                                $valuesData = Valor::whereIn('id', $selectedIds)->get();
+
+                                                $form->fill([
+                                                    'imgs_repeater' => $valuesData->map(fn($val) => [
+                                                        'value_id'     => $val->id,
+                                                        'name_display' => $val->nombre,
+                                                        'imagen'       => $currentImages[$val->id] ?? null,
+                                                    ])->toArray(),
+                                                ]);
+                                            })
+                                            ->action(function ($component, $arguments, array $data) {
+                                                $itemKey  = $arguments['item'] ?? null;
+                                                $allItems = $component->getState();
+
+                                                $imagenesMapeadas = collect($data['imgs_repeater'])
+                                                    ->mapWithKeys(fn($i) => [$i['value_id'] => $i['imagen'] ?? null])
+                                                    ->toArray();
+
+                                                $component->state(
+                                                    collect($allItems)->map(function ($it, $key) use ($itemKey, $imagenesMapeadas) {
+                                                        if ($key === $itemKey) {
+                                                            $it['valor_imagenes'] = $imagenesMapeadas;
                                                         }
                                                         return $it;
                                                     })->toArray()

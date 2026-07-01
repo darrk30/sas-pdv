@@ -28,6 +28,7 @@ class ReportePeriodoVentasPage extends Page implements HasForms
     protected string $view = 'filament.pdv.pages.reporte-periodo-ventas';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
     protected static string|UnitEnum|null $navigationGroup = 'Reportes';
+    protected static ?int $navigationSort = 2;
     protected static ?string $title = 'Ventas del período';
     protected static bool $shouldRegisterNavigation = false;
 

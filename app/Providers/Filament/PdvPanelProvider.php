@@ -10,11 +10,13 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Assets\Js;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
@@ -54,6 +56,14 @@ class PdvPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
             ->brandName(fn() => auth()->user()?->empresas()->first()?->name ?? 'Mi Punto de Venta')
+            ->navigationGroups([
+                NavigationGroup::make('Caja'),
+                NavigationGroup::make('Productos'),
+                NavigationGroup::make('Compras'),
+                NavigationGroup::make('Catálogo'),
+                NavigationGroup::make('Configuración')->collapsed(),
+                NavigationGroup::make('Reportes')->collapsed(),
+            ])
             ->discoverResources(in: app_path('Filament/Pdv/Resources'), for: 'App\Filament\Pdv\Resources')
             ->discoverPages(in: app_path('Filament/Pdv/Pages'), for: 'App\Filament\Pdv\Pages')
             ->pages([
@@ -90,6 +100,8 @@ class PdvPanelProvider extends PanelProvider
                 VerificarEmpresaActiva::class,
                 ValidarEstadoUsuarioEmpresa::class,
             ], isPersistent: true)
+            ->sidebarCollapsibleOnDesktop()
+            ->maxContentWidth(Width::Full)
             ->spa()
             ->databaseTransactions()
             ->tenant(Empresa::class, slugAttribute: 'slug')

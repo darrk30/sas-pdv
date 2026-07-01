@@ -25,6 +25,7 @@ class CajaResource extends Resource
     protected static ?string $navigationLabel = 'Cajas';
 
     protected static string|UnitEnum|null $navigationGroup = 'Configuración';
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $modelLabel = 'Caja';
 
