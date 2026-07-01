@@ -9,16 +9,12 @@ use Database\Seeders\ConfiguracionInicialSeeder;
 use Database\Seeders\DimensionSeeder;
 use Database\Seeders\MetodoPagoSeeder;
 use Database\Seeders\ProveedorGeneralSeeder;
-use Database\Seeders\ProductosPruebaSeeder;
+use Database\Seeders\RolesEmpresaSeeder;
 use Database\Seeders\SeriesSeeder;
 use Database\Seeders\TurnoSeeder;
 
 class EmpresaObserver
 {
-    
-    /**
-     * Handle the Empresa "created" event.
-     */
     public function created(Empresa $empresa): void
     {
         app()->instance('bypass_tenant_scope', true);
@@ -32,41 +28,17 @@ class EmpresaObserver
             (new CajaPrincipalSeeder())->runForEmpresa($empresa);
             (new ClienteGeneralSeeder())->runForEmpresa($empresa);
             (new SeriesSeeder())->runForEmpresa($empresa);
-            // (new ProductosPruebaSeeder())->runForEmpresa($empresa);
+            (new RolesEmpresaSeeder())->runForEmpresa($empresa);
         } finally {
             app()->forgetInstance('bypass_tenant_scope');
         }
     }
 
-    /**
-     * Handle the Empresa "updated" event.
-     */
-    public function updated(Empresa $empresa): void
-    {
-        //
-    }
+    public function updated(Empresa $empresa): void {}
 
-    /**
-     * Handle the Empresa "deleted" event.
-     */
-    public function deleted(Empresa $empresa): void
-    {
-        //
-    }
+    public function deleted(Empresa $empresa): void {}
 
-    /**
-     * Handle the Empresa "restored" event.
-     */
-    public function restored(Empresa $empresa): void
-    {
-        //
-    }
+    public function restored(Empresa $empresa): void {}
 
-    /**
-     * Handle the Empresa "force deleted" event.
-     */
-    public function forceDeleted(Empresa $empresa): void
-    {
-        //
-    }
+    public function forceDeleted(Empresa $empresa): void {}
 }
