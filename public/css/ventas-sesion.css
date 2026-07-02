@@ -535,6 +535,30 @@
     border-color: #2563eb;
 }
 
+/* ── Botón descargar PDF ────────────────────────────────────── */
+.vs-btn-ticket-pdf {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    background: none;
+    border: 1px solid #d8b4fe;
+    border-radius: 0.4rem;
+    color: #7c3aed;
+    cursor: pointer;
+    transition: all .15s;
+    flex-shrink: 0;
+    text-decoration: none;
+}
+
+.vs-btn-ticket-pdf svg { width: 0.875rem; height: 0.875rem; }
+
+.vs-btn-ticket-pdf:hover {
+    background: #f5f3ff;
+    border-color: #7c3aed;
+}
+
 /* ── Botón anular (X compacto) ─────────────────────────────── */
 .vs-btn-anular {
     display: inline-flex;
@@ -1130,4 +1154,12 @@
 .dark .vs-btn-ticket:hover {
     background: rgba(96,165,250,.1);
     border-color: rgba(96,165,250,.5);
+}
+.dark .vs-btn-ticket-pdf {
+    border-color: rgba(167,139,250,.3);
+    color: #a78bfa;
+}
+.dark .vs-btn-ticket-pdf:hover {
+    background: rgba(167,139,250,.1);
+    border-color: rgba(167,139,250,.5);
 }

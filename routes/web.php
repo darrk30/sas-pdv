@@ -17,6 +17,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/ticket/venta/{id}', [TicketVentaController::class, 'show'])
         ->name('pdv.ticket.venta')
         ->where('id', '[0-9]+');
+
+    Route::get('/ticket/venta/{id}/pdf', [TicketVentaController::class, 'pdf'])
+        ->name('pdv.ticket.venta.pdf')
+        ->where('id', '[0-9]+');
 });
 
 Route::get('/cuenta-suspendida', fn() => view('suspendido'))->name('suspendido');
