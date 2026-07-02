@@ -511,6 +511,30 @@
     gap: 0.35rem;
 }
 
+/* ── Botón ticket / imprimir ───────────────────────────────── */
+.vs-btn-ticket {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    background: none;
+    border: 1px solid #bfdbfe;
+    border-radius: 0.4rem;
+    color: #2563eb;
+    cursor: pointer;
+    transition: all .15s;
+    flex-shrink: 0;
+    text-decoration: none;
+}
+
+.vs-btn-ticket svg { width: 0.875rem; height: 0.875rem; }
+
+.vs-btn-ticket:hover {
+    background: #eff6ff;
+    border-color: #2563eb;
+}
+
 /* ── Botón anular (X compacto) ─────────────────────────────── */
 .vs-btn-anular {
     display: inline-flex;
@@ -1098,4 +1122,12 @@
     background: rgba(251,191,36,.1);
     border-color: rgba(251,191,36,.3);
     color: #fbbf24;
+}
+.dark .vs-btn-ticket {
+    border-color: rgba(96,165,250,.3);
+    color: #60a5fa;
+}
+.dark .vs-btn-ticket:hover {
+    background: rgba(96,165,250,.1);
+    border-color: rgba(96,165,250,.5);
 }

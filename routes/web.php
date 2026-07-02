@@ -1,17 +1,22 @@
 <?php
 
 use App\Http\Controllers\Pdv\ProductoExcelController;
+use App\Http\Controllers\Pdv\TicketVentaController;
 use App\Http\Controllers\Tienda\CarritoController;
 use App\Http\Middleware\TiendaEmpresa;
 use App\Livewire\Tienda\ProductoDetalle;
 use App\Livewire\Tienda\PromoDetalle;
 use Illuminate\Support\Facades\Route;
 
-// ── Descargas de plantillas Excel (requieren login) ───────────────────────────
+// ── Rutas PDV autenticadas (descargas, tickets) ───────────────────────────────
 Route::middleware(['auth'])->group(function () {
     Route::get('/plantillas/productos/{tipo}', [ProductoExcelController::class, 'descargar'])
         ->name('productos.plantilla')
         ->where('tipo', 'nuevos|actualizar|precios');
+
+    Route::get('/ticket/venta/{id}', [TicketVentaController::class, 'show'])
+        ->name('pdv.ticket.venta')
+        ->where('id', '[0-9]+');
 });
 
 Route::get('/cuenta-suspendida', fn() => view('suspendido'))->name('suspendido');
