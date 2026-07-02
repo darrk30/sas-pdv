@@ -1,3 +1,14 @@
+@push('styles')
+<link rel="stylesheet" href="{{ asset('tienda/css/tarjeta.css') }}?v=3">
+<link rel="stylesheet" href="{{ asset('tienda/css/carrusel.css') }}">
+<link rel="stylesheet" href="{{ asset('tienda/css/producto-detalle.css') }}?v=3">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+@endpush
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+@endpush
+
 <div class="pd-page"
      x-data="{
          modal: @js($modalPromo),

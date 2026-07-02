@@ -13,6 +13,7 @@ class Empresa extends Model
         'name',
         'ruc',
         'logo',
+        'icono',
         'slug',
         'direccion',
         'telefono',

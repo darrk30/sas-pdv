@@ -1,3 +1,7 @@
+@push('styles')
+<link rel="stylesheet" href="{{ asset('tienda/css/checkout.css') }}">
+@endpush
+
 <div class="chk">
 
     {{-- Encabezado --}}

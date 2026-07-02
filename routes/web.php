@@ -1,10 +1,18 @@
 <?php
 
+use App\Http\Controllers\Pdv\ProductoExcelController;
 use App\Http\Controllers\Tienda\CarritoController;
 use App\Http\Middleware\TiendaEmpresa;
 use App\Livewire\Tienda\ProductoDetalle;
 use App\Livewire\Tienda\PromoDetalle;
 use Illuminate\Support\Facades\Route;
+
+// ── Descargas de plantillas Excel (requieren login) ───────────────────────────
+Route::middleware(['auth'])->group(function () {
+    Route::get('/plantillas/productos/{tipo}', [ProductoExcelController::class, 'descargar'])
+        ->name('productos.plantilla')
+        ->where('tipo', 'nuevos|actualizar|precios');
+});
 
 Route::get('/cuenta-suspendida', fn() => view('suspendido'))->name('suspendido');
 

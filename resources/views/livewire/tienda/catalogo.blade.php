@@ -1,3 +1,10 @@
+@push('styles')
+<link rel="stylesheet" href="{{ asset('tienda/css/catalogo.css') }}">
+<link rel="stylesheet" href="{{ asset('tienda/css/categorias.css') }}">
+<link rel="stylesheet" href="{{ asset('tienda/css/tarjeta.css') }}?v=3">
+<link rel="stylesheet" href="{{ asset('tienda/css/paginacion.css') }}?v=2">
+@endpush
+
 <div class="{{ $tieneCategorias ? 'catalogo__layout' : '' }}"
      @tienda-buscar.window.prevent="$wire.recibirBusqueda($event.detail.q)">
 

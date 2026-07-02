@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('imagen')->nullable();
             $table->string('estado')->default('activo');
             $table->decimal('precio_final', 12, 2)->default(0);
+            $table->decimal('precio_costo', 12, 4)->nullable()->default(null);
             $table->timestamps();
         });
     }

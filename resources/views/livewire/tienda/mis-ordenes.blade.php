@@ -1,3 +1,7 @@
+@push('styles')
+<link rel="stylesheet" href="{{ asset('tienda/css/mis-ordenes.css') }}">
+@endpush
+
 <div class="mo-page">
 
     {{-- ── Cabecera ──────────────────────────────────────────────────── --}}

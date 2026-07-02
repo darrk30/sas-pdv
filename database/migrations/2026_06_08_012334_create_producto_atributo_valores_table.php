@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('producto_atributo_id')->constrained('producto_atributos')->cascadeOnDelete();
             $table->foreignId('valor_id')->constrained('valors')->cascadeOnDelete();
             $table->decimal('precio_adicional', 15, 2)->default(0);
+            $table->string('imagen')->nullable();
             $table->string('estado')->default('activo');
             $table->timestamps();
         });

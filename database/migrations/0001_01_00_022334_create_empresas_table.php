@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('ruc')->maxLength(11);
             $table->string('logo')->nullable();
+            $table->string('icono')->nullable();
             $table->string('slug')->nullable();
             $table->string('direccion')->nullable();
             $table->string('telefono')->nullable();

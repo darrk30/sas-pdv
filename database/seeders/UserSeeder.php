@@ -2,25 +2,21 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\User;
 use App\Models\Empresa;
-use Spatie\Permission\Models\Role;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // ==========================================
-        // 1. KEVIN (ADMINISTRADOR GLOBAL DEL SAAS)
-        // ==========================================
-        
-        // Limpiamos el Team ID para asignar un rol global
+        // ── 1. Kevin — Super Administrador global del SaaS ────────────────────
         app(PermissionRegistrar::class)->setPermissionsTeamId(null);
 
-        $adminGlobal = User::firstOrCreate(
+        $kevin = User::firstOrCreate(
             ['email' => 'kevin@gmail.com'],
             [
                 'name'     => 'Kevin Rivera',
@@ -28,27 +24,25 @@ class UserSeeder extends Seeder
             ]
         );
 
-        $rolAdminGlobal = Role::where('name', 'Super Administrador')->first();
-        if ($rolAdminGlobal && !$adminGlobal->hasRole($rolAdminGlobal)) {
-            $adminGlobal->assignRole($rolAdminGlobal);
+        $rolSuper = Role::where('name', 'Super Administrador')->first();
+        if ($rolSuper && ! $kevin->hasRole($rolSuper)) {
+            $kevin->assignRole($rolSuper);
         }
 
-        // ==========================================
-        // 2. CREACIÓN DE LA EMPRESA
-        // ==========================================
-        
+        // ── 2. Empresa Kittybell ──────────────────────────────────────────────
         $empresa = Empresa::firstOrCreate(
-            ['ruc' => '20000000001'], // Buscamos por RUC para evitar duplicados
+            ['slug' => 'bodega'],
             [
-                'name'                 => 'Mi bodega S.A.C.',
+                'name'                 => 'Kittybell',
+                'ruc'                  => '20000000001',
                 'slug'                 => 'bodega',
-                'direccion'            => 'Av. Javier Prado 123',
-                'telefono'             => '987654321',
-                'email'                => 'contacto@empresa.com',
-                'departamento'         => 'Lima',
-                'distrito'             => 'San Isidro',
-                'provincia'            => 'Lima',
-                'ubigeo'               => '150131',
+                'direccion'            => 'Chiclayo',
+                'telefono'             => '948798072',
+                'email'                => 'belen@kittybell.com',
+                'departamento'         => 'Lambayeque',
+                'provincia'            => 'Chiclayo',
+                'distrito'             => 'Chiclayo',
+                'ubigeo'               => '140101',
                 'estado'               => 'activo',
                 'carta_activa_cliente' => 'activo',
                 'carta_activa_admin'   => 'activo',
@@ -57,30 +51,25 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // ==========================================
-        // 3. JUAN (CAJERO DEL PDV)
-        // ==========================================
-        
-        if ($empresa) {
-            $juanPdv = User::firstOrCreate(
-                ['email' => 'juan@gmail.com'],
-                [
-                    'name'     => 'Juan Administrador',
-                    'password' => Hash::make('123123123'),
-                ]
-            );
+        // ── 3. Belén Cano — Administradora de Kittybell ───────────────────────
+        $belen = User::firstOrCreate(
+            ['email' => 'belen@kittybell.com'],
+            [
+                'name'     => 'Belen Cano',
+                'password' => Hash::make('Belen14@'),
+            ]
+        );
 
-            // Vinculamos a Juan con la empresa recién creada mediante la tabla pivote
-            $juanPdv->empresas()->syncWithoutDetaching([$empresa->id]);
+        $belen->empresas()->syncWithoutDetaching([$empresa->id]);
 
-            // Configuramos Spatie para asignar el rol DENTRO de esta empresa
-            app(PermissionRegistrar::class)->setPermissionsTeamId($empresa->id);
+        app(PermissionRegistrar::class)->setPermissionsTeamId($empresa->id);
 
-            // Asignamos el rol de Administrador
-            $rolAdministrador = Role::where('name', 'Administrador')->first();
-            if ($rolAdministrador && !$juanPdv->hasRole($rolAdministrador)) {
-                $juanPdv->assignRole($rolAdministrador);
-            }
+        $rolAdmin = Role::where('name', 'Administrador')->first();
+        if ($rolAdmin && ! $belen->hasRole($rolAdmin)) {
+            $belen->assignRole($rolAdmin);
         }
+
+        // ── 4. Kevin también vinculado a Kittybell ────────────────────────────
+        $kevin->empresas()->syncWithoutDetaching([$empresa->id]);
     }
 }
