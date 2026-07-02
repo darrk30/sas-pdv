@@ -16,6 +16,8 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as XlDate;
 
 class ProductoImportService
 {
+    public function __construct(private readonly KardexService $kardex) {}
+
     private int $empresaId;
 
     // ── Resultado de la importación ───────────────────────────────────────────
@@ -76,6 +78,7 @@ class ProductoImportService
                     continue;
                 }
 
+                $precioCosto    = $this->parseDecimal($fila['D'] ?? null) ?? 0;
                 $stockMinimo    = $this->parseDecimal($fila['I'] ?? null) ?? 0;
                 $stockInicial   = $this->parseDecimal($fila['J'] ?? null) ?? 0;
                 $controlDeStock = $this->parseBooleano($fila['P'] ?? null, true);
@@ -86,7 +89,7 @@ class ProductoImportService
                     'nombre'                => $nombre,
                     'slug'                  => $this->generarSlug($nombre, $empresaId),
                     'precio_venta'          => $precioVenta,
-                    'precio_costo'          => $this->parseDecimal($fila['D'] ?? null) ?? 0,
+                    'precio_costo'          => $precioCosto,
                     'porcentaje_descuento'  => $this->parseDecimal($fila['E'] ?? null) ?? 0,
                     'precio_con_descuento'  => $this->parseDecimal($fila['F'] ?? null),
                     'unidad_medida_id'      => $this->resolverUnidad($fila['G'] ?? null),
@@ -113,6 +116,24 @@ class ProductoImportService
                         'estado_almacen'    => 'activo',
                         'estado_inventario' => $stockInicial > 0 ? 'disponible' : 'agotado',
                     ]);
+
+                    if ($stockInicial > 0) {
+                        $this->kardex->registrar([
+                            'empresa_id'      => $empresaId,
+                            'user_id'         => auth()->id(),
+                            'producto_id'     => $producto->id,
+                            'producto_nombre' => $producto->nombre,
+                            'tipo'            => 'entrada',
+                            'concepto'        => 'Importación masiva',
+                            'cantidad'        => $stockInicial,
+                            'cantidad_base'   => $stockInicial,
+                            'costo_unitario'  => $precioCosto ?: null,
+                            'costo_total'     => $precioCosto > 0 ? round($precioCosto * $stockInicial, 4) : null,
+                            'stock_antes'     => 0,
+                            'stock_despues'   => $stockInicial,
+                            'fecha'           => now(),
+                        ]);
+                    }
                 }
 
                 $this->creados++;
