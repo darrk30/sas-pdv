@@ -1,5 +1,5 @@
 // Alpine component: página de detalle de producto
-window.pdPage = function(productoData, imagenesData, colorImagenMap) {
+const _pdPage = function(productoData, imagenesData, colorImagenMap) {
     return {
         producto:      productoData,
         imagenes:      imagenesData,
@@ -105,3 +105,8 @@ window.pdPage = function(productoData, imagenesData, colorImagenMap) {
         abrirLightbox(i) { this.lb.indice = i; this.lb.abierto = true; },
     };
 };
+
+// Registro via alpine:init: disponible en el registry para x-data="pdPage(...)"
+document.addEventListener('alpine:init', () => Alpine.data('pdPage', _pdPage));
+// Fallback global para evaluación directa de expresiones JS en x-data
+window.pdPage = _pdPage;

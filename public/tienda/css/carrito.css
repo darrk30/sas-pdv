@@ -467,6 +467,13 @@
     opacity: .55;
     transition: background .15s, opacity .15s;
 }
+.cr-btn-orden--activo {
+    cursor: pointer;
+    opacity: 1;
+}
+.cr-btn-orden--activo:hover {
+    background: #1f2937;
+}
 
 /* Aviso seguridad */
 .cr-resumen-aviso {

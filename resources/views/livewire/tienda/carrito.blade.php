@@ -1,3 +1,7 @@
+@push('styles')
+<link rel="stylesheet" href="{{ asset('tienda/css/checkout.css') }}">
+@endpush
+
 <div
     x-data
     x-init="@if($esGuest)(function(){

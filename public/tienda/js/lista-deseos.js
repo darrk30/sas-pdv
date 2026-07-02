@@ -1,5 +1,5 @@
 // Alpine component: lista de deseos
-window.listaDeseos = function(datosIniciales) {
+const _listaDeseos = function(datosIniciales) {
     return {
         datos: datosIniciales || {},
         seleccion: {},
@@ -42,3 +42,6 @@ window.listaDeseos = function(datosIniciales) {
         },
     };
 };
+
+document.addEventListener('alpine:init', () => Alpine.data('listaDeseos', _listaDeseos));
+window.listaDeseos = _listaDeseos;

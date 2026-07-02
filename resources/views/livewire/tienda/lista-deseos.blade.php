@@ -3,10 +3,6 @@
 <link rel="stylesheet" href="{{ asset('tienda/css/lista-deseos.css') }}">
 @endpush
 
-@push('scripts')
-<script src="{{ asset('tienda/js/lista-deseos.js') }}?v=1"></script>
-@endpush
-
 <div class="{{ $esGuest ? 'ld-guest-page' : 'ld' }}" x-data="listaDeseos(@js($datosParaAlpine))">
 
     {{-- Estado guest: no está logueado --}}
