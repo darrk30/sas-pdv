@@ -177,29 +177,35 @@
 
 .pdv-busqueda__scan {
     position: absolute;
-    right: 0.5rem;
+    right: 0.25rem;
     top: 50%;
     transform: translateY(-50%);
     background: none;
     border: none;
-    padding: 0.125rem;
+    /* Mínimo 44×44px de área táctil (guía Apple/Google) */
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.625rem;
     cursor: pointer;
     color: var(--pdv-text-faint);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 0.25rem;
+    border-radius: 0.5rem;
     transition: color .15s, background-color .15s;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.pdv-busqueda__scan:hover {
+.pdv-busqueda__scan:hover,
+.pdv-busqueda__scan:active {
     color: var(--pdv-primary);
-    background-color: var(--pdv-hover, rgba(99,102,241,.08));
+    background-color: var(--pdv-hover, rgba(99,102,241,.1));
 }
 
 .pdv-busqueda__scan svg {
-    width: 1.125rem;
-    height: 1.125rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    pointer-events: none;
 }
 
 /* ═══════════════════════════════════════════════════════════

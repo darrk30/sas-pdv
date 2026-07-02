@@ -38,7 +38,7 @@ class UserSeeder extends Seeder
         // ==========================================
         
         $empresa = Empresa::firstOrCreate(
-            ['ruc' => '20123456789'], // Buscamos por RUC para evitar duplicados
+            ['ruc' => '20000000001'], // Buscamos por RUC para evitar duplicados
             [
                 'name'                 => 'Mi bodega S.A.C.',
                 'slug'                 => 'bodega',

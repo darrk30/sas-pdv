@@ -1,40 +1,232 @@
 <script defer src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
+<style>
+/* ── Overlay ─────────────────────────────────────────────────────────────── */
+.bcs-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+}
+@media (min-width: 600px) {
+    .bcs-overlay {
+        align-items: center;
+        padding: 1rem;
+    }
+}
+.bcs-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+}
+/* ── Modal ───────────────────────────────────────────────────────────────── */
+.bcs-modal {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    background: #ffffff;
+    border-radius: 1rem 1rem 0 0;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.35);
+    overflow: hidden;
+}
+@media (min-width: 600px) {
+    .bcs-modal {
+        border-radius: 1rem;
+    }
+}
+/* ── Drag handle (solo mobile) ───────────────────────────────────────────── */
+.bcs-drag {
+    display: flex;
+    justify-content: center;
+    padding: 0.75rem 0 0.25rem;
+}
+@media (min-width: 600px) {
+    .bcs-drag { display: none; }
+}
+.bcs-drag__pill {
+    width: 2.5rem;
+    height: 0.25rem;
+    border-radius: 9999px;
+    background: #d1d5db;
+}
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.bcs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #f0f0f0;
+    padding: 0.75rem 1.25rem;
+}
+.bcs-header__left {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+.bcs-header__icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #6366f1;
+    flex-shrink: 0;
+}
+.bcs-header__texts {
+    display: flex;
+    flex-direction: column;
+}
+.bcs-header__title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+    line-height: 1.3;
+}
+.bcs-header__sub {
+    font-size: 0.7rem;
+    color: #6b7280;
+    margin: 0.1rem 0 0;
+    line-height: 1.2;
+}
+.bcs-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0.5rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #9ca3af;
+    border-radius: 0.625rem;
+    transition: background 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+.bcs-close:hover  { background: #f3f4f6; color: #4b5563; }
+.bcs-close:active { background: #e5e7eb; }
+.bcs-close svg    { width: 1.25rem; height: 1.25rem; pointer-events: none; }
+/* ── Body ────────────────────────────────────────────────────────────────── */
+.bcs-body {
+    padding: 1rem;
+}
+/* ── Visor de cámara (html5-qrcode se monta aquí) ───────────────────────── */
+#barcode-reader-preview {
+    position: relative;
+    overflow: hidden;
+    background: #000;
+    border-radius: 0.75rem;
+    min-height: 220px;
+    width: 100%;
+}
+#barcode-reader-preview video {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    object-fit: cover;
+}
+/* Ocultar UI que inyecta html5-qrcode que no necesitamos */
+#barcode-reader-preview canvas  { display: none !important; }
+#barcode-reader-preview img     { display: none !important; }
+#barcode-reader-preview span    { display: none !important; }
+#barcode-reader-preview select  { display: none !important; }
+#barcode-reader-preview a       { display: none !important; }
+#barcode-reader-preview > div > button { display: none !important; }
+/* Marco de escaneo — estilizar borde del área de lectura */
+#barcode-reader-preview div[style*="border"] {
+    border-color: rgba(99,102,241,0.9) !important;
+    border-width: 2px !important;
+    box-sizing: border-box !important;
+}
+/* ── Textos de estado ────────────────────────────────────────────────────── */
+.bcs-status {
+    margin-top: 0.75rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+/* ── Botón cerrar ────────────────────────────────────────────────────────── */
+.bcs-btn-cerrar {
+    display: block;
+    margin-top: 0.75rem;
+    width: 100%;
+    border: none;
+    border-radius: 0.75rem;
+    background: #f3f4f6;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+}
+.bcs-btn-cerrar:hover  { background: #e5e7eb; }
+.bcs-btn-cerrar:active { transform: scale(0.98); }
+/* ── Transiciones Alpine ─────────────────────────────────────────────────── */
+[x-cloak] { display: none !important; }
+</style>
+
 <script>
 window._barcodeScanner = function () {
     return {
         open: false,
         scanning: false,
+        isPdv: false,
         targetPath: null,
         _scanner: null,
+        _starting: false,
+        _lastCode: null,
+        _lastScanTime: 0,
 
         init() {
             window.addEventListener('open-barcode-scanner', async (e) => {
-                this.targetPath = e.detail?.path ?? null;
+                if (this.open || this._starting) return;
 
-                // Sin API de cámara (HTTP sin localhost, navegador antiguo)
+                this.targetPath = e.detail?.path ?? null;
+                this.isPdv      = this.targetPath === '__pdv__';
+
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                     Livewire.dispatch('camera-not-available');
                     return;
                 }
 
-                // Sin dispositivos de vídeo conectados
                 try {
                     var devices = await navigator.mediaDevices.enumerateDevices();
                     if (!devices.some(function(d) { return d.kind === 'videoinput'; })) {
                         Livewire.dispatch('camera-not-available');
                         return;
                     }
-                } catch (_) { /* si falla la enumeración, intentamos igual */ }
+                } catch (_) {}
 
-                this.open = true;
-                this.$nextTick(() => this._startCamera());
+                this._lastCode     = null;
+                this._lastScanTime = 0;
+                this.open          = true;
+                this.$nextTick(function() { this._startCamera(); }.bind(this));
             });
+        },
+
+        _playBeep() {
+            try {
+                var ctx  = new (window.AudioContext || window.webkitAudioContext)();
+                var osc  = ctx.createOscillator();
+                var gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'square';
+                osc.frequency.value = 1200;
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.15);
+            } catch (_) {}
         },
 
         _startCamera() {
             var id = 'barcode-reader-preview';
-            if (!document.getElementById(id)) return;
+            if (!document.getElementById(id) || this._scanner || this._starting) return;
+
+            this._starting = true;
 
             var FORMATS = [
                 window.Html5QrcodeSupportedFormats.EAN_13,
@@ -48,55 +240,64 @@ window._barcodeScanner = function () {
 
             this._scanner = new window.Html5Qrcode(id, { formatsToSupport: FORMATS, verbose: false });
 
-            this._scanner
-                .start(
-                    { facingMode: { exact: 'environment' } },
-                    { fps: 10, qrbox: { width: 260, height: 110 } },
-                    (code) => this._onSuccess(code),
-                    () => {}
-                )
-                .then(() => { this.scanning = true; })
-                .catch(() => {
-                    // Fallback: cualquier cámara disponible
-                    this._scanner
-                        .start(
-                            { facingMode: 'environment' },
-                            { fps: 10, qrbox: { width: 260, height: 110 } },
-                            (code) => this._onSuccess(code),
-                            () => {}
-                        )
-                        .then(() => { this.scanning = true; })
-                        .catch((err) => {
-                            // Ambos intentos fallaron → cerrar modal + notificación
-                            this.open = false;
-                            this._scanner = null;
-                            Livewire.dispatch('camera-not-available');
-                            console.error('[BarcodeScanner]', err);
-                        });
+            var self   = this;
+            var cfg    = { fps: 10, qrbox: { width: 240, height: 100 } };
+            var onOk   = function(code) { self._onSuccess(code); };
+            var onErr  = function() {};
+
+            var tryStart = function(constraints) {
+                return self._scanner.start(constraints, cfg, onOk, onErr);
+            };
+
+            tryStart({ facingMode: { exact: 'environment' } })
+                .catch(function() { return tryStart({ facingMode: 'environment' }); })
+                .catch(function() { return tryStart({ facingMode: 'user' }); })
+                .then(function() {
+                    self.scanning  = true;
+                    self._starting = false;
+                })
+                .catch(function(err) {
+                    self.open      = false;
+                    self._scanner  = null;
+                    self._starting = false;
+                    Livewire.dispatch('camera-not-available');
+                    console.error('[BarcodeScanner]', err);
                 });
         },
 
         _onSuccess(code) {
-            this._stop(false);
+            var now = Date.now();
+            // Ignorar mismo código leído dentro de 2 segundos (lecturas duplicadas del sensor)
+            if (code === this._lastCode && now - this._lastScanTime < 2000) return;
+            this._lastCode     = code;
+            this._lastScanTime = now;
+
+            this._playBeep();
+
             if (!this.targetPath) return;
 
-            if (this.targetPath === '__pdv__') {
-                Livewire.dispatch('pdv-barcode', { code });
+            if (this.isPdv) {
+                // PDV: mantener modal abierto, despachar al carrito
+                Livewire.dispatch('pdv-barcode', { code: code });
             } else {
+                // Formularios: cerrar modal y rellenar campo
                 var formPath = this.targetPath.replace(/^data\./, '');
-                Livewire.dispatch('barcode-result', { path: formPath, code });
+                this._stop(true);
+                Livewire.dispatch('barcode-result', { path: formPath, code: code });
             }
         },
 
         _stop(andClose) {
             if (andClose === undefined) andClose = true;
+            this._starting = false;
             if (this._scanner && this.scanning) {
                 this.scanning = false;
+                var self      = this;
                 this._scanner.stop()
-                    .catch(function () {})
-                    .finally(() => {
-                        this._scanner = null;
-                        if (andClose) this.open = false;
+                    .catch(function() {})
+                    .finally(function() {
+                        self._scanner = null;
+                        if (andClose) self.open = false;
                     });
             } else {
                 this._scanner = null;
@@ -113,52 +314,66 @@ window._barcodeScanner = function () {
 
     <template x-teleport="body">
         <div
+            class="bcs-overlay"
             x-show="open"
-            x-transition:enter="transition ease-out duration-200"
-            x-transition:enter-start="opacity-0 scale-95"
-            x-transition:enter-end="opacity-100 scale-100"
-            x-transition:leave="transition ease-in duration-150"
-            x-transition:leave-start="opacity-100 scale-100"
-            x-transition:leave-end="opacity-0 scale-95"
-            class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            x-transition:enter="bcs-fade-enter"
+            x-transition:enter-start="bcs-fade-start"
+            x-transition:enter-end="bcs-fade-end"
+            x-transition:leave="bcs-fade-leave"
+            x-transition:leave-start="bcs-fade-end"
+            x-transition:leave-end="bcs-fade-start"
             style="display:none"
         >
-            {{-- Fondo oscuro --}}
-            <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="close()"></div>
+            {{-- Backdrop --}}
+            <div class="bcs-backdrop" @click="close()"></div>
 
             {{-- Modal --}}
-            <div class="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl dark:bg-gray-800 overflow-hidden">
+            <div class="bcs-modal">
 
-                {{-- Encabezado --}}
-                <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-700">
-                    <div class="flex items-center gap-2.5">
-                        <svg class="h-5 w-5 text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                {{-- Drag handle visible solo en mobile --}}
+                <div class="bcs-drag">
+                    <div class="bcs-drag__pill"></div>
+                </div>
+
+                {{-- Header --}}
+                <div class="bcs-header">
+                    <div class="bcs-header__left">
+                        <svg class="bcs-header__icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
                         </svg>
-                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Escanear código de barras</h3>
+                        <div class="bcs-header__texts">
+                            <p class="bcs-header__title">Escanear código de barras</p>
+                            <p class="bcs-header__sub" x-show="isPdv">Modo PDV — escanea varios productos seguidos</p>
+                        </div>
                     </div>
-                    <button type="button" @click="close()" class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200">
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <button type="button" class="bcs-close" @click="close()" aria-label="Cerrar">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                {{-- Visor de cámara --}}
-                <div class="px-4 pb-4 pt-3">
-                    <div id="barcode-reader-preview" class="w-full overflow-hidden rounded-xl bg-gray-900" style="min-height:200px" wire:ignore></div>
+                {{-- Visor --}}
+                <div class="bcs-body">
+                    <div id="barcode-reader-preview" wire:ignore></div>
 
-                    <p x-show="scanning" class="mt-3 text-center text-xs text-gray-500 dark:text-gray-400">
-                        Apunta la cámara al código de barras
-                    </p>
+                    <p class="bcs-status" x-show="scanning">Apunta la cámara al código de barras</p>
+                    <p class="bcs-status" x-show="!scanning && open" style="color:#9ca3af">Iniciando cámara...</p>
 
-                    <button type="button" @click="close()" class="mt-3 w-full rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
-                        Cancelar
-                    </button>
+                    <button type="button" class="bcs-btn-cerrar" @click="close()">Cerrar</button>
                 </div>
+
             </div>
         </div>
     </template>
 
 </div>
+
+<style>
+/* Transiciones del overlay */
+.bcs-fade-enter { transition: opacity 0.2s ease; }
+.bcs-fade-leave { transition: opacity 0.15s ease; }
+.bcs-fade-start { opacity: 0; }
+.bcs-fade-end   { opacity: 1; }
+</style>

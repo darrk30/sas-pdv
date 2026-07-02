@@ -324,7 +324,37 @@ class PuntoDeVenta extends Page
     #[On('pdv-barcode')]
     public function recibirBarcode(string $code): void
     {
-        $this->busqueda = $code;
+        $empresaId = Filament::getTenant()->id;
+
+        $producto = Producto::where('empresa_id', $empresaId)
+            ->where('estado', 'activo')
+            ->where(function ($q) use ($code) {
+                $q->where('codigo_barras', $code)
+                  ->orWhere('codigo_interno', $code);
+            })
+            ->with(['inventario', 'variantesActivas', 'unidadMedida.dimension'])
+            ->first();
+
+        if (! $producto) {
+            Notification::make()
+                ->title('Código no encontrado')
+                ->body("No hay producto activo con código: {$code}")
+                ->warning()
+                ->send();
+            return;
+        }
+
+        if ($producto->variantesActivas->isNotEmpty()) {
+            Notification::make()
+                ->title("{$producto->nombre}")
+                ->body('Tiene variantes — selecciónalo manualmente del catálogo.')
+                ->info()
+                ->send();
+            $this->busqueda = $code;
+            return;
+        }
+
+        $this->agregarProductoSimple($producto->id);
     }
 
     #[On('camera-not-available')]
