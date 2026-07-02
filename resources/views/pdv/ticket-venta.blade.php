@@ -20,7 +20,7 @@
     /* ── Contenedor principal ───────────────────────────────── */
     .tk {
         width: 80mm;
-        padding: 4mm 3mm;
+        padding: 5mm 4mm;
     }
 
     /* ── Cabecera empresa ───────────────────────────────────── */
