@@ -28,22 +28,25 @@ Route::get('/cuenta-suspendida', fn() => view('suspendido'))->name('suspendido')
 // ── Tienda web — empresa resuelta desde el subdominio ──────────────────────
 Route::middleware([TiendaEmpresa::class])->group(function () {
     Route::get('/manifest.json', function () {
-        $empresa = app('tienda.empresa');
-        $logo    = $empresa->logo ? \Illuminate\Support\Facades\Storage::url($empresa->logo) : null;
-        $icons = $logo
-            ? [
-                ['src' => $logo,                             'sizes' => 'any', 'type' => 'image/png', 'purpose' => 'any'],
-                ['src' => '/tienda/icons/icon-192.png',     'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
-                ['src' => '/tienda/icons/icon-512.png',     'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
-              ]
-            : [
-                ['src' => '/tienda/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
-                ['src' => '/tienda/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
-              ];
+        $empresa   = app('tienda.empresa');
+        $appName   = (string) ($empresa->name ?? config('app.name'));
+        $logo      = $empresa->logo ? \Illuminate\Support\Facades\Storage::url($empresa->logo) : null;
+
+        $icons = [
+            ['src' => '/tienda/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
+            ['src' => '/tienda/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'maskable'],
+            ['src' => '/tienda/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
+            ['src' => '/tienda/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+        ];
+        if ($logo) {
+            array_unshift($icons, ['src' => $logo, 'sizes' => 'any', 'type' => 'image/png', 'purpose' => 'any']);
+        }
+
         return response()->json([
-            'name'             => $empresa->nombre,
-            'short_name'       => $empresa->nombre,
-            'description'      => 'Tienda en línea de ' . $empresa->nombre,
+            'name'             => $appName,
+            'short_name'       => $appName,
+            'description'      => 'Tienda en línea de ' . $appName,
+            'id'               => '/',
             'start_url'        => '/',
             'display'          => 'standalone',
             'background_color' => '#f8f9fa',
