@@ -10,33 +10,29 @@
     x-data="{
         visible: false,
         ios: false,
-        _deferredPrompt: null,
+        _prompt: null,
         init() {
             const standalone = window.matchMedia('(display-mode: standalone)').matches
-                            || window.navigator.standalone;
+                             || window.navigator.standalone;
             if (standalone) return;
             if (localStorage.getItem('pwa_dismissed')) return;
 
             this.ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
 
             if (!this.ios) {
-                window.addEventListener('beforeinstallprompt', (e) => {
+                window.addEventListener('beforeinstallprompt', e => {
                     e.preventDefault();
-                    this._deferredPrompt = e;
-                    setTimeout(() => this.visible = true, 3500);
+                    this._prompt = e;
+                    setTimeout(() => this.visible = true, 3000);
                 }, { once: true });
             } else {
-                setTimeout(() => this.visible = true, 3500);
+                setTimeout(() => this.visible = true, 3000);
             }
         },
         instalar() {
-            if (this._deferredPrompt) {
-                this._deferredPrompt.prompt();
-                this._deferredPrompt.userChoice.then(() => {
-                    this._deferredPrompt = null;
-                    this.cerrar();
-                });
-            }
+            if (!this._prompt) return;
+            this._prompt.prompt();
+            this._prompt.userChoice.then(() => { this._prompt = null; this.cerrar(); });
         },
         cerrar() {
             this.visible = false;
@@ -44,187 +40,139 @@
         }
     }"
     x-show="visible"
-    x-transition:enter="pwa-enter"
-    x-transition:enter-start="pwa-enter-start"
-    x-transition:enter-end="pwa-enter-end"
-    x-transition:leave="pwa-leave"
-    x-transition:leave-start="pwa-leave-start"
-    x-transition:leave-end="pwa-leave-end"
+    x-transition:enter="pwa-t"
+    x-transition:enter-start="pwa-t--hidden"
+    x-transition:enter-end="pwa-t--shown"
+    x-transition:leave="pwa-t"
+    x-transition:leave-start="pwa-t--shown"
+    x-transition:leave-end="pwa-t--hidden"
     x-cloak
-    class="pwa-prompt"
-    @keydown.escape.window="cerrar()"
+    class="pwa-chip"
 >
-    {{-- Overlay difuso --}}
-    <div class="pwa-overlay" @click="cerrar()"></div>
+    <img src="{{ $iconoUrl }}" alt="{{ $appName }}" class="pwa-chip__icon">
 
-    {{-- Bottom sheet --}}
-    <div class="pwa-sheet" role="dialog" aria-modal="true">
-
-        {{-- X --}}
-        <button class="pwa-close" @click="cerrar()" aria-label="Cerrar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                 stroke-linecap="round" width="18" height="18">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-        </button>
-
-        {{-- Contenido --}}
-        <div class="pwa-body">
-            <img src="{{ $iconoUrl }}" alt="{{ $appName }}" class="pwa-icon">
-            <div class="pwa-text">
-                <span class="pwa-tag">Disponible como app</span>
-                <strong class="pwa-name">{{ $appName }}</strong>
-                <p x-show="!ios" class="pwa-desc">Instálala y accede rápido desde tu pantalla de inicio.</p>
-                <p x-show="ios" class="pwa-desc">
-                    Toca
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                         stroke-linecap="round" stroke-linejoin="round" width="14" height="14"
-                         style="display:inline;vertical-align:middle">
-                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                        <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
-                    </svg>
-                    y luego <strong>"Agregar a inicio"</strong>.
-                </p>
-            </div>
-        </div>
-
-        <button x-show="!ios" class="pwa-btn" @click="instalar()">
+    <div class="pwa-chip__text">
+        <strong class="pwa-chip__name">{{ $appName }}</strong>
+        <span class="pwa-chip__sub" x-show="!ios">Instala la app gratis</span>
+        <span class="pwa-chip__sub" x-show="ios">
+            Compartir
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 stroke-linecap="round" width="16" height="16">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                 stroke-linecap="round" stroke-linejoin="round" width="12" height="12"
+                 style="display:inline;vertical-align:-1px">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
             </svg>
-            Instalar app
-        </button>
-
+            → Agregar a inicio
+        </span>
     </div>
+
+    <button x-show="!ios" class="pwa-chip__btn" @click="instalar()">Instalar</button>
+
+    <button class="pwa-chip__close" @click="cerrar()" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" width="14" height="14">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+    </button>
 </div>
 
 <style>
-/* Solo en móvil */
-@media (min-width: 769px) { .pwa-prompt { display: none !important; } }
+@media (min-width: 769px) { .pwa-chip { display: none !important; } }
 
-.pwa-prompt {
+.pwa-chip {
     position: fixed;
-    inset: 0;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    left: 1rem;
+    right: 1rem;
     z-index: 9999;
     display: flex;
-    align-items: flex-end;
-}
-
-.pwa-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,.35);
-    backdrop-filter: blur(2px);
-}
-
-.pwa-sheet {
-    position: relative;
-    width: 100%;
+    align-items: center;
+    gap: .75rem;
     background: #fff;
-    border-radius: 20px 20px 0 0;
-    padding: 1.25rem 1.25rem 2rem;
-    box-shadow: 0 -4px 32px rgba(0,0,0,.15);
+    border-radius: 16px;
+    padding: .75rem .75rem .75rem 1rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08);
+    border: 1px solid rgba(0,0,0,.06);
 }
 
 @media (prefers-color-scheme: dark) {
-    .pwa-sheet { background: #1e293b; }
-    .pwa-name  { color: #f1f5f9; }
-    .pwa-desc  { color: #94a3b8; }
-    .pwa-tag   { background: #0f172a; color: #94a3b8; }
+    .pwa-chip {
+        background: #1e293b;
+        border-color: rgba(255,255,255,.08);
+        box-shadow: 0 8px 32px rgba(0,0,0,.45);
+    }
+    .pwa-chip__name { color: #f1f5f9; }
+    .pwa-chip__sub  { color: #94a3b8; }
+    .pwa-chip__close { color: #64748b; }
+    .pwa-chip__close:hover { background: #0f172a; }
 }
 
-/* Handle bar */
-.pwa-sheet::before {
-    content: '';
-    display: block;
-    width: 40px; height: 4px;
-    background: #e2e8f0;
-    border-radius: 2px;
-    margin: 0 auto 1.25rem;
-}
-
-.pwa-close {
-    position: absolute;
-    top: 1rem; right: 1rem;
-    background: #f1f5f9;
-    border: none;
-    border-radius: 50%;
-    width: 32px; height: 32px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    color: #64748b;
-}
-
-.pwa-body {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-}
-
-.pwa-icon {
-    width: 60px; height: 60px;
-    border-radius: 14px;
+.pwa-chip__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
     object-fit: cover;
     flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    box-shadow: 0 2px 6px rgba(0,0,0,.15);
 }
 
-.pwa-text { min-width: 0; }
-
-.pwa-tag {
-    display: inline-block;
-    font-size: .65rem;
-    font-weight: 600;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-    color: #64748b;
-    background: #f1f5f9;
-    padding: .15rem .45rem;
-    border-radius: 4px;
-    margin-bottom: .25rem;
+.pwa-chip__text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
 }
 
-.pwa-name {
-    display: block;
-    font-size: 1rem;
+.pwa-chip__name {
+    font-size: .875rem;
     font-weight: 700;
     color: #1e293b;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.2;
 }
 
-.pwa-desc {
-    font-size: .8125rem;
+.pwa-chip__sub {
+    font-size: .75rem;
     color: #64748b;
-    margin: .2rem 0 0;
-    line-height: 1.4;
+    line-height: 1.3;
 }
 
-.pwa-btn {
-    width: 100%;
+.pwa-chip__btn {
+    flex-shrink: 0;
+    background: #1e293b;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: .45rem .9rem;
+    font-size: .8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+    .pwa-chip__btn { background: #f1f5f9; color: #0f172a; }
+}
+
+.pwa-chip__close {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: .35rem;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: .5rem;
-    background: #1e293b;
-    color: #f8fafc;
-    border: none;
-    border-radius: 12px;
-    padding: .85rem;
-    font-size: .9375rem;
-    font-weight: 600;
-    cursor: pointer;
 }
+.pwa-chip__close:hover { background: #f1f5f9; }
 
-/* Transiciones Alpine */
-.pwa-enter         { transition: opacity .25s, transform .3s cubic-bezier(.32,1.01,.49,1); }
-.pwa-enter-start   { opacity: 0; transform: translateY(100%); }
-.pwa-enter-end     { opacity: 1; transform: translateY(0); }
-.pwa-leave         { transition: opacity .2s, transform .2s ease-in; }
-.pwa-leave-start   { opacity: 1; transform: translateY(0); }
-.pwa-leave-end     { opacity: 0; transform: translateY(100%); }
+/* Transiciones */
+.pwa-t { transition: opacity .25s, transform .3s cubic-bezier(.34,1.56,.64,1); }
+.pwa-t--hidden { opacity: 0; transform: translateY(20px) scale(.96); }
+.pwa-t--shown  { opacity: 1; transform: translateY(0) scale(1); }
 </style>
