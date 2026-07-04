@@ -2,11 +2,6 @@
 <link rel="stylesheet" href="{{ asset('tienda/css/tarjeta.css') }}?v=3">
 <link rel="stylesheet" href="{{ asset('tienda/css/carrusel.css') }}">
 <link rel="stylesheet" href="{{ asset('tienda/css/producto-detalle.css') }}?v=3">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
-@endpush
-
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 @endpush
 
 <div class="pd-page"
@@ -102,6 +97,37 @@
 
             {{-- Nombre --}}
             <h1 class="pd-nombre">{{ $producto->nombre }}</h1>
+
+            {{-- Especificaciones: talla y color (solo producto simple, no editable) --}}
+            @if (!$tieneVariantes)
+                @php
+                    $atribsEspeciales = $producto->atributos->filter(function ($pa) {
+                        $n = strtolower(trim($pa->atributo?->nombre ?? ''));
+                        return in_array($n, ['talla', 'color']);
+                    });
+                @endphp
+                @if ($atribsEspeciales->isNotEmpty())
+                    <div class="pd-atribs">
+                        @foreach ($atribsEspeciales as $pa)
+                            @php $esColor = strtolower(trim($pa->atributo?->nombre ?? '')) === 'color'; @endphp
+                            <div class="pd-atribs__grupo">
+                                <span class="pd-atribs__label">{{ ucfirst(strtolower(trim($pa->atributo?->nombre ?? ''))) }}</span>
+                                <div class="pd-atribs__valores">
+                                    @foreach ($pa->valores as $val)
+                                        @if ($esColor)
+                                            <span class="pd-atribs__color"
+                                                  style="background-color:{{ $val->valor }}"
+                                                  title="{{ $val->nombre ?? $val->valor }}"></span>
+                                        @else
+                                            <span class="pd-atribs__txt">{{ $val->nombre ?? $val->valor }}</span>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            @endif
 
             {{-- Stock --}}
             @if ($producto->control_de_stock && !$producto->venta_sin_stock)
@@ -292,20 +318,18 @@
     @if ($producto->atributos->isNotEmpty())
         <div class="pd-specs">
             <h2 class="pd-specs__titulo">Especificaciones</h2>
-            <table class="pd-specs__tabla">
-                <tbody>
-                    @foreach ($producto->atributos as $pa)
-                        @if ($pa->atributo && $pa->valores->isNotEmpty())
-                            <tr class="pd-specs__fila">
-                                <td class="pd-specs__key">{{ $pa->atributo->nombre }}</td>
-                                <td class="pd-specs__val">
-                                    {{ $pa->valores->map(fn($v) => $v->nombre ?? $v->valor ?? '')->filter()->join(' · ') }}
-                                </td>
-                            </tr>
-                        @endif
-                    @endforeach
-                </tbody>
-            </table>
+            <div class="pd-specs__card">
+                @foreach ($producto->atributos as $pa)
+                    @if ($pa->atributo && $pa->valores->isNotEmpty())
+                        <div class="pd-specs__fila">
+                            <span class="pd-specs__key">{{ $pa->atributo->nombre }}</span>
+                            <span class="pd-specs__val">
+                                {{ $pa->valores->map(fn($v) => $v->nombre ?? $v->valor ?? '')->filter()->join(' · ') }}
+                            </span>
+                        </div>
+                    @endif
+                @endforeach
+            </div>
         </div>
     @endif
 

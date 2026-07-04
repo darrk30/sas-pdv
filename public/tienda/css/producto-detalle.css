@@ -298,7 +298,60 @@
     gap: 0.4rem;
 }
 
-/* reutiliza estilos del modal de variante */
+/* ── Atributos descriptivos (talla/color en producto simple) ── */
+.pd-atribs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+.pd-atribs__grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.pd-atribs__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #6b7280;
+}
+
+.pd-atribs__valores {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.pd-atribs__txt {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    padding: 0 0.65rem;
+    border: 1.5px solid #d1d5db;
+    border-radius: 7px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+    background: #fff;
+    cursor: default;
+    user-select: none;
+}
+
+.pd-atribs__color {
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 2px solid #e5e7eb;
+    cursor: default;
+    user-select: none;
+}
 
 /* Alertas inline */
 .pd-aviso {
@@ -417,42 +470,48 @@
 }
 
 .pd-specs__titulo {
-    font-size: 1rem;
+    font-size: 0.8125rem;
     font-weight: 700;
-    color: #111827;
-    margin: 0 0 1rem;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #9ca3af;
+    margin: 0 0 0.875rem;
 }
 
-.pd-specs__tabla {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-    border-radius: 10px;
-    overflow: hidden;
+.pd-specs__card {
+    background: #fff;
+    border-radius: 16px;
     border: 1px solid #f0f0f0;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    overflow: hidden;
 }
 
-.pd-specs__fila:nth-child(odd) { background: #f9fafb; }
-.pd-specs__fila:nth-child(even) { background: #fff; }
+.pd-specs__fila {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem 1.125rem;
+    border-bottom: 1px solid #f3f4f6;
+}
 
-.pd-specs__key,
-.pd-specs__val {
-    padding: 0.65rem 0.875rem;
-    border-bottom: 1px solid #f0f0f0;
-    vertical-align: top;
+.pd-specs__fila:last-child {
+    border-bottom: none;
 }
 
 .pd-specs__key {
-    font-weight: 600;
-    color: #374151;
-    width: 35%;
-    white-space: nowrap;
-    border-right: 1px solid #f0f0f0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #9ca3af;
+    width: 42%;
+    flex-shrink: 0;
 }
 
 .pd-specs__val {
-    color: #6b7280;
-    line-height: 1.6;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #111827;
+    text-align: left;
+    line-height: 1.5;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -485,9 +544,9 @@
     .pd-btn-carrito { padding: 0.75rem 1rem; font-size: 0.9375rem; }
     .pd-btn-deseo   { padding: 0.65rem 1rem; font-size: 0.875rem; }
 
-    .pd-specs__key,
-    .pd-specs__val { padding: 0.5rem 0.65rem; }
-    .pd-specs__key { width: 40%; }
+    .pd-specs__fila { padding: 0.75rem 1rem; }
+    .pd-specs__key  { font-size: 0.75rem; }
+    .pd-specs__val  { font-size: 0.8125rem; }
 }
 
 /* ── Promo detalle ────────────────────────────────────────────── */

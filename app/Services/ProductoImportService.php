@@ -111,7 +111,7 @@ class ProductoImportService
                         'producto_id'       => $producto->id,
                         'variante_id'       => null,
                         'stock_real'        => $stockInicial,
-                        'stock_reserva'     => 0,
+                        'stock_reserva'     => $stockInicial,
                         'stock_minimo'      => $stockMinimo,
                         'estado_almacen'    => 'activo',
                         'estado_inventario' => $stockInicial > 0 ? 'disponible' : 'agotado',

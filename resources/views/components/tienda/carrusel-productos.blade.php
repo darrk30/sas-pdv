@@ -24,17 +24,17 @@
          x-init="
              (function(el){
                  new Swiper(el, {
-                     slidesPerView: 2,
+                     slidesPerView: 2.3,
                      spaceBetween: 10,
                      navigation: {
                          nextEl: el.closest('.caru').querySelector('.caru__nav-btn--next'),
                          prevEl: el.closest('.caru').querySelector('.caru__nav-btn--prev'),
                      },
                      breakpoints: {
-                         480:  { slidesPerView: 2, spaceBetween: 12 },
-                         640:  { slidesPerView: 3, spaceBetween: 14 },
-                         900:  { slidesPerView: 4, spaceBetween: 16 },
-                         1200: { slidesPerView: 5, spaceBetween: 16 },
+                         480:  { slidesPerView: 3,   spaceBetween: 12 },
+                         640:  { slidesPerView: 4,   spaceBetween: 14 },
+                         900:  { slidesPerView: 5,   spaceBetween: 16 },
+                         1200: { slidesPerView: 6,   spaceBetween: 16 },
                      }
                  });
              })($el)
