@@ -63,12 +63,19 @@ class UserSeeder extends Seeder
         $belen->empresas()->syncWithoutDetaching([$empresa->id]);
 
         app(PermissionRegistrar::class)->setPermissionsTeamId($empresa->id);
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
-        $belen->unsetRelation('roles');
 
         $rolAdmin = Role::where('name', 'Administrador')->first();
-        if ($rolAdmin && ! $belen->hasRole($rolAdmin)) {
-            $belen->assignRole($rolAdmin);
+        if ($rolAdmin) {
+            $yaAsignado = \DB::table('model_has_roles')
+                ->where('empresa_id', $empresa->id)
+                ->where('role_id',    $rolAdmin->id)
+                ->where('model_id',   $belen->id)
+                ->where('model_type', get_class($belen))
+                ->exists();
+
+            if (! $yaAsignado) {
+                $belen->assignRole($rolAdmin);
+            }
         }
 
         // ── 4. Kevin también vinculado a Kittybell ────────────────────────────
