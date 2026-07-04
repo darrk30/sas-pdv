@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sin conexión</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #f8f9fa;
+    --card:     #ffffff;
+    --text:     #1e293b;
+    --muted:    #64748b;
+    --accent:   #1e293b;
+    --border:   #e2e8f0;
+    --btn-bg:   #1e293b;
+    --btn-txt:  #f8fafc;
+    --wave:     #e2e8f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:     #0f172a;
+      --card:   #1e293b;
+      --text:   #f1f5f9;
+      --muted:  #94a3b8;
+      --border: #334155;
+      --btn-bg: #f1f5f9;
+      --btn-txt:#0f172a;
+      --wave:   #1e293b;
+    }
+  }
+
+  html, body {
+    height: 100%;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Olas decorativas */
+  .waves {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 180px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .waves svg { width: 100%; height: 100%; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 2.5rem 2rem;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,.07);
+    position: relative;
+    z-index: 1;
+  }
+
+  .icon-wrap {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+  }
+
+  .icon-wrap svg {
+    opacity: .7;
+  }
+
+  h1 {
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin-bottom: .5rem;
+  }
+
+  p {
+    font-size: .9375rem;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 1.75rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    background: var(--btn-bg);
+    color: var(--btn-txt);
+    border: none;
+    border-radius: 12px;
+    padding: .75rem 1.5rem;
+    font-size: .9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+    text-decoration: none;
+  }
+  .btn:hover { opacity: .85; }
+
+  .dot-row {
+    display: flex;
+    justify-content: center;
+    gap: .4rem;
+    margin-top: 1.5rem;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .dot:nth-child(2) { animation-delay: .2s; }
+  .dot:nth-child(3) { animation-delay: .4s; }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: .4; }
+    50%       { transform: scale(1.4); opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="icon-wrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+         stroke-linecap="round" stroke-linejoin="round" width="36" height="36">
+      <line x1="1" y1="1" x2="23" y2="23"/>
+      <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+      <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+      <path d="M10.71 5.05A16 16 0 0 1 22.56 9"/>
+      <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+      <line x1="12" y1="20" x2="12.01" y2="20"/>
+    </svg>
+  </div>
+
+  <h1>Sin conexión</h1>
+  <p>Verifica tu conexión a internet<br>e intenta de nuevo.</p>
+
+  <button class="btn" onclick="location.reload()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+      <polyline points="23 4 23 10 17 10"/>
+      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+    </svg>
+    Reintentar
+  </button>
+
+  <div class="dot-row">
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </div>
+</div>
+
+<div class="waves">
+  <svg viewBox="0 0 1440 180" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path fill="var(--wave)" fill-opacity="0.5"
+      d="M0,96L48,106.7C96,117,192,139,288,133.3C384,128,480,96,576,90.7C672,85,768,107,864,117.3C960,128,1056,128,1152,117.3C1248,107,1344,85,1392,74.7L1440,64L1440,320L0,320Z"/>
+    <path fill="var(--wave)"
+      d="M0,128L48,138.7C96,149,192,171,288,165.3C384,160,480,128,576,122.7C672,117,768,139,864,149.3C960,160,1056,160,1152,149.3C1248,139,1344,117,1392,106.7L1440,96L1440,320L0,320Z"/>
+  </svg>
+</div>
+
+</body>
+</html>

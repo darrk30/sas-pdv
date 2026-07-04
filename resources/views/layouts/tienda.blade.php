@@ -9,6 +9,15 @@
     <meta name="empresa-id" content="{{ app('tienda.empresa')->id }}">
     <title>{{ $title ?? config('app.name') }}</title>
 
+    {{-- PWA --}}
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ app('tienda.empresa')->nombre }}">
+    <link rel="apple-touch-icon" href="/tienda/icons/icon.svg">
+
     {{-- ── CSS crítico inline: evita flash de contenido sin estilos ────────── --}}
     <style>
         *,*::before,*::after{box-sizing:border-box}
@@ -67,6 +76,13 @@
 
     {{-- ── JS específico de cada página ───────────────────────────────────── --}}
     @stack('scripts')
+
+    {{-- PWA: registro del service worker --}}
+    <script data-navigate-once>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+    </script>
 
 </body>
 

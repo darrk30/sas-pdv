@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\MetodoPago;
+use App\Models\Promocion;
+use Illuminate\Support\Facades\DB;
 
 class Orden extends Model
 {
@@ -123,6 +125,65 @@ class Orden extends Model
     public function estaCancelada(): bool
     {
         return $this->estado === EstadoOrden::Cancelada;
+    }
+
+    /**
+     * Restaura stock_reserva de cada ítem al cancelar una orden pendiente.
+     * Solo actúa sobre productos con control_de_stock habilitado.
+     */
+    public function restaurarStockReserva(): void
+    {
+        $this->loadMissing(['detalles.producto', 'detalles.variante.producto']);
+
+        foreach ($this->detalles as $detalle) {
+            $cantidad = (float) $detalle->cantidad;
+
+            // ── Promoción ─────────────────────────────────────────────────
+            if ($detalle->promocion_id) {
+                $promo = Promocion::with([
+                    'detalles.producto',
+                    'detalles.variante.producto',
+                ])->find($detalle->promocion_id);
+
+                if (! $promo) continue;
+
+                foreach ($promo->detalles as $pd) {
+                    $cantDet = $cantidad * (float) $pd->cantidad;
+
+                    if ($pd->variante_id && $pd->variante?->producto?->control_de_stock) {
+                        DB::table('inventarios')
+                            ->where('empresa_id', $this->empresa_id)
+                            ->where('variante_id', $pd->variante_id)
+                            ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantDet})")]);
+                    } elseif ($pd->producto_id && $pd->producto?->control_de_stock) {
+                        DB::table('inventarios')
+                            ->where('empresa_id', $this->empresa_id)
+                            ->where('producto_id', $pd->producto_id)
+                            ->whereNull('variante_id')
+                            ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantDet})")]);
+                    }
+                }
+
+            // ── Variante ──────────────────────────────────────────────────
+            } elseif ($detalle->variante_id) {
+                if (! $detalle->variante?->producto?->control_de_stock) continue;
+
+                DB::table('inventarios')
+                    ->where('empresa_id', $this->empresa_id)
+                    ->where('variante_id', $detalle->variante_id)
+                    ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantidad})")]);
+
+            // ── Producto simple ───────────────────────────────────────────
+            } elseif ($detalle->producto_id) {
+                if (! $detalle->producto?->control_de_stock) continue;
+
+                DB::table('inventarios')
+                    ->where('empresa_id', $this->empresa_id)
+                    ->where('producto_id', $detalle->producto_id)
+                    ->whereNull('variante_id')
+                    ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantidad})")]);
+            }
+        }
     }
 
     /** Recalcula igv, subtotal y total a partir de los detalles + costo de envío. */

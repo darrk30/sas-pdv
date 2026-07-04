@@ -212,6 +212,7 @@ class EditOrden extends EditRecord
                 ->modalSubmitActionLabel('Sí, cancelar')
                 ->visible(fn() => $this->record->estado === EstadoOrden::PendientePago)
                 ->action(function (): void {
+                    $this->record->restaurarStockReserva();
                     $this->record->update(['estado' => EstadoOrden::Cancelada]);
 
                     Notification::make()

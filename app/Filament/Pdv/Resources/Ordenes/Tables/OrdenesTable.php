@@ -114,6 +114,7 @@ class OrdenesTable
                     ->authorize(fn() => auth()->user()?->can('ordenes.cancelar'))
                     ->visible(fn(Orden $record): bool => $record->estado === EstadoOrden::PendientePago)
                     ->action(function (Orden $record): void {
+                        $record->restaurarStockReserva();
                         $record->update(['estado' => EstadoOrden::Cancelada]);
 
                         Notification::make()
