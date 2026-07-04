@@ -52,7 +52,22 @@ Route::middleware([TiendaEmpresa::class])->group(function () {
             'background_color' => '#f8f9fa',
             'theme_color'      => '#1e293b',
             'orientation'      => 'portrait-primary',
-            'icons'            => $icons,
+            'icons'       => $icons,
+            'screenshots' => [
+                [
+                    'src'         => '/tienda/icons/screenshot-mobile.png',
+                    'sizes'       => '390x844',
+                    'type'        => 'image/png',
+                    'label'       => 'Catálogo de productos',
+                ],
+                [
+                    'src'         => '/tienda/icons/screenshot-desktop.png',
+                    'sizes'       => '1280x720',
+                    'type'        => 'image/png',
+                    'form_factor' => 'wide',
+                    'label'       => 'Catálogo de productos',
+                ],
+            ],
         ])->header('Content-Type', 'application/manifest+json');
     })->name('tienda.manifest');
 
