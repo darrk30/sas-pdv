@@ -59,6 +59,7 @@
 
     <x-tienda.modal-variante />
     <x-tienda.toast />
+    <x-tienda.pwa-prompt />
 
     {{-- Sincroniza carrito/deseos entre Alpine (localStorage) y DB (Livewire) --}}
     <livewire:tienda.partials.carrito-store />
