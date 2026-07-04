@@ -63,6 +63,8 @@ class UserSeeder extends Seeder
         $belen->empresas()->syncWithoutDetaching([$empresa->id]);
 
         app(PermissionRegistrar::class)->setPermissionsTeamId($empresa->id);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $belen->unsetRelation('roles');
 
         $rolAdmin = Role::where('name', 'Administrador')->first();
         if ($rolAdmin && ! $belen->hasRole($rolAdmin)) {
