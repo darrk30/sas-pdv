@@ -78,8 +78,17 @@
     {{-- ── JS específico de cada página ───────────────────────────────────── --}}
     @stack('scripts')
 
-    {{-- PWA: registro del service worker --}}
+    {{-- PWA: captura temprana del prompt de instalación + registro SW --}}
     <script data-navigate-once>
+        window._pwaDeferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', e => {
+            e.preventDefault();
+            window._pwaDeferredPrompt = e;
+            window.dispatchEvent(new Event('pwa-ready'));
+        });
+        window.addEventListener('appinstalled', () => {
+            window._pwaDeferredPrompt = null;
+        });
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js');
         }

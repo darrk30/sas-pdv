@@ -10,7 +10,6 @@
     x-data="{
         visible: false,
         ios: false,
-        _prompt: null,
         init() {
             const standalone = window.matchMedia('(display-mode: standalone)').matches
                              || window.navigator.standalone;
@@ -19,20 +18,28 @@
 
             this.ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
 
-            if (!this.ios) {
-                window.addEventListener('beforeinstallprompt', e => {
-                    e.preventDefault();
-                    this._prompt = e;
+            if (this.ios) {
+                setTimeout(() => this.visible = true, 3000);
+                return;
+            }
+
+            // El evento pudo haber llegado antes de que Alpine iniciara
+            if (window._pwaDeferredPrompt) {
+                setTimeout(() => this.visible = true, 3000);
+            } else {
+                window.addEventListener('pwa-ready', () => {
                     setTimeout(() => this.visible = true, 3000);
                 }, { once: true });
-            } else {
-                setTimeout(() => this.visible = true, 3000);
             }
         },
         instalar() {
-            if (!this._prompt) return;
-            this._prompt.prompt();
-            this._prompt.userChoice.then(() => { this._prompt = null; this.cerrar(); });
+            const prompt = window._pwaDeferredPrompt;
+            if (!prompt) return;
+            prompt.prompt();
+            prompt.userChoice.then(() => {
+                window._pwaDeferredPrompt = null;
+                this.cerrar();
+            });
         },
         cerrar() {
             this.visible = false;
