@@ -260,6 +260,17 @@
                                     @if ($vd)
                                         <small class="chk__resumen-variante">{{ $vd }}</small>
                                     @endif
+                                @elseif (!$esItemGuest && !$esPromo && !$item->variante && $item->producto?->atributos)
+                                    @php
+                                        $vd = $item->producto->atributos
+                                            ->filter(fn($pa) => in_array(strtolower(trim($pa->atributo?->nombre ?? '')), ['talla', 'color']))
+                                            ->map(fn($pa) => ucfirst(strtolower($pa->atributo->nombre)) . ': ' .
+                                                $pa->valores->map(fn($v) => $v->nombre ?? $v->valor ?? '')->filter()->join(', '))
+                                            ->filter()->join(' · ');
+                                    @endphp
+                                    @if ($vd)
+                                        <small class="chk__resumen-variante">{{ $vd }}</small>
+                                    @endif
                                 @endif
                             </span>
                             <span class="chk__resumen-precio">

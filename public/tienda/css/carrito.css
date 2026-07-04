@@ -190,6 +190,16 @@
 /* Info */
 .cr-info { min-width: 0; }
 
+.cr-codigo {
+    display: block;
+    font-size: 0.67rem;
+    font-weight: 600;
+    color: #9ca3af;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    margin-bottom: 0.1rem;
+}
+
 .cr-nombre {
     font-size: 0.875rem;
     font-weight: 600;

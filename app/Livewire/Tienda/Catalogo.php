@@ -62,7 +62,10 @@ class Catalogo extends Component
     {
         $productos = Producto::where('empresa_id', $this->empresaId)
             ->where('estado', 'activo')
-            ->when($this->buscar,      fn($q) => $q->where('nombre', 'like', '%' . $this->buscar . '%'))
+            ->when($this->buscar, fn($q) => $q->where(fn($q) =>
+                $q->where('nombre', 'like', '%' . $this->buscar . '%')
+                  ->orWhere('codigo_interno', 'like', '%' . $this->buscar . '%')
+            ))
             ->when($this->marcaId,     fn($q) => $q->where('marca_id', $this->marcaId))
             ->when($this->categoriaId, fn($q) => $q->where('categoria_id', $this->categoriaId))
             ->with([

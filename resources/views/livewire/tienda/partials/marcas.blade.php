@@ -1,5 +1,5 @@
 <div>
-@if ($marcas->isNotEmpty())
+@if ($marcas->isNotEmpty() && request()->routeIs('tienda.catalogo'))
 <section class="marcas">
     <div class="marcas__inner">
         <div

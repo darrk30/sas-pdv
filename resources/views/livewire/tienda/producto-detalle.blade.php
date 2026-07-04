@@ -95,8 +95,13 @@
         {{-- ── Info del producto ────────────────────────────────── --}}
         <div class="pd-info">
 
-            {{-- Nombre --}}
-            <h1 class="pd-nombre">{{ $producto->nombre }}</h1>
+            {{-- Código + Nombre --}}
+            <div class="pd-nombre-wrap">
+                @if ($producto->codigo_interno)
+                    <span class="pd-codigo">{{ $producto->codigo_interno }}</span>
+                @endif
+                <h1 class="pd-nombre">{{ $producto->nombre }}</h1>
+            </div>
 
             {{-- Especificaciones: talla y color (solo producto simple, no editable) --}}
             @if (!$tieneVariantes)

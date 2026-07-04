@@ -102,13 +102,21 @@
                                 }
                             }
 
-                            $varianteDesc = $item->variante
-                                ? $item->variante->valores->map(function ($pav) {
-                                    $attr = $pav->productoAtributo?->atributo?->nombre ?? '';
-                                    $val  = $pav->valor?->nombre ?? '';
-                                    return $attr && $val ? "{$attr}: {$val}" : ($val ?: $attr);
-                                  })->filter()->join(', ')
-                                : null;
+                            if ($item->variante) {
+                                    $varianteDesc = $item->variante->valores->map(function ($pav) {
+                                        $attr = $pav->productoAtributo?->atributo?->nombre ?? '';
+                                        $val  = $pav->valor?->nombre ?? '';
+                                        return $attr && $val ? "{$attr}: {$val}" : ($val ?: $attr);
+                                    })->filter()->join(', ') ?: null;
+                                } elseif (!$esPromo && $item->producto?->atributos) {
+                                    $varianteDesc = $item->producto->atributos
+                                        ->filter(fn($pa) => in_array(strtolower(trim($pa->atributo?->nombre ?? '')), ['talla', 'color']))
+                                        ->map(fn($pa) => ucfirst(strtolower($pa->atributo->nombre)) . ': ' .
+                                            $pa->valores->map(fn($v) => $v->nombre ?? $v->valor ?? '')->filter()->join(', '))
+                                        ->filter()->join(' · ') ?: null;
+                                } else {
+                                    $varianteDesc = null;
+                                }
 
                             $totalLinea = $item->precio_unitario * $item->cantidad;
                         @endphp
@@ -133,6 +141,10 @@
                             </div>
 
                             <div class="cr-info">
+                                @php $codigoItem = $item->variante?->codigo ?: $item->producto?->codigo_interno; @endphp
+                                @if ($codigoItem)
+                                    <span class="cr-codigo">{{ $codigoItem }}</span>
+                                @endif
                                 <span class="cr-nombre" title="{{ $nombre }}">{{ $nombre }}</span>
                                 @if ($varianteDesc)
                                     <span class="cr-variante">{{ $varianteDesc }}</span>
@@ -297,6 +309,9 @@
                             </div>
 
                             <div class="cr-info">
+                                @if (!empty($item->codigo_interno))
+                                    <span class="cr-codigo">{{ $item->codigo_interno }}</span>
+                                @endif
                                 <span class="cr-nombre">{{ $item->nombre }}</span>
                                 @if (!empty($item->variante_nombre))
                                     <span class="cr-variante">{{ $item->variante_nombre }}</span>

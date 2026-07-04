@@ -290,11 +290,13 @@ class Carrito extends Component
                 ->with([
                     'producto.galeriaProductos',
                     'producto.inventario',
+                    'producto.atributos.atributo',
+                    'producto.atributos.valores',
                     'variante.inventario',
                     'variante.valores' => fn($q) => $q->with(['valor', 'productoAtributo.atributo']),
                     'promocion.detalles.producto.inventario',
                     'promocion.detalles.variante.inventario',
-                    'promocion.detalles.variante.producto',
+                    'promocion.detalles.variante.produto',
                 ])
                 ->get();
 
@@ -308,6 +310,7 @@ class Carrito extends Component
                 'id'              => $k,
                 'nombre'          => $raw['nombre'] ?? 'Producto',
                 'variante_nombre' => $raw['variante_nombre'] ?? null,
+                'codigo_interno'  => $raw['codigo_interno'] ?? null,
                 'imagen'          => $raw['imagen'] ?? null,
                 'cantidad'        => (int) ($raw['cantidad'] ?? 1),
                 'precio_unitario' => (float) ($raw['precio_unitario'] ?? 0),
@@ -348,12 +351,14 @@ class Carrito extends Component
             $q->where('empresa_id', $this->empresaId)->where('user_id', $userId))
             ->with([
                 'producto.inventario',
+                'producto.atributos.atributo',
+                'producto.atributos.valores',
                 'variante.inventario',
                 'variante.valores.valor',
                 'variante.valores.productoAtributo.atributo',
                 'promocion.detalles.producto.inventario',
                 'promocion.detalles.variante.inventario',
-                'promocion.detalles.variante.producto',
+                'promocion.detalles.variante.produto',
             ])
             ->get()
             ->filter(fn($i) => $this->esDisponibleItem($i));
@@ -538,7 +543,8 @@ class Carrito extends Component
         $this->dispatch('carrito-limpiar-local');
 
         $this->finalizarOrden($orden, $rawItems->map(fn($i) => [
-            'nombre'          => ($i['nombre'] ?? 'Producto')
+            'nombre'          => (!empty($i['codigo_interno']) ? $i['codigo_interno'] . ' - ' : '')
+                                 . ($i['nombre'] ?? 'Producto')
                                  . (!empty($i['variante_nombre']) ? " ({$i['variante_nombre']})" : ''),
             'cantidad'        => $i['cantidad'],
             'precio_unitario' => $i['precio_unitario'],
@@ -599,16 +605,24 @@ class Carrito extends Component
         if ($item->promocion_id) {
             return [TipoItem::Promocion, $item->promocion?->nombre ?? 'Promoción', null, null, $item->promocion_id];
         }
+        $codigoRaw = $item->variante?->codigo ?: $item->producto?->codigo_interno;
+        $codigo    = $codigoRaw ? $codigoRaw . ' - ' : '';
         if ($item->variante_id) {
             $varDesc = $item->variante?->valores->map(function ($pav) {
                 $attr = $pav->productoAtributo?->atributo?->nombre ?? '';
                 $val  = $pav->valor?->nombre ?? '';
                 return $attr && $val ? "{$attr}: {$val}" : ($val ?: $attr);
             })->filter()->join(', ');
-            $desc = ($item->producto?->nombre ?? 'Producto') . ($varDesc ? " ({$varDesc})" : '');
+            $desc = $codigo . ($item->producto?->nombre ?? 'Producto') . ($varDesc ? " ({$varDesc})" : '');
             return [TipoItem::Variante, $desc, $item->producto_id, $item->variante_id, null];
         }
-        return [TipoItem::Producto, $item->producto?->nombre ?? 'Producto', $item->producto_id, null, null];
+        $attrDesc = $item->producto?->atributos
+            ?->filter(fn($pa) => in_array(strtolower(trim($pa->atributo?->nombre ?? '')), ['talla', 'color']))
+            ->map(fn($pa) => ucfirst(strtolower($pa->atributo->nombre)) . ': ' .
+                $pa->valores->map(fn($v) => $v->nombre ?? $v->valor ?? '')->filter()->join(', '))
+            ->filter()->join(', ');
+        $desc = $codigo . ($item->producto?->nombre ?? 'Producto') . ($attrDesc ? " ({$attrDesc})" : '');
+        return [TipoItem::Producto, $desc, $item->producto_id, null, null];
     }
 
     private function cargarMetodosEnvio()

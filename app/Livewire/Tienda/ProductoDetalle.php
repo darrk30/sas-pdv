@@ -99,6 +99,7 @@ class ProductoDetalle extends Component
 
         $variantesData = $variantesActivas->map(fn($var) => [
             'id'          => $var->id,
+            'codigo'      => $var->codigo ?? null,
             'imagen'      => $var->imagen ? Storage::url($var->imagen) : null,
             'valores_ids' => $var->valores->pluck('valor_id')->sort()->values()->all(),
             'sin_stock'   => $producto->control_de_stock && ! $producto->venta_sin_stock
@@ -106,14 +107,15 @@ class ProductoDetalle extends Component
         ])->values()->all();
 
         $productoData = [
-            'id'           => $producto->id,
-            'nombre'       => $producto->nombre,
-            'imagen'       => $imagenes->first(),
-            'precioBase'   => $precioFinal,
-            'atributos'    => $atributosData,
-            'variantes'    => $variantesData,
-            'agotado'      => $productoAgotado,
-            'promocion_id' => null,
+            'id'             => $producto->id,
+            'nombre'         => $producto->nombre,
+            'codigo_interno' => $producto->codigo_interno,
+            'imagen'         => $imagenes->first(),
+            'precioBase'     => $precioFinal,
+            'atributos'      => $atributosData,
+            'variantes'      => $variantesData,
+            'agotado'        => $productoAgotado,
+            'promocion_id'   => null,
         ];
 
         return view('livewire.tienda.producto-detalle', [

@@ -82,12 +82,24 @@ const _pdPage = function(productoData, imagenesData, colorImagenMap) {
             const v = this.varianteCoincidente;
             const imgEl = this.$refs?.imgPrincipal;
             if (imgEl && imgEl.src) flyAlCarrito(imgEl);
-            const varNombre = Object.values(this.seleccion).map(val => val.label).filter(Boolean).join(' / ') || null;
+            let varNombre = Object.values(this.seleccion).map(val => val.label).filter(Boolean).join(' / ') || null;
+            if (!varNombre && this.producto.variantes.length === 0 && this.producto.atributos.length > 0) {
+                const especiales = this.producto.atributos.filter(a =>
+                    ['talla', 'color'].includes(a.nombre.toLowerCase().trim())
+                );
+                if (especiales.length > 0) {
+                    varNombre = especiales.map(a =>
+                        a.nombre.charAt(0).toUpperCase() + a.nombre.slice(1).toLowerCase()
+                        + ': ' + a.valores.map(v => v.label).join(', ')
+                    ).join(' · ') || null;
+                }
+            }
             Alpine.store('carrito').agregar({
                 promocion_id:    this.producto.promocion_id ?? null,
                 producto_id:     this.producto.id ?? null,
                 variante_id:     v?.id ?? null,
                 variante_nombre: varNombre,
+                codigo_interno:  (v?.codigo || this.producto.codigo_interno) ?? null,
                 nombre:          this.producto.nombre,
                 imagen:          this.imgActual ?? this.producto.imagen,
                 precio_unitario: parseFloat(this.precioActual),
