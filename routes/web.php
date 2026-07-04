@@ -30,9 +30,16 @@ Route::middleware([TiendaEmpresa::class])->group(function () {
     Route::get('/manifest.json', function () {
         $empresa = app('tienda.empresa');
         $logo    = $empresa->logo ? \Illuminate\Support\Facades\Storage::url($empresa->logo) : null;
-        $icons   = $logo
-            ? [['src' => $logo, 'sizes' => 'any', 'type' => 'image/png', 'purpose' => 'any maskable']]
-            : [['src' => '/tienda/icons/icon.svg', 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'any maskable']];
+        $icons = $logo
+            ? [
+                ['src' => $logo,                             'sizes' => 'any', 'type' => 'image/png', 'purpose' => 'any'],
+                ['src' => '/tienda/icons/icon-192.png',     'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+                ['src' => '/tienda/icons/icon-512.png',     'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
+              ]
+            : [
+                ['src' => '/tienda/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+                ['src' => '/tienda/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
+              ];
         return response()->json([
             'name'             => $empresa->nombre,
             'short_name'       => $empresa->nombre,

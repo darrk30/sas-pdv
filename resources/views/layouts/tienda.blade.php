@@ -16,7 +16,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="{{ app('tienda.empresa')->nombre }}">
-    <link rel="apple-touch-icon" href="/tienda/icons/icon.svg">
+    <link rel="apple-touch-icon" href="/tienda/icons/icon-192.png">
 
     {{-- ── CSS crítico inline: evita flash de contenido sin estilos ────────── --}}
     <style>
