@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Empresa;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
@@ -66,7 +67,7 @@ class UserSeeder extends Seeder
 
         $rolAdmin = Role::where('name', 'Administrador')->first();
         if ($rolAdmin) {
-            $yaAsignado = \DB::table('model_has_roles')
+            $yaAsignado = DB::table('model_has_roles')
                 ->where('empresa_id', $empresa->id)
                 ->where('role_id',    $rolAdmin->id)
                 ->where('model_id',   $belen->id)
