@@ -27,50 +27,6 @@ Route::get('/cuenta-suspendida', fn() => view('suspendido'))->name('suspendido')
 
 // ── Tienda web — empresa resuelta desde el subdominio ──────────────────────
 Route::middleware([TiendaEmpresa::class])->group(function () {
-    Route::get('/manifest.json', function () {
-        $empresa   = app('tienda.empresa');
-        $appName   = (string) ($empresa->name ?? config('app.name'));
-        $logo      = $empresa->logo ? \Illuminate\Support\Facades\Storage::url($empresa->logo) : null;
-
-        $icons = [
-            ['src' => '/tienda/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
-            ['src' => '/tienda/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'maskable'],
-            ['src' => '/tienda/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
-            ['src' => '/tienda/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
-        ];
-        if ($logo) {
-            array_unshift($icons, ['src' => $logo, 'sizes' => 'any', 'type' => 'image/png', 'purpose' => 'any']);
-        }
-
-        return response()->json([
-            'name'             => $appName,
-            'short_name'       => $appName,
-            'description'      => 'Tienda en línea de ' . $appName,
-            'id'               => '/',
-            'start_url'        => '/',
-            'display'          => 'standalone',
-            'background_color' => '#f8f9fa',
-            'theme_color'      => '#1e293b',
-            'orientation'      => 'portrait-primary',
-            'icons'       => $icons,
-            'screenshots' => [
-                [
-                    'src'         => '/tienda/icons/screenshot-mobile.png',
-                    'sizes'       => '390x844',
-                    'type'        => 'image/png',
-                    'label'       => 'Catálogo de productos',
-                ],
-                [
-                    'src'         => '/tienda/icons/screenshot-desktop.png',
-                    'sizes'       => '1280x720',
-                    'type'        => 'image/png',
-                    'form_factor' => 'wide',
-                    'label'       => 'Catálogo de productos',
-                ],
-            ],
-        ])->header('Content-Type', 'application/manifest+json');
-    })->name('tienda.manifest');
-
     Route::livewire('/',         'tienda.catalogo')->name('tienda.catalogo');
     Route::livewire('/login',    'tienda.auth.login')->name('tienda.login');
     Route::livewire('/registro', 'tienda.auth.registro')->name('tienda.registro');

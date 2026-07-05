@@ -7,9 +7,6 @@
     border-bottom: 1px solid var(--color-borde);
     box-shadow: var(--sombra-xs);
     height: var(--navbar-h);
-    /* PWA standalone: extiende navbar hasta la barra de estado */
-    padding-top: env(safe-area-inset-top);
-    height: calc(var(--navbar-h) + env(safe-area-inset-top));
 }
 
 .navbar__contenido {

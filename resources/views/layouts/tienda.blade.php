@@ -3,20 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="cliente-logueado" content="{{ Auth::guard('cliente')->check() ? '1' : '0' }}">
     <meta name="empresa-id" content="{{ app('tienda.empresa')->id }}">
     <title>{{ $title ?? config('app.name') }}</title>
-
-    {{-- PWA --}}
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#1e293b">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="{{ app('tienda.empresa')->name ?? config('app.name') }}">
-    <link rel="apple-touch-icon" href="/tienda/icons/icon-192.png">
 
     {{-- ── CSS crítico inline: evita flash de contenido sin estilos ────────── --}}
     <style>
@@ -59,8 +50,6 @@
 
     <x-tienda.modal-variante />
     <x-tienda.toast />
-    <x-tienda.pwa-prompt />
-
     {{-- Sincroniza carrito/deseos entre Alpine (localStorage) y DB (Livewire) --}}
     <livewire:tienda.partials.carrito-store />
 
@@ -78,21 +67,6 @@
     {{-- ── JS específico de cada página ───────────────────────────────────── --}}
     @stack('scripts')
 
-    {{-- PWA: captura temprana del prompt de instalación + registro SW --}}
-    <script data-navigate-once>
-        window._pwaDeferredPrompt = null;
-        window.addEventListener('beforeinstallprompt', e => {
-            e.preventDefault();
-            window._pwaDeferredPrompt = e;
-            window.dispatchEvent(new Event('pwa-ready'));
-        });
-        window.addEventListener('appinstalled', () => {
-            window._pwaDeferredPrompt = null;
-        });
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js');
-        }
-    </script>
 
 </body>
 
