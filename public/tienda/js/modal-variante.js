@@ -98,6 +98,7 @@ window.modalVariante = function() {
                 imagen:          this.imgPreview ?? this.producto.imagen,
                 precio_unitario: parseFloat(this.precioActual),
                 cantidad:        this.cantidad,
+                codigo_interno:  (v?.codigo || this.producto.codigo_interno) ?? null,
             });
             this.cerrar();
         },

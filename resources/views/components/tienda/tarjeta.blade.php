@@ -80,6 +80,7 @@
 
     $variantesModal = $variantesActivas->map(fn($var) => [
         'id'          => $var->id,
+        'codigo'      => $var->codigo ?? null,
         'imagen'      => $var->imagen ? Storage::url($var->imagen) : null,
         'valores_ids' => $var->valores->pluck('valor_id')->sort()->values()->all(),
         'sin_stock'   => $producto->control_de_stock && ! $producto->venta_sin_stock
@@ -101,12 +102,13 @@
          tieneVariantes: @js($tieneVariantes),
          agotado: @js($productoAgotado),
          modalProducto: @js([
-             'id'        => $producto->id,
-             'nombre'    => $producto->nombre,
-             'imagen'    => $imagenes->first(),
-             'precioBase' => $precioFinal,
-             'atributos' => $atributosModal,
-             'variantes' => $variantesModal,
+             'id'             => $producto->id,
+             'nombre'         => $producto->nombre,
+             'imagen'         => $imagenes->first(),
+             'precioBase'     => $precioFinal,
+             'codigo_interno' => $producto->codigo_interno,
+             'atributos'      => $atributosModal,
+             'variantes'      => $variantesModal,
          ]),
          get imgActual() {
              return this.imgColor ?? this.imagenes[this.indice] ?? null;
@@ -159,6 +161,7 @@
                      imagen:          this.modalProducto.imagen,
                      precio_unitario: this.modalProducto.precioBase,
                      cantidad:        1,
+                     codigo_interno:  this.modalProducto.codigo_interno ?? null,
                  });
              }
          },
