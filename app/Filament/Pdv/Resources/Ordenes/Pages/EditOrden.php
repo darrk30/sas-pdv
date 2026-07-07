@@ -117,6 +117,8 @@ class EditOrden extends EditRecord
                         $total       = (float) $orden->total;
                         $saldo       = round($total - $montoPagado, 2);
 
+                        $costoTotalOrden = $orden->detalles->sum(fn($d) => (float) $d->costo_total);
+
                         $venta = Venta::create([
                             'empresa_id'       => $empresa->id,
                             'vendedor_id'      => auth()->id(),
@@ -136,7 +138,7 @@ class EditOrden extends EditRecord
                             'descuento_total'  => $orden->descuento_total,
                             'igv'              => $orden->igv,
                             'total'            => $orden->total,
-                            'costo_total'      => 0,
+                            'costo_total'      => $costoTotalOrden,
                             'monto_pagado'     => $montoPagado,
                             'saldo_pendiente'  => max(0, $saldo),
                             'estado_pago'      => $saldo <= 0 ? 'pagado' : 'parcial',
@@ -148,10 +150,11 @@ class EditOrden extends EditRecord
                         ]);
 
                         foreach ($orden->detalles as $detalle) {
+                            $costoUnitario = (float) $detalle->costo_unitario;
                             $calc = VentaDetalle::calcular(
                                 (float) $detalle->cantidad,
                                 (float) $detalle->precio_unitario,
-                                0,
+                                $costoUnitario,
                                 (float) $detalle->descuento,
                             );
 
@@ -160,17 +163,18 @@ class EditOrden extends EditRecord
                                 'tipo_item'       => $detalle->tipo_item,
                                 'producto_id'     => $detalle->producto_id,
                                 'variante_id'     => $detalle->variante_id,
+                                'promocion_id'    => $detalle->promocion_id,
                                 'descripcion'     => $detalle->descripcion,
                                 'cantidad'        => $detalle->cantidad,
                                 'precio_unitario' => $detalle->precio_unitario,
                                 'valor_unitario'  => $calc['valorUnitario'],
-                                'costo_unitario'  => 0,
+                                'costo_unitario'  => $costoUnitario,
                                 'descuento'       => $detalle->descuento,
                                 'subtotal'        => $calc['subtotal'],
                                 'valor_total'     => $calc['valorTotal'],
                                 'igv'             => $calc['igv'],
                                 'total'           => $calc['total'],
-                                'costo_total'     => 0,
+                                'costo_total'     => $calc['costoTotal'],
                             ]);
                         }
 

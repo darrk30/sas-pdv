@@ -358,7 +358,7 @@ class Carrito extends Component
                 'variante.valores.productoAtributo.atributo',
                 'promocion.detalles.producto.inventario',
                 'promocion.detalles.variante.inventario',
-                'promocion.detalles.variante.produto',
+                'promocion.detalles.variante.producto',
             ])
             ->get()
             ->filter(fn($i) => $this->esDisponibleItem($i));
@@ -392,7 +392,8 @@ class Carrito extends Component
 
             foreach ($items as $item) {
                 [$tipo, $desc, $pId, $vId, $promoId] = $this->resolverDetalleItem($item);
-                $calc = OrdenDetalle::calcular((float) $item->cantidad, (float) $item->precio_unitario);
+                $costoUnitario = $this->resolverCostoItem($item);
+                $calc = OrdenDetalle::calcular((float) $item->cantidad, (float) $item->precio_unitario, $costoUnitario);
 
                 OrdenDetalle::create([
                     'orden_id'        => $orden->id,
@@ -404,10 +405,12 @@ class Carrito extends Component
                     'cantidad'        => $item->cantidad,
                     'precio_unitario' => $item->precio_unitario,
                     'valor_unitario'  => $calc['valorUnitario'],
+                    'costo_unitario'  => $costoUnitario,
                     'descuento'       => 0,
                     'subtotal'        => $calc['subtotal'],
                     'igv'             => $calc['igv'],
                     'total'           => $calc['total'],
+                    'costo_total'     => $calc['costoTotal'],
                 ]);
 
                 $item->delete();
@@ -505,7 +508,19 @@ class Carrito extends Component
                 $esVar   = !$esPromo && !empty($raw['variante_id']);
 
                 $tipo    = $esPromo ? TipoItem::Promocion : ($esVar ? TipoItem::Variante : TipoItem::Producto);
-                $calc    = OrdenDetalle::calcular((float) $raw['cantidad'], (float) $raw['precio_unitario']);
+
+                if ($esPromo) {
+                    $promo = Promocion::with(['detalles.variante', 'detalles.producto'])->find($raw['promocion_id']);
+                    $costoUnitario = (float) ($promo?->detalles->sum(fn($pd) =>
+                        (float) ($pd->variante?->precio_costo ?? $pd->producto?->precio_costo ?? 0) * (float) $pd->cantidad
+                    ) ?? 0);
+                } elseif ($esVar) {
+                    $costoUnitario = (float) (Variante::find($raw['variante_id'])?->precio_costo ?? 0);
+                } else {
+                    $costoUnitario = (float) (Producto::find($raw['producto_id'])?->precio_costo ?? 0);
+                }
+
+                $calc = OrdenDetalle::calcular((float) $raw['cantidad'], (float) $raw['precio_unitario'], $costoUnitario);
 
                 $descGuest = ($raw['nombre'] ?? 'Producto')
                     . (!empty($raw['variante_nombre']) ? " ({$raw['variante_nombre']})" : '');
@@ -520,10 +535,12 @@ class Carrito extends Component
                     'cantidad'        => (float) $raw['cantidad'],
                     'precio_unitario' => (float) $raw['precio_unitario'],
                     'valor_unitario'  => $calc['valorUnitario'],
+                    'costo_unitario'  => $costoUnitario,
                     'descuento'       => 0,
                     'subtotal'        => $calc['subtotal'],
                     'igv'             => $calc['igv'],
                     'total'           => $calc['total'],
+                    'costo_total'     => $calc['costoTotal'],
                 ]);
             }
 
@@ -599,6 +616,20 @@ class Carrito extends Component
     }
 
     // ── Helpers de ítems ──────────────────────────────────────────
+
+    private function resolverCostoItem(CarritoItem $item): float
+    {
+        if ($item->promocion_id) {
+            return (float) ($item->promocion?->detalles->sum(function ($pd) {
+                $costo = $pd->variante?->precio_costo ?? $pd->producto?->precio_costo ?? 0;
+                return (float) $costo * (float) $pd->cantidad;
+            }) ?? 0);
+        }
+        if ($item->variante_id) {
+            return (float) ($item->variante?->precio_costo ?? 0);
+        }
+        return (float) ($item->producto?->precio_costo ?? 0);
+    }
 
     private function resolverDetalleItem(CarritoItem $item): array
     {

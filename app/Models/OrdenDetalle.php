@@ -20,10 +20,12 @@ class OrdenDetalle extends Model
         'cantidad',
         'precio_unitario',
         'valor_unitario',
+        'costo_unitario',
         'descuento',
         'subtotal',
         'igv',
         'total',
+        'costo_total',
     ];
 
     protected $casts = [
@@ -31,10 +33,12 @@ class OrdenDetalle extends Model
         'cantidad'        => 'decimal:3',
         'precio_unitario' => 'decimal:4',
         'valor_unitario'  => 'decimal:4',
+        'costo_unitario'  => 'decimal:4',
         'descuento'       => 'decimal:2',
         'subtotal'        => 'decimal:2',
         'igv'             => 'decimal:2',
         'total'           => 'decimal:2',
+        'costo_total'     => 'decimal:2',
     ];
 
     // ── Relaciones ───────────────────────────────────────────────────────
@@ -64,6 +68,7 @@ class OrdenDetalle extends Model
     public static function calcular(
         float $cantidad,
         float $precioUnitario,
+        float $costoUnitario = 0,
         float $descuento = 0,
         float $tasaIgv = 0.18,
     ): array {
@@ -71,7 +76,8 @@ class OrdenDetalle extends Model
         $valorUnitario = round($precioUnitario / (1 + $tasaIgv), 4);
         $subtotal      = round($cantidad * $valorUnitario, 2);
         $igv           = round($total - $subtotal + $descuento / (1 + $tasaIgv), 2);
+        $costoTotal    = round($cantidad * $costoUnitario, 2);
 
-        return compact('valorUnitario', 'subtotal', 'igv', 'total');
+        return compact('valorUnitario', 'subtotal', 'igv', 'total', 'costoTotal');
     }
 }

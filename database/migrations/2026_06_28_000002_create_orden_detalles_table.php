@@ -25,12 +25,14 @@ return new class extends Migration
             $table->decimal('cantidad', 12, 3);
             $table->decimal('precio_unitario', 12, 4);   // precio con IGV
             $table->decimal('valor_unitario', 12, 4);    // precio sin IGV
+            $table->decimal('costo_unitario', 12, 4)->default(0); // costo snapshot
             $table->decimal('descuento', 12, 2)->default(0);
 
             // ── Totales calculados ───────────────────────────────────────
             $table->decimal('subtotal', 12, 2);          // cantidad × valor_unitario
             $table->decimal('igv', 12, 2)->default(0);
             $table->decimal('total', 12, 2);             // subtotal + igv − descuento
+            $table->decimal('costo_total', 12, 2)->default(0); // cantidad × costo_unitario
 
             $table->timestamps();
         });
