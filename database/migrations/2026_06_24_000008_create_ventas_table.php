@@ -65,6 +65,13 @@ return new class extends Migration
             $table->text('notas')->nullable();
 
             $table->timestamps();
+
+            $table->index(['empresa_id', 'estado'], 'idx_ventas_empresa_estado');
+            $table->index(['empresa_id', 'fecha_emision'], 'idx_ventas_empresa_fecha');
+            $table->index(['empresa_id', 'tipo'], 'idx_ventas_empresa_tipo');
+            $table->index(['empresa_id', 'sesion_caja_id'], 'idx_ventas_empresa_sesion');
+            $table->index(['empresa_id', 'cliente_id'], 'idx_ventas_empresa_cliente');
+            $table->index(['empresa_id', 'vendedor_id'], 'idx_ventas_empresa_vendedor');
         });
     }
 

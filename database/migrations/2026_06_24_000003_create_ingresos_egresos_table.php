@@ -25,6 +25,10 @@ return new class extends Migration
             $table->text('motivo');
             $table->string('estado', 20)->default('aprobado');
             $table->timestamps();
+
+            $table->index(['empresa_id', 'sesion_caja_id'], 'idx_ingresos_egresos_empresa_sesion');
+            $table->index(['empresa_id', 'tipo'], 'idx_ingresos_egresos_empresa_tipo');
+            $table->index(['empresa_id', 'fecha_hora'], 'idx_ingresos_egresos_empresa_fecha');
         });
     }
 

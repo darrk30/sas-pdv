@@ -125,6 +125,8 @@ class PdvPanelProvider extends PanelProvider
             ->maxContentWidth(Width::Full)
             ->spa()
             ->databaseTransactions()
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->tenant(Empresa::class, slugAttribute: 'slug')
             ->tenantDomain('{tenant:slug}.' . config('app.domain'));
     }

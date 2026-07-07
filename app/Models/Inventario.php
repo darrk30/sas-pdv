@@ -4,10 +4,12 @@ namespace App\Models;
 
 use App\Enums\EstadoGeneral;
 use App\Enums\EstadoStock;
+use App\Notifications\StockBajoNotification;
 use App\Services\EtiquetaStockService;
 use App\Traits\BelongsToEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Notification;
 
 class Inventario extends Model
 {
@@ -47,9 +49,59 @@ class Inventario extends Model
     protected static function booted(): void
     {
         static::updated(function (Inventario $inventario): void {
-            if ($inventario->wasChanged(['stock_real', 'stock_reserva']) && $inventario->producto_id) {
+            if (! $inventario->wasChanged(['stock_real', 'stock_reserva'])) {
+                return;
+            }
+
+            if ($inventario->producto_id) {
                 app(EtiquetaStockService::class)
                     ->sincronizar($inventario->producto_id, $inventario->empresa_id);
+            }
+
+            // Solo notifica si hay control de stock y el estado cambió a uno crítico
+            if (! $inventario->wasChanged('stock_real')) {
+                return;
+            }
+
+            $minimo     = (float) ($inventario->stock_minimo ?? 5);
+            $stockAntes = (float) $inventario->getOriginal('stock_real');
+            $stockAhora = (float) $inventario->stock_real;
+
+            $estadoAntes = match (true) {
+                $stockAntes <= 0          => 'agotado',
+                $stockAntes <= $minimo    => 'por_agotarse',
+                default                   => 'disponible',
+            };
+            $estadoAhora = match (true) {
+                $stockAhora <= 0          => 'agotado',
+                $stockAhora <= $minimo    => 'por_agotarse',
+                default                   => 'disponible',
+            };
+
+            // Solo notifica cuando el estado EMPEORA (no en reposición)
+            $transicionesAlertar = [
+                'disponible'  => ['por_agotarse', 'agotado'],
+                'por_agotarse' => ['agotado'],
+            ];
+
+            if (! in_array($estadoAhora, $transicionesAlertar[$estadoAntes] ?? [])) {
+                return;
+            }
+
+            $inventario->loadMissing(['producto.empresa']);
+            $producto = $inventario->producto;
+
+            if (! $producto || ! $producto->control_de_stock) {
+                return;
+            }
+
+            $usuarios = $producto->empresa
+                ->usuarios()
+                ->wherePivot('estado', 'activo')
+                ->get();
+
+            if ($usuarios->isNotEmpty()) {
+                Notification::send($usuarios, new StockBajoNotification($inventario, $estadoAhora));
             }
         });
     }

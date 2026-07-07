@@ -45,6 +45,11 @@ return new class extends Migration
 
             $table->unique(['empresa_id', 'codigo_interno'], 'idx_empresa_codigo_interno');
             $table->unique(['empresa_id', 'slug'], 'idx_empresa_slug');
+
+            $table->index(['empresa_id', 'estado'], 'idx_productos_empresa_estado');
+            $table->index(['empresa_id', 'categoria_id', 'estado'], 'idx_productos_empresa_categoria_estado');
+            $table->index(['empresa_id', 'visible_en_carta', 'estado'], 'idx_productos_empresa_carta_estado');
+            $table->index(['empresa_id', 'codigo_barras'], 'idx_productos_empresa_barras');
         });
     }
 

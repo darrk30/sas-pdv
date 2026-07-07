@@ -85,6 +85,24 @@ window.modalVariante = function() {
         confirmar() {
             if (!this.disponible) return;
             const v = this.varianteCoincidente;
+
+            // Stock check: variant stock_reserva minus what's already in cart
+            const sr = v ? v.stock_reserva : null;
+            if (sr !== null && sr !== undefined) {
+                const items = Alpine.store('carrito')._leerLocal();
+                const enCarrito = items
+                    .filter(i => i.producto_id == this.producto.id && i.variante_id == v.id && !i.promocion_id)
+                    .reduce((s, i) => s + (parseInt(i.cantidad) || 1), 0);
+                const restante = sr - enCarrito;
+                if (this.cantidad > restante) {
+                    const msg = restante <= 0
+                        ? 'Sin stock disponible para esta variante.'
+                        : `Solo quedan ${restante} unidades disponibles.`;
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { mensaje: msg, tipo: 'error' } }));
+                    return;
+                }
+            }
+
             const imgEl = this.$refs.imgPreview;
             if (imgEl && imgEl.src) flyAlCarrito(imgEl);
             const varianteNombre = Object.values(this.seleccion)

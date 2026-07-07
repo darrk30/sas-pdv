@@ -55,14 +55,14 @@
 
     // ── Disponibilidad / stock ─────────────────────────────────────
     $productoAgotado = false;
+    $stockDisp = null;
     if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
-        if ($tieneVariantes) {
-            $productoAgotado = $variantesActivas->every(
-                fn($v) => (float)($v->inventario?->stock_reserva ?? 0) <= 0
-            );
-        } else {
-            $productoAgotado = (float)($producto->inventario?->stock_reserva ?? 0) <= 0;
-        }
+        $stockDisp = $tieneVariantes
+            ? $variantesActivas->sum(fn($v) => max(0, (float)($v->inventario?->stock_reserva ?? 0)))
+            : max(0, (float)($producto->inventario?->stock_reserva ?? 0));
+        $productoAgotado = $tieneVariantes
+            ? $variantesActivas->every(fn($v) => (float)($v->inventario?->stock_reserva ?? 0) <= 0)
+            : $stockDisp <= 0;
     }
 
     $atributosModal = $producto->atributos->map(fn($pa) => [
@@ -79,12 +79,15 @@
     ])->filter(fn($a) => $a['id'] && !empty($a['valores']))->values()->all();
 
     $variantesModal = $variantesActivas->map(fn($var) => [
-        'id'          => $var->id,
-        'codigo'      => $var->codigo ?? null,
-        'imagen'      => $var->imagen ? Storage::url($var->imagen) : null,
-        'valores_ids' => $var->valores->pluck('valor_id')->sort()->values()->all(),
-        'sin_stock'   => $producto->control_de_stock && ! $producto->venta_sin_stock
-                         && (float)($var->inventario?->stock_reserva ?? 0) <= 0,
+        'id'            => $var->id,
+        'codigo'        => $var->codigo ?? null,
+        'imagen'        => $var->imagen ? Storage::url($var->imagen) : null,
+        'valores_ids'   => $var->valores->pluck('valor_id')->sort()->values()->all(),
+        'sin_stock'     => $producto->control_de_stock && ! $producto->venta_sin_stock
+                           && (float)($var->inventario?->stock_reserva ?? 0) <= 0,
+        'stock_reserva' => $producto->control_de_stock && ! $producto->venta_sin_stock
+                           ? (float)($var->inventario?->stock_reserva ?? 0)
+                           : null,
     ])->values()->all();
 @endphp
 
@@ -101,6 +104,16 @@
          hovering: false,
          tieneVariantes: @js($tieneVariantes),
          agotado: @js($productoAgotado),
+         stockInicial: @js($stockDisp),
+         get stockRestante() {
+             if (this.stockInicial === null) return null;
+             const _ = Alpine.store('carrito').count;
+             const items = Alpine.store('carrito')._leerLocal();
+             const enCarrito = items
+                 .filter(i => i.producto_id == this.modalProducto.id && !i.promocion_id)
+                 .reduce((s, i) => s + (parseInt(i.cantidad) || 1), 0);
+             return Math.max(0, this.stockInicial - enCarrito);
+         },
          modalProducto: @js([
              'id'             => $producto->id,
              'nombre'         => $producto->nombre,
@@ -109,6 +122,9 @@
              'codigo_interno' => $producto->codigo_interno,
              'atributos'      => $atributosModal,
              'variantes'      => $variantesModal,
+             'stock_reserva'  => !$tieneVariantes && $producto->control_de_stock && !$producto->venta_sin_stock
+                                 ? (float)($producto->inventario?->stock_reserva ?? 0)
+                                 : null,
          ]),
          get imgActual() {
              return this.imgColor ?? this.imagenes[this.indice] ?? null;
@@ -151,6 +167,19 @@
              if (this.tieneVariantes) {
                  window.dispatchEvent(new CustomEvent('abrir-modal-variante', { detail: this.modalProducto }));
              } else {
+                 const sr = this.modalProducto.stock_reserva;
+                 if (sr !== null && sr !== undefined) {
+                     const items = Alpine.store('carrito')._leerLocal();
+                     const enCarrito = items
+                         .filter(i => i.producto_id == this.modalProducto.id && !i.variante_id && !i.promocion_id)
+                         .reduce((s, i) => s + (parseInt(i.cantidad) || 1), 0);
+                     if (enCarrito >= sr) {
+                         window.dispatchEvent(new CustomEvent('toast', {
+                             detail: { mensaje: 'No hay más unidades disponibles.', tipo: 'error' }
+                         }));
+                         return;
+                     }
+                 }
                  flyAlCarrito(el);
                  Alpine.store('carrito').agregar({
                      promocion_id:    null,
@@ -224,16 +253,16 @@
             <button
                 type="button"
                 class="tarjeta__btn-carrito"
-                :class="{ 'tarjeta__btn-carrito--agotado': agotado }"
-                :disabled="agotado"
-                :title="agotado ? 'Sin stock' : (tieneVariantes ? 'Seleccionar opciones' : 'Agregar al carrito')"
-                @click.prevent.stop="if (!agotado) agregarOModal($el)"
+                :class="{ 'tarjeta__btn-carrito--agotado': agotado || stockRestante === 0 }"
+                :disabled="agotado || stockRestante === 0"
+                :title="(agotado || stockRestante === 0) ? 'Sin stock' : (tieneVariantes ? 'Seleccionar opciones' : 'Agregar al carrito')"
+                @click.prevent.stop="if (!agotado && stockRestante !== 0) agregarOModal($el)"
             >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                     <circle cx="9"  cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
                     <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
                 </svg>
-                <span x-text="agotado ? 'Sin stock' : (tieneVariantes ? 'Ver opciones' : 'Agregar')"></span>
+                <span x-text="(agotado || stockRestante === 0) ? 'Sin stock' : (tieneVariantes ? 'Ver opciones' : 'Agregar')"></span>
             </button>
 
             @auth('cliente')
@@ -280,20 +309,17 @@
 
         {{-- Stock disponible --}}
         @if ($producto->control_de_stock && !$producto->venta_sin_stock)
-            @php
-                $stockDisp = $tieneVariantes
-                    ? $variantesActivas->sum(fn($v) => max(0, (float)($v->inventario?->stock_reserva ?? 0)))
-                    : max(0, (float)($producto->inventario?->stock_reserva ?? 0));
-            @endphp
-            <p class="tarjeta__stock {{ $productoAgotado ? 'tarjeta__stock--agotado' : ($stockDisp <= 5 ? 'tarjeta__stock--bajo' : '') }}">
-                @if ($productoAgotado)
-                    Sin stock
-                @elseif ($stockDisp <= 5)
-                    Últimas {{ number_format($stockDisp, 0) }} unidades
-                @else
-                    {{ number_format($stockDisp, 0) }} disponibles
-                @endif
-            </p>
+            <p class="tarjeta__stock"
+               :class="{
+                   'tarjeta__stock--agotado': agotado || stockRestante === 0,
+                   'tarjeta__stock--bajo':   !agotado && stockRestante !== null && stockRestante > 0 && stockRestante <= 5
+               }"
+               x-text="(agotado || stockRestante === 0)
+                   ? 'Sin stock'
+                   : (stockRestante <= 5
+                       ? 'Últimas ' + stockRestante + ' unidades'
+                       : stockRestante + ' disponibles')"
+            ></p>
         @endif
 
         {{-- Precios --}}
@@ -316,16 +342,16 @@
         <button
             type="button"
             class="tarjeta__btn-carrito tarjeta__btn-carrito--movil"
-            :class="{ 'tarjeta__btn-carrito--agotado': agotado }"
-            :disabled="agotado"
-            :title="agotado ? 'Sin stock' : (tieneVariantes ? 'Seleccionar opciones' : 'Agregar al carrito')"
-            @click.prevent.stop="if (!agotado) agregarOModal($el)"
+            :class="{ 'tarjeta__btn-carrito--agotado': agotado || stockRestante === 0 }"
+            :disabled="agotado || stockRestante === 0"
+            :title="(agotado || stockRestante === 0) ? 'Sin stock' : (tieneVariantes ? 'Seleccionar opciones' : 'Agregar al carrito')"
+            @click.prevent.stop="if (!agotado && stockRestante !== 0) agregarOModal($el)"
         >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                 <circle cx="9"  cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
             </svg>
-            <span x-text="agotado ? 'Sin stock' : (tieneVariantes ? 'Ver opciones' : 'Agregar')"></span>
+            <span x-text="(agotado || stockRestante === 0) ? 'Sin stock' : (tieneVariantes ? 'Ver opciones' : 'Agregar')"></span>
         </button>
 
     </div>

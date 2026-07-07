@@ -19,6 +19,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['empresa_id', 'serie']);
+            $table->index(['empresa_id', 'tipo'], 'idx_series_empresa_tipo');
         });
     }
 

@@ -21,6 +21,9 @@ return new class extends Migration
             $table->date('fecha_fin');
             $table->string('estado')->default('activo');
             $table->timestamps();
+
+            $table->index(['empresa_id', 'estado'], 'idx_suscripciones_empresa_estado');
+            $table->index(['empresa_id', 'fecha_fin'], 'idx_suscripciones_empresa_fecha_fin');
         });
     }
 

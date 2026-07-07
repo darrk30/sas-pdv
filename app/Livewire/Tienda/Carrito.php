@@ -203,6 +203,39 @@ class Carrito extends Component
 
     public function abrirFormOrden(): void
     {
+        // Re-validar disponibilidad antes de abrir el formulario
+        $userId = Auth::guard('cliente')->id();
+        if ($userId) {
+            $allItems = CarritoItem::whereHas('carrito', fn($q) =>
+                $q->where('empresa_id', $this->empresaId)->where('user_id', $userId))
+                ->with(['producto.inventario', 'variante.inventario', 'promocion'])
+                ->get();
+            $hayDisponibles = $allItems->some(fn($i) => $this->esDisponibleItem($i));
+            if (! $hayDisponibles) {
+                $this->dispatch('toast',
+                    mensaje: 'No hay productos disponibles en tu carrito para ordenar.',
+                    tipo: 'error');
+                return;
+            }
+        } elseif (! empty($this->guestItems)) {
+            $rawItems = array_values($this->guestItems);
+            $pIds = collect($rawItems)->pluck('producto_id')->filter()->unique()->all();
+            $vIds = collect($rawItems)->pluck('variante_id')->filter()->unique()->all();
+            $mIds = collect($rawItems)->pluck('promocion_id')->filter()->unique()->all();
+            $bdP  = Producto::whereIn('id', $pIds)->with('inventario')->get()->keyBy('id');
+            $bdV  = Variante::whereIn('id', $vIds)->with('inventario')->get()->keyBy('id');
+            $bdM  = $mIds ? Promocion::whereIn('id', $mIds)->get()->keyBy('id') : collect();
+            $hayDisponibles = collect($rawItems)->some(
+                fn($r) => $this->esDisponibleGuestRaw($r, $bdP, $bdV, $bdM)
+            );
+            if (! $hayDisponibles) {
+                $this->dispatch('toast',
+                    mensaje: 'No hay productos disponibles en tu carrito para ordenar.',
+                    tipo: 'error');
+                return;
+            }
+        }
+
         $cliente = Auth::guard('cliente')->user();
 
         if ($cliente && empty($this->chkNombre)) {
@@ -306,7 +339,17 @@ class Carrito extends Component
                                     ->sum(fn($i) => $i->precio_unitario * $i->cantidad);
 
         } elseif (! empty($this->guestItems)) {
-            $items = collect($this->guestItems)->values()->map(fn($raw, $k) => (object) [
+            $rawItems = array_values($this->guestItems);
+
+            // Batch-load productos, variantes y promociones para validar disponibilidad
+            $pIds = collect($rawItems)->pluck('producto_id')->filter()->unique()->all();
+            $vIds = collect($rawItems)->pluck('variante_id')->filter()->unique()->all();
+            $mIds = collect($rawItems)->pluck('promocion_id')->filter()->unique()->all();
+            $bdProductos  = Producto::whereIn('id', $pIds)->with('inventario')->get()->keyBy('id');
+            $bdVariantes  = Variante::whereIn('id', $vIds)->with('inventario')->get()->keyBy('id');
+            $bdPromociones = $mIds ? Promocion::whereIn('id', $mIds)->get()->keyBy('id') : collect();
+
+            $items = collect($rawItems)->map(fn($raw, $k) => (object) [
                 'id'              => $k,
                 'nombre'          => $raw['nombre'] ?? 'Producto',
                 'variante_nombre' => $raw['variante_nombre'] ?? null,
@@ -321,8 +364,18 @@ class Carrito extends Component
                 'variante'        => null,
                 'promocion'       => null,
             ]);
-            $disponibilidad = $items->mapWithKeys(fn($i) => [$i->id => true]);
-            $subtotal       = $items->sum(fn($i) => $i->precio_unitario * $i->cantidad);
+
+            $disponibilidad = $items->mapWithKeys(fn($i) => [
+                $i->id => $this->esDisponibleGuestRaw(
+                    $rawItems[$i->id] ?? [],
+                    $bdProductos,
+                    $bdVariantes,
+                    $bdPromociones,
+                ),
+            ]);
+            $items    = $items->sortBy(fn($i) => $disponibilidad[$i->id] ? 0 : 1)->values();
+            $subtotal = $items->filter(fn($i) => $disponibilidad[$i->id])
+                              ->sum(fn($i) => $i->precio_unitario * $i->cantidad);
         } else {
             $disponibilidad = collect();
             $subtotal       = 0;
@@ -371,6 +424,18 @@ class Carrito extends Component
         $subtotal = $items->sum(fn($i) => $i->precio_unitario * $i->cantidad);
         $total    = $subtotal + $costoEnvio;
 
+        // ── Validar precios contra BD (previene manipulación por inspector) ──
+        foreach ($items as $item) {
+            $precioEsperado = $this->precioRealItem($item);
+            if ($precioEsperado !== null && abs((float) $item->precio_unitario - $precioEsperado) > 0.01) {
+                $this->dispatch('toast',
+                    mensaje: 'El precio de "' . ($item->producto?->nombre ?? 'un producto') . '" ha cambiado. Recarga la página.',
+                    tipo: 'error');
+                return;
+            }
+        }
+
+        try {
         $orden = DB::transaction(function () use ($items, $metodoEnvio, $metodoPago, $userId, $costoEnvio, $subtotal, $total) {
             $orden = Orden::create([
                 'empresa_id'       => $this->empresaId,
@@ -426,6 +491,10 @@ class Carrito extends Component
 
             return $orden;
         });
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', mensaje: $e->getMessage(), tipo: 'error');
+            return;
+        }
 
         $this->actualizarBadge();
         $this->finalizarOrden($orden, $items->map(function ($i) {
@@ -451,6 +520,17 @@ class Carrito extends Component
 
         $subtotal = $rawItems->sum(fn($i) => (float) $i['precio_unitario'] * (int) $i['cantidad']);
         $total    = $subtotal + $costoEnvio;
+
+        // ── Validar precios contra BD ──────────────────────────────────────
+        foreach ($rawItems as $raw) {
+            $precioEsperado = $this->precioRealGuest($raw);
+            if ($precioEsperado !== null && abs((float) $raw['precio_unitario'] - $precioEsperado) > 0.01) {
+                $this->dispatch('toast',
+                    mensaje: 'El precio de "' . ($raw['nombre'] ?? 'un producto') . '" ha cambiado. Recarga la página.',
+                    tipo: 'error');
+                return;
+            }
+        }
 
         // Buscar cliente por DNI o crear uno nuevo (sin email/password)
         $cliente = Cliente::where('empresa_id', $this->empresaId)
@@ -484,6 +564,7 @@ class Carrito extends Component
             ]);
         }
 
+        try {
         $orden = DB::transaction(function () use ($rawItems, $metodoEnvio, $metodoPago, $cliente, $costoEnvio, $subtotal, $total) {
             $orden = Orden::create([
                 'empresa_id'       => $this->empresaId,
@@ -554,6 +635,10 @@ class Carrito extends Component
 
             return $orden;
         });
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', mensaje: $e->getMessage(), tipo: 'error');
+            return;
+        }
 
         // Limpiar carrito invitado
         $this->guestItems = [];
@@ -684,11 +769,11 @@ class Carrito extends Component
             $variante = $item->variante;
             if (! $variante || $variante->estado !== 'activo') return false;
             if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
-                if ((float)($variante->inventario?->stock_real ?? 0) <= 0) return false;
+                if ((float)($variante->inventario?->stock_reserva ?? 0) <= 0) return false;
             }
         } else {
             if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
-                if ((float)($producto->inventario?->stock_real ?? 0) <= 0) return false;
+                if ((float)($producto->inventario?->stock_reserva ?? 0) <= 0) return false;
             }
         }
         return true;
@@ -737,50 +822,115 @@ class Carrito extends Component
 
                     if ($pd->variante_id) {
                         $prod = $pd->variante?->producto;
-                        if (! $prod?->control_de_stock) continue;
+                        if (! $prod?->control_de_stock || $prod->venta_sin_stock) continue;
                         $inv = Inventario::where('empresa_id', $empresaId)
                             ->where('variante_id', $pd->variante_id)
                             ->lockForUpdate()->first();
-                        if ($inv) {
-                            $inv->update(['stock_reserva' => max(0, (float) $inv->stock_reserva - $cantDet)]);
+                        if (! $inv || (float) $inv->stock_reserva < $cantDet) {
+                            throw new \RuntimeException("Sin stock disponible para \"{$det['nombre']}\".");
                         }
+                        $inv->update(['stock_reserva' => (float) $inv->stock_reserva - $cantDet]);
                     } elseif ($pd->producto_id) {
                         $prod = $pd->producto;
-                        if (! $prod?->control_de_stock) continue;
+                        if (! $prod?->control_de_stock || $prod->venta_sin_stock) continue;
                         $inv = Inventario::where('empresa_id', $empresaId)
                             ->where('producto_id', $pd->producto_id)
                             ->whereNull('variante_id')
                             ->lockForUpdate()->first();
-                        if ($inv) {
-                            $inv->update(['stock_reserva' => max(0, (float) $inv->stock_reserva - $cantDet)]);
+                        if (! $inv || (float) $inv->stock_reserva < $cantDet) {
+                            throw new \RuntimeException("Sin stock disponible para \"{$det['nombre']}\".");
                         }
+                        $inv->update(['stock_reserva' => (float) $inv->stock_reserva - $cantDet]);
                     }
                 }
 
             // ── Variante ───────────────────────────────────────────
             } elseif (! empty($det['variante_id'])) {
                 $variante = Variante::with('producto')->find($det['variante_id']);
-                if (! $variante?->producto?->control_de_stock) continue;
+                if (! $variante?->producto?->control_de_stock || $variante->producto->venta_sin_stock) continue;
                 $inv = Inventario::where('empresa_id', $empresaId)
                     ->where('producto_id', $variante->producto_id)
                     ->where('variante_id', $det['variante_id'])
                     ->lockForUpdate()->first();
-                if ($inv) {
-                    $inv->update(['stock_reserva' => max(0, (float) $inv->stock_reserva - $cantidad)]);
+                if (! $inv || (float) $inv->stock_reserva < $cantidad) {
+                    throw new \RuntimeException("Sin stock disponible para \"{$det['nombre']}\".");
                 }
+                $inv->update(['stock_reserva' => (float) $inv->stock_reserva - $cantidad]);
 
             // ── Producto simple ────────────────────────────────────
             } elseif (! empty($det['producto_id'])) {
                 $producto = Producto::find($det['producto_id']);
-                if (! $producto?->control_de_stock) continue;
+                if (! $producto?->control_de_stock || $producto->venta_sin_stock) continue;
                 $inv = Inventario::where('empresa_id', $empresaId)
                     ->where('producto_id', $det['producto_id'])
                     ->whereNull('variante_id')
                     ->lockForUpdate()->first();
-                if ($inv) {
-                    $inv->update(['stock_reserva' => max(0, (float) $inv->stock_reserva - $cantidad)]);
+                if (! $inv || (float) $inv->stock_reserva < $cantidad) {
+                    throw new \RuntimeException("Sin stock disponible para \"{$det['nombre']}\".");
                 }
+                $inv->update(['stock_reserva' => (float) $inv->stock_reserva - $cantidad]);
             }
         }
+    }
+
+    // Valida disponibilidad de un item guest contra la BD (productos/variantes pre-cargados)
+    private function esDisponibleGuestRaw(array $raw, $bdProductos, $bdVariantes, $bdPromociones): bool
+    {
+        if (! empty($raw['promocion_id'])) {
+            $promo = $bdPromociones[$raw['promocion_id']] ?? null;
+            if (! $promo || ! $promo->estaVigente()) return false;
+            return true;
+        }
+        $producto = $bdProductos[$raw['producto_id'] ?? 0] ?? null;
+        if (! $producto || $producto->estado !== EstadoGeneral::Activo) return false;
+        if (! empty($raw['variante_id'])) {
+            $variante = $bdVariantes[$raw['variante_id']] ?? null;
+            if (! $variante || $variante->estado !== 'activo') return false;
+            if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
+                if ((float)($variante->inventario?->stock_reserva ?? 0) <= 0) return false;
+            }
+        } else {
+            if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
+                if ((float)($producto->inventario?->stock_reserva ?? 0) <= 0) return false;
+            }
+        }
+        return true;
+    }
+
+    // Retorna el precio actual de un item de carrito autenticado, o null si no aplica validación
+    private function precioRealItem(\App\Models\CarritoItem $item): ?float
+    {
+        if ($item->promocion_id) {
+            return $item->promocion ? (float) $item->promocion->precio : null;
+        }
+        if ($item->variante_id) {
+            return $item->variante ? (float) $item->variante->precio_final : null;
+        }
+        $p = $item->producto;
+        if (! $p) return null;
+        return ($p->porcentaje_descuento ?? 0) > 0 && $p->precio_con_descuento
+            ? (float) $p->precio_con_descuento
+            : (float) $p->precio_venta;
+    }
+
+    // Retorna el precio actual de un item guest desde la BD, o null si no aplica validación
+    private function precioRealGuest(array $raw): ?float
+    {
+        if (! empty($raw['promocion_id'])) {
+            $promo = Promocion::find($raw['promocion_id']);
+            return $promo ? (float) $promo->precio : null;
+        }
+        if (! empty($raw['variante_id'])) {
+            $variante = Variante::find($raw['variante_id']);
+            return $variante ? (float) $variante->precio_final : null;
+        }
+        if (! empty($raw['producto_id'])) {
+            $p = Producto::find($raw['producto_id']);
+            if (! $p) return null;
+            return ($p->porcentaje_descuento ?? 0) > 0 && $p->precio_con_descuento
+                ? (float) $p->precio_con_descuento
+                : (float) $p->precio_venta;
+        }
+        return null;
     }
 }

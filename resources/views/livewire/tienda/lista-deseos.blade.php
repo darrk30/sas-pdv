@@ -122,7 +122,7 @@
                             <span class="ld__variante">{{ $varianteDesc }}</span>
                         @endif
                         @if (! $disponible)
-                            <span class="ld__no-disp-badge">No disponible</span>
+                            <span class="ld__no-disp-badge">Agotado</span>
                         @endif
                     </div>
 

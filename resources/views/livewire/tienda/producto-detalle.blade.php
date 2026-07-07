@@ -136,20 +136,17 @@
 
             {{-- Stock --}}
             @if ($producto->control_de_stock && !$producto->venta_sin_stock)
-                @php
-                    $stockDisp = $tieneVariantes
-                        ? $producto->variantes->sum(fn($v) => max(0, (float)($v->inventario?->stock_reserva ?? 0)))
-                        : max(0, (float)($producto->inventario?->stock_reserva ?? 0));
-                @endphp
-                <p class="pd-stock {{ $productoAgotado ? 'pd-stock--agotado' : ($stockDisp <= 5 ? 'pd-stock--bajo' : '') }}">
-                    @if ($productoAgotado)
-                        Sin stock disponible
-                    @elseif ($stockDisp <= 5)
-                        Últimas {{ number_format($stockDisp, 0) }} unidades
-                    @else
-                        {{ number_format($stockDisp, 0) }} unidades disponibles
-                    @endif
-                </p>
+                <p class="pd-stock"
+                   :class="{
+                       'pd-stock--agotado': producto.agotado || stockVisual === 0,
+                       'pd-stock--bajo':   !producto.agotado && stockVisual !== null && stockVisual > 0 && stockVisual <= 5
+                   }"
+                   x-text="(producto.agotado || stockVisual === 0)
+                       ? 'Sin stock disponible'
+                       : (stockVisual !== null && stockVisual <= 5
+                           ? 'Últimas ' + stockVisual + ' unidades'
+                           : (stockVisual !== null ? stockVisual + ' unidades disponibles' : ''))"
+                ></p>
             @endif
 
             {{-- Precios --}}

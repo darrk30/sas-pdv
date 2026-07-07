@@ -8,6 +8,7 @@
         const items = JSON.parse(localStorage.getItem('carrito_{{ $empresaId }}')||'[]');
         $wire.recibirItemsGuest(items);
     })();@endif"
+    @if(!$mostrarFormOrden) wire:poll.25s @endif
 >
 
 {{-- ── Auth: carrito vacío ───────────────────────────────────── --}}
@@ -289,13 +290,16 @@
                 <div class="cr-lista">
                     @foreach ($items as $item)
                         @php
+                            $disponible = $disponibilidad[$item->id] ?? false;
                             $totalLinea = $item->precio_unitario * $item->cantidad;
                         @endphp
-                        <div class="cr-item" wire:key="guest-item-{{ $item->id }}">
+                        <div class="cr-item {{ $disponible ? '' : 'cr-item--no-disp' }}"
+                             wire:key="guest-item-{{ $item->id }}">
 
                             <div class="cr-img-wrap">
                                 @if ($item->imagen)
-                                    <img src="{{ $item->imagen }}" alt="{{ $item->nombre }}" class="cr-img">
+                                    <img src="{{ $item->imagen }}" alt="{{ $item->nombre }}"
+                                         class="cr-img {{ $disponible ? '' : 'cr-img--no-disp' }}">
                                 @else
                                     <div class="cr-sin-img">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -319,15 +323,20 @@
                                 @if ($item->promocion_id)
                                     <span class="cr-badge-promo">Promo</span>
                                 @endif
-                                <span class="cr-precio-unit-mob">
-                                    S/ {{ number_format($item->precio_unitario, 2) }} c/u
-                                </span>
+                                @if (! $disponible)
+                                    <span class="cr-no-disp-badge">No disponible</span>
+                                @else
+                                    <span class="cr-precio-unit-mob">
+                                        S/ {{ number_format($item->precio_unitario, 2) }} c/u
+                                    </span>
+                                @endif
                             </div>
 
                             <div class="cr-cantidad">
                                 <button type="button" class="cr-cant-btn"
                                         wire:click="decrementarGuest({{ $item->id }})"
-                                        wire:loading.attr="disabled">
+                                        wire:loading.attr="disabled"
+                                        @disabled(! $disponible)>
                                     @if ($item->cantidad <= 1)
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                              stroke-width="2.5" width="11" height="11">
@@ -340,13 +349,18 @@
                                 <span class="cr-cant-num">{{ $item->cantidad }}</span>
                                 <button type="button" class="cr-cant-btn"
                                         wire:click="incrementarGuest({{ $item->id }})"
-                                        wire:loading.attr="disabled">+</button>
+                                        wire:loading.attr="disabled"
+                                        @disabled(! $disponible)>+</button>
                             </div>
 
                             <div class="cr-precio-wrap">
-                                <span class="cr-precio">S/ {{ number_format($totalLinea, 2) }}</span>
-                                @if ($item->cantidad > 1)
-                                    <span class="cr-precio-unit">c/u S/ {{ number_format($item->precio_unitario, 2) }}</span>
+                                @if ($disponible)
+                                    <span class="cr-precio">S/ {{ number_format($totalLinea, 2) }}</span>
+                                    @if ($item->cantidad > 1)
+                                        <span class="cr-precio-unit">c/u S/ {{ number_format($item->precio_unitario, 2) }}</span>
+                                    @endif
+                                @else
+                                    <span class="cr-precio" style="color:#d1d5db">—</span>
                                 @endif
                             </div>
 
@@ -373,12 +387,16 @@
                 </div>
             </div>
 
+            @php
+                $hayDisponiblesGuest = collect($disponibilidad)->contains(true);
+                $countDisp = collect($disponibilidad)->filter()->count();
+            @endphp
             <aside class="cr-resumen">
                 <h2 class="cr-resumen-titulo">Resumen del pedido</h2>
                 <div class="cr-resumen-linea">
                     <span class="cr-resumen-label">
                         Subtotal
-                        <small class="cr-resumen-hint">({{ $items->count() }} {{ $items->count() === 1 ? 'producto' : 'productos' }})</small>
+                        <small class="cr-resumen-hint">({{ $countDisp }} {{ $countDisp === 1 ? 'producto' : 'productos' }})</small>
                     </span>
                     <span class="cr-resumen-valor">S/ {{ number_format($subtotal, 2) }}</span>
                 </div>
@@ -388,8 +406,9 @@
                     <span class="cr-resumen-total-valor">S/ {{ number_format($subtotal, 2) }}</span>
                 </div>
                 <button type="button"
-                        class="cr-btn-orden cr-btn-orden--activo"
-                        wire:click="abrirFormOrden">
+                        class="cr-btn-orden {{ $hayDisponiblesGuest ? 'cr-btn-orden--activo' : '' }}"
+                        wire:click="{{ $hayDisponiblesGuest ? 'abrirFormOrden' : '' }}"
+                        @disabled(! $hayDisponiblesGuest)>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                          stroke-width="2" width="16" height="16">
                         <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>

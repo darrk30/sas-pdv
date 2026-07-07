@@ -22,6 +22,9 @@ return new class extends Migration
             $table->decimal('precio_final', 12, 2)->default(0);
             $table->decimal('precio_costo', 12, 4)->nullable()->default(null);
             $table->timestamps();
+
+            $table->index(['producto_id', 'estado'], 'idx_variantes_producto_estado');
+            $table->index(['empresa_id', 'codigo_barras'], 'idx_variantes_empresa_barras');
         });
     }
 

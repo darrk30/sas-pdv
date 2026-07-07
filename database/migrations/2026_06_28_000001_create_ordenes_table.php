@@ -56,6 +56,10 @@ return new class extends Migration
             $table->text('notas_internas')->nullable();
 
             $table->timestamps();
+
+            $table->index(['empresa_id', 'estado'], 'idx_ordenes_empresa_estado');
+            $table->index(['empresa_id', 'fecha_orden'], 'idx_ordenes_empresa_fecha');
+            $table->index(['empresa_id', 'cliente_id'], 'idx_ordenes_empresa_cliente');
         });
     }
 

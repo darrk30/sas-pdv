@@ -23,6 +23,10 @@ return new class extends Migration
             $table->string('estado', 20)->default('aprobado');
             $table->dateTime('fecha');
             $table->timestamps();
+
+            $table->index(['empresa_id', 'sesion_caja_id'], 'idx_transacciones_empresa_sesion');
+            $table->index(['empresa_id', 'fecha'], 'idx_transacciones_empresa_fecha');
+            $table->index(['empresa_id', 'tipo'], 'idx_transacciones_empresa_tipo');
         });
     }
 

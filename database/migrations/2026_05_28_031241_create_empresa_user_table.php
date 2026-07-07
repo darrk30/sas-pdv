@@ -17,6 +17,8 @@ return new class extends Migration
             $table->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
             $table->string('estado')->default('activo');
             $table->timestamps();
+
+            $table->unique(['empresa_id', 'user_id'], 'uniq_empresa_user');
         });
     }
 

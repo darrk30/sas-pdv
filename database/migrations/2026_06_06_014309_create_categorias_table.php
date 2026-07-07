@@ -19,6 +19,8 @@ return new class extends Migration
             $table->string('imagen_url')->nullable();
             $table->boolean('estado')->default(true);
             $table->timestamps();
+
+            $table->index(['empresa_id', 'estado'], 'idx_categorias_empresa_estado');
         });
     }
 

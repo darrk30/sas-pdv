@@ -208,27 +208,41 @@
             <h2 class="chk__resumen-titulo">Resumen del pedido</h2>
 
             <div class="chk__resumen-items">
+                @php $hayNoDisp = collect($disponibilidad)->contains(false); @endphp
+                @if ($hayNoDisp)
+                    <div class="chk__resumen-aviso-nd">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             width="13" height="13" style="flex-shrink:0">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/>
+                        </svg>
+                        Algunos productos ya no están disponibles y no se incluirán en el pedido.
+                    </div>
+                @endif
+
                 @foreach ($items as $item)
-                    @if ($disponibilidad[$item->id] ?? false)
-                        @php
-                            $esPromo     = (bool) $item->promocion_id;
-                            $esItemGuest = ($esGuest ?? false) || $item->producto === null;
-                            if ($esItemGuest) {
-                                $nombre = $item->nombre ?? 'Producto';
-                                $imagen = $item->imagen ?? null;
-                            } else {
-                                $nombre = $esPromo
-                                    ? ($item->promocion?->nombre ?? 'Promoción')
-                                    : ($item->producto?->nombre  ?? 'Producto');
-                                $imagen = null;
-                                if ($esPromo && $item->promocion?->imagen) {
-                                    $imagen = Storage::url($item->promocion->imagen);
-                                } elseif (!$esPromo) {
-                                    if ($item->variante?->imagen)   $imagen = Storage::url($item->variante->imagen);
-                                    elseif ($item->producto?->logo) $imagen = Storage::url($item->producto->logo);
-                                }
+                    @php $disponible = $disponibilidad[$item->id] ?? false; @endphp
+                    @php
+                        $esPromo     = (bool) $item->promocion_id;
+                        $esItemGuest = ($esGuest ?? false) || $item->producto === null;
+                        if ($esItemGuest) {
+                            $nombre = $item->nombre ?? 'Producto';
+                            $imagen = $item->imagen ?? null;
+                        } else {
+                            $nombre = $esPromo
+                                ? ($item->promocion?->nombre ?? 'Promoción')
+                                : ($item->producto?->nombre  ?? 'Producto');
+                            $imagen = null;
+                            if ($esPromo && $item->promocion?->imagen) {
+                                $imagen = Storage::url($item->promocion->imagen);
+                            } elseif (!$esPromo) {
+                                if ($item->variante?->imagen)   $imagen = Storage::url($item->variante->imagen);
+                                elseif ($item->producto?->logo) $imagen = Storage::url($item->producto->logo);
                             }
-                        @endphp
+                        }
+                    @endphp
+
+                    @if ($disponible)
                         <div class="chk__resumen-item">
                             <div class="chk__resumen-img">
                                 @if ($imagen)
@@ -276,6 +290,26 @@
                             <span class="chk__resumen-precio">
                                 S/ {{ number_format($item->precio_unitario * $item->cantidad, 2) }}
                             </span>
+                        </div>
+                    @else
+                        {{-- Ítem no disponible: visible pero excluido del pedido --}}
+                        <div class="chk__resumen-item chk__resumen-item--nd">
+                            <div class="chk__resumen-img" style="opacity:.4">
+                                <div class="chk__resumen-img-ph">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"
+                                         width="14" height="14">
+                                        <rect x="3" y="3" width="18" height="18" rx="1.5"/>
+                                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                                        <path d="m21 15-5-5L5 21"/>
+                                    </svg>
+                                </div>
+                                <span class="chk__resumen-qty" style="opacity:.4">{{ $item->cantidad }}</span>
+                            </div>
+                            <span class="chk__resumen-nombre" style="opacity:.45;text-decoration:line-through">
+                                {{ $nombre }}
+                                <small class="chk__resumen-nd-badge">No disponible</small>
+                            </span>
+                            <span class="chk__resumen-precio" style="opacity:.3">—</span>
                         </div>
                     @endif
                 @endforeach

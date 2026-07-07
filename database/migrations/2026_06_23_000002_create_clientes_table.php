@@ -31,6 +31,7 @@ return new class extends Migration
 
             $table->unique(['empresa_id', 'email']);
             $table->unique(['empresa_id', 'numero_documento']);
+            $table->index(['empresa_id', 'user_id'], 'idx_clientes_empresa_user');
         });
     }
 

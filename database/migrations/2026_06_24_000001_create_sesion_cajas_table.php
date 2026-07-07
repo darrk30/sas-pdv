@@ -23,6 +23,10 @@ return new class extends Migration
             $table->decimal('diferencia_total', 12, 2)->nullable();
             $table->decimal('total_creditos', 12, 2)->default(0);
             $table->timestamps();
+
+            $table->index(['empresa_id', 'estado'], 'idx_sesion_cajas_empresa_estado');
+            $table->index(['empresa_id', 'caja_id', 'estado'], 'idx_sesion_cajas_empresa_caja_estado');
+            $table->index(['empresa_id', 'fecha_apertura'], 'idx_sesion_cajas_empresa_fecha');
         });
     }
 

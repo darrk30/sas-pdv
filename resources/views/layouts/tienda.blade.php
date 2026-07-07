@@ -41,6 +41,32 @@
 
 <body>
 
+    @if ($esModoPreview ?? false)
+        <div style="
+            background:#92400e;
+            color:#fef3c7;
+            text-align:center;
+            padding:.55rem 1rem;
+            font-size:.8125rem;
+            font-weight:600;
+            letter-spacing:.01em;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap:.5rem;
+            position:sticky;
+            top:0;
+            z-index:9999;
+        ">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 width="15" height="15" style="flex-shrink:0">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Vista previa — el catálogo está desactivado para los clientes
+        </div>
+    @endif
+
     <livewire:tienda.partials.navbar />
     <livewire:tienda.partials.marcas />
 

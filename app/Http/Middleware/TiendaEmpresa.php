@@ -19,6 +19,20 @@ class TiendaEmpresa
 
         app()->instance('tienda.empresa', $empresa);
 
+        if ($empresa->carta_activa_cliente !== 'activo') {
+            $usuario = auth()->user();
+            $esAdmin = $usuario && $empresa->usuarios()
+                ->where('users.id', $usuario->id)
+                ->wherePivot('estado', 'activo')
+                ->exists();
+
+            if (! $esAdmin) {
+                return response(view('tienda.catalogo-cerrado', compact('empresa')));
+            }
+
+            view()->share('esModoPreview', true);
+        }
+
         return $next($request);
     }
 }

@@ -184,11 +184,11 @@ class ListaDeseos extends Component
             if ($variante === null) return false;
             if ($variante->estado !== 'activo') return false;
             if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
-                if ((float)($variante->inventario?->stock_real ?? 0) <= 0) return false;
+                if ((float)($variante->inventario?->stock_reserva ?? 0) <= 0) return false;
             }
         } else {
             if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
-                if ((float)($producto->inventario?->stock_real ?? 0) <= 0) return false;
+                if ((float)($producto->inventario?->stock_reserva ?? 0) <= 0) return false;
             }
         }
 

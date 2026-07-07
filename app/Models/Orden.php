@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\EstadoOrden;
+use App\Observers\OrdenObserver;
 use App\Traits\BelongsToEmpresa;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +13,7 @@ use App\Models\MetodoPago;
 use App\Models\Promocion;
 use Illuminate\Support\Facades\DB;
 
+#[ObservedBy([OrdenObserver::class])]
 class Orden extends Model
 {
     use BelongsToEmpresa;

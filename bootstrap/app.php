@@ -15,6 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tienda.empresa' => \App\Http\Middleware\TiendaEmpresa::class,
         ]);
+
+        $middleware->redirectGuestsTo(function (Request $request) {
+            if (app()->bound('tienda.empresa')) {
+                return route('tienda.login');
+            }
+            return null;
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

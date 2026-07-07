@@ -23,6 +23,9 @@ return new class extends Migration
             $table->date('fecha_fin')->nullable();
             $table->string('estado', 20)->default('activo');
             $table->timestamps();
+
+            $table->index(['empresa_id', 'estado'], 'idx_promociones_empresa_estado');
+            $table->index(['empresa_id', 'fecha_inicio', 'fecha_fin'], 'idx_promociones_empresa_vigencia');
         });
     }
 

@@ -98,13 +98,20 @@ class ProductoDetalle extends Component
         ])->filter(fn($a) => $a['id'] && ! empty($a['valores']))->values()->all();
 
         $variantesData = $variantesActivas->map(fn($var) => [
-            'id'          => $var->id,
-            'codigo'      => $var->codigo ?? null,
-            'imagen'      => $var->imagen ? Storage::url($var->imagen) : null,
-            'valores_ids' => $var->valores->pluck('valor_id')->sort()->values()->all(),
-            'sin_stock'   => $producto->control_de_stock && ! $producto->venta_sin_stock
-                             && (float) ($var->inventario?->stock_reserva ?? 0) <= 0,
+            'id'            => $var->id,
+            'codigo'        => $var->codigo ?? null,
+            'imagen'        => $var->imagen ? Storage::url($var->imagen) : null,
+            'valores_ids'   => $var->valores->pluck('valor_id')->sort()->values()->all(),
+            'sin_stock'     => $producto->control_de_stock && ! $producto->venta_sin_stock
+                               && (float) ($var->inventario?->stock_reserva ?? 0) <= 0,
+            'stock_reserva' => $producto->control_de_stock && ! $producto->venta_sin_stock
+                               ? (float) ($var->inventario?->stock_reserva ?? 0)
+                               : null,
         ])->values()->all();
+
+        $stockReservaProducto = $producto->control_de_stock && ! $producto->venta_sin_stock && ! $tieneVariantes
+            ? (float) ($producto->inventario?->stock_reserva ?? 0)
+            : null;
 
         $productoData = [
             'id'             => $producto->id,
@@ -115,6 +122,9 @@ class ProductoDetalle extends Component
             'atributos'      => $atributosData,
             'variantes'      => $variantesData,
             'agotado'        => $productoAgotado,
+            'stock_reserva'  => $stockReservaProducto,
+            'control_stock'  => (bool) $producto->control_de_stock,
+            'venta_sin_stock'=> (bool) $producto->venta_sin_stock,
             'promocion_id'   => null,
         ];
 
