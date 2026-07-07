@@ -30,7 +30,7 @@ class EmpresaObserver
             (new ClienteGeneralSeeder())->runForEmpresa($empresa);
             (new SeriesSeeder())->runForEmpresa($empresa);
             (new RolesEmpresaSeeder())->runForEmpresa($empresa);
-            (new ProductosPruebaSeeder())->runForEmpresa($empresa);
+            // (new ProductosPruebaSeeder())->runForEmpresa($empresa);
         } finally {
             app()->forgetInstance('bypass_tenant_scope');
         }
