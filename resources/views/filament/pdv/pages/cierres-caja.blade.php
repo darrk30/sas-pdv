@@ -107,7 +107,7 @@
                 </table>
             </div>
             @if($sesiones->hasPages())
-                <div class="rg-pagination">{{ $sesiones->links() }}</div>
+                <div class="rg-pagination">{{ $sesiones->links('vendor.pagination.pdv') }}</div>
             @endif
         @endif
     </div>
@@ -349,7 +349,7 @@
                 </table>
             </div>
             @if($ventasTab->hasPages())
-                <div class="rg-pagination">{{ $ventasTab->links() }}</div>
+                <div class="rg-pagination">{{ $ventasTab->links('vendor.pagination.pdv') }}</div>
             @endif
         @endif
 
@@ -405,7 +405,7 @@
                 </table>
             </div>
             @if($prodTab->hasPages())
-                <div class="rg-pagination">{{ $prodTab->links() }}</div>
+                <div class="rg-pagination">{{ $prodTab->links('vendor.pagination.pdv') }}</div>
             @endif
         @endif
 
@@ -618,7 +618,7 @@
                     </tbody>
                 </table>
                 @if($cortVentas->hasPages())
-                    <div class="rg-pagination">{{ $cortVentas->links() }}</div>
+                    <div class="rg-pagination">{{ $cortVentas->links('vendor.pagination.pdv') }}</div>
                 @endif
             @endif
         </div>
@@ -722,7 +722,7 @@
                 </table>
             </div>
             @if($movTab->hasPages())
-                <div class="rg-pagination">{{ $movTab->links() }}</div>
+                <div class="rg-pagination">{{ $movTab->links('vendor.pagination.pdv') }}</div>
             @endif
         @endif
 

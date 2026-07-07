@@ -114,7 +114,7 @@
 
         @if ($ordenes->hasPages())
             <div class="mo-paginacion">
-                {{ $ordenes->links('livewire.tienda.paginacion') }}
+                {{ $ordenes->links() }}
             </div>
         @endif
     @endif

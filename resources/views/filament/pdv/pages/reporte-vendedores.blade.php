@@ -161,7 +161,7 @@
                 </table>
             </div>
             @if($vendedores->hasPages())
-                <div class="rg-pagination">{{ $vendedores->links() }}</div>
+                <div class="rg-pagination">{{ $vendedores->links('vendor.pagination.pdv') }}</div>
             @endif
         @endif
     </div>

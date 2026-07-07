@@ -122,7 +122,7 @@
                 </table>
             </div>
             @if($periodos->hasPages())
-                <div class="rg-pagination">{{ $periodos->links() }}</div>
+                <div class="rg-pagination">{{ $periodos->links('vendor.pagination.pdv') }}</div>
             @endif
         @endif
     </div>

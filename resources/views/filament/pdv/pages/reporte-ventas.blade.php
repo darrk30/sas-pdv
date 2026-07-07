@@ -258,7 +258,7 @@
 
             @if($ventas->hasPages())
                 <div class="vs-pagination">
-                    {{ $ventas->links() }}
+                    {{ $ventas->links('vendor.pagination.pdv') }}
                 </div>
             @endif
 

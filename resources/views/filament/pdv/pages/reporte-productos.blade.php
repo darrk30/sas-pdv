@@ -79,7 +79,7 @@
 
             @if($productos->hasPages())
                 <div class="rp-pagination">
-                    {{ $productos->links() }}
+                    {{ $productos->links('vendor.pagination.pdv') }}
                 </div>
             @endif
         @endif

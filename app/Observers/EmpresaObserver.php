@@ -8,6 +8,7 @@ use Database\Seeders\ClienteGeneralSeeder;
 use Database\Seeders\ConfiguracionInicialSeeder;
 use Database\Seeders\DimensionSeeder;
 use Database\Seeders\MetodoPagoSeeder;
+use Database\Seeders\ProductosPruebaSeeder;
 use Database\Seeders\ProveedorGeneralSeeder;
 use Database\Seeders\RolesEmpresaSeeder;
 use Database\Seeders\SeriesSeeder;
@@ -29,6 +30,7 @@ class EmpresaObserver
             (new ClienteGeneralSeeder())->runForEmpresa($empresa);
             (new SeriesSeeder())->runForEmpresa($empresa);
             (new RolesEmpresaSeeder())->runForEmpresa($empresa);
+            (new ProductosPruebaSeeder())->runForEmpresa($empresa);
         } finally {
             app()->forgetInstance('bypass_tenant_scope');
         }

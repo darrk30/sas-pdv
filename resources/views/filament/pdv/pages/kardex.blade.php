@@ -221,7 +221,7 @@
         {{-- Paginación --}}
         @if ($movimientos->hasPages())
             <div class="kdx-pagination">
-                {{ $movimientos->links() }}
+                {{ $movimientos->links('vendor.pagination.pdv') }}
             </div>
         @endif
 

@@ -136,7 +136,7 @@
             </div>
 
             @if($ajustes->hasPages())
-                <div class="rg-pagination">{{ $ajustes->links() }}</div>
+                <div class="rg-pagination">{{ $ajustes->links('vendor.pagination.pdv') }}</div>
             @endif
         @endif
     </div>

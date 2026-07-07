@@ -209,7 +209,7 @@
 
     @if($ventas->hasPages())
         <div class="cpc-pagination">
-            {{ $ventas->links() }}
+            {{ $ventas->links('vendor.pagination.pdv') }}
         </div>
     @endif
 </div>
