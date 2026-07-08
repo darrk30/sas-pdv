@@ -38,6 +38,8 @@ class CategoriaForm
                                     ->image()
                                     ->disk('public')
                                     ->directory('categorias')
+                                    ->optimize('webp', 88)
+                                    ->maxImageWidth(600)
                                     ->imageEditor(),
                             ]),
                     ])

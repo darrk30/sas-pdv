@@ -88,8 +88,7 @@ class PdvPanelProvider extends PanelProvider
             ->font('Vend Sans', provider: GoogleFontProvider::class)
             ->discoverWidgets(in: app_path('Filament/Pdv/Widgets'), for: 'App\Filament\Pdv\Widgets')
             ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
+                // AccountWidget::class,    
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -117,6 +116,7 @@ class PdvPanelProvider extends PanelProvider
                 Css::make('pdv-despacho',          asset('css/despacho.css')),
                 Css::make('pdv-venta-detalle',     asset('css/venta-detalle-modal.css')),
                 Css::make('pdv-cuentas-cobrar',    asset('css/cuentas-por-cobrar.css')),
+                Css::make('pdv-dashboard-widgets', asset('css/pdv-dashboard-widgets.css')),
             ])
             ->tenantMiddleware([
                 VerificarEmpresaActiva::class,

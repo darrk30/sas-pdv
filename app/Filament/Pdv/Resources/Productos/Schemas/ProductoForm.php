@@ -54,6 +54,8 @@ class ProductoForm
                                 FileUpload::make('logo')
                                     ->image()
                                     ->directory('productos')
+                                    ->optimize('webp', 85)
+                                    ->maxImageWidth(1200)
                                     ->columnSpanFull(),
                                 // Fila 1: Nombre (1 columna)
                                 TextInput::make('nombre')
@@ -235,7 +237,7 @@ class ProductoForm
                                         ->preload()
                                         ->createOptionForm([
                                             TextInput::make('nombre')->required(),
-                                            FileUpload::make('imagen_url')->directory('categorias'),
+                                            FileUpload::make('imagen_url')->directory('categorias')->image()->optimize('webp', 88)->maxImageWidth(600),
                                         ])
                                         ->createOptionUsing(fn(array $data) => \App\Models\Categoria::create($data)->id),
 
@@ -245,7 +247,7 @@ class ProductoForm
                                         ->preload()
                                         ->createOptionForm([
                                             TextInput::make('nombre')->required(),
-                                            FileUpload::make('logo')->directory('marcas'),
+                                            FileUpload::make('logo')->directory('marcas')->image()->optimize('webp', 88)->maxImageWidth(512),
                                         ])
                                         ->createOptionUsing(fn(array $data) => \App\Models\Marca::create($data)->id),
                                 ]),
@@ -280,16 +282,17 @@ class ProductoForm
                                     ->multiple()
                                     ->maxFiles(5)
                                     ->image()
+                                    ->optimize('webp', 85)
+                                    ->maxImageWidth(1200)
                                     ->directory(function () {
                                         $nombre = Str::slug(Auth::user()->name, '_');
                                         $id     = Auth::id();
                                         return "{$nombre}_{$id}/productos";
                                     })
                                     ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file): string {
-                                        $ext  = $file->getClientOriginalExtension() ?: 'jpg';
                                         $base = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
                                         $slug = Str::slug($base);
-                                        return Str::limit($slug ?: 'imagen', 30, '') . '-' . uniqid() . '.' . $ext;
+                                        return Str::limit($slug ?: 'imagen', 30, '') . '-' . uniqid() . '.webp';
                                     })
                                     ->reorderable()
                                     ->panelLayout('grid')
@@ -648,6 +651,8 @@ class ProductoForm
                                                                 ->label('Imagen')
                                                                 ->image()
                                                                 ->directory('producto-atributo-valores')
+                                                                ->optimize('webp', 85)
+                                                                ->maxImageWidth(400)
                                                                 ->nullable()
                                                                 ->columnSpan(1),
                                                         ]),
@@ -849,6 +854,8 @@ class ProductoForm
                                                 FileUpload::make('imagen')
                                                     ->image()
                                                     ->directory('variantes')
+                                                    ->optimize('webp', 85)
+                                                    ->maxImageWidth(800)
                                                     ->hiddenLabel(),
                                             ])
                                             ->mountUsing(function ($form, $component, $arguments) {

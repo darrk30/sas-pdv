@@ -41,6 +41,8 @@ class PromocionForm
                                 ->label('Imagen')
                                 ->image()
                                 ->directory('promociones')
+                                ->optimize('webp', 85)
+                                ->maxImageWidth(1200)
                                 ->imageEditor()
                                 ->nullable()
                                 ->columnSpanFull(),

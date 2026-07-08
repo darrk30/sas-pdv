@@ -16,8 +16,9 @@ class RoleForm
     {
         $empresaId = Filament::getTenant()?->id;
 
-        // Permisos agrupados por módulo
-        $permisosPorModulo = Permission::orderBy('module_label')
+        // Permisos agrupados por módulo — excluir módulos exclusivos del super-admin
+        $permisosPorModulo = Permission::where('module', 'not like', 'admin_%')
+            ->orderBy('module_label')
             ->orderBy('description')
             ->get()
             ->groupBy('module_label');

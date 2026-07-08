@@ -40,6 +40,8 @@ class MetodoPagoForm
                             ->label('Imagen / Logo')
                             ->image()
                             ->directory('metodos-pago')
+                            ->optimize('webp', 88)
+                            ->maxImageWidth(512)
                             ->nullable()
                             ->columnSpanFull(),
 

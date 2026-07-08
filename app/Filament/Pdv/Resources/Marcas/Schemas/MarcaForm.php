@@ -24,7 +24,9 @@ class MarcaForm
                         FileUpload::make('logo')
                             ->label('Logo de la marca')
                             ->image()
-                            ->directory('marcas') // Guarda en storage/app/public/marcas
+                            ->directory('marcas')
+                            ->optimize('webp', 88)
+                            ->maxImageWidth(512)
                             ->columnSpanFull(),
 
                         Toggle::make('estado')

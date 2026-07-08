@@ -1,0 +1,196 @@
+/* ============================================================
+   Bienvenida
+   ============================================================ */
+.wi-bienvenida-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(70,68,158,.08) 0%, transparent 55%);
+    pointer-events: none;
+    border-radius: .5rem;
+}
+.dark .wi-bienvenida-bg {
+    background: linear-gradient(135deg, rgba(70,68,158,.18) 0%, transparent 55%);
+}
+
+.wi-bienvenida-bar {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: .25rem;
+    background: linear-gradient(to bottom, #46449e, #8b89d0);
+    border-radius: .25rem 0 0 .25rem;
+}
+
+.wi-bienvenida-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    background: rgba(70,68,158,.1);
+    color: #46449e;
+    font-size: .6875rem;
+    font-weight: 600;
+    padding: .25rem .75rem;
+    border-radius: 9999px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin-bottom: .875rem;
+}
+.dark .wi-bienvenida-pill {
+    background: rgba(165,163,217,.15);
+    color: #a5a3d9;
+}
+
+.wi-bienvenida-nombre {
+    color: #46449e;
+    font-style: italic;
+}
+.dark .wi-bienvenida-nombre { color: #a5a3d9; }
+
+/* ============================================================
+   Botones filtro de período
+   ============================================================ */
+.wi-btn {
+    border-radius: 9999px;
+    padding: .3125rem .875rem;
+    font-size: .8125rem;
+    font-weight: 500;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    white-space: nowrap;
+    background: transparent;
+    color: #6b7280;
+    transition: background .15s, color .15s, border-color .15s;
+}
+.wi-btn:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+.wi-btn.wi-activo {
+    background: #46449e;
+    color: #fff;
+    font-weight: 600;
+    border-color: #46449e;
+    box-shadow: 0 1px 3px rgba(70,68,158,.35);
+}
+.wi-btn.wi-activo:hover { background: #3b39a0; }
+
+/* Dark mode — Filament agrega .dark al <html> */
+.dark .wi-btn {
+    border-color: #374151;
+    color: #9ca3af;
+    background: transparent;
+}
+.dark .wi-btn:hover {
+    background: #374151;
+    color: #f3f4f6;
+}
+.dark .wi-btn.wi-activo {
+    background: #5c5aad;
+    border-color: #5c5aad;
+    color: #fff;
+}
+
+/* Date inputs personalizado */
+.wi-date-input {
+    border-radius: .5rem;
+    border: 1px solid #d1d5db;
+    padding: .3125rem .625rem;
+    font-size: .8125rem;
+    color: #374151;
+    background: #fff;
+    outline: none;
+    cursor: pointer;
+    transition: border-color .15s;
+}
+.wi-date-input:focus { border-color: #46449e; }
+.dark .wi-date-input {
+    background: #1f2937;
+    border-color: #4b5563;
+    color: #f3f4f6;
+}
+
+/* ============================================================
+   Acceso rápido — icon circles
+   ============================================================ */
+.wi-icon { transition: background .15s; }
+
+.wi-icon-primary { background: #dbeafe; }
+.wi-icon-success { background: #d1fae5; }
+.wi-icon-warning { background: #fef3c7; }
+.wi-icon-info    { background: #e0f2fe; }
+.wi-icon-danger  { background: #ffe4e6; }
+
+.wi-card:hover .wi-icon-primary { background: #bfdbfe; }
+.wi-card:hover .wi-icon-success { background: #a7f3d0; }
+.wi-card:hover .wi-icon-warning { background: #fde68a; }
+.wi-card:hover .wi-icon-info    { background: #bae6fd; }
+.wi-card:hover .wi-icon-danger  { background: #fecdd3; }
+
+.dark .wi-icon-primary { background: rgba(28,57,142,.3); }
+.dark .wi-icon-success { background: rgba(0,78,59,.3); }
+.dark .wi-icon-warning { background: rgba(123,51,6,.3); }
+.dark .wi-icon-info    { background: rgba(2,74,112,.3); }
+.dark .wi-icon-danger  { background: rgba(139,8,54,.3); }
+
+.dark .wi-card:hover .wi-icon-primary { background: rgba(28,57,142,.55); }
+.dark .wi-card:hover .wi-icon-success { background: rgba(0,78,59,.55); }
+.dark .wi-card:hover .wi-icon-warning { background: rgba(123,51,6,.55); }
+.dark .wi-card:hover .wi-icon-info    { background: rgba(2,74,112,.55); }
+.dark .wi-card:hover .wi-icon-danger  { background: rgba(139,8,54,.55); }
+
+/* Icon colors */
+.wi-icon-primary svg, .wi-icon-primary { color: #2563eb; }
+.wi-icon-success svg, .wi-icon-success { color: #059669; }
+.wi-icon-warning svg, .wi-icon-warning { color: #d97706; }
+.wi-icon-info    svg, .wi-icon-info    { color: #0284c7; }
+.wi-icon-danger  svg, .wi-icon-danger  { color: #e11d48; }
+
+.dark .wi-icon-primary svg, .dark .wi-icon-primary { color: #93c5fd; }
+.dark .wi-icon-success svg, .dark .wi-icon-success { color: #6ee7b7; }
+.dark .wi-icon-warning svg, .dark .wi-icon-warning { color: #fcd34d; }
+.dark .wi-icon-info    svg, .dark .wi-icon-info    { color: #7dd3fc; }
+.dark .wi-icon-danger  svg, .dark .wi-icon-danger  { color: #fda4af; }
+
+/* Cards */
+.wi-card {
+    flex: 1 1 calc(20% - .75rem);
+    min-width: 110px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .625rem;
+    border-radius: .75rem;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    padding: 1rem .75rem;
+    text-align: center;
+    text-decoration: none;
+    transition: border-color .15s, box-shadow .15s;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.wi-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,.08);
+}
+.wi-card-primary:hover { border-color: #93c5fd; }
+.wi-card-success:hover { border-color: #6ee7b7; }
+.wi-card-warning:hover { border-color: #fcd34d; }
+.wi-card-info:hover    { border-color: #7dd3fc; }
+.wi-card-danger:hover  { border-color: #fda4af; }
+
+.dark .wi-card {
+    background: #1f2937;
+    border-color: #374151;
+}
+.dark .wi-card:hover { box-shadow: 0 4px 8px rgba(0,0,0,.25); }
+.dark .wi-card-primary:hover { border-color: #3b82f6; }
+.dark .wi-card-success:hover { border-color: #10b981; }
+.dark .wi-card-warning:hover { border-color: #f59e0b; }
+.dark .wi-card-info:hover    { border-color: #0ea5e9; }
+.dark .wi-card-danger:hover  { border-color: #f43f5e; }
+
+.wi-card-label {
+    font-size: .75rem;
+    font-weight: 600;
+    color: #374151;
+    line-height: 1.2;
+}
+.dark .wi-card-label { color: #e5e7eb; }

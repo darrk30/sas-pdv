@@ -662,6 +662,7 @@
 
 /* ── Item individual ────────────────────────────────────── */
 .pdv-item {
+    position: relative;
     display: flex;
     align-items: flex-start;
     gap: 0.5rem;
@@ -893,6 +894,46 @@
 .pdv-item__subtotal--gratis {
     color: #d97706;
     font-weight: 700;
+}
+
+/* Botón eliminar ítem individual — a la izquierda de los controles de qty */
+.pdv-item__del {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1.375rem;
+    height: 1.375rem;
+    border-radius: 0.3rem;
+    border: none;
+    background: #fee2e2;
+    color: #f87171;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.15s, background 0.15s;
+}
+.pdv-item__del svg { width: 0.8rem; height: 0.8rem; }
+.pdv-item__del:hover { color: #fff; background: #ef4444; }
+.dark .pdv-item__del { background: rgba(239,68,68,.15); color: #f87171; }
+.dark .pdv-item__del:hover { color: #fff; background: #ef4444; }
+
+/* Badge "en carrito" en tarjeta del catálogo */
+.pdv-card__badge--carrito {
+    position: absolute;
+    top: 0.3rem;
+    left: 0.3rem;
+    background: #46449e;
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.15rem 0.4rem;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    line-height: 1.4;
+    letter-spacing: .02em;
+    box-shadow: 0 1px 3px rgba(70,68,158,.4);
 }
 
 /* Botón DAR (regalo) */

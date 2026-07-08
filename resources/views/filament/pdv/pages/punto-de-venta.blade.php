@@ -129,17 +129,15 @@
                                     ? $producto->variantesActivas->sum(fn($v) => (float)($v->inventario?->stock_real ?? 0)) : null;
                                 $stock          = $stockSimple ?? $stockVariantes;
 
-                                // Descontar lo que ya está en el carrito
-                                $enCarrito = 0;
-                                if ($stock !== null) {
-                                    if (! $tieneVariantes) {
-                                        $enCarrito = (float) ($carrito["producto_{$producto->id}"]['cantidad'] ?? 0);
-                                    } else {
-                                        $varIds = $producto->variantesActivas->pluck('id');
-                                        foreach ($carrito as $ci) {
-                                            if ($ci['tipo'] === 'variante' && $varIds->contains($ci['id'])) {
-                                                $enCarrito += $ci['cantidad'];
-                                            }
+                                // Siempre calcular enCarrito (para el badge del carrito)
+                                if (! $tieneVariantes) {
+                                    $enCarrito = (float) ($carrito["producto_{$producto->id}"]['cantidad'] ?? 0);
+                                } else {
+                                    $enCarrito = 0;
+                                    $varIds = $producto->variantesActivas->pluck('id');
+                                    foreach ($carrito as $ci) {
+                                        if ($ci['tipo'] === 'variante' && $varIds->contains($ci['id'])) {
+                                            $enCarrito += $ci['cantidad'];
                                         }
                                     }
                                 }
@@ -150,6 +148,10 @@
                                     && $stockVisible !== null
                                     && $stockVisible <= 0;
                                 $stockNivel = $stockVisible === null ? null : ($stockVisible <= 0 ? 'agotado' : ($stockVisible <= 5 ? 'bajo' : 'ok'));
+
+                                $enCarritoFmt = $enCarrito > 0
+                                    ? ($enCarrito == floor($enCarrito) ? number_format($enCarrito, 0) : number_format($enCarrito, 2))
+                                    : null;
                             @endphp
                             <button
                                 class="pdv-card {{ $agotado ? 'pdv-card--agotado' : '' }}"
@@ -164,6 +166,14 @@
                                     @endif
                                     @if($agotado)
                                         <div class="pdv-card__agotado-overlay"><span>AGOTADO</span></div>
+                                    @endif
+                                    @if($enCarritoFmt !== null)
+                                        <span class="pdv-card__badge pdv-card__badge--carrito">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width:.6rem;height:.6rem;display:inline;vertical-align:-.05em;">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
+                                            </svg>
+                                            {{ $enCarritoFmt }}
+                                        </span>
                                     @endif
                                     @if($producto->es_cortesia)
                                         <span class="pdv-card__badge pdv-card__badge--cortesia">CORTESÍA</span>
@@ -408,33 +418,38 @@
                                 <span class="pdv-item__subtotal {{ $esCortesia ? 'pdv-item__subtotal--gratis' : '' }}">
                                     S/ {{ number_format($item['precio'] * $item['cantidad'], 2) }}
                                 </span>
+
                                 @if($item['decimal'] ?? false)
+                                    {{-- wire:key incluye la cantidad para que Alpine se reinicialice al cambiar --}}
                                     <div
                                         class="pdv-qty pdv-qty--decimal"
+                                        wire:key="qty-{{ $item['key'] }}-{{ $item['cantidad'] }}"
                                         x-data="{ cant: '{{ $item['cantidad'] }}' }"
                                     >
+                                        <button class="pdv-item__del" wire:click="eliminarItem('{{ $item['key'] }}')" title="Eliminar">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                                        </button>
                                         <input
                                             type="number"
                                             min="0.001"
                                             step="0.001"
                                             x-model="cant"
                                             class="pdv-qty__decimal-input"
-                                            @blur="$wire.actualizarCantidad('{{ $item['key'] }}', parseFloat(cant) || 0.001)"
+                                            @blur="$wire.actualizarCantidad('{{ $item['key'] }}', Math.max(0.001, parseFloat(cant) || 0.001))"
                                             @keydown.enter="$el.blur()"
                                         />
                                     </div>
                                 @else
-                                    <div class="pdv-qty">
+                                    <div class="pdv-qty" wire:key="qty-{{ $item['key'] }}-{{ $item['cantidad'] }}">
+                                        <button class="pdv-item__del" wire:click="eliminarItem('{{ $item['key'] }}')" title="Eliminar">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                                        </button>
                                         <button class="pdv-qty__btn pdv-qty__btn--menos" wire:click="disminuirCantidad('{{ $item['key'] }}')">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/>
-                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
                                         </button>
                                         <span class="pdv-qty__num">{{ $item['cantidad'] }}</span>
                                         <button class="pdv-qty__btn pdv-qty__btn--mas" wire:click="aumentarCantidad('{{ $item['key'] }}')">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                                         </button>
                                     </div>
                                 @endif
