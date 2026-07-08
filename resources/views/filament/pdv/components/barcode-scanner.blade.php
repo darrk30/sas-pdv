@@ -304,8 +304,8 @@ window._barcodeScanner = function () {
                 return self._scanner.start(constraints, cfg, onOk, onErr);
             };
 
-            // Resolution hint forces browser to pick the main camera over ultra-wide
-            tryStart({ facingMode: { exact: 'environment' }, width: { ideal: 1920, min: 1280 }, height: { ideal: 1080 } })
+            // Resolution hint (ideal = soft) nudges browser to pick main camera over ultra-wide
+            tryStart({ facingMode: { exact: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } })
                 .catch(function() { return tryStart({ facingMode: { exact: 'environment' } }); })
                 .catch(function() { return tryStart({ facingMode: 'environment' }); })
                 .catch(function() { return tryStart({ facingMode: 'user' }); })
