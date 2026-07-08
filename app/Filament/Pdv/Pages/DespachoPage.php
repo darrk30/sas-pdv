@@ -29,10 +29,10 @@ class DespachoPage extends Page implements HasForms
     use WithPagination;
 
     protected string $view = 'filament.pdv.pages.despacho';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-cube';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-paper-airplane';
     protected static ?string $navigationLabel = 'Despachos';
-    protected static string|UnitEnum|null $navigationGroup = 'Productos';
-    protected static ?int $navigationSort = 7;
+    protected static string|UnitEnum|null $navigationGroup = 'Pedidos Web';
+    protected static ?int $navigationSort = 4;
     protected static ?string $title = 'Despachos pendientes';
 
     public static function canAccess(): bool { return auth()->user()?->can('ordenes.despacho') ?? false; }

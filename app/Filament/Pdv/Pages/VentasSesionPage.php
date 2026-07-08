@@ -30,9 +30,9 @@ class VentasSesionPage extends Page
     use WithPagination;
 
     protected string $view = 'filament.pdv.pages.ventas-sesion';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-presentation-chart-line';
     protected static ?string $navigationLabel = 'Ventas del Turno';
-    protected static string|UnitEnum|null $navigationGroup = 'Caja';
+    protected static string|UnitEnum|null $navigationGroup = 'Punto de Venta';
     protected static ?int $navigationSort = 3;
     protected static ?string $title = 'Ventas del Turno';
 

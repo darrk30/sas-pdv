@@ -38,9 +38,9 @@ class CuentasPorCobrarPage extends Page implements HasForms
     use WithPagination;
 
     protected string $view = 'filament.pdv.pages.cuentas-por-cobrar';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-wallet';
     protected static string|UnitEnum|null $navigationGroup = 'Reportes';
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 5;
     protected static bool $shouldRegisterNavigation = false;
 
     public static function canAccess(): bool { return auth()->user()?->can('reportes.cuentas_cobrar') ?? false; }

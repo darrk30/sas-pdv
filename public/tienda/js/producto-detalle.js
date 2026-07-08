@@ -84,8 +84,19 @@ const _pdPage = function(productoData, imagenesData, colorImagenMap) {
 
         get disponible() {
             if (this.producto.agotado) return false;
-            if (this.producto.atributos.length === 0 || this.producto.variantes.length === 0) return true;
-            return this.seleccionCompleta && this.varianteCoincidente !== null && !this.varianteSinStock;
+            if (this.producto.atributos.length === 0 || this.producto.variantes.length === 0) {
+                if (this.producto.control_stock && !this.producto.venta_sin_stock) {
+                    const sv = this.stockVisual;
+                    return sv === null || sv > 0;
+                }
+                return true;
+            }
+            if (!this.seleccionCompleta || this.varianteCoincidente === null || this.varianteSinStock) return false;
+            if (this.producto.control_stock && !this.producto.venta_sin_stock) {
+                const sv = this.stockVisual;
+                return sv === null || sv > 0;
+            }
+            return true;
         },
 
         esValorBloqueado(attrId, val) {

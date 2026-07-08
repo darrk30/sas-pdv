@@ -33,9 +33,9 @@ class CierresCajaPage extends Page implements HasForms
     use WithPagination;
 
     protected string $view = 'filament.pdv.pages.cierres-caja';
-    protected static string|BackedEnum|null $navigationIcon  = 'heroicon-o-archive-box';
+    protected static string|BackedEnum|null $navigationIcon  = 'heroicon-o-lock-closed';
     protected static ?string $navigationLabel  = 'Cierres de Caja';
-    protected static string|UnitEnum|null $navigationGroup  = 'Caja';
+    protected static string|UnitEnum|null $navigationGroup  = 'Punto de Venta';
     protected static ?int $navigationSort = 5;
     protected static ?string $title            = 'Cierres de Caja';
 

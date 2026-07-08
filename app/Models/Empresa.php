@@ -27,6 +27,11 @@ class Empresa extends Model
         'carta_activa_admin',
         'cod_local',
         'country_code',
+        'modulos_activos',
+    ];
+
+    protected $casts = [
+        'modulos_activos' => 'array',
     ];
 
     public function getRouteKeyName()

@@ -19,11 +19,11 @@ class IngresoEgresoResource extends Resource
 {
     protected static ?string $model = IngresoEgreso::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrows-right-left';
 
     protected static ?string $navigationLabel = 'Ingresos y Egresos';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Caja';
+    protected static string|UnitEnum|null $navigationGroup = 'Punto de Venta';
     protected static ?int $navigationSort = 4;
 
     protected static ?string $modelLabel = 'Movimiento';

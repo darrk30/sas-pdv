@@ -19,7 +19,7 @@ class MarcaResource extends Resource
 {
     protected static ?string $model = Marca::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookmark;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-check-badge';
 
     protected static ?string $navigationLabel = 'Marcas';
 

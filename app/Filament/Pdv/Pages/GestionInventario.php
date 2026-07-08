@@ -20,12 +20,12 @@ class GestionInventario extends Page implements HasTable
     use InteractsWithTable;
 
     // Estas propiedades de navegación SÍ son estáticas en Filament
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-table-cells';
 
     protected static ?string $navigationLabel = 'Inventario';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Productos';
-    protected static ?int $navigationSort = 3;
+    protected static string|UnitEnum|null $navigationGroup = 'Inventario';
+    protected static ?int $navigationSort = 2;
     
     // ELIMINAMOS 'static' de aquí para evitar el Error Fatal de PHP
     protected string $view = 'filament.pdv.pages.gestion-inventario';

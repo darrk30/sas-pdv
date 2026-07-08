@@ -25,10 +25,10 @@ class ReporteVendedoresPage extends Page implements HasForms
     use WithPagination;
 
     protected string $view = 'filament.pdv.pages.reporte-vendedores';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-identification';
     protected static ?string $navigationLabel = 'Vendedores';
-    protected static string|UnitEnum|null $navigationGroup = 'Caja';
-    protected static ?int $navigationSort = 9;
+    protected static string|UnitEnum|null $navigationGroup = 'Reportes';
+    protected static ?int $navigationSort = 7;
     protected static ?string $title = 'Reporte de Vendedores';
 
     public static function canAccess(): bool { return auth()->user()?->can('caja.reporte_vendedores') ?? false; }

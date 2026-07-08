@@ -19,12 +19,12 @@ class PromocionResource extends Resource
 {
     protected static ?string $model = Promocion::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-sparkles';
 
     protected static ?string $navigationLabel = 'Promociones';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Productos';
-    protected static ?int $navigationSort = 2;
+    protected static string|UnitEnum|null $navigationGroup = 'Pedidos Web';
+    protected static ?int $navigationSort = 3;
 
     protected static ?string $modelLabel = 'Promoción';
 

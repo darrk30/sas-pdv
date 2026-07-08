@@ -122,7 +122,21 @@ class Carrito extends Component
 
     public function incrementar(int $itemId): void
     {
-        $this->itemDelUsuario($itemId)?->increment('cantidad');
+        $item = $this->itemDelUsuario($itemId)?->load(['producto.inventario', 'variante.inventario']);
+        if (! $item) return;
+
+        $producto = $item->producto;
+        if ($producto && $producto->control_de_stock && ! $producto->venta_sin_stock) {
+            $stockR = $item->variante_id
+                ? (float) ($item->variante?->inventario?->stock_reserva ?? 0)
+                : (float) ($producto->inventario?->stock_reserva ?? 0);
+            if ($stockR <= $item->cantidad) {
+                $this->dispatch('toast', mensaje: 'No hay más unidades disponibles.', tipo: 'error');
+                return;
+            }
+        }
+
+        $item->increment('cantidad');
         $this->actualizarBadge();
     }
 
@@ -180,6 +194,25 @@ class Carrito extends Component
     public function incrementarGuest(int $index): void
     {
         if (! isset($this->guestItems[$index])) return;
+        $raw      = $this->guestItems[$index];
+        $cantidad = (int) ($raw['cantidad'] ?? 1);
+
+        if (! empty($raw['producto_id'])) {
+            $producto = Producto::with('inventario')->find($raw['producto_id']);
+            if ($producto && $producto->control_de_stock && ! $producto->venta_sin_stock) {
+                if (! empty($raw['variante_id'])) {
+                    $variante = Variante::with('inventario')->find($raw['variante_id']);
+                    $stockR   = (float) ($variante?->inventario?->stock_reserva ?? 0);
+                } else {
+                    $stockR = (float) ($producto->inventario?->stock_reserva ?? 0);
+                }
+                if ($stockR <= $cantidad) {
+                    $this->dispatch('toast', mensaje: 'No hay más unidades disponibles.', tipo: 'error');
+                    return;
+                }
+            }
+        }
+
         $this->guestItems[$index]['cantidad']++;
         $total = array_sum(array_column($this->guestItems, 'cantidad'));
         $this->dispatch('carrito-guest-actualizado', items: $this->guestItems);
@@ -338,6 +371,26 @@ class Carrito extends Component
             $subtotal       = $items->filter(fn($i) => $disponibilidad[$i->id])
                                     ->sum(fn($i) => $i->precio_unitario * $i->cantidad);
 
+            $puedeIncrementar = $items->mapWithKeys(function ($item) use ($disponibilidad) {
+                if (! ($disponibilidad[$item->id] ?? false)) return [$item->id => false];
+                if ($item->promocion_id) {
+                    $stock = $item->promocion?->stockPredictivo();
+                    return [$item->id => $stock === null || $stock > $item->cantidad];
+                }
+                $producto = $item->producto;
+                if (! $producto) return [$item->id => false];
+                if ($item->variante_id) {
+                    if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
+                        return [$item->id => (float) ($item->variante?->inventario?->stock_reserva ?? 0) > $item->cantidad];
+                    }
+                } else {
+                    if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
+                        return [$item->id => (float) ($producto->inventario?->stock_reserva ?? 0) > $item->cantidad];
+                    }
+                }
+                return [$item->id => true];
+            });
+
         } elseif (! empty($this->guestItems)) {
             $rawItems = array_values($this->guestItems);
 
@@ -376,9 +429,30 @@ class Carrito extends Component
             $items    = $items->sortBy(fn($i) => $disponibilidad[$i->id] ? 0 : 1)->values();
             $subtotal = $items->filter(fn($i) => $disponibilidad[$i->id])
                               ->sum(fn($i) => $i->precio_unitario * $i->cantidad);
+
+            $puedeIncrementar = $items->mapWithKeys(function ($item) use ($rawItems, $bdProductos, $bdVariantes, $disponibilidad) {
+                if (! ($disponibilidad[$item->id] ?? false)) return [$item->id => false];
+                $raw      = $rawItems[$item->id] ?? [];
+                $cantidad = (int) ($raw['cantidad'] ?? 1);
+                if (! empty($raw['promocion_id'])) return [$item->id => true];
+                $producto = $bdProductos[$raw['producto_id'] ?? 0] ?? null;
+                if (! $producto) return [$item->id => false];
+                if (! empty($raw['variante_id'])) {
+                    $variante = $bdVariantes[$raw['variante_id']] ?? null;
+                    if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
+                        return [$item->id => (float) ($variante?->inventario?->stock_reserva ?? 0) > $cantidad];
+                    }
+                } else {
+                    if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
+                        return [$item->id => (float) ($producto->inventario?->stock_reserva ?? 0) > $cantidad];
+                    }
+                }
+                return [$item->id => true];
+            });
         } else {
-            $disponibilidad = collect();
-            $subtotal       = 0;
+            $disponibilidad   = collect();
+            $puedeIncrementar = collect();
+            $subtotal         = 0;
         }
 
         $metodosEnvio = $this->cargarMetodosEnvio();
@@ -390,7 +464,7 @@ class Carrito extends Component
         $total             = $subtotal + $costoEnvio;
 
         return view('livewire.tienda.carrito', compact(
-            'items', 'subtotal', 'disponibilidad', 'esGuest',
+            'items', 'subtotal', 'disponibilidad', 'puedeIncrementar', 'esGuest',
             'metodosEnvio', 'metodosPago',
             'costoEnvio', 'total', 'requiereDireccion'
         ));

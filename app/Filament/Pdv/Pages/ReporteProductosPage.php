@@ -24,10 +24,10 @@ class ReporteProductosPage extends Page implements HasForms
     use WithPagination;
 
     protected string $view = 'filament.pdv.pages.reporte-productos';
-    protected static string|BackedEnum|null $navigationIcon  = 'heroicon-o-shopping-bag';
+    protected static string|BackedEnum|null $navigationIcon  = 'heroicon-o-chart-bar';
     protected static ?string $navigationLabel  = 'Productos más vendidos';
     protected static string|UnitEnum|null $navigationGroup  = 'Reportes';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
     protected static ?string $title            = 'Productos más vendidos';
 
     public static function canAccess(): bool { return auth()->user()?->can('reportes.productos') ?? false; }

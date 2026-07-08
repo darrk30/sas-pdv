@@ -24,7 +24,7 @@ class AjusteResource extends Resource
 
     protected static ?string $navigationLabel = 'Ajustes de Stock';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Productos';
+    protected static string|UnitEnum|null $navigationGroup = 'Inventario';
     protected static ?int $navigationSort = 4;
 
     protected static ?string $modelLabel = 'Ajuste';

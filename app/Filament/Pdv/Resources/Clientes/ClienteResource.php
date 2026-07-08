@@ -19,12 +19,12 @@ class ClienteResource extends Resource
 {
     protected static ?string $model = Cliente::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?string $navigationLabel = 'Clientes';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Caja';
-    protected static ?int $navigationSort = 6;
+    protected static string|UnitEnum|null $navigationGroup = 'Pedidos Web';
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $modelLabel = 'Cliente';
 

@@ -19,7 +19,7 @@ class SerieResource extends Resource
 {
     protected static ?string $model = Serie::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-hashtag';
 
     protected static ?string $navigationLabel = 'Series';
 

@@ -285,6 +285,7 @@
                         producto.agotado ? 'Sin stock'
                         : (producto.variantes.length > 0 && producto.atributos.length > 0 && !seleccionCompleta) ? 'Selecciona las opciones'
                         : varianteSinStock ? 'Sin stock'
+                        : stockVisual === 0 ? 'Sin stock'
                         : !disponible ? 'No disponible'
                         : 'Agregar al carrito'
                     ">Agregar al carrito</span>
@@ -305,6 +306,7 @@
                     <span x-text="
                         producto.variantes.length > 0 && producto.atributos.length > 0 && !seleccionCompleta ? 'Selecciona las opciones'
                         : varianteSinStock ? 'Sin stock'
+                        : stockVisual === 0 ? 'Sin stock'
                         : !disponible ? 'No disponible'
                         : $store.carrito.enDeseos({{ $producto->id }}) ? 'En lista de deseos' : 'Agregar a deseos'
                     ">Agregar a deseos</span>

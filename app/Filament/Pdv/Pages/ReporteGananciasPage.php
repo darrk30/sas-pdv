@@ -27,10 +27,10 @@ class ReporteGananciasPage extends Page implements HasForms
     use WithPagination;
 
     protected string $view = 'filament.pdv.pages.reporte-ganancias';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrow-trending-up';
     protected static ?string $navigationLabel = 'Reporte de Ganancias';
-    protected static string|UnitEnum|null $navigationGroup = 'Caja';
-    protected static ?int $navigationSort = 8;
+    protected static string|UnitEnum|null $navigationGroup = 'Reportes';
+    protected static ?int $navigationSort = 3;
     protected static ?string $title = 'Reporte de Ganancias';
 
     public static function canAccess(): bool { return auth()->user()?->can('caja.reporte_ganancias') ?? false; }

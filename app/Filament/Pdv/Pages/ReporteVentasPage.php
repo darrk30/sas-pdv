@@ -42,10 +42,10 @@ class ReporteVentasPage extends Page implements HasForms
     use WithPagination;
 
     protected string $view = 'filament.pdv.pages.reporte-ventas';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-document-chart-bar';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
     protected static ?string $navigationLabel = 'Reporte de Ventas';
-    protected static string|UnitEnum|null $navigationGroup = 'Caja';
-    protected static ?int $navigationSort = 7;
+    protected static string|UnitEnum|null $navigationGroup = 'Reportes';
+    protected static ?int $navigationSort = 2;
     protected static ?string $title = 'Reporte de Ventas';
 
     public static function canAccess(): bool { return auth()->user()?->can('caja.reporte_ventas') ?? false; }

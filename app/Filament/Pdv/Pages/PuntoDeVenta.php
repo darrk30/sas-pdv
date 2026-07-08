@@ -42,7 +42,7 @@ class PuntoDeVenta extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-receipt-percent';
     protected static ?string $navigationLabel = 'Punto de Venta';
-    protected static string|UnitEnum|null $navigationGroup = 'Caja';
+    protected static string|UnitEnum|null $navigationGroup = 'Punto de Venta';
     protected static ?int $navigationSort = 1;
     protected string $view = 'filament.pdv.pages.punto-de-venta';
 

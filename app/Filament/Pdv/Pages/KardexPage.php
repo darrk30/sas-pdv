@@ -27,8 +27,8 @@ class KardexPage extends Page implements HasForms
     protected string $view = 'filament.pdv.pages.kardex';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
     protected static ?string $navigationLabel = 'Kardex';
-    protected static string|UnitEnum|null $navigationGroup = 'Productos';
-    protected static ?int $navigationSort = 5;
+    protected static string|UnitEnum|null $navigationGroup = 'Inventario';
+    protected static ?int $navigationSort = 3;
     protected static ?string $title = 'Kardex de Inventario';
 
     public static function canAccess(): bool { return auth()->user()?->can('inventario.kardex') ?? false; }

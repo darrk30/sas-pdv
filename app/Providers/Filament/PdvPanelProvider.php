@@ -70,12 +70,13 @@ class PdvPanelProvider extends PanelProvider
                 return $icono ? asset('storage/' . $icono) : null;
             })
             ->navigationGroups([
-                NavigationGroup::make('Caja'),
-                NavigationGroup::make('Productos'),
+                NavigationGroup::make('Punto de Venta'),
+                NavigationGroup::make('Inventario'),
+                NavigationGroup::make('Pedidos Web'),
                 NavigationGroup::make('Compras'),
                 NavigationGroup::make('Catálogo'),
-                NavigationGroup::make('Configuración')->collapsed(),
                 NavigationGroup::make('Reportes')->collapsed(),
+                NavigationGroup::make('Configuración')->collapsed(),
             ])
             ->discoverResources(in: app_path('Filament/Pdv/Resources'), for: 'App\Filament\Pdv\Resources')
             ->discoverPages(in: app_path('Filament/Pdv/Pages'), for: 'App\Filament\Pdv\Pages')

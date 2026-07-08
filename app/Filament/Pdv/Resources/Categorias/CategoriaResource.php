@@ -19,7 +19,7 @@ class CategoriaResource extends Resource
 {
     protected static ?string $model = Categoria::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-folder';
 
     protected static ?string $navigationLabel = 'Categorías';
 

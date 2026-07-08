@@ -179,7 +179,7 @@
                                 <button type="button" class="cr-cant-btn"
                                         wire:click="incrementar({{ $item->id }})"
                                         wire:loading.attr="disabled"
-                                        @disabled(! $disponible)>+</button>
+                                        @disabled(! ($puedeIncrementar[$item->id] ?? false))>+</button>
                             </div>
 
                             <div class="cr-precio-wrap">
@@ -350,7 +350,7 @@
                                 <button type="button" class="cr-cant-btn"
                                         wire:click="incrementarGuest({{ $item->id }})"
                                         wire:loading.attr="disabled"
-                                        @disabled(! $disponible)>+</button>
+                                        @disabled(! ($puedeIncrementar[$item->id] ?? false))>+</button>
                             </div>
 
                             <div class="cr-precio-wrap">

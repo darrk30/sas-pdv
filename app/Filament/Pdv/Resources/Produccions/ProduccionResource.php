@@ -19,7 +19,7 @@ class ProduccionResource extends Resource
 {
     protected static ?string $model = Produccion::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrenchScrewdriver;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-beaker';
 
     protected static ?string $navigationLabel = 'Producción';
 

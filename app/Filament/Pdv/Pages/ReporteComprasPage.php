@@ -26,10 +26,10 @@ class ReporteComprasPage extends Page implements HasForms
     use WithPagination;
 
     protected string $view = 'filament.pdv.pages.reporte-compras';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-shopping-cart';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
     protected static ?string $navigationLabel = 'Reporte de Compras';
-    protected static string|UnitEnum|null $navigationGroup = 'Compras';
-    protected static ?int $navigationSort = 3;
+    protected static string|UnitEnum|null $navigationGroup = 'Reportes';
+    protected static ?int $navigationSort = 6;
     protected static ?string $title = 'Reporte de Compras';
 
     public static function canAccess(): bool { return auth()->user()?->can('compras.reporte') ?? false; }
