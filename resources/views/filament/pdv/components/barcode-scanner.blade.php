@@ -275,7 +275,6 @@ window._barcodeScanner = function () {
             var id = 'barcode-reader-preview';
             if (!document.getElementById(id) || this._scanner || this._starting) return;
 
-            // Limpiar residuos de la sesión anterior ANTES de crear la nueva instancia
             this._clearPreview();
             this._starting = true;
 
@@ -289,9 +288,6 @@ window._barcodeScanner = function () {
                 window.Html5QrcodeSupportedFormats.QR_CODE,
             ];
 
-            this._scanner = new window.Html5Qrcode(id, { formatsToSupport: FORMATS, verbose: false });
-
-            // Cuadro rectangular ancho (ideal para códigos de barras lineales)
             var container = document.getElementById(id);
             var w = container ? Math.min(container.offsetWidth - 40, 280) : 240;
             var cfg = { fps: 10, qrbox: { width: w, height: 70 } };
@@ -300,15 +296,40 @@ window._barcodeScanner = function () {
             var onOk  = function(code) { self._onDetect(code); };
             var onErr = function() {};
 
-            var tryStart = function(constraints) {
-                return self._scanner.start(constraints, cfg, onOk, onErr);
+            // Each retry needs a FRESH instance — html5-qrcode cannot call start()
+            // twice on the same object after a failure
+            var makeScanner = function() {
+                try { if (self._scanner) self._scanner.clear(); } catch (_) {}
+                self._clearPreview();
+                self._scanner = new window.Html5Qrcode(id, { formatsToSupport: FORMATS, verbose: false });
+                return self._scanner;
             };
 
-            // Resolution hint (ideal = soft) nudges browser to pick main camera over ultra-wide
-            tryStart({ facingMode: { exact: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } })
-                .catch(function() { return tryStart({ facingMode: { exact: 'environment' } }); })
-                .catch(function() { return tryStart({ facingMode: 'environment' }); })
-                .catch(function() { return tryStart({ facingMode: 'user' }); })
+            // Enumerate cameras first so we can pick the main rear camera
+            // (avoids ultra-wide being selected automatically)
+            window.Html5Qrcode.getCameras()
+                .then(function(cameras) {
+                    if (!cameras || cameras.length === 0) throw new Error('no-cameras');
+
+                    var rear = cameras.filter(function(c) {
+                        return (c.label || '').toLowerCase().match(/back|rear|trasera|environment/);
+                    });
+                    // Exclude ultra-wide / gran angular from candidates
+                    var main = rear.filter(function(c) {
+                        return !(c.label || '').toLowerCase().match(/ultra|wide|gran|angular|panoram/);
+                    });
+
+                    var pick = main[0] || rear[0] || cameras[cameras.length - 1];
+                    return makeScanner().start(pick.id, cfg, onOk, onErr);
+                })
+                .catch(function() {
+                    // Fallback: soft facingMode (works on laptop webcams)
+                    return makeScanner().start({ facingMode: 'environment' }, cfg, onOk, onErr);
+                })
+                .catch(function() {
+                    // Last resort: front camera
+                    return makeScanner().start({ facingMode: 'user' }, cfg, onOk, onErr);
+                })
                 .then(function() {
                     self.scanning  = true;
                     self._starting = false;
