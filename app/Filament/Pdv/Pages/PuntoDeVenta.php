@@ -406,7 +406,36 @@ class PuntoDeVenta extends Page
             $query->where('categoria_id', $this->categoriaId);
         }
 
-        return $query->orderBy('nombre')->take($this->perPage)->get();
+        return $query
+            ->orderByRaw('
+                CASE
+                    WHEN productos.control_de_stock = 0 THEN 0
+                    WHEN productos.venta_sin_stock  = 1 THEN 0
+                    WHEN EXISTS (
+                        SELECT 1 FROM variantes v
+                        WHERE v.producto_id = productos.id AND v.estado = ?
+                    ) THEN
+                        CASE WHEN (
+                            SELECT COALESCE(SUM(i.stock_real), 0)
+                            FROM inventarios i
+                            INNER JOIN variantes v ON i.variante_id = v.id
+                            WHERE v.producto_id = productos.id
+                              AND v.estado      = ?
+                              AND i.empresa_id  = productos.empresa_id
+                        ) > 0 THEN 0 ELSE 1 END
+                    ELSE
+                        CASE WHEN (
+                            SELECT COALESCE(SUM(i.stock_real), 0)
+                            FROM inventarios i
+                            WHERE i.producto_id = productos.id
+                              AND i.variante_id IS NULL
+                              AND i.empresa_id  = productos.empresa_id
+                        ) > 0 THEN 0 ELSE 1 END
+                END ASC
+            ', ['activo', 'activo'])
+            ->orderBy('nombre')
+            ->take($this->perPage)
+            ->get();
     }
 
     public function getPromociones(): Collection

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pdv\Widgets;
 
+use App\Models\AjusteDetalle;
 use App\Models\Inventario;
 use Filament\Facades\Filament;
 use Filament\Tables;
@@ -19,7 +20,7 @@ class StockBajoWidget extends BaseWidget
         return $table
             ->query(
                 Inventario::query()
-                    ->with(['producto'])
+                    ->with(['producto', 'variante.valores.valor'])
                     ->where('empresa_id', Filament::getTenant()->id)
                     ->where(function ($q) {
                         $q->where('stock_reserva', '<=', 0)
@@ -32,9 +33,15 @@ class StockBajoWidget extends BaseWidget
             ->columns([
                 Tables\Columns\TextColumn::make('producto.nombre')
                     ->label('Producto')
+                    ->formatStateUsing(function (string $state, Inventario $record): string {
+                        if ($record->variante_id && $record->variante) {
+                            return AjusteDetalle::generarNombre(null, $record->variante);
+                        }
+                        return $state;
+                    })
                     ->searchable()
                     ->sortable()
-                    ->limit(40),
+                    ->limit(60),
 
                 Tables\Columns\TextColumn::make('stock_reserva')
                     ->label('Stock actual')

@@ -78,6 +78,13 @@ class Inventario extends Model
                 default                   => 'disponible',
             };
 
+            // Sincronizar estado_inventario almacenado con el stock real actual
+            if ($estadoAntes !== $estadoAhora) {
+                $inventario->updateQuietly([
+                    'estado_inventario' => EstadoStock::from($estadoAhora),
+                ]);
+            }
+
             // Solo notifica cuando el estado EMPEORA (no en reposición)
             $transicionesAlertar = [
                 'disponible'  => ['por_agotarse', 'agotado'],
@@ -88,7 +95,7 @@ class Inventario extends Model
                 return;
             }
 
-            $inventario->loadMissing(['producto.empresa']);
+            $inventario->loadMissing(['producto.empresa', 'variante.valores.valor']);
             $producto = $inventario->producto;
 
             if (! $producto || ! $producto->control_de_stock) {

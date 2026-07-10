@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\AjusteDetalle;
 use App\Models\Inventario;
 use Illuminate\Notifications\Notification;
 
@@ -21,14 +22,15 @@ class StockBajoNotification extends Notification
     {
         $inventario = $this->inventario;
         $producto   = $inventario->producto;
-        $nombre     = $inventario->variante
-            ? ($producto->nombre . ' — ' . ($inventario->variante->codigo ?? ''))
+
+        $nombre = $inventario->variante_id && $inventario->variante
+            ? AjusteDetalle::generarNombre($producto, $inventario->variante)
             : $producto->nombre;
 
         $url = 'http://'
             . $producto->empresa->slug . '.'
             . config('app.domain')
-            . '/pdv/productos/' . $producto->id;
+            . '/pdv/gestion-inventario?tableSearch=' . urlencode($producto->nombre);
 
         $agotado = $this->estadoStock === 'agotado';
 

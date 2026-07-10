@@ -19,6 +19,13 @@ class GestionInventario extends Page implements HasTable
 {
     use InteractsWithTable;
 
+    public function mount(): void
+    {
+        if ($q = request()->query('tableSearch')) {
+            $this->tableSearch = $q;
+        }
+    }
+
     // Estas propiedades de navegación SÍ son estáticas en Filament
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-table-cells';
 

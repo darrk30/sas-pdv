@@ -76,6 +76,34 @@ class Catalogo extends Component
                 'inventario',
                 'variantes' => fn($q) => $q->where('estado', 'activo')->with(['valores', 'inventario']),
             ])
+            ->orderByRaw('
+                CASE
+                    WHEN productos.control_de_stock = 0 THEN 0
+                    WHEN productos.venta_sin_stock  = 1 THEN 0
+                    WHEN EXISTS (
+                        SELECT 1 FROM variantes v
+                        WHERE v.producto_id = productos.id AND v.estado = ?
+                    ) THEN
+                        -- Producto con variantes: solo sumar stock de variantes activas
+                        CASE WHEN (
+                            SELECT COALESCE(SUM(i.stock_reserva), 0)
+                            FROM inventarios i
+                            INNER JOIN variantes v ON i.variante_id = v.id
+                            WHERE v.producto_id = productos.id
+                              AND v.estado      = ?
+                              AND i.empresa_id  = productos.empresa_id
+                        ) > 0 THEN 0 ELSE 1 END
+                    ELSE
+                        -- Producto simple: inventario base (sin variante)
+                        CASE WHEN (
+                            SELECT COALESCE(SUM(i.stock_reserva), 0)
+                            FROM inventarios i
+                            WHERE i.producto_id = productos.id
+                              AND i.variante_id IS NULL
+                              AND i.empresa_id  = productos.empresa_id
+                        ) > 0 THEN 0 ELSE 1 END
+                END ASC
+            ', ['activo', 'activo'])
             ->latest()
             ->paginate(25);
 
