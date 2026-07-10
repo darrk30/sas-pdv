@@ -511,6 +511,11 @@ class Carrito extends Component
 
         try {
         $orden = DB::transaction(function () use ($items, $metodoEnvio, $metodoPago, $userId, $costoEnvio, $subtotal, $total) {
+            $geoPartes = array_filter([
+                $this->chkDepartamento ?: null,
+                $this->chkProvincia    ?: null,
+                $this->chkDistrito     ?: null,
+            ]);
             $orden = Orden::create([
                 'empresa_id'       => $this->empresaId,
                 'cliente_id'       => $userId,
@@ -527,6 +532,7 @@ class Carrito extends Component
                 'igv'              => 0,
                 'total'            => $total,
                 'metodo_pago_id'   => $metodoPago?->id,
+                'notas_internas'   => $geoPartes ? implode(' / ', $geoPartes) : null,
             ]);
 
             foreach ($items as $item) {
@@ -640,6 +646,11 @@ class Carrito extends Component
 
         try {
         $orden = DB::transaction(function () use ($rawItems, $metodoEnvio, $metodoPago, $cliente, $costoEnvio, $subtotal, $total) {
+            $geoPartes = array_filter([
+                $this->chkDepartamento ?: null,
+                $this->chkProvincia    ?: null,
+                $this->chkDistrito     ?: null,
+            ]);
             $orden = Orden::create([
                 'empresa_id'       => $this->empresaId,
                 'cliente_id'       => $cliente->id,
@@ -656,6 +667,7 @@ class Carrito extends Component
                 'igv'              => 0,
                 'total'            => $total,
                 'metodo_pago_id'   => $metodoPago?->id,
+                'notas_internas'   => $geoPartes ? implode(' / ', $geoPartes) : null,
             ]);
 
             foreach ($rawItems as $raw) {
