@@ -484,6 +484,18 @@
     color: #d97706;
 }
 
+.vs-parcial-info {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: .08rem .45rem;
+    margin-top: .3rem;
+    font-size: .7rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.5;
+}
+.vs-parcial-info__label { color: var(--vs-text-faint); }
+.vs-parcial-info__val   { font-weight: 500; color: #c2410c; text-align: right; }
+
 /* ── Botón ver detalle ─────────────────────────────────────── */
 .vs-btn-detalle {
     display: inline-flex;
@@ -1120,6 +1132,8 @@
     border-color: rgba(217,119,6,.3);
     color: #fbbf24;
 }
+.dark .vs-parcial-info__label { color: var(--vs-text-faint); }
+.dark .vs-parcial-info__val   { color: #fb923c; }
 
 /* Modal anular: alerta naranja */
 .dark .vs-anular-alerta {

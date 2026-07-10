@@ -139,8 +139,8 @@
                                     $margen    = $ventaNeta > 0
                                         ? round($utilidad / $ventaNeta * 100, 1)
                                         : 0.0;
-                                    $comp      = ($venta->serie?->serie ?? '---') . '-' . $venta->correlativo;
-                                    $esCredit  = ($venta->estado_pago ?? '') === 'pendiente';
+                                    $comp       = ($venta->serie?->serie ?? '---') . '-' . $venta->correlativo;
+                                    $estadoPago = $venta->estado_pago ?? 'pagado';
                                 @endphp
                                 <tr wire:key="rg-{{ $venta->id }}">
 
@@ -163,10 +163,20 @@
                                     </td>
 
                                     <td>
-                                        @if($esCredit)
+                                        @if($estadoPago === 'pendiente')
                                             <div style="display:flex;flex-direction:column;gap:.15rem">
                                                 <span class="vs-badge vs-badge--credito">Crédito</span>
                                                 <span style="font-size:.7rem;color:#d97706">pend. S/ {{ number_format((float)$venta->saldo_pendiente, 2) }}</span>
+                                            </div>
+                                        @elseif($estadoPago === 'parcial')
+                                            <div style="display:flex;flex-direction:column;gap:.15rem">
+                                                <span class="vs-badge vs-badge--credito">Pago parcial</span>
+                                                <span class="vs-parcial-info">
+                                                    <span class="vs-parcial-info__label">Pagado</span>
+                                                    <span class="vs-parcial-info__val">S/ {{ number_format((float)$venta->monto_pagado, 2) }}</span>
+                                                    <span class="vs-parcial-info__label">Saldo</span>
+                                                    <span class="vs-parcial-info__val">S/ {{ number_format((float)$venta->saldo_pendiente, 2) }}</span>
+                                                </span>
                                             </div>
                                         @else
                                             <span style="font-size:.75rem;color:var(--vs-text-muted)">Contado</span>
@@ -186,7 +196,7 @@
                                     </td>
 
                                     <td class="rg-td-right">
-                                        @if($esCredit)
+                                        @if(in_array($estadoPago, ['pendiente', 'parcial']))
                                             <span class="rg-monto" style="color:#d97706">
                                                 S/ {{ number_format(abs($utilidad), 2) }}
                                             </span>
@@ -199,8 +209,9 @@
                                     </td>
 
                                     <td class="rg-td-right">
-                                        <span class="rg-margen rg-margen--{{ $esCredit ? 'cero' : $margenColor($margen) }}">
-                                            {{ $esCredit ? '—' : number_format($margen, 1).'%' }}
+                                        @php $esPendParcial = in_array($estadoPago, ['pendiente', 'parcial']); @endphp
+                                        <span class="rg-margen rg-margen--{{ $esPendParcial ? 'cero' : $margenColor($margen) }}">
+                                            {{ $esPendParcial ? '—' : number_format($margen, 1).'%' }}
                                         </span>
                                     </td>
 

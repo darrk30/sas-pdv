@@ -80,8 +80,8 @@
                     <tbody>
                         @foreach($ventas as $v)
                             @php
-                                $util     = (float) $v->utilidad;
-                                $esCredit = ($v->estado_pago ?? '') === 'pendiente';
+                                $util       = (float) $v->utilidad;
+                                $estadoPago = $v->estado_pago ?? 'pagado';
                             @endphp
                             <tr wire:key="pv-{{ $v->id }}">
                                 <td>
@@ -100,10 +100,20 @@
                                     <span style="font-size:.8rem;color:var(--vs-text-muted)">{{ $v->vendedor ?? '—' }}</span>
                                 </td>
                                 <td>
-                                    @if($esCredit)
+                                    @if($estadoPago === 'pendiente')
                                         <div style="display:flex;flex-direction:column;gap:.15rem">
                                             <span class="vs-badge vs-badge--credito">Crédito</span>
                                             <span style="font-size:.7rem;color:#d97706">pend. S/ {{ number_format((float)$v->saldo_pendiente, 2) }}</span>
+                                        </div>
+                                    @elseif($estadoPago === 'parcial')
+                                        <div style="display:flex;flex-direction:column;gap:.15rem">
+                                            <span class="vs-badge vs-badge--credito">Pago parcial</span>
+                                            <span class="vs-parcial-info">
+                                                <span class="vs-parcial-info__label">Pagado</span>
+                                                <span class="vs-parcial-info__val">S/ {{ number_format((float)$v->monto_pagado, 2) }}</span>
+                                                <span class="vs-parcial-info__label">Saldo</span>
+                                                <span class="vs-parcial-info__val">S/ {{ number_format((float)$v->saldo_pendiente, 2) }}</span>
+                                            </span>
                                         </div>
                                     @else
                                         <span style="font-size:.75rem;color:var(--vs-text-muted)">Contado</span>

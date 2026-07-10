@@ -182,7 +182,10 @@ class CuentasPorCobrarPage extends Page implements HasForms
     {
         $q = Venta::where('empresa_id', Filament::getTenant()->id)
             ->where('estado', 'completada')
-            ->where('tipo_pago', TipoPago::Credito);
+            ->where(function ($sub) {
+                $sub->where('tipo_pago', TipoPago::Credito)
+                    ->orWhere('estado_pago', 'parcial');
+            });
 
         // Filtro fijo por cliente (viene del resource de clientes)
         if (! empty($this->filtroClienteId)) {
@@ -262,7 +265,7 @@ class CuentasPorCobrarPage extends Page implements HasForms
 
     public function abrirModalHistorial(int $ventaId): void
     {
-        $venta = Venta::with('serie')
+        $venta = Venta::with(['serie', 'vendedor:id,name'])
             ->where('empresa_id', Filament::getTenant()->id)
             ->findOrFail($ventaId);
 
@@ -295,7 +298,7 @@ class CuentasPorCobrarPage extends Page implements HasForms
                 'metodo'     => $p->metodoPago?->nombre ?? '—',
                 'monto'      => (float) $p->monto,
                 'referencia' => $p->referencia,
-                'cajero'     => $p->sesionCaja?->cajero?->name ?? '—',
+                'cajero'     => $p->sesionCaja?->cajero?->name ?? $venta->vendedor?->name ?? '—',
             ])->values()->toArray();
 
         $this->historialVentaId = $ventaId;
@@ -371,7 +374,7 @@ class CuentasPorCobrarPage extends Page implements HasForms
             $empresaId = Filament::getTenant()->id;
 
             $venta = Venta::where('empresa_id', $empresaId)
-                ->where('estado_pago', 'pendiente')
+                ->whereIn('estado_pago', ['pendiente', 'parcial'])
                 ->with('serie')
                 ->lockForUpdate()
                 ->findOrFail($this->ventaId);
@@ -395,7 +398,7 @@ class CuentasPorCobrarPage extends Page implements HasForms
             $venta->update([
                 'monto_pagado'    => $nuevoPagado,
                 'saldo_pendiente' => $nuevoSaldo,
-                'estado_pago'     => $nuevoSaldo <= 0 ? 'pagado' : 'pendiente',
+                'estado_pago'     => $nuevoSaldo <= 0 ? 'pagado' : $venta->estado_pago,
             ]);
 
             if ($sesionCaja) {

@@ -9,6 +9,7 @@ use App\Filament\Pdv\Pages\ReporteClienteComprasPage;
 use App\Models\Cliente;
 use App\Models\Venta;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -29,12 +30,12 @@ class ClientesTable
                     ->whereColumn('empresa_id', 'clientes.empresa_id')
                     ->where('estado', 'completada'),
 
-                // Subquery: crédito pendiente
+                // Subquery: crédito pendiente (crédito completo + pagos parciales)
                 'credito_pendiente' => Venta::selectRaw('COALESCE(SUM(saldo_pendiente), 0)')
                     ->whereColumn('cliente_id', 'clientes.id')
                     ->whereColumn('empresa_id', 'clientes.empresa_id')
                     ->where('estado', 'completada')
-                    ->where('estado_pago', 'pendiente'),
+                    ->whereIn('estado_pago', ['pendiente', 'parcial']),
 
                 // Subquery: total de ventas a crédito (pagadas + pendientes)
                 'total_creditos' => Venta::selectRaw('COUNT(*)')
@@ -99,34 +100,39 @@ class ClientesTable
                     ->options(TipoDocumento::class),
             ])
             ->recordActions([
-                Action::make('compras')
-                    ->label('Compras')
-                    ->icon('heroicon-o-shopping-bag')
-                    ->color('info')
-                    ->url(fn (Cliente $record) =>
-                        ReporteClienteComprasPage::getUrl() . '?' . http_build_query([
-                            'clienteNombre' => $record->nombre_completo,
-                            'clienteNumDoc' => $record->numero_documento,
-                        ])
-                    ),
+                ActionGroup::make([
+                    Action::make('compras')
+                        ->label('Compras')
+                        ->icon('heroicon-o-shopping-bag')
+                        ->color('info')
+                        ->url(fn (Cliente $record) =>
+                            ReporteClienteComprasPage::getUrl() . '?' . http_build_query([
+                                'clienteNombre' => $record->nombre_completo,
+                                'clienteNumDoc' => $record->numero_documento,
+                            ])
+                        ),
 
-                Action::make('creditos')
-                    ->label('Créditos')
-                    ->icon('heroicon-o-banknotes')
-                    ->color('warning')
-                    ->visible(fn (Cliente $record) => (int) ($record->total_creditos ?? 0) > 0)
-                    ->url(fn (Cliente $record) =>
-                        CuentasPorCobrarPage::getUrl() . '?' . http_build_query([
-                            'filtroClienteId'     => $record->id,
-                            'filtroClienteNombre' => $record->nombre_completo,
-                        ])
-                    ),
+                    Action::make('creditos')
+                        ->label('Créditos')
+                        ->icon('heroicon-o-banknotes')
+                        ->color('warning')
+                        ->visible(fn (Cliente $record) =>
+                            (int) ($record->total_creditos ?? 0) > 0 ||
+                            (float) ($record->credito_pendiente ?? 0) > 0
+                        )
+                        ->url(fn (Cliente $record) =>
+                            CuentasPorCobrarPage::getUrl() . '?' . http_build_query([
+                                'filtroClienteId'     => $record->id,
+                                'filtroClienteNombre' => $record->nombre_completo,
+                            ])
+                        ),
 
-                EditAction::make()
-                    ->hidden(fn (Cliente $record) => $record->numero_documento === '99999999'),
+                    EditAction::make()
+                        ->hidden(fn (Cliente $record) => $record->numero_documento === '99999999'),
 
-                DeleteAction::make()
-                    ->hidden(fn (Cliente $record) => $record->numero_documento === '99999999'),
+                    DeleteAction::make()
+                        ->hidden(fn (Cliente $record) => $record->numero_documento === '99999999'),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

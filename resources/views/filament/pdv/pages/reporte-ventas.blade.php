@@ -90,18 +90,44 @@
     @endif
 
     {{-- ══ FILTROS (componentes Filament) ══ --}}
-    <div class="rv-form-wrap">
-        {{ $this->form }}
-        @if($this->hayFiltros())
-            <div class="rv-form-limpiar">
-                <button wire:click="limpiarFiltros" class="vs-filter-reset">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="14" height="14">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
-                    </svg>
-                    Limpiar filtros
-                </button>
-            </div>
-        @endif
+    <div class="rv-form-wrap" x-data="{ open: {{ $this->hayFiltros() ? 'true' : 'false' }} }">
+
+        {{-- Botón toggle solo visible en móvil --}}
+        <button type="button" class="rv-filtros-toggle" @click="open = !open">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke-width="1.5" stroke="currentColor" width="15" height="15">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75
+                         6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3
+                         0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0
+                         0 0-3 0m-9.75 0h9.75"/>
+            </svg>
+            <span>Filtros</span>
+            @if($this->hayFiltros())
+                <span class="rv-filtros-activo-dot" title="Hay filtros activos"></span>
+            @endif
+            <svg class="rv-filtros-chevron" :class="{ 'rv-filtros-chevron--open': open }"
+                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke-width="2" stroke="currentColor" width="14" height="14">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+            </svg>
+        </button>
+
+        <div class="rv-filtros-body" :class="{ 'rv-filtros-body--open': open }">
+            {{ $this->form }}
+            @if($this->hayFiltros())
+                <div class="rv-form-limpiar">
+                    <button wire:click="limpiarFiltros" class="vs-filter-reset">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                             stroke-width="1.5" stroke="currentColor" width="14" height="14">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                        Limpiar filtros
+                    </button>
+                </div>
+            @endif
+        </div>
+
     </div>
 
     {{-- ══ TABLA DE VENTAS ══ --}}
@@ -211,6 +237,14 @@
                                         <span class="vs-badge vs-badge--ok">Completada</span>
                                         @if(($venta->estado_pago ?? 'pagado') === 'pendiente')
                                             <span class="vs-badge vs-badge--credito" style="display:block;margin-top:.2rem">Crédito</span>
+                                        @elseif(($venta->estado_pago ?? 'pagado') === 'parcial')
+                                            <span class="vs-badge vs-badge--credito" style="display:block;margin-top:.2rem">Pago parcial</span>
+                                            <span class="vs-parcial-info">
+                                                <span class="vs-parcial-info__label">Pagado</span>
+                                                <span class="vs-parcial-info__val">S/ {{ number_format($venta->monto_pagado, 2) }}</span>
+                                                <span class="vs-parcial-info__label">Saldo</span>
+                                                <span class="vs-parcial-info__val">S/ {{ number_format($venta->saldo_pendiente, 2) }}</span>
+                                            </span>
                                         @endif
                                     @endif
                                 </td>

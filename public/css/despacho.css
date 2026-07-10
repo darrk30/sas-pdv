@@ -134,6 +134,7 @@
 /* Estado pago */
 .dsp-badge--credito { background:#fff7ed; color:#c2410c; border-color:#fed7aa; }
 .dsp-badge--pagado  { background:#f0fdf4; color:#15803d; border-color:#bbf7d0; }
+.dsp-saldo-inline   { display:block; font-size:.7rem; color:#c2410c; margin-top:.2rem; font-variant-numeric:tabular-nums; }
 /* Estado despacho */
 .dsp-badge--gray    { background:#f3f4f6; color:#374151; border-color:#d1d5db; }
 .dsp-badge--blue    { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
@@ -148,6 +149,7 @@
 .dark .dsp-badge--green  { background:#052e16; color:#4ade80; border-color:#14532d; }
 .dark .dsp-badge--credito{ background:#431407; color:#fb923c; border-color:#7c2d12; }
 .dark .dsp-badge--pagado { background:#052e16; color:#4ade80; border-color:#14532d; }
+.dark .dsp-saldo-inline  { color:#fb923c; }
 
 /* ── Botón "Ver" (fix icono) ────────────────────────────────── */
 .vdm-btn-ver svg { display:block; flex-shrink:0; }

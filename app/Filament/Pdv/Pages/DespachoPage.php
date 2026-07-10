@@ -3,7 +3,6 @@
 namespace App\Filament\Pdv\Pages;
 
 use App\Enums\EstadoVenta;
-use App\Enums\TipoPago;
 use App\Filament\Pdv\Concerns\HasVentaDetalleModal;
 use App\Models\Venta;
 use BackedEnum;
@@ -230,8 +229,7 @@ class DespachoPage extends Page implements HasForms
             'fecha'           => Carbon::parse($venta->fecha_emision)->format('d/m/Y H:i'),
             'total'           => (float) $venta->total,
             'saldo'           => (float) $venta->saldo_pendiente,
-            'es_cred_pend'    => $venta->tipo_pago === TipoPago::Credito
-                                    && $venta->estado_pago === 'pendiente',
+            'es_cred_pend'    => (float) $venta->saldo_pendiente > 0,
             'items'           => $venta->detalles->map(fn ($d) => [
                 'descripcion' => $d->descripcion,
                 'cantidad'    => (float) $d->cantidad,

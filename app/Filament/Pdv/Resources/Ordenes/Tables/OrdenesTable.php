@@ -4,6 +4,7 @@ namespace App\Filament\Pdv\Resources\Ordenes\Tables;
 
 use App\Enums\EstadoOrden;
 use App\Models\Orden;
+use App\Models\Venta;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
@@ -16,6 +17,11 @@ class OrdenesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->addSelect([
+                'saldo_venta' => Venta::selectRaw('saldo_pendiente')
+                    ->whereColumn('id', 'ordenes.venta_id')
+                    ->limit(1),
+            ]))
             ->columns([
 
                 TextColumn::make('codigo')
@@ -73,6 +79,14 @@ class OrdenesTable
                     ->label('Total')
                     ->money('PEN')
                     ->sortable()
+                    ->alignEnd(),
+
+                TextColumn::make('saldo_venta')
+                    ->label('Saldo pend.')
+                    ->formatStateUsing(fn ($state): string =>
+                        (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '')
+                    ->badge()
+                    ->color('warning')
                     ->alignEnd(),
 
                 TextColumn::make('created_at')

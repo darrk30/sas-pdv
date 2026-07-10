@@ -222,7 +222,7 @@ class ReporteVentasPage extends Page implements HasForms
         $completadas      = (clone $base)->where('estado', EstadoVenta::Completada->value);
         $count            = (clone $completadas)->count();
         $total            = (float) (clone $completadas)->sum('monto_pagado');
-        $creditoPendiente = (float) (clone $completadas)->where('estado_pago', 'pendiente')->sum('saldo_pendiente');
+        $creditoPendiente = (float) (clone $completadas)->whereIn('estado_pago', ['pendiente', 'parcial'])->sum('saldo_pendiente');
         $anuladas         = (clone $base)->where('estado', EstadoVenta::Anulada->value)->count();
 
         $porMetodo = VentaPago::whereHas('venta', function ($q) {

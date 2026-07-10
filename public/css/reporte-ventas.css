@@ -47,9 +47,57 @@
     font-family: monospace;
 }
 
+/* ── Toggle de filtros (solo aparece en móvil) ─────────────── */
+.rv-filtros-toggle { display: none; }
+
+.rv-filtros-chevron {
+    transition: transform .2s ease;
+    flex-shrink: 0;
+}
+.rv-filtros-chevron--open { transform: rotate(180deg); }
+
 /* ══ RESPONSIVE ════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+    /* En desktop el cuerpo siempre visible sin importar Alpine */
+    .rv-filtros-body { display: block !important; }
+}
+
 @media (max-width: 767px) {
-    .rv-form-wrap { padding: 0.75rem; }
+    .rv-form-wrap { padding: 0.625rem 0.75rem; }
+
+    /* Botón toggle visible */
+    .rv-filtros-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        width: 100%;
+        background: none;
+        border: none;
+        padding: 0;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--vs-text);
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .rv-filtros-activo-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #d97706;
+        flex-shrink: 0;
+    }
+
+    .rv-filtros-chevron {
+        margin-left: auto;
+        color: var(--vs-text-faint);
+    }
+
+    /* Cuerpo de filtros: oculto por defecto, visible con clase --open */
+    .rv-filtros-body         { display: none; margin-top: 0.75rem; }
+    .rv-filtros-body--open   { display: block; }
+
     .rv-form-limpiar { justify-content: stretch; }
     .rv-form-limpiar .vs-filter-reset { width: 100%; justify-content: center; }
 }

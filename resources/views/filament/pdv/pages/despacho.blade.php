@@ -165,6 +165,9 @@
                                 <td class="rg-td-right">
                                     @if($venta->estado_pago === 'pendiente')
                                         <span class="dsp-badge dsp-badge--credito">Por cobrar</span>
+                                    @elseif($venta->estado_pago === 'parcial')
+                                        <span class="dsp-badge dsp-badge--credito">Pago parcial</span>
+                                        <span class="dsp-saldo-inline">Saldo: S/ {{ number_format($venta->saldo_pendiente, 2) }}</span>
                                     @else
                                         <span class="dsp-badge dsp-badge--pagado">Pagado</span>
                                     @endif

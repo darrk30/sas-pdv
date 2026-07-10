@@ -124,8 +124,8 @@ class ReporteGananciasPage extends Page implements HasForms
                 COALESCE(SUM(total), 0)                                                                           AS ingresos_brutos,
                 COALESCE(SUM(total - igv), 0)                                                                     AS ventas_netas,
                 COALESCE(SUM(costo_total), 0)                                                                     AS costo_total,
-                COALESCE(SUM(CASE WHEN estado_pago = 'pendiente' THEN saldo_pendiente    ELSE 0 END), 0)          AS credito_pendiente,
-                COALESCE(SUM(CASE WHEN estado_pago = 'pendiente' THEN (total - igv - costo_total) ELSE 0 END), 0) AS utilidad_en_riesgo
+                COALESCE(SUM(CASE WHEN estado_pago IN ('pendiente','parcial') THEN saldo_pendiente ELSE 0 END), 0)                                                          AS credito_pendiente,
+                COALESCE(SUM(CASE WHEN estado_pago IN ('pendiente','parcial') THEN saldo_pendiente * (total - igv - costo_total) / NULLIF(total,0) ELSE 0 END), 0)         AS utilidad_en_riesgo
             ")
             ->first();
 
