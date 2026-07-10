@@ -370,4 +370,13 @@ class EditOrden extends EditRecord
             }
         }
     }
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $cliente = $this->record->cliente;
+        $data['cliente_departamento'] = $cliente?->departamento;
+        $data['cliente_provincia']    = $cliente?->provincia;
+        $data['cliente_distrito']     = $cliente?->distrito;
+        return $data;
+    }
 }

@@ -71,6 +71,9 @@ class OrdenForm
                                 if (! $state) {
                                     $set('cliente_telefono', null);
                                     $set('cliente_direccion', null);
+                                    $set('cliente_departamento', null);
+                                    $set('cliente_provincia', null);
+                                    $set('cliente_distrito', null);
                                     return;
                                 }
                                 $c = Cliente::find($state);
@@ -81,6 +84,9 @@ class OrdenForm
                                 $set('cliente_num_doc', $c->numero_documento);
                                 $set('cliente_telefono', $c->telefono);
                                 $set('cliente_direccion', $c->direccion);
+                                $set('cliente_departamento', $c->departamento);
+                                $set('cliente_provincia', $c->provincia);
+                                $set('cliente_distrito', $c->distrito);
                             })
                             ->createOptionForm([
                                 Grid::make(2)->schema([
@@ -239,6 +245,24 @@ class OrdenForm
                                 $set('costo_envio', $metodo?->costo ?? 0);
                                 self::recalcularTotales($get, $set, false);
                             }),
+
+                        TextInput::make('cliente_departamento')
+                            ->label('Departamento')
+                            ->readOnly()
+                            ->placeholder('—')
+                            ->visible(fn(Get $get): bool => $get('tipo_entrega') === 'envio'),
+
+                        TextInput::make('cliente_provincia')
+                            ->label('Provincia')
+                            ->readOnly()
+                            ->placeholder('—')
+                            ->visible(fn(Get $get): bool => $get('tipo_entrega') === 'envio'),
+
+                        TextInput::make('cliente_distrito')
+                            ->label('Distrito')
+                            ->readOnly()
+                            ->placeholder('—')
+                            ->visible(fn(Get $get): bool => $get('tipo_entrega') === 'envio'),
 
                         TextInput::make('direccion_agencia')
                             ->label('Dirección de la agencia')
