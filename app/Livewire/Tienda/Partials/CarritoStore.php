@@ -21,13 +21,13 @@ class CarritoStore extends Component
         if (Auth::guard('cliente')->check()) {
             $userId = Auth::guard('cliente')->id();
 
-            // Count carrito
             $carrito = Carrito::where('empresa_id', $this->empresaId)
                 ->where('user_id', $userId)
                 ->first();
 
             if ($carrito) {
-                $this->dispatch('carrito-count-actualizado', count: (int) $carrito->items()->sum('cantidad'));
+                // Sincroniza localStorage con los ítems reales de DB (para que stockRestante sea correcto)
+                $this->dispatch('carrito-actualizar-local', items: $this->getDbItems($carrito));
             }
 
             // Estado inicial de lista de deseos
@@ -46,7 +46,6 @@ class CarritoStore extends Component
                 $this->dispatch('deseos-cargados', deseos: $deseos);
             }
 
-            // Conteo real de entradas (no productos únicos)
             $this->dispatch('deseo-count-actualizado', count: $deseoItems->count());
         }
     }
@@ -79,8 +78,8 @@ class CarritoStore extends Component
             // Producto/variante ya no existe — ignorar
         }
 
-        $count = $carrito->items()->sum('cantidad');
-        $this->dispatch('carrito-count-actualizado', count: $count);
+        // Repone localStorage con estado actual de DB para mantener stockRestante correcto
+        $this->dispatch('carrito-actualizar-local', items: $this->getDbItems($carrito));
     }
 
     #[On('browser:carrito-sincronizar')]
@@ -115,9 +114,23 @@ class CarritoStore extends Component
             }
         }
 
-        $count = $carrito->items()->sum('cantidad');
-        $this->dispatch('carrito-count-actualizado', count: $count);
-        $this->dispatch('carrito-limpiar-local'); // ya está en DB, limpiar localStorage
+        // Reemplaza localStorage con el estado exacto de DB (en vez de borrarlo)
+        // así stockRestante sigue siendo correcto al navegar entre páginas
+        $this->dispatch('carrito-actualizar-local', items: $this->getDbItems($carrito));
+    }
+
+    #[On('browser:carrito-recargar')]
+    public function recargar(): void
+    {
+        if (! Auth::guard('cliente')->check()) return;
+
+        $userId  = Auth::guard('cliente')->id();
+        $carrito = Carrito::where('empresa_id', $this->empresaId)
+            ->where('user_id', $userId)->first();
+
+        if ($carrito) {
+            $this->dispatch('carrito-actualizar-local', items: $this->getDbItems($carrito));
+        }
     }
 
     #[On('browser:lista-deseos-agregar')]
@@ -170,6 +183,22 @@ class CarritoStore extends Component
             : $q->where('variante_id', $item['variante_id']);
 
         return $q->first();
+    }
+
+    /** Devuelve los ítems de DB en el formato que usa localStorage / stockRestante. */
+    private function getDbItems(Carrito $carrito): array
+    {
+        return $carrito->items()
+            ->get(['producto_id', 'variante_id', 'promocion_id', 'cantidad', 'precio_unitario'])
+            ->map(fn(CarritoItem $i) => [
+                'producto_id'    => $i->producto_id,
+                'variante_id'    => $i->variante_id,
+                'promocion_id'   => $i->promocion_id,
+                'cantidad'       => (int) $i->cantidad,
+                'precio_unitario'=> (float) $i->precio_unitario,
+            ])
+            ->values()
+            ->toArray();
     }
 
     public function render(): \Illuminate\View\View

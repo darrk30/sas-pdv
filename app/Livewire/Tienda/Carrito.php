@@ -164,7 +164,7 @@ class Carrito extends Component
         $carrito = CarritoModel::where('empresa_id', $this->empresaId)
             ->where('user_id', $userId)->first();
         $carrito?->items()->delete();
-        $this->dispatch('carrito-count-actualizado', count: 0);
+        $this->actualizarBadge();
         $this->dispatch('toast', mensaje: 'Carrito vaciado', tipo: 'info');
     }
 
@@ -870,8 +870,23 @@ class Carrito extends Component
         $userId  = Auth::guard('cliente')->id();
         $carrito = CarritoModel::where('empresa_id', $this->empresaId)
             ->where('user_id', $userId)->first();
-        $count = $carrito ? (int) $carrito->items()->sum('cantidad') : 0;
-        $this->dispatch('carrito-count-actualizado', count: $count);
+
+        if ($carrito && $carrito->items()->exists()) {
+            $items = $carrito->items()
+                ->get(['producto_id', 'variante_id', 'promocion_id', 'cantidad', 'precio_unitario'])
+                ->map(fn(CarritoItem $i) => [
+                    'producto_id'    => $i->producto_id,
+                    'variante_id'    => $i->variante_id,
+                    'promocion_id'   => $i->promocion_id,
+                    'cantidad'       => (int) $i->cantidad,
+                    'precio_unitario'=> (float) $i->precio_unitario,
+                ])
+                ->values()
+                ->toArray();
+            $this->dispatch('carrito-actualizar-local', items: $items);
+        } else {
+            $this->dispatch('carrito-limpiar-local');
+        }
     }
 
     private function itemDelUsuario(int $itemId): ?CarritoItem

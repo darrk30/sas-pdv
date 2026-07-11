@@ -22,6 +22,7 @@ document.addEventListener('alpine:init', () => {
 
             window.addEventListener('carrito-count-actualizado', (e) => { this.count = e.detail.count; });
             window.addEventListener('carrito-limpiar-local', () => { localStorage.removeItem(this._clave()); this.count = 0; });
+            window.addEventListener('carrito-actualizar-local', (e) => { this._guardarLocal(e.detail.items ?? []); });
             window.addEventListener('carrito-guest-actualizado', (e) => { this._guardarLocal(e.detail.items ?? []); });
             window.addEventListener('deseos-cargados', (e) => { this.deseos = { ...this.deseos, ...e.detail.deseos }; });
             window.addEventListener('lista-deseos-actualizada', (e) => { this.deseos[e.detail.productoId] = e.detail.enDeseos; });
@@ -83,7 +84,11 @@ document.addEventListener('livewire:navigated', () => {
     if (store && store._estaLogueado()) {
         const items = store._leerLocal();
         if (items.length) {
+            // Hay ítems en localStorage → sincronizar con DB
             window.dispatchEvent(new CustomEvent('browser:carrito-sincronizar', { detail: { items } }));
+        } else {
+            // localStorage vacío pero cliente logueado (ej: recién hizo login) → recargar desde DB
+            window.dispatchEvent(new CustomEvent('browser:carrito-recargar'));
         }
     }
 });

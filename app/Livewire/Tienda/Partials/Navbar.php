@@ -35,6 +35,7 @@ class Navbar extends Component
         session()->invalidate();
         session()->regenerateToken();
 
+        $this->dispatch('carrito-limpiar-local');
         $this->redirect('/', navigate: true);
     }
 
