@@ -181,28 +181,47 @@
                                 </td>
 
                                 {{-- Acciones --}}
-                                <td style="text-align:right;white-space:nowrap">
+                                <td>
+                                    <div class="dsp-acciones">
 
-                                    {{-- Botón "Ver detalle" --}}
-                                    <button class="vdm-btn-ver"
-                                            wire:click="abrirModalDetalle({{ $venta->id }})"
-                                            title="Ver detalle">
-                                        <x-filament::icon icon="heroicon-o-eye" class="w-4 h-4" />
-                                        Ver
-                                    </button>
+                                        {{-- Botón "Ver detalle" --}}
+                                        <button class="vdm-btn-ver"
+                                                wire:click="abrirModalDetalle({{ $venta->id }})"
+                                                title="Ver detalle">
+                                            <x-filament::icon icon="heroicon-o-eye" class="w-4 h-4" />
+                                            Ver
+                                        </button>
 
-                                    {{-- Select "Cambiar estado" --}}
-                                    @if(count($siguientes) > 0)
-                                        <select class="dsp-select-estado"
-                                                wire:change="seleccionarEstado({{ $venta->id }}, $event.target.value)"
-                                                wire:key="sel-{{ $venta->id }}">
-                                            <option value="">Cambiar…</option>
-                                            @foreach($siguientes as $sig)
-                                                @php $ms = \App\Filament\Pdv\Pages\DespachoPage::metaEstado($sig); @endphp
-                                                <option value="{{ $sig }}">{{ $ms['label'] }}</option>
-                                            @endforeach
-                                        </select>
-                                    @endif
+                                        {{-- Ticket de despacho --}}
+                                        <a href="{{ route('pdv.ticket.despacho', $venta->id) }}"
+                                           target="_blank"
+                                           class="vdm-btn-ver vdm-btn-ver--gray"
+                                           title="Ticket de despacho">
+                                            <x-filament::icon icon="heroicon-o-printer" class="w-4 h-4" />
+                                        </a>
+
+                                        {{-- Dropdown "Cambiar estado" --}}
+                                        @if(count($siguientes) > 0)
+                                        <x-filament::dropdown placement="bottom-end" wire:key="dsp-drop-{{ $venta->id }}">
+                                            <x-slot name="trigger">
+                                                <button type="button" class="vdm-btn-ver vdm-btn-ver--orange">
+                                                    Cambiar…
+                                                    <x-filament::icon icon="heroicon-m-chevron-down" class="w-3 h-3 dsp-chevron" />
+                                                </button>
+                                            </x-slot>
+                                            <x-filament::dropdown.list>
+                                                @foreach($siguientes as $sig)
+                                                    @php $ms = \App\Filament\Pdv\Pages\DespachoPage::metaEstado($sig); @endphp
+                                                    <x-filament::dropdown.list.item
+                                                        wire:click="seleccionarEstado({{ $venta->id }}, '{{ $sig }}')">
+                                                        {{ $ms['label'] }}
+                                                    </x-filament::dropdown.list.item>
+                                                @endforeach
+                                            </x-filament::dropdown.list>
+                                        </x-filament::dropdown>
+                                        @endif
+
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

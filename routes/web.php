@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Pdv\ProductoExcelController;
+use App\Http\Controllers\Pdv\TicketDespachoController;
 use App\Http\Controllers\Pdv\TicketVentaController;
 use App\Http\Controllers\Tienda\CarritoController;
 use App\Http\Middleware\TiendaEmpresa;
@@ -20,6 +21,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/ticket/venta/{id}/pdf', [TicketVentaController::class, 'pdf'])
         ->name('pdv.ticket.venta.pdf')
+        ->where('id', '[0-9]+');
+
+    Route::get('/ticket/despacho/{id}', [TicketDespachoController::class, 'show'])
+        ->name('pdv.ticket.despacho')
         ->where('id', '[0-9]+');
 });
 

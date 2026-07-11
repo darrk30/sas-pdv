@@ -535,6 +535,21 @@ class Carrito extends Component
                 'notas_internas'   => $geoPartes ? implode(' / ', $geoPartes) : null,
             ]);
 
+            // Sincronizar perfil del cliente autenticado con los datos del formulario
+            $clienteAuth = Auth::guard('cliente')->user();
+            if ($clienteAuth) {
+                $clienteAuth->fill([
+                    'nombre'       => $this->chkNombre,
+                    'apellidos'    => $this->chkApellidos,
+                    'telefono'     => $this->chkTelefono,
+                    'correo'       => $this->chkEmail ?: $clienteAuth->correo,
+                    'direccion'    => $this->chkDireccion ?: $clienteAuth->direccion,
+                    'departamento' => $this->chkDepartamento ?: $clienteAuth->departamento,
+                    'provincia'    => $this->chkProvincia ?: $clienteAuth->provincia,
+                    'distrito'     => $this->chkDistrito ?: $clienteAuth->distrito,
+                ])->save();
+            }
+
             foreach ($items as $item) {
                 [$tipo, $desc, $pId, $vId, $promoId] = $this->resolverDetalleItem($item);
                 $costoUnitario = $this->resolverCostoItem($item);

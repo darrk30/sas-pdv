@@ -167,33 +167,18 @@
 .dark .dsp-badge--pagado { background:#052e16; color:#4ade80; border-color:#14532d; }
 .dark .dsp-saldo-inline  { color:#fb923c; }
 
-/* ── Botón "Ver" (fix icono) ────────────────────────────────── */
-.vdm-btn-ver svg { display:block; flex-shrink:0; }
+/* ── Celda de acciones ──────────────────────────────────────── */
+.dsp-acciones {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .375rem;
+}
 
-/* ── Select "Cambiar estado" ────────────────────────────────── */
-.dsp-select-estado {
-    margin-left: .375rem;
-    padding: .3rem .6rem;
-    font-size: .78rem;
-    font-weight: 600;
-    color: var(--vs-text, #374151);
-    background: var(--vs-bg, #fff);
-    border: 1px solid var(--vs-border, #d1d5db);
-    border-radius: .5rem;
-    cursor: pointer;
-    outline: none;
-    transition: border-color .15s;
-    max-width: 130px;
-    appearance: auto;          /* muestra la flecha nativa del browser */
-}
-.dsp-select-estado:hover  { border-color: #9ca3af; }
-.dsp-select-estado:focus  { border-color: #f97316; box-shadow: 0 0 0 2px rgba(249,115,22,.15); }
-.dark .dsp-select-estado {
-    background: #1e293b;
-    border-color: #475569;
-    color: #f1f5f9;
-}
-.dark .dsp-select-estado option { background: #1e293b; }
+/* ── Botón "Ver" — fix icono y link-as-button ───────────────── */
+.vdm-btn-ver svg     { display:block; flex-shrink:0; }
+.vdm-btn-ver         { text-decoration: none; }
+.dsp-chevron         { opacity: .65; }
 
 /* ── Dark mode — barra de variables ─────────────────────────── */
 .dark {

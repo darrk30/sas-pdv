@@ -306,7 +306,7 @@
 }
 .vdm-lightbox__close:hover { background: rgba(255,255,255,.3); }
 
-/* ── Botón "Ver detalle" en tablas ─────────────────────────── */
+/* ── Botones de acción en tablas ───────────────────────────── */
 .vdm-btn-ver {
     display: inline-flex;
     align-items: center;
@@ -314,18 +314,36 @@
     padding: .3rem .6rem;
     font-size: .75rem;
     font-weight: 600;
-    border: 1px solid #bfdbfe;
     border-radius: .4rem;
-    background: #eff6ff;
-    color: #1d4ed8;
     cursor: pointer;
     white-space: nowrap;
+    text-decoration: none;
     transition: background .15s, color .15s;
+    /* azul — "Ver detalle" */
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
 }
 .vdm-btn-ver:hover { background: #dbeafe; }
-.dark .vdm-btn-ver {
-    background: rgba(30,64,175,.25);
-    color: #60a5fa;
-    border-color: #1e40af;
-}
+.dark .vdm-btn-ver { background: rgba(30,64,175,.25); color: #60a5fa; border-color: #1e40af; }
 .dark .vdm-btn-ver:hover { background: rgba(30,64,175,.4); }
+
+/* gris — impresora / acciones secundarias */
+.vdm-btn-ver--gray {
+    border-color: #d1d5db;
+    background: #f9fafb;
+    color: #374151;
+}
+.vdm-btn-ver--gray:hover { background: #e5e7eb; }
+.dark .vdm-btn-ver--gray { background: rgba(51,65,85,.4); color: #cbd5e1; border-color: #475569; }
+.dark .vdm-btn-ver--gray:hover { background: rgba(71,85,105,.5); }
+
+/* naranja — cambiar estado */
+.vdm-btn-ver--orange {
+    border-color: #fed7aa;
+    background: #fff7ed;
+    color: #c2410c;
+}
+.vdm-btn-ver--orange:hover { background: #ffedd5; }
+.dark .vdm-btn-ver--orange { background: rgba(124,45,18,.25); color: #fb923c; border-color: #9a3412; }
+.dark .vdm-btn-ver--orange:hover { background: rgba(124,45,18,.4); }
