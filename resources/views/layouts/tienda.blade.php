@@ -8,6 +8,10 @@
     <meta name="cliente-logueado" content="{{ Auth::guard('cliente')->check() ? '1' : '0' }}">
     <meta name="empresa-id" content="{{ app('tienda.empresa')->id }}">
     <title>{{ $title ?? config('app.name') }}</title>
+    @php $empresaIcono = app('tienda.empresa')->icono; @endphp
+    @if($empresaIcono)
+    <link rel="icon" href="{{ asset('storage/' . $empresaIcono) }}">
+    @endif
 
     {{-- ── CSS crítico inline: evita flash de contenido sin estilos ────────── --}}
     <style>
