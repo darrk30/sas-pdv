@@ -181,8 +181,8 @@ class DespachoPage extends Page implements HasForms
     public function getVentas(): LengthAwarePaginator
     {
         return $this->baseQuery()
-            ->with(['serie', 'detalles', 'cliente:id,telefono', 'orden:id,numero,venta_id'])
-            ->orderBy('fecha_emision', 'asc')
+            ->with(['serie', 'detalles.variante:id,codigo', 'detalles.producto:id,codigo_interno', 'cliente:id,telefono', 'orden:id,numero,venta_id'])
+            ->orderBy('fecha_emision', 'desc')
             ->paginate(25);
     }
 

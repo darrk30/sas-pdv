@@ -16,7 +16,13 @@ trait HasVentaDetalleModal
 
     public function abrirModalDetalle(int $ventaId): void
     {
-        $venta = Venta::with(['serie', 'detalles', 'pagos.metodoPago', 'vendedor'])
+        $venta = Venta::with([
+            'serie',
+            'detalles.variante:id,codigo,imagen',
+            'detalles.producto:id,codigo_interno,logo',
+            'pagos.metodoPago',
+            'vendedor',
+        ])
             ->where('empresa_id', Filament::getTenant()->id)
             ->findOrFail($ventaId);
 
@@ -39,13 +45,25 @@ trait HasVentaDetalleModal
             'saldo_pendiente'  => (float) $venta->saldo_pendiente,
         ];
 
-        $this->detalleItems = $venta->detalles->map(fn ($d) => [
-            'descripcion'     => $d->descripcion,
-            'cantidad'        => (float) $d->cantidad,
-            'precio_unitario' => (float) $d->precio_unitario,
-            'descuento'       => (float) $d->descuento,
-            'total'           => (float) $d->total,
-        ])->toArray();
+        $this->detalleItems = $venta->detalles->map(function ($d) {
+            if ($d->variante_id && $d->variante?->imagen) {
+                $imagen = asset('storage/' . $d->variante->imagen);
+            } elseif ($d->producto_id && $d->producto?->logo) {
+                $imagen = asset('storage/' . $d->producto->logo);
+            } else {
+                $imagen = null;
+            }
+
+            return [
+                'codigo'          => $d->variante_id ? ($d->variante?->codigo ?? null) : ($d->producto?->codigo_interno ?? null),
+                'imagen'          => $imagen,
+                'descripcion'     => $d->descripcion,
+                'cantidad'        => (float) $d->cantidad,
+                'precio_unitario' => (float) $d->precio_unitario,
+                'descuento'       => (float) $d->descuento,
+                'total'           => (float) $d->total,
+            ];
+        })->toArray();
 
         // Solo pagos de contado (Efectivo, Yape, etc.) — los de crédito
         // ya se muestran en el badge tipo_pago y en saldo_pendiente

@@ -1,5 +1,5 @@
 @if($modalDetalle && $detalleVenta)
-<div class="vdm-overlay" wire:click.self="cerrarModalDetalle">
+<div class="vdm-overlay" wire:click.self="cerrarModalDetalle" x-data="{ imgPreview: null }">
     <div class="vdm-modal" @click.stop>
 
         {{-- Cabecera ──────────────────────────────────────────────────── --}}
@@ -62,7 +62,20 @@
                     <tbody>
                         @foreach($detalleItems as $item)
                         <tr>
-                            <td>{{ $item['descripcion'] }}</td>
+                            <td>
+                                <span class="vdm-desc-row">
+                                    <span>{{ $item['descripcion'] }}</span>
+                                    @if(!empty($item['imagen']))
+                                        <button type="button" class="vdm-img-btn" title="Ver imagen"
+                                                @click.stop="imgPreview = '{{ $item['imagen'] }}'">
+                                            <x-filament::icon icon="heroicon-o-eye" class="vdm-img-btn__icon" />
+                                        </button>
+                                    @endif
+                                </span>
+                                @if(!empty($item['codigo']))
+                                    <span class="vdm-cod">{{ $item['codigo'] }}</span>
+                                @endif
+                            </td>
                             <td class="text-right vdm-num">
                                 {{ $item['cantidad'] == intval($item['cantidad'])
                                     ? number_format($item['cantidad'], 0)
@@ -124,6 +137,18 @@
             <button wire:click="cerrarModalDetalle" class="vdm-btn-cerrar" type="button">Cerrar</button>
         </div>
 
+    </div>
+
+    {{-- Lightbox ──────────────────────────────────────────────────────── --}}
+    <div class="vdm-lightbox" x-show="imgPreview" x-cloak x-transition
+         @click="imgPreview = null" @keydown.escape.window="imgPreview = null">
+        <button type="button" class="vdm-lightbox__close" @click.stop="imgPreview = null">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke-width="2.5" stroke="currentColor" width="20" height="20">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+            </svg>
+        </button>
+        <img :src="imgPreview" class="vdm-lightbox__img" @click.stop alt="Imagen del producto">
     </div>
 </div>
 @endif

@@ -16,12 +16,9 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Assets\Css;
-use Filament\Support\Assets\Js;
 use Filament\Support\Enums\Width;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -33,6 +30,26 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class PdvPanelProvider extends PanelProvider
 {
+    /**
+     * Devuelve la Empresa del tenant actual.
+     * En páginas autenticadas la obtiene de Filament::getTenant().
+     * En la página de login (sin tenant resuelto aún) la deduce del subdominio.
+     */
+    private function resolverEmpresa(): ?Empresa
+    {
+        if ($tenant = Filament::getTenant()) {
+            return $tenant;
+        }
+
+        $host   = request()->getHost();
+        $domain = config('app.domain', '');
+        $slug   = $domain ? Str::before($host, '.' . $domain) : null;
+
+        return $slug && $slug !== $host
+            ? Empresa::where('slug', $slug)->first()
+            : null;
+    }
+
     public function register(): void
     {
         parent::register();
@@ -60,13 +77,13 @@ class PdvPanelProvider extends PanelProvider
                 'primary' => '#46449e',
             ])
             ->brandLogoHeight('3.5rem')
-            ->brandName(fn () => Str::limit(Filament::getTenant()?->name ?? 'Tukipu', 22, ''))
+            ->brandName(fn () => Str::limit($this->resolverEmpresa()?->nombre ?? 'Tukipu', 22, ''))
             ->brandLogo(function () {
-                $logo = Filament::getTenant()?->logo;
+                $logo = $this->resolverEmpresa()?->logo;
                 return $logo ? asset('storage/' . $logo) : null;
             })
             ->favicon(function () {
-                $icono = Filament::getTenant()?->icono;
+                $icono = $this->resolverEmpresa()?->icono;
                 return $icono ? asset('storage/' . $icono) : null;
             })
             ->navigationGroups([
