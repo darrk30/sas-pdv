@@ -36,6 +36,8 @@
 }
 
 .tarjeta:hover .tarjeta__img { transform: scale(1.05); }
+.tarjeta__img--agotado { filter: grayscale(100%); opacity: .6; }
+.tarjeta:hover .tarjeta__img--agotado { transform: none; }
 
 /* Placeholder sin imagen */
 .tarjeta__sin-imagen {

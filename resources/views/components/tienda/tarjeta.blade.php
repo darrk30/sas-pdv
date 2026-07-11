@@ -207,7 +207,8 @@
          @touchend.passive="tocarFin($event)">
 
         @if ($imagenes->isNotEmpty())
-            <img :src="imgActual" alt="{{ $producto->nombre }}" class="tarjeta__img" loading="lazy">
+            <img :src="imgActual" alt="{{ $producto->nombre }}" class="tarjeta__img" loading="lazy"
+                 :class="{ 'tarjeta__img--agotado': agotado || stockRestante === 0 }">
         @else
             <div class="tarjeta__sin-imagen">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="tarjeta__sin-imagen-svg">

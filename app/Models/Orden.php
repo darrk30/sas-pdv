@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\EstadoOrden;
 use App\Observers\OrdenObserver;
+use App\Services\EtiquetaStockService;
 use App\Traits\BelongsToEmpresa;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
@@ -138,6 +139,8 @@ class Orden extends Model
     {
         $this->loadMissing(['detalles.producto', 'detalles.variante.producto']);
 
+        $productosAfectados = [];
+
         foreach ($this->detalles as $detalle) {
             $cantidad = (float) $detalle->cantidad;
 
@@ -158,12 +161,16 @@ class Orden extends Model
                             ->where('empresa_id', $this->empresa_id)
                             ->where('variante_id', $pd->variante_id)
                             ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantDet})")]);
+                        if ($pd->variante->producto_id) {
+                            $productosAfectados[] = $pd->variante->producto_id;
+                        }
                     } elseif ($pd->producto_id && $pd->producto?->control_de_stock) {
                         DB::table('inventarios')
                             ->where('empresa_id', $this->empresa_id)
                             ->where('producto_id', $pd->producto_id)
                             ->whereNull('variante_id')
                             ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantDet})")]);
+                        $productosAfectados[] = $pd->producto_id;
                     }
                 }
 
@@ -175,6 +182,7 @@ class Orden extends Model
                     ->where('empresa_id', $this->empresa_id)
                     ->where('variante_id', $detalle->variante_id)
                     ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantidad})")]);
+                $productosAfectados[] = $detalle->variante->producto_id;
 
             // ── Producto simple ───────────────────────────────────────────
             } elseif ($detalle->producto_id) {
@@ -185,6 +193,15 @@ class Orden extends Model
                     ->where('producto_id', $detalle->producto_id)
                     ->whereNull('variante_id')
                     ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantidad})")]);
+                $productosAfectados[] = $detalle->producto_id;
+            }
+        }
+
+        // Sincronizar etiqueta (AGOTADO ↔ null) para cada producto afectado
+        if ($productosAfectados) {
+            $service = app(EtiquetaStockService::class);
+            foreach (array_unique($productosAfectados) as $productoId) {
+                $service->sincronizar($productoId, $this->empresa_id);
             }
         }
     }
