@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Pdv\ProductoExcelController;
+use App\Http\Controllers\Pdv\PushSubscriptionController;
 use App\Http\Controllers\Pdv\TicketDespachoController;
 use App\Http\Controllers\Pdv\TicketVentaController;
 use App\Http\Controllers\Tienda\CarritoController;
@@ -26,6 +27,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/ticket/despacho/{id}', [TicketDespachoController::class, 'show'])
         ->name('pdv.ticket.despacho')
         ->where('id', '[0-9]+');
+
+    Route::post('/push/subscribe',   [PushSubscriptionController::class, 'subscribe'])->name('push.subscribe');
+    Route::post('/push/unsubscribe', [PushSubscriptionController::class, 'unsubscribe'])->name('push.unsubscribe');
 });
 
 Route::get('/cuenta-suspendida', fn() => view('suspendido'))->name('suspendido');

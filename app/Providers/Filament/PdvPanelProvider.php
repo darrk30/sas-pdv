@@ -60,6 +60,11 @@ class PdvPanelProvider extends PanelProvider
         );
 
         FilamentView::registerRenderHook(
+            PanelsRenderHook::BODY_END,
+            fn () => view('filament.pdv.components.web-push'),
+        );
+
+        FilamentView::registerRenderHook(
             PanelsRenderHook::HEAD_END,
             fn () => new HtmlString(
                 '<style>.fi-no{z-index:10000!important}</style>'
