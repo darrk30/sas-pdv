@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class UserResource extends Resource
 {
@@ -33,6 +34,11 @@ class UserResource extends Resource
     protected static ?string $recordTitleAttribute = 'User';
 
     protected static ?string $tenantOwnershipRelationshipName = 'empresas';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('usuarios.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('usuarios.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('usuarios.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('usuarios.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

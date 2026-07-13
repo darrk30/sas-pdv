@@ -30,7 +30,7 @@ class MiEmpresaPage extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->can('config.cajas') ?? false;
+        return auth()->user()?->can('cajas.ver') ?? false;
     }
 
     public function mount(): void
@@ -128,6 +128,10 @@ class MiEmpresaPage extends Page implements HasForms
                 Section::make('Catálogo en Línea')
                     ->icon('heroicon-o-shopping-bag')
                     ->description('Controla la visibilidad de tu catálogo público para los clientes.')
+                    ->hidden(function (): bool {
+                        $plan = Filament::getTenant()?->suscripcion?->plan;
+                        return $plan !== null && ! $plan->tiene_catalogo_web;
+                    })
                     ->schema([
                         Select::make('carta_activa_cliente')
                             ->label('Estado del catálogo para clientes')

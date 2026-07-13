@@ -19,6 +19,12 @@ class TiendaEmpresa
 
         app()->instance('tienda.empresa', $empresa);
 
+        // Verificar si el plan incluye catálogo web
+        $plan = $empresa->suscripcion?->plan;
+        if ($plan && ! $plan->tiene_catalogo_web) {
+            return response(view('tienda.catalogo-cerrado', compact('empresa')), 403);
+        }
+
         if ($empresa->carta_activa_cliente !== 'activo') {
             $usuario = auth()->user();
             $esAdmin = $usuario && $empresa->usuarios()

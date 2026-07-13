@@ -6,6 +6,7 @@ use App\Enums\EstadoGeneral;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -65,16 +66,17 @@ class PlanForm
                     ])->columnSpanFull(),
 
                 Section::make('Límites del Plan')
-                    ->description('Restricciones aplicadas a la empresa que contrate este plan')
+                    ->description('Cantidad máxima de recursos que puede tener la empresa')
                     ->icon('heroicon-o-adjustments-horizontal')
                     ->collapsible()
                     ->columns([
-                        'default' => 1, // 1 columna en celulares
-                        'sm' => 2,      // 2 columnas desde tablets en adelante
+                        'default' => 1,
+                        'sm' => 2,
                     ])
                     ->schema([
                         TextInput::make('maximo_usuarios')
                             ->label('Máximo de Usuarios')
+                            ->helperText('Usuarios que pueden acceder al panel PDV')
                             ->required()
                             ->numeric()
                             ->default(1)
@@ -83,10 +85,35 @@ class PlanForm
 
                         TextInput::make('maximo_locales')
                             ->label('Máximo de Locales')
+                            ->helperText('Sucursales o puntos de venta habilitados')
                             ->required()
                             ->numeric()
                             ->default(1)
                             ->minValue(1)
+                            ->columnSpan(1),
+                    ])->columnSpanFull(),
+
+                Section::make('Funcionalidades incluidas')
+                    ->description('Módulos y características que se activan con este plan')
+                    ->icon('heroicon-o-puzzle-piece')
+                    ->collapsible()
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 2,
+                    ])
+                    ->schema([
+                        Toggle::make('tiene_catalogo_web')
+                            ->label('Catálogo Web / Tienda Online')
+                            ->helperText('Permite activar la tienda online y recibir órdenes de clientes')
+                            ->onColor('success')
+                            ->default(false)
+                            ->columnSpan(1),
+
+                        Toggle::make('tiene_variantes')
+                            ->label('Variantes de Productos')
+                            ->helperText('Permite crear productos con tallas, colores u otras variantes')
+                            ->onColor('success')
+                            ->default(false)
                             ->columnSpan(1),
                     ])->columnSpanFull(),
             ]);

@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class SesionCajaResource extends Resource
 {
@@ -31,6 +32,11 @@ class SesionCajaResource extends Resource
     protected static ?string $pluralModelLabel = 'Sesiones de Caja';
 
     protected static ?string $recordTitleAttribute = 'fecha_apertura';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('sesiones.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('sesiones.ver') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('sesiones.ver') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('sesiones.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

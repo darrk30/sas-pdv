@@ -5,6 +5,7 @@ namespace App\Livewire\Tienda\Partials;
 use App\Models\Carrito;
 use App\Models\CarritoItem;
 use App\Models\ListaDeseo;
+use App\Models\Promocion;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -60,17 +61,44 @@ class CarritoStore extends Component
             'user_id'    => Auth::guard('cliente')->id(),
         ]);
 
+        $cantidad = (int) ($item['cantidad'] ?? 1);
+
+        if (! empty($item['promocion_id'])) {
+            $promo = Promocion::with([
+                'detalles.producto.inventario',
+                'detalles.variante.producto',
+                'detalles.variante.inventario',
+            ])->find($item['promocion_id']);
+
+            if (! $promo || ! $promo->estaVigente()) {
+                $this->dispatch('toast', mensaje: 'Esta promoción ya no está disponible.', tipo: 'error');
+                return;
+            }
+
+            $stock         = $promo->stockPredictivo();
+            $itemExistente = $this->buscarItem($carrito, $item);
+            $totalCantidad = $cantidad + ($itemExistente?->cantidad ?? 0);
+
+            if ($stock !== null && $stock < $totalCantidad) {
+                $msg = $stock <= 0
+                    ? 'Sin stock disponible para esta promoción.'
+                    : "Solo quedan {$stock} unidades disponibles para esta promoción.";
+                $this->dispatch('toast', mensaje: $msg, tipo: 'error');
+                return;
+            }
+        }
+
         $existing = $this->buscarItem($carrito, $item);
 
         try {
             if ($existing) {
-                $existing->increment('cantidad', (int) ($item['cantidad'] ?? 1));
+                $existing->increment('cantidad', $cantidad);
             } else {
                 $carrito->items()->create([
                     'promocion_id'    => $item['promocion_id']   ?? null,
                     'producto_id'     => $item['producto_id']    ?? null,
                     'variante_id'     => $item['variante_id']    ?? null,
-                    'cantidad'        => (int) ($item['cantidad'] ?? 1),
+                    'cantidad'        => $cantidad,
                     'precio_unitario' => (float) ($item['precio_unitario'] ?? 0),
                 ]);
             }

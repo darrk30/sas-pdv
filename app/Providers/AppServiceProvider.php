@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Empresa;
+use App\Policies\EmpresaPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -11,6 +13,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::policy(Empresa::class, EmpresaPolicy::class);
+
         Gate::before(function (\App\Models\User $user, string $ability) {
             // Consulta directa sin team scope de Spatie para evitar ambigüedad en empresa_id
             $esSuperAdmin = \Illuminate\Support\Facades\DB::table('model_has_roles')

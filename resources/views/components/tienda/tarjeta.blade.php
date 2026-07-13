@@ -109,10 +109,21 @@
              if (this.stockInicial === null) return null;
              const _ = Alpine.store('carrito').count;
              const items = Alpine.store('carrito')._leerLocal();
+             const pid = this.modalProducto.id;
+             const esVariante = this.tieneVariantes;
              const enCarrito = items
-                 .filter(i => i.producto_id == this.modalProducto.id && !i.promocion_id)
+                 .filter(i => i.producto_id == pid && !i.promocion_id)
                  .reduce((s, i) => s + (parseInt(i.cantidad) || 1), 0);
-             return Math.max(0, this.stockInicial - enCarrito);
+             const enPromos = items
+                 .filter(i => i.promocion_id && Array.isArray(i.componentes))
+                 .reduce((s, i) => {
+                     const promoQty = parseInt(i.cantidad) || 1;
+                     const consumed = i.componentes
+                         .filter(c => c.producto_id == pid && (esVariante || !c.variante_id))
+                         .reduce((cs, c) => cs + (parseFloat(c.cantidad) || 1), 0);
+                     return s + promoQty * consumed;
+                 }, 0);
+             return Math.max(0, this.stockInicial - enCarrito - enPromos);
          },
          modalProducto: @js([
              'id'             => $producto->id,
@@ -170,10 +181,18 @@
                  const sr = this.modalProducto.stock_reserva;
                  if (sr !== null && sr !== undefined) {
                      const items = Alpine.store('carrito')._leerLocal();
+                     const pid = this.modalProducto.id;
                      const enCarrito = items
-                         .filter(i => i.producto_id == this.modalProducto.id && !i.variante_id && !i.promocion_id)
+                         .filter(i => i.producto_id == pid && !i.variante_id && !i.promocion_id)
                          .reduce((s, i) => s + (parseInt(i.cantidad) || 1), 0);
-                     if (enCarrito >= sr) {
+                     const enPromos = items
+                         .filter(i => i.promocion_id && Array.isArray(i.componentes))
+                         .reduce((s, i) => {
+                             const promoQty = parseInt(i.cantidad) || 1;
+                             const comp = i.componentes.find(c => c.producto_id == pid && !c.variante_id);
+                             return s + (comp ? promoQty * (parseFloat(comp.cantidad) || 1) : 0);
+                         }, 0);
+                     if (enCarrito + enPromos >= sr) {
                          window.dispatchEvent(new CustomEvent('toast', {
                              detail: { mensaje: 'No hay más unidades disponibles.', tipo: 'error' }
                          }));

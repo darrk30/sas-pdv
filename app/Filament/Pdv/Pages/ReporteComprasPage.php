@@ -11,6 +11,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
@@ -24,6 +25,7 @@ class ReporteComprasPage extends Page implements HasForms
 {
     use InteractsWithForms;
     use WithPagination;
+    use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.reporte-compras';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
@@ -34,8 +36,6 @@ class ReporteComprasPage extends Page implements HasForms
 
     public static function canAccess(): bool { return auth()->user()?->can('compras.reporte') ?? false; }
 
-    public function getHeading(): string          { return ''; }
-    public function getMaxContentWidth(): ?string { return 'full'; }
 
     // ── Filtros ───────────────────────────────────────────────────────────────
 

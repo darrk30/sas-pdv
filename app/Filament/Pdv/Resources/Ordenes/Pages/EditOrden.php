@@ -5,6 +5,7 @@ namespace App\Filament\Pdv\Resources\Ordenes\Pages;
 use App\Enums\EstadoOrden;
 use App\Enums\EstadoVenta;
 use App\Enums\TipoPago;
+use App\Filament\Pdv\Resources\Ordenes\Concerns\ValidaStockOrden;
 use App\Filament\Pdv\Resources\Ordenes\OrdenResource;
 use App\Models\Inventario;
 use App\Models\MetodoPago;
@@ -15,6 +16,7 @@ use App\Models\Variante;
 use App\Models\Venta;
 use App\Models\VentaDetalle;
 use App\Models\VentaPago;
+use App\Services\EtiquetaStockService;
 use App\Services\KardexService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -28,7 +30,169 @@ use Illuminate\Support\Facades\DB;
 
 class EditOrden extends EditRecord
 {
+    use ValidaStockOrden;
+
     protected static string $resource = OrdenResource::class;
+
+    /** Snapshot de cantidades antes del guardado, para calcular deltas en afterSave. */
+    protected array $oldDetalleQtys = [];
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return $data;
+    }
+
+    protected function beforeSave(): void
+    {
+        if ($this->record->estado !== EstadoOrden::PendientePago) {
+            return;
+        }
+
+        $this->oldDetalleQtys = $this->record->detalles()
+            ->get(['id', 'tipo_item', 'producto_id', 'variante_id', 'promocion_id', 'cantidad'])
+            ->keyBy('id')
+            ->map(fn($d) => [
+                'tipo_item'    => $d->tipo_item,
+                'producto_id'  => $d->producto_id,
+                'variante_id'  => $d->variante_id,
+                'promocion_id' => $d->promocion_id,
+                'cantidad'     => (float) $d->cantidad,
+            ])
+            ->all();
+
+        $detallesForm = array_values($this->data['detalles'] ?? []);
+
+        if (empty($detallesForm)) {
+            return;
+        }
+
+        $errores = $this->validarStockDetalles(
+            $detallesForm,
+            array_values($this->oldDetalleQtys),
+            $this->record->empresa_id
+        );
+
+        if (! empty($errores)) {
+            foreach ($errores as $msg) {
+                Notification::make()->danger()->title('Stock insuficiente')->body($msg)->persistent()->send();
+            }
+            $this->halt();
+        }
+    }
+
+    protected function afterSave(): void
+    {
+        if (empty($this->oldDetalleQtys)) {
+            return;
+        }
+
+        $empresaId = $this->record->empresa_id;
+        $productosAfectados = [];
+
+        $newDetalles = $this->record->detalles()
+            ->get(['id', 'tipo_item', 'producto_id', 'variante_id', 'promocion_id', 'cantidad']);
+
+        foreach ($newDetalles as $det) {
+            $newQty = (float) $det->cantidad;
+            $id     = $det->id;
+
+            if (isset($this->oldDetalleQtys[$id])) {
+                $oldQty = $this->oldDetalleQtys[$id]['cantidad'];
+                $delta  = $oldQty - $newQty;
+                if (abs($delta) < 0.001) continue;
+            } else {
+                $delta = -$newQty;
+            }
+
+            $this->aplicarDeltaStockReserva($det, $delta, $empresaId, $productosAfectados);
+        }
+
+        // Ítems eliminados en la edición → liberar su stock reservado
+        $newIds = $newDetalles->pluck('id')->all();
+        foreach ($this->oldDetalleQtys as $id => $old) {
+            if (in_array($id, $newIds)) continue;
+            $this->aplicarDeltaStockReserva((object) $old, $old['cantidad'], $empresaId, $productosAfectados);
+        }
+
+        if ($productosAfectados) {
+            $service = app(EtiquetaStockService::class);
+            foreach (array_unique($productosAfectados) as $productoId) {
+                $service->sincronizar($productoId, $empresaId);
+            }
+        }
+
+        $this->oldDetalleQtys = [];
+    }
+
+    /**
+     * Ajusta stock_reserva para un detalle dado un delta:
+     *   delta > 0 → unidades liberadas (qty de orden bajó o ítem eliminado)
+     *   delta < 0 → unidades adicionales reservadas (qty subió o ítem nuevo)
+     */
+    private function aplicarDeltaStockReserva(object $detalle, float $delta, int $empresaId, array &$productosAfectados): void
+    {
+        if (abs($delta) < 0.001) return;
+
+        if ($detalle->promocion_id) {
+            $promo = Promocion::with(['detalles.producto', 'detalles.variante.producto'])
+                ->find($detalle->promocion_id);
+            if (! $promo) return;
+
+            foreach ($promo->detalles as $pd) {
+                $cantDet = $delta * (float) $pd->cantidad;
+
+                if ($pd->variante_id && $pd->variante?->producto?->control_de_stock) {
+                    $expr = $pd->variante->producto->venta_sin_stock
+                        ? "LEAST(stock_real, stock_reserva + {$cantDet})"
+                        : "LEAST(stock_real, GREATEST(0, stock_reserva + {$cantDet}))";
+                    DB::table('inventarios')
+                        ->where('empresa_id', $empresaId)
+                        ->where('variante_id', $pd->variante_id)
+                        ->update(['stock_reserva' => DB::raw($expr)]);
+                    if ($pd->variante->producto_id) {
+                        $productosAfectados[] = $pd->variante->producto_id;
+                    }
+                } elseif ($pd->producto_id && $pd->producto?->control_de_stock) {
+                    $expr = $pd->producto->venta_sin_stock
+                        ? "LEAST(stock_real, stock_reserva + {$cantDet})"
+                        : "LEAST(stock_real, GREATEST(0, stock_reserva + {$cantDet}))";
+                    DB::table('inventarios')
+                        ->where('empresa_id', $empresaId)
+                        ->where('producto_id', $pd->producto_id)
+                        ->whereNull('variante_id')
+                        ->update(['stock_reserva' => DB::raw($expr)]);
+                    $productosAfectados[] = $pd->producto_id;
+                }
+            }
+
+        } elseif ($detalle->variante_id) {
+            $variante = Variante::with('producto')->find($detalle->variante_id);
+            if (! $variante?->producto?->control_de_stock) return;
+
+            $expr = $variante->producto->venta_sin_stock
+                ? "LEAST(stock_real, stock_reserva + {$delta})"
+                : "LEAST(stock_real, GREATEST(0, stock_reserva + {$delta}))";
+            DB::table('inventarios')
+                ->where('empresa_id', $empresaId)
+                ->where('variante_id', $detalle->variante_id)
+                ->update(['stock_reserva' => DB::raw($expr)]);
+            $productosAfectados[] = $variante->producto_id;
+
+        } elseif ($detalle->producto_id) {
+            $producto = Producto::find($detalle->producto_id);
+            if (! $producto?->control_de_stock) return;
+
+            $expr = $producto->venta_sin_stock
+                ? "LEAST(stock_real, stock_reserva + {$delta})"
+                : "LEAST(stock_real, GREATEST(0, stock_reserva + {$delta}))";
+            DB::table('inventarios')
+                ->where('empresa_id', $empresaId)
+                ->where('producto_id', $detalle->producto_id)
+                ->whereNull('variante_id')
+                ->update(['stock_reserva' => DB::raw($expr)]);
+            $productosAfectados[] = $detalle->producto_id;
+        }
+    }
 
     protected function getHeaderActions(): array
     {

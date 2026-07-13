@@ -17,6 +17,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class OrdenResource extends Resource
 {
@@ -37,14 +38,30 @@ class OrdenResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'codigo';
 
+    public static function canAccess(): bool
+    {
+        if (! auth()->user()?->can('ordenes.ver')) return false;
+        $plan = Filament::getTenant()?->suscripcion?->plan;
+        return $plan === null || $plan->tiene_catalogo_web;
+    }
+
+    public static function canCreate(): bool              { return auth()->user()?->can('ordenes.gestionar') ?? false; }
+    public static function canEdit(Model $record): bool   {
+        return (auth()->user()?->can('ordenes.gestionar') ?? false)
+            && $record->estado === EstadoOrden::PendientePago;
+    }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('ordenes.cancelar') ?? false; }
+
     public static function getNavigationBadge(): ?string
     {
         $empresaId = Filament::getTenant()?->id;
         if (! $empresaId) return null;
 
-        $count = Orden::where('empresa_id', $empresaId)
-            ->where('estado', EstadoOrden::PendientePago)
-            ->count();
+        $count = cache()->remember("badge_ordenes_{$empresaId}", 30, fn() =>
+            Orden::where('empresa_id', $empresaId)
+                ->where('estado', EstadoOrden::PendientePago)
+                ->count()
+        );
 
         return $count > 0 ? (string) $count : null;
     }
@@ -63,7 +80,7 @@ class OrdenResource extends Resource
     {
         return OrdenesTable::configure($table)
             ->recordUrl(fn(Orden $record): string =>
-                $record->estaCancelada()
+                ($record->estaCancelada() || $record->estaPagoConfirmado())
                     ? static::getUrl('view', ['record' => $record])
                     : static::getUrl('edit', ['record' => $record])
             );

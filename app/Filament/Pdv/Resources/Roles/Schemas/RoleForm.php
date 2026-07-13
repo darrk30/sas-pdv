@@ -14,10 +14,19 @@ class RoleForm
 {
     public static function configure(Schema $schema): Schema
     {
-        $empresaId = Filament::getTenant()?->id;
+        $empresa   = Filament::getTenant();
+        $empresaId = $empresa?->id;
+        $plan      = $empresa?->suscripcion?->plan;
+        $tieneTienda = $plan === null || $plan->tiene_catalogo_web;
 
         // Permisos agrupados por módulo — excluir módulos exclusivos del super-admin
+        // y los permisos de tienda cuando el plan no los incluye
         $permisosPorModulo = Permission::where('module', 'not like', 'admin_%')
+            ->when(! $tieneTienda, fn ($q) => $q->whereNotIn('name', [
+                'ordenes.ver',
+                'ordenes.gestionar',
+                'ordenes.cancelar',
+            ]))
             ->orderBy('module_label')
             ->orderBy('description')
             ->get()

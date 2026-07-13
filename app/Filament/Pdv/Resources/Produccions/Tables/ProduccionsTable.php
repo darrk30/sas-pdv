@@ -27,7 +27,8 @@ class ProduccionsTable
                     ->placeholder('Sin impresora'),
 
                 ToggleColumn::make('estado')
-                    ->label('Estado'),
+                    ->label('Estado')
+                    ->disabled(fn() => ! auth()->user()?->can('produccion.editar')),
             ])
             ->filters([
                 //

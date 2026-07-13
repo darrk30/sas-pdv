@@ -20,6 +20,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
@@ -36,6 +37,7 @@ class CuentasPorCobrarPage extends Page implements HasForms
     use HasVentaDetalleModal;
     use InteractsWithForms;
     use WithPagination;
+    use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.cuentas-por-cobrar';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-wallet';
@@ -45,8 +47,6 @@ class CuentasPorCobrarPage extends Page implements HasForms
 
     public static function canAccess(): bool { return auth()->user()?->can('reportes.cuentas_cobrar') ?? false; }
 
-    public function getHeading(): string { return ''; }
-    public function getMaxContentWidth(): ?string { return 'full'; }
 
     // public function getTitle(): string
     // {

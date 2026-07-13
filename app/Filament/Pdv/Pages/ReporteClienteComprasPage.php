@@ -12,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
@@ -26,6 +27,7 @@ class ReporteClienteComprasPage extends Page implements HasForms
     use HasVentaDetalleModal;
     use InteractsWithForms;
     use WithPagination;
+    use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.reporte-cliente-compras';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
@@ -36,9 +38,9 @@ class ReporteClienteComprasPage extends Page implements HasForms
 
     public static function canAccess(): bool { return auth()->user()?->can('reportes.clientes') ?? false; }
 
-    public function getHeading(): string          { return ''; }
-    public function getMaxContentWidth(): ?string { return 'full'; }
 
+    #[Url]
+    public ?int    $clienteId     = null;
     #[Url]
     public ?string $clienteNombre = null;
     #[Url]
@@ -103,8 +105,19 @@ class ReporteClienteComprasPage extends Page implements HasForms
             ->join('users as u', 'v.vendedor_id', '=', 'u.id')
             ->where('v.empresa_id', Filament::getTenant()->id)
             ->where('v.estado', EstadoVenta::Completada->value)
-            ->where('v.cliente_nombre', $this->clienteNombre ?? '')
-            ->when($this->clienteNumDoc, fn($q) => $q->where('v.cliente_num_doc', $this->clienteNumDoc))
+            ->where(function ($q) {
+                if ($this->clienteId) {
+                    $q->where('v.cliente_id', $this->clienteId)
+                      ->orWhere(function ($sub) {
+                          $sub->whereNull('v.cliente_id')
+                              ->where('v.cliente_nombre', $this->clienteNombre ?? '')
+                              ->when($this->clienteNumDoc, fn($s) => $s->where('v.cliente_num_doc', $this->clienteNumDoc));
+                      });
+                } else {
+                    $q->where('v.cliente_nombre', $this->clienteNombre ?? '')
+                      ->when($this->clienteNumDoc, fn($s) => $s->where('v.cliente_num_doc', $this->clienteNumDoc));
+                }
+            })
             ->when($this->filtroSerie,       fn($q) => $q->where('s.serie', $this->filtroSerie))
             ->when($this->filtroCorrelativo, fn($q) => $q->where('v.correlativo', 'like', $this->filtroCorrelativo . '%'))
             ->selectRaw("
@@ -124,8 +137,19 @@ class ReporteClienteComprasPage extends Page implements HasForms
         $row = DB::table('ventas as v')
             ->where('v.empresa_id', Filament::getTenant()->id)
             ->where('v.estado', EstadoVenta::Completada->value)
-            ->where('v.cliente_nombre', $this->clienteNombre ?? '')
-            ->when($this->clienteNumDoc, fn($q) => $q->where('v.cliente_num_doc', $this->clienteNumDoc))
+            ->where(function ($q) {
+                if ($this->clienteId) {
+                    $q->where('v.cliente_id', $this->clienteId)
+                      ->orWhere(function ($sub) {
+                          $sub->whereNull('v.cliente_id')
+                              ->where('v.cliente_nombre', $this->clienteNombre ?? '')
+                              ->when($this->clienteNumDoc, fn($s) => $s->where('v.cliente_num_doc', $this->clienteNumDoc));
+                      });
+                } else {
+                    $q->where('v.cliente_nombre', $this->clienteNombre ?? '')
+                      ->when($this->clienteNumDoc, fn($s) => $s->where('v.cliente_num_doc', $this->clienteNumDoc));
+                }
+            })
             ->selectRaw("
                 COUNT(*) AS cantidad,
                 COALESCE(SUM(v.total), 0)           AS total_gastado,

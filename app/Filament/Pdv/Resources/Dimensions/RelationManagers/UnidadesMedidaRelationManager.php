@@ -4,7 +4,6 @@ namespace App\Filament\Pdv\Resources\Dimensions\RelationManagers;
 
 use App\Filament\Pdv\Resources\Dimensions\DimensionResource;
 use App\Models\UnidadesMedida;
-use App\Models\User;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -51,6 +50,7 @@ class UnidadesMedidaRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
+                    ->authorize(fn() => auth()->user()?->can('dimensiones.crear'))
                     ->mutateDataUsing(function (array $data): array {
                         // Aseguramos que se inyecte el ID de la empresa al crear
                         $data['empresa_id'] = Filament::getTenant()->id;
@@ -59,10 +59,12 @@ class UnidadesMedidaRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make()
+                    ->authorize(fn() => auth()->user()?->can('dimensiones.editar'))
                     ->modalHeading(fn(UnidadesMedida $record) => 'Editando a ' . $record->nombre)
                     ->hidden(fn(UnidadesMedida $record) => strtolower($record->nombre) === 'unidad'),
 
                 DeleteAction::make()
+                    ->authorize(fn() => auth()->user()?->can('dimensiones.eliminar'))
                     ->modalHeading(fn(UnidadesMedida $record) => 'Eliminar a ' . $record->nombre)
                     ->hidden(fn(UnidadesMedida $record) => strtolower($record->nombre) === 'unidad'),
             ]);

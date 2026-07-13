@@ -34,7 +34,8 @@ class CategoriasTable
                 // 🌟 Cambiado a ToggleColumn para editar directamente en la tabla
                 ToggleColumn::make('estado')
                     ->label('Estado')
-                    ->sortable(),
+                    ->sortable()
+                    ->disabled(fn() => ! auth()->user()?->can('categorias.editar')),
 
                 // Opcional: Mostrar el número de orden (puedes quitarlo si prefieres que sea invisible)
                 TextColumn::make('orden')

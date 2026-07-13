@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class ImpresoraResource extends Resource
 {
@@ -31,6 +32,11 @@ class ImpresoraResource extends Resource
     protected static ?string $pluralModelLabel = 'Impresoras';
 
     protected static ?string $recordTitleAttribute = 'Impresora';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('impresoras.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('impresoras.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('impresoras.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('impresoras.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

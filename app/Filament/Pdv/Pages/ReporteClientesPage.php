@@ -11,6 +11,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Components\Select;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
@@ -24,6 +25,7 @@ class ReporteClientesPage extends Page implements HasForms
 {
     use InteractsWithForms;
     use WithPagination;
+    use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.reporte-clientes';
     protected static bool $shouldRegisterNavigation = false;
@@ -31,8 +33,6 @@ class ReporteClientesPage extends Page implements HasForms
 
     public static function canAccess(): bool { return auth()->user()?->can('reportes.clientes') ?? false; }
 
-    public function getHeading(): string          { return ''; }
-    public function getMaxContentWidth(): ?string { return 'full'; }
 
     public ?string $filtroRango          = 'hoy';
     public ?string $filtroFechaDesde     = null;

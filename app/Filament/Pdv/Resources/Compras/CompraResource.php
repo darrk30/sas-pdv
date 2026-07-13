@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class CompraResource extends Resource
 {
@@ -31,6 +32,11 @@ class CompraResource extends Resource
     protected static ?string $pluralModelLabel = 'Compras';
 
     protected static ?string $recordTitleAttribute = 'codigo';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('compras.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('compras.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('compras.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('compras.anular') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

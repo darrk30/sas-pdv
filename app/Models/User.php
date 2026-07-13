@@ -77,6 +77,10 @@ class User extends Authenticatable implements HasTenants, HasName, FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
+        if ($panel->getId() === 'admin') {
+            return $this->roles()->whereNull('roles.empresa_id')->exists();
+        }
+
         return true;
     }
 

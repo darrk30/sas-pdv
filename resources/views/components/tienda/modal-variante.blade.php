@@ -141,7 +141,8 @@
                         :disabled="cantidad <= 1">−</button>
                 <span class="modal-var__cant-num" x-text="cantidad"></span>
                 <button type="button" class="modal-var__cant-btn"
-                        @click="cantidad++">+</button>
+                        @click="if (stockRestantePromo === null || cantidad < stockRestantePromo) cantidad++"
+                        :disabled="stockRestantePromo !== null && cantidad >= stockRestantePromo">+</button>
             </div>
 
             {{-- Botones acción --}}
@@ -158,7 +159,7 @@
                     </svg>
                     <span x-text="!seleccionCompleta
                         ? 'Selecciona las opciones'
-                        : varianteSinStock ? 'Sin stock'
+                        : (varianteSinStock || (stockRestantePromo !== null && stockRestantePromo <= 0)) ? 'Sin stock'
                         : !disponible ? 'No disponible'
                         : 'Agregar al carrito'"></span>
                 </button>

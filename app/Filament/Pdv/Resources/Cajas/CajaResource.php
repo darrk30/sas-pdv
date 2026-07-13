@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class CajaResource extends Resource
 {
@@ -32,6 +33,11 @@ class CajaResource extends Resource
     protected static ?string $pluralModelLabel = 'Cajas';
 
     protected static ?string $recordTitleAttribute = 'Caja';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('cajas.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('cajas.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('cajas.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('cajas.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

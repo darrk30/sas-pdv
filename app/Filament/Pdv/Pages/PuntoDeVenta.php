@@ -31,6 +31,7 @@ use App\Services\KardexService;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +41,8 @@ use UnitEnum;
 
 class PuntoDeVenta extends Page
 {
+    use HasFullWidthPage;
+
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-receipt-percent';
     protected static ?string $navigationLabel = 'Punto de Venta';
     protected static string|UnitEnum|null $navigationGroup = 'Punto de Venta';
@@ -48,8 +51,6 @@ class PuntoDeVenta extends Page
 
     public static function canAccess(): bool { return auth()->user()?->can('caja.punto_de_venta') ?? false; }
 
-    public function getHeading(): string { return ''; }
-    public function getMaxContentWidth(): ?string { return 'full'; }
 
     // ── Filtros ───────────────────────────────────────────────────────────────
     public string $busqueda    = '';

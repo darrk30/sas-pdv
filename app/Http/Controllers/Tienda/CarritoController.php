@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Carrito;
 use App\Models\CarritoItem;
 use App\Models\ListaDeseo;
+use App\Models\Promocion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,17 +32,39 @@ class CarritoController extends Controller
             'cantidad'        => 'integer|min:1',
         ]);
 
-        $carrito = $this->carrito($data['empresa_id']);
-        $item    = $this->buscarItem($carrito, $data);
+        $carrito  = $this->carrito($data['empresa_id']);
+        $cantidad = $data['cantidad'] ?? 1;
+
+        if (! empty($data['promocion_id'])) {
+            $promo = Promocion::with([
+                'detalles.producto.inventario',
+                'detalles.variante.producto',
+                'detalles.variante.inventario',
+            ])->find($data['promocion_id']);
+
+            if (! $promo || ! $promo->estaVigente()) {
+                return response()->json(['ok' => false, 'mensaje' => 'Esta promoción ya no está disponible.'], 422);
+            }
+
+            $stock         = $promo->stockPredictivo();
+            $itemExistente = $this->buscarItem($carrito, $data);
+            $totalCantidad = $cantidad + ($itemExistente?->cantidad ?? 0);
+
+            if ($stock !== null && $stock < $totalCantidad) {
+                return response()->json(['ok' => false, 'mensaje' => 'No hay suficientes unidades disponibles para esta promoción.'], 422);
+            }
+        }
+
+        $item = $this->buscarItem($carrito, $data);
 
         if ($item) {
-            $item->increment('cantidad', $data['cantidad'] ?? 1);
+            $item->increment('cantidad', $cantidad);
         } else {
             $carrito->items()->create([
                 'promocion_id'    => $data['promocion_id'] ?? null,
                 'producto_id'     => $data['producto_id']  ?? null,
                 'variante_id'     => $data['variante_id']  ?? null,
-                'cantidad'        => $data['cantidad'] ?? 1,
+                'cantidad'        => $cantidad,
                 'precio_unitario' => $data['precio_unitario'],
             ]);
         }

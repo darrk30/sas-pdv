@@ -18,15 +18,17 @@ class Plan extends Model
         'maximo_usuarios',
         'maximo_locales',
         'tiene_variantes',
-        'estado'
+        'tiene_catalogo_web',
+        'estado',
     ];
 
     protected function casts(): array
     {
         return [
-            'precio' => 'decimal:2',
-            'tiene_variantes' => 'boolean',
-            'estado' => EstadoGeneral::class,
+            'precio'            => 'decimal:2',
+            'tiene_variantes'   => 'boolean',
+            'tiene_catalogo_web'=> 'boolean',
+            'estado'            => EstadoGeneral::class,
         ];
     }
 

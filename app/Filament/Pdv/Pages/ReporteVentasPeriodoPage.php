@@ -10,6 +10,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
@@ -23,6 +24,7 @@ class ReporteVentasPeriodoPage extends Page implements HasForms
 {
     use InteractsWithForms;
     use WithPagination;
+    use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.reporte-ventas-periodo';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
@@ -31,8 +33,6 @@ class ReporteVentasPeriodoPage extends Page implements HasForms
     protected static ?int $navigationSort = 1;
     protected static ?string $title = 'Ventas por período';
 
-    public function getHeading(): string          { return ''; }
-    public function getMaxContentWidth(): ?string { return 'full'; }
 
     public ?string $filtroAgrupacion = 'dia';
     public ?string $filtroRango      = 'hoy';

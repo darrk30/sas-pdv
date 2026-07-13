@@ -3,9 +3,11 @@
 namespace App\Filament\Pdv\Resources\Ordenes\Schemas;
 
 use App\Enums\EstadoOrden;
+use App\Enums\EstadoPromocion;
 use App\Enums\TipoDocumento;
 use App\Enums\TipoItem;
 use App\Models\AjusteDetalle;
+use App\Models\Promocion;
 use App\Models\Cliente;
 use App\Models\MetodoEnvio;
 use App\Models\MetodoPago;
@@ -295,14 +297,16 @@ class OrdenForm
                                     ->live()
                                     ->formatStateUsing(function (?Model $record): ?string {
                                         if (! $record) return null;
-                                        if ($record->variante_id) return 'variante_' . $record->variante_id;
-                                        if ($record->producto_id) return 'producto_' . $record->producto_id;
+                                        if ($record->variante_id)  return 'variante_' . $record->variante_id;
+                                        if ($record->promocion_id) return 'promo_' . $record->promocion_id;
+                                        if ($record->producto_id)  return 'producto_' . $record->producto_id;
                                         return null;
                                     })
                                     ->getOptionLabelUsing(function ($value): ?string {
                                         if (blank($value)) return null;
                                         [$tipo, $id] = explode('_', $value, 2);
                                         if ($tipo === 'producto') return Producto::find($id)?->nombre;
+                                        if ($tipo === 'promo')    return '[Promo] ' . (Promocion::find($id)?->nombre ?? '');
                                         $variante = Variante::with(['producto', 'valores.valor'])->find($id);
                                         return $variante ? AjusteDetalle::generarNombre(null, $variante) : null;
                                     })
@@ -333,6 +337,14 @@ class OrdenForm
                                             $opciones["variante_{$variante->id}"] = AjusteDetalle::generarNombre(null, $variante);
                                         }
 
+                                        $promociones = Promocion::where('empresa_id', $empresa->id)
+                                            ->where('estado', EstadoPromocion::Activo)
+                                            ->orderBy('nombre')
+                                            ->get();
+                                        foreach ($promociones as $promo) {
+                                            $opciones["promo_{$promo->id}"] = "[Promo] {$promo->nombre}";
+                                        }
+
                                         return $opciones;
                                     })
                                     ->afterStateUpdated(function (?string $state, Set $set): void {
@@ -353,12 +365,21 @@ class OrdenForm
 
                                         if ($tipo === 'producto') {
                                             $producto = Producto::find($id);
+                                            $set('promocion_id', null);
                                             $set('producto_id', $producto?->id);
                                             $set('variante_id', null);
                                             $set('descripcion', $producto?->nombre);
                                             $set('precio_unitario', $producto?->precio_venta);
+                                        } elseif ($tipo === 'promo') {
+                                            $promo = Promocion::find($id);
+                                            $set('promocion_id', $promo?->id);
+                                            $set('producto_id', null);
+                                            $set('variante_id', null);
+                                            $set('descripcion', $promo ? "[Promo] {$promo->nombre}" : null);
+                                            $set('precio_unitario', $promo?->precio);
                                         } else {
                                             $variante = Variante::with(['producto', 'valores.valor'])->find($id);
+                                            $set('promocion_id', null);
                                             $set('producto_id', null);
                                             $set('variante_id', $variante?->id);
                                             $set('descripcion', AjusteDetalle::generarNombre(null, $variante));
@@ -416,6 +437,7 @@ class OrdenForm
 
                                 Hidden::make('producto_id'),
                                 Hidden::make('variante_id'),
+                                Hidden::make('promocion_id'),
                                 Hidden::make('descripcion'),
                                 Hidden::make('valor_unitario'),
                                 Hidden::make('subtotal'),
@@ -557,10 +579,15 @@ class OrdenForm
 
         $data['tipo_item'] = ! empty($data['variante_id'])
             ? TipoItem::Variante->value
-            : TipoItem::Producto->value;
+            : (! empty($data['promocion_id'])
+                ? TipoItem::Promocion->value
+                : TipoItem::Producto->value);
 
         if (empty($data['descripcion'])) {
-            if (! empty($data['producto_id'])) {
+            if (! empty($data['promocion_id'])) {
+                $promo = Promocion::find($data['promocion_id']);
+                $data['descripcion'] = $promo ? "[Promo] {$promo->nombre}" : '';
+            } elseif (! empty($data['producto_id'])) {
                 $data['descripcion'] = Producto::find($data['producto_id'])?->nombre ?? '';
             } elseif (! empty($data['variante_id'])) {
                 $variante = Variante::with(['producto', 'valores.valor'])->find($data['variante_id']);

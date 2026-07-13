@@ -5,6 +5,7 @@ namespace App\Filament\Pdv\Resources\Cajas\RelationManagers;
 use App\Models\Turno;
 use Filament\Actions\AttachAction;
 use Filament\Actions\DetachAction;
+use Illuminate\Support\Collection;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -37,12 +38,17 @@ class UsuariosRelationManager extends RelationManager
                 TextColumn::make('name')->label('Usuario'),
                 TextColumn::make('pivot.turno_id')
                     ->label('Turno')
-                    ->formatStateUsing(fn($state) => Turno::find($state)?->nombre ?? 'N/A')
+                    ->formatStateUsing(function ($state) {
+                        static $cache = null;
+                        $cache ??= Turno::pluck('nombre', 'id');
+                        return $cache[$state] ?? 'N/A';
+                    })
                     ->badge()
                     ->color('warning'),
             ])
             ->headerActions([
                 AttachAction::make()
+                    ->authorize(fn() => auth()->user()?->can('cajas.editar'))
                     ->schema(fn(AttachAction $action): array => [
                         $action->getRecordSelect(),
                         Select::make('turno_id')
@@ -89,7 +95,8 @@ class UsuariosRelationManager extends RelationManager
                     ->preloadRecordSelect(),
             ])
             ->actions([
-                DetachAction::make(),
+                DetachAction::make()
+                    ->authorize(fn() => auth()->user()?->can('cajas.editar')),
             ]);
     }
 }

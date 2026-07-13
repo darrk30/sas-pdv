@@ -8,7 +8,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\Filter;
@@ -65,7 +64,8 @@ class ProductosTable
                     ->label('¿Controla Stock?')
                     ->onColor('success')
                     ->offColor('gray')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->disabled(fn() => ! auth()->user()?->can('productos.editar')),
 
                 TextColumn::make('etiqueta')
                     ->label('Etiqueta')

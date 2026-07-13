@@ -14,6 +14,7 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,6 +26,7 @@ class ReporteGananciasPage extends Page implements HasForms
 {
     use InteractsWithForms;
     use WithPagination;
+    use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.reporte-ganancias';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrow-trending-up';
@@ -35,8 +37,6 @@ class ReporteGananciasPage extends Page implements HasForms
 
     public static function canAccess(): bool { return auth()->user()?->can('caja.reporte_ganancias') ?? false; }
 
-    public function getHeading(): string { return ''; }
-    public function getMaxContentWidth(): ?string { return 'full'; }
 
     public ?string $filtroFechaDesde = null;
     public ?string $filtroFechaHasta = null;

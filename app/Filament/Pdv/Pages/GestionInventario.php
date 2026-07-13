@@ -5,6 +5,7 @@ namespace App\Filament\Pdv\Pages;
 use App\Models\AjusteDetalle;
 use App\Models\Inventario;
 use BackedEnum;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -18,6 +19,7 @@ use UnitEnum;
 class GestionInventario extends Page implements HasTable
 {
     use InteractsWithTable;
+    use HasFullWidthPage;
 
     public function mount(): void
     {

@@ -11,9 +11,59 @@
 
 <div class="pd-page"
      x-data="{
-         modal: @js($modalPromo),
-         abrir() {
-             window.dispatchEvent(new CustomEvent('abrir-modal-variante', { detail: this.modal }));
+         cantidad: 1,
+         stockInicial: @js($stockMax),
+         componentes: @js($componentes),
+         get stockRestante() {
+             if (this.stockInicial === null) return null;
+             const _ = Alpine.store('carrito').count;
+             const items = Alpine.store('carrito')._leerLocal();
+             const promoId = {{ $promo->id }};
+             const enPromo = items
+                 .filter(i => (i.promocion_id ?? null) === promoId)
+                 .reduce((s, i) => s + (parseInt(i.cantidad) || 1), 0);
+             if (!this.componentes.length) {
+                 return Math.max(0, this.stockInicial - enPromo);
+             }
+             const posibles = this.componentes.map(c => {
+                 const cant = parseFloat(c.cantidad) || 1;
+                 const individual = items
+                     .filter(i => !i.promocion_id
+                         && i.producto_id == c.producto_id
+                         && (i.variante_id ?? null) == (c.variante_id ?? null))
+                     .reduce((s, i) => s + (parseInt(i.cantidad) || 1), 0);
+                 const otrasPromos = items
+                     .filter(i => i.promocion_id && i.promocion_id != promoId && Array.isArray(i.componentes))
+                     .reduce((s, i) => {
+                         const q = parseInt(i.cantidad) || 1;
+                         const co = i.componentes.find(co =>
+                             co.producto_id == c.producto_id &&
+                             (co.variante_id ?? null) == (c.variante_id ?? null));
+                         return s + (co ? q * (parseFloat(co.cantidad) || 1) : 0);
+                     }, 0);
+                 const restante = this.stockInicial * cant - enPromo * cant - individual - otrasPromos;
+                 return Math.max(0, Math.floor(restante / cant));
+             });
+             return Math.min(...posibles);
+         },
+         get sinStock() { return this.stockRestante !== null && this.stockRestante <= 0; },
+         agregar() {
+             if (this.sinStock) return;
+             const agregar = this.stockRestante !== null
+                 ? Math.min(this.cantidad, this.stockRestante)
+                 : this.cantidad;
+             Alpine.store('carrito').agregar({
+                 promocion_id:    {{ $promo->id }},
+                 producto_id:     null,
+                 variante_id:     null,
+                 nombre:          @js($promo->nombre),
+                 imagen:          @js($imagen),
+                 precio_unitario: {{ (float) $promo->precio }},
+                 cantidad:        agregar,
+                 codigo_interno:  null,
+                 componentes:     @js($componentes),
+             });
+             this.cantidad = 1;
          }
      }">
 
@@ -69,12 +119,26 @@
             {{-- Stock / disponibilidad --}}
             @if (! $vigente)
                 <p class="pd-stock pd-stock--agotado">Promoción no disponible</p>
-            @elseif ($agotado)
-                <p class="pd-stock pd-stock--agotado">Sin stock disponible</p>
-            @elseif ($stockMax !== null && $stockMax <= 5)
-                <p class="pd-stock pd-stock--bajo">Últimas {{ $stockMax }} unidades</p>
             @else
-                <p class="pd-stock">Disponible</p>
+                <p class="pd-stock"
+                   :class="{
+                       'pd-stock--agotado': sinStock,
+                       'pd-stock--bajo':    !sinStock && stockRestante !== null && stockRestante <= 5
+                   }"
+                   x-text="sinStock
+                       ? 'Sin stock disponible'
+                       : (stockRestante === null
+                           ? 'Disponible'
+                           : (stockRestante <= 5
+                               ? `Últimas ${stockRestante} unidades`
+                               : `${stockRestante} disponibles`))">
+                    {{-- Texto inicial servidor --}}
+                    @if ($agotado) Sin stock disponible
+                    @elseif ($stockMax !== null && $stockMax <= 5) Últimas {{ $stockMax }} unidades
+                    @elseif ($stockMax !== null) {{ $stockMax }} disponibles
+                    @else Disponible
+                    @endif
+                </p>
             @endif
 
             {{-- Precio --}}
@@ -137,19 +201,37 @@
                 </ul>
             </div>
 
-            {{-- Botón --}}
+            {{-- Selector de cantidad + Botón --}}
             <div class="pd-acciones" style="margin-top:1.25rem">
+                @if ($vigente)
+                    {{-- Selector de cantidad --}}
+                    <div class="pd-cant-row" style="margin-bottom:0.75rem">
+                        <span class="pd-cant-label">Cantidad</span>
+                        <div class="pd-cant">
+                            <button type="button" class="pd-cant-btn"
+                                    @click="if (cantidad > 1) cantidad--"
+                                    :disabled="cantidad <= 1">−</button>
+                            <span class="pd-cant-num" x-text="cantidad">1</span>
+                            <button type="button" class="pd-cant-btn"
+                                    @click="if (stockRestante === null || cantidad < stockRestante) cantidad++"
+                                    :disabled="stockRestante !== null && cantidad >= stockRestante">+</button>
+                        </div>
+                    </div>
+                @endif
+
                 <button
                     type="button"
                     class="pd-btn-carrito"
-                    :disabled="{{ $agotado || !$vigente ? 'true' : 'false' }}"
-                    @click="abrir()"
+                    :disabled="sinStock || {{ !$vigente ? 'true' : 'false' }}"
+                    @click="agregar()"
                 >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="flex-shrink:0">
                         <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
                         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
                     </svg>
-                    {{ $agotado || !$vigente ? 'Sin stock' : 'Agregar al carrito' }}
+                    <span x-text="sinStock ? 'Sin stock' : 'Agregar al carrito'">
+                        {{ !$vigente ? 'No disponible' : 'Agregar al carrito' }}
+                    </span>
                 </button>
             </div>
 

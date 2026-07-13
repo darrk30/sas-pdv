@@ -45,7 +45,8 @@ class AtributosTable
 
                 ToggleColumn::make('estado')
                     ->label('Estado')
-                    ->sortable(),
+                    ->sortable()
+                    ->disabled(fn() => ! auth()->user()?->can('atributos.editar')),
 
                 TextColumn::make('created_at')
                     ->label('Fecha de Creación')

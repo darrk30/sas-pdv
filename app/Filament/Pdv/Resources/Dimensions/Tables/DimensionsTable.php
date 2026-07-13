@@ -20,7 +20,8 @@ class DimensionsTable
                     ->searchable()
                     ->sortable(),
                 ToggleColumn::make('estado')
-                    ->label('Estado'),
+                    ->label('Estado')
+                    ->disabled(fn() => ! auth()->user()?->can('dimensiones.editar')),
                 TextColumn::make('unidades_medida_count')
                     ->label('Unidades')
                     ->counts('unidadesMedida') // Muestra cuántas unidades tiene creadas

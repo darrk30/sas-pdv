@@ -15,6 +15,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class ProductoResource extends Resource
 {
@@ -32,6 +33,11 @@ class ProductoResource extends Resource
     protected static ?string $pluralModelLabel = 'Productos';
 
     protected static ?string $recordTitleAttribute = 'Producto';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('productos.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('productos.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('productos.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('productos.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

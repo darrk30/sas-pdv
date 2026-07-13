@@ -54,9 +54,14 @@ class PlansTable
                     ->alignCenter()
                     ->sortable(),
 
+                IconColumn::make('tiene_catalogo_web')
+                    ->label('Tienda Web')
+                    ->boolean()
+                    ->alignCenter(),
+
                 IconColumn::make('tiene_variantes')
                     ->label('Variantes')
-                    ->boolean() // Muestra un check verde o una X roja
+                    ->boolean()
                     ->alignCenter(),
 
                 TextColumn::make('estado')

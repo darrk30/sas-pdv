@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pdv\Pages\Tenancy\RegistrarLocalPage;
 use App\Http\Middleware\ValidarEstadoUsuarioEmpresa;
 use App\Http\Middleware\VerificarEmpresaActiva;
 use App\Models\Empresa;
@@ -151,6 +152,7 @@ class PdvPanelProvider extends PanelProvider
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')
             ->tenant(Empresa::class, slugAttribute: 'slug')
+            ->tenantRegistration(RegistrarLocalPage::class)
             ->tenantDomain('{tenant:slug}.' . config('app.domain'));
     }
 }

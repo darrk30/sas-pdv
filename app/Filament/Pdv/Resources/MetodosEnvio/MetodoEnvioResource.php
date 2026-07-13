@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class MetodoEnvioResource extends Resource
 {
@@ -31,6 +32,11 @@ class MetodoEnvioResource extends Resource
     protected static ?string $pluralModelLabel = 'Métodos de envío';
 
     protected static ?string $slug = 'metodos-envio';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('metodos_envio.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('metodos_envio.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('metodos_envio.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('metodos_envio.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

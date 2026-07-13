@@ -42,7 +42,6 @@ class Producto extends Model
     protected $casts = [
         'es_cortesia' => 'boolean',
         'visible_en_carta' => 'boolean',
-        'tiene_receta' => 'boolean',
         'control_de_stock' => 'boolean',
         'venta_sin_stock' => 'boolean',
         'precio_costo' => 'float',
@@ -91,11 +90,6 @@ class Producto extends Model
     public function variantesActivas()
     {
         return $this->hasMany(Variante::class)->where('estado', 'activo')->with('inventario');
-    }
-
-    public function inventarios()
-    {
-        return $this->hasOne(Inventario::class)->whereNull('variante_id');
     }
 
     public function inventario()

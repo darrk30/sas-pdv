@@ -107,6 +107,7 @@ class ClientesTable
                         ->color('info')
                         ->url(fn (Cliente $record) =>
                             ReporteClienteComprasPage::getUrl() . '?' . http_build_query([
+                                'clienteId'     => $record->id,
                                 'clienteNombre' => $record->nombre_completo,
                                 'clienteNumDoc' => $record->numero_documento,
                             ])

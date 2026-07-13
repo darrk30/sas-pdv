@@ -19,6 +19,7 @@ use App\Services\KardexService;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,7 @@ use UnitEnum;
 class VentasSesionPage extends Page
 {
     use WithPagination;
+    use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.ventas-sesion';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-presentation-chart-line';
@@ -38,8 +40,6 @@ class VentasSesionPage extends Page
 
     public static function canAccess(): bool { return auth()->user()?->can('caja.ventas_turno') ?? false; }
 
-    public function getHeading(): string { return ''; }
-    public function getMaxContentWidth(): ?string { return 'full'; }
 
     // ── Filtros ───────────────────────────────────────────────────────────────
     public string $busqueda     = '';

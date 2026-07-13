@@ -71,6 +71,17 @@ class PromoDetalle extends Component
             ];
         });
 
+        // Productos internos con control_de_stock para cruzar stock en tarjetas de catálogo
+        $componentes = $promo->detalles->map(function ($d) {
+            $productoReal = $d->variante?->producto ?? $d->producto;
+            if (! $productoReal?->control_de_stock) return null;
+            return [
+                'producto_id' => $productoReal->id,
+                'variante_id' => $d->variante_id,
+                'cantidad'    => (float) $d->cantidad,
+            ];
+        })->filter()->values()->all();
+
         // Datos para el modal (mismo formato que tarjeta-promo)
         $modalPromo = [
             'id'           => null,
@@ -78,6 +89,7 @@ class PromoDetalle extends Component
             'nombre'       => $promo->nombre,
             'imagen'       => $imagen,
             'precioBase'   => (float) $promo->precio,
+            'stockMax'     => $stockMax,
             'atributos'    => [],
             'variantes'    => [],
         ];
@@ -94,16 +106,17 @@ class PromoDetalle extends Component
         }
 
         return view('livewire.tienda.promo-detalle', [
-            'promo'      => $promo,
-            'imagen'     => $imagen,
-            'imagenes'   => $imagenes,
-            'tieneCode'  => $tieneCode,
-            'fechaFin'   => $fechaFin,
-            'vigente'    => $vigente,
-            'agotado'    => $agotado,
-            'stockMax'   => $stockMax,
-            'detalles'   => $detalles,
-            'modalPromo' => $modalPromo,
+            'promo'       => $promo,
+            'imagen'      => $imagen,
+            'imagenes'    => $imagenes,
+            'tieneCode'   => $tieneCode,
+            'fechaFin'    => $fechaFin,
+            'vigente'     => $vigente,
+            'agotado'     => $agotado,
+            'stockMax'    => $stockMax,
+            'detalles'    => $detalles,
+            'modalPromo'  => $modalPromo,
+            'componentes' => $componentes,
         ])->title($promo->nombre);
     }
 }

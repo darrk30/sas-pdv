@@ -56,8 +56,25 @@ window.modalVariante = function() {
             return this.seleccionCompleta && v !== null && v.sin_stock === true;
         },
 
+        // Cuántas unidades quedan disponibles de la promo (null = sin límite)
+        get stockRestantePromo() {
+            if (!this.producto?.promocion_id) return null;
+            const stockMax = this.producto.stockMax ?? null;
+            if (stockMax === null) return null;
+            const _ = Alpine.store('carrito').count; // trackea reactividad del store
+            const items = Alpine.store('carrito')._leerLocal();
+            const enCarrito = items
+                .filter(i => (i.promocion_id ?? null) == this.producto.promocion_id)
+                .reduce((s, i) => s + (parseInt(i.cantidad) || 1), 0);
+            return Math.max(0, stockMax - enCarrito);
+        },
+
         get disponible() {
             if (!this.producto) return false;
+            if (this.producto.promocion_id) {
+                const r = this.stockRestantePromo;
+                return r === null || r > 0;
+            }
             if (this.producto.atributos.length === 0) return true;
             return this.seleccionCompleta && this.varianteCoincidente !== null && !this.varianteSinStock;
         },
@@ -86,14 +103,42 @@ window.modalVariante = function() {
             if (!this.disponible) return;
             const v = this.varianteCoincidente;
 
-            // Stock check: variant stock_reserva minus what's already in cart
+            // Stock check para promociones
+            if (this.producto.promocion_id) {
+                const stockMax = this.producto.stockMax ?? null;
+                if (stockMax !== null) {
+                    const items = Alpine.store('carrito')._leerLocal();
+                    const enCarrito = items
+                        .filter(i => (i.promocion_id ?? null) == this.producto.promocion_id)
+                        .reduce((s, i) => s + (parseInt(i.cantidad) || 1), 0);
+                    const restante = stockMax - enCarrito;
+                    if (this.cantidad > restante) {
+                        const msg = restante <= 0
+                            ? 'Sin stock disponible para esta promoción.'
+                            : `Solo quedan ${restante} unidades disponibles para esta promoción.`;
+                        window.dispatchEvent(new CustomEvent('toast', { detail: { mensaje: msg, tipo: 'error' } }));
+                        return;
+                    }
+                }
+            }
+
+            // Stock check: variant stock_reserva minus what's already in cart (direct + via promos)
             const sr = v ? v.stock_reserva : null;
             if (sr !== null && sr !== undefined) {
                 const items = Alpine.store('carrito')._leerLocal();
+                const vid = v.id;
+                const pid = this.producto.id;
                 const enCarrito = items
-                    .filter(i => i.producto_id == this.producto.id && i.variante_id == v.id && !i.promocion_id)
+                    .filter(i => i.producto_id == pid && i.variante_id == vid && !i.promocion_id)
                     .reduce((s, i) => s + (parseInt(i.cantidad) || 1), 0);
-                const restante = sr - enCarrito;
+                const enPromos = items
+                    .filter(i => i.promocion_id && Array.isArray(i.componentes))
+                    .reduce((s, i) => {
+                        const promoQty = parseInt(i.cantidad) || 1;
+                        const comp = i.componentes.find(c => c.variante_id == vid);
+                        return s + (comp ? promoQty * (parseFloat(comp.cantidad) || 1) : 0);
+                    }, 0);
+                const restante = sr - enCarrito - enPromos;
                 if (this.cantidad > restante) {
                     const msg = restante <= 0
                         ? 'Sin stock disponible para esta variante.'

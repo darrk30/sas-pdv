@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class ClienteResource extends Resource
 {
@@ -31,6 +32,11 @@ class ClienteResource extends Resource
     protected static ?string $pluralModelLabel = 'Clientes';
 
     protected static ?string $recordTitleAttribute = 'nombre';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('clientes.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('clientes.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('clientes.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('clientes.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

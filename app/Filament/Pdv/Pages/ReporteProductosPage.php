@@ -10,6 +10,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
@@ -22,6 +23,7 @@ class ReporteProductosPage extends Page implements HasForms
 {
     use InteractsWithForms;
     use WithPagination;
+    use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.reporte-productos';
     protected static string|BackedEnum|null $navigationIcon  = 'heroicon-o-chart-bar';
@@ -32,8 +34,6 @@ class ReporteProductosPage extends Page implements HasForms
 
     public static function canAccess(): bool { return auth()->user()?->can('reportes.productos') ?? false; }
 
-    public function getHeading(): string          { return ''; }
-    public function getMaxContentWidth(): ?string { return 'full'; }
 
     // ── Filtros ───────────────────────────────────────────────────────────────
 

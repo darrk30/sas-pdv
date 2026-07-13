@@ -29,7 +29,8 @@ class ImpresorasTable
 
                 ToggleColumn::make('estado')
                     ->label('Estado')
-                    ->sortable(),
+                    ->sortable()
+                    ->disabled(fn() => ! auth()->user()?->can('impresoras.editar')),
 
                 TextColumn::make('created_at')
                     ->label('Registrada')

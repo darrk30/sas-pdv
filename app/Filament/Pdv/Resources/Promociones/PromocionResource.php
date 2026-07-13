@@ -10,10 +10,12 @@ use App\Filament\Pdv\Resources\Promociones\Tables\PromocionesTable;
 use App\Models\Promocion;
 use BackedEnum;
 use UnitEnum;
+use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class PromocionResource extends Resource
 {
@@ -31,6 +33,11 @@ class PromocionResource extends Resource
     protected static ?string $pluralModelLabel = 'Promociones';
 
     protected static ?string $recordTitleAttribute = 'nombre';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('promociones.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('promociones.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('promociones.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('promociones.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

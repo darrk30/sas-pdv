@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class ProduccionResource extends Resource
 {
@@ -31,6 +32,11 @@ class ProduccionResource extends Resource
     protected static ?string $pluralModelLabel = 'Producciones';
 
     protected static ?string $recordTitleAttribute = 'Produccion';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('produccion.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('produccion.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('produccion.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('produccion.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

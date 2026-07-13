@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class MarcaResource extends Resource
 {
@@ -31,6 +32,11 @@ class MarcaResource extends Resource
     protected static ?string $pluralModelLabel = 'Marcas';
 
     protected static ?string $recordTitleAttribute = 'Marca';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('marcas.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('marcas.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('marcas.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('marcas.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

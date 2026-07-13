@@ -23,7 +23,8 @@ class MarcasTable
                 TextColumn::make('nombre')
                     ->searchable()
                     ->sortable(),
-                ToggleColumn::make('estado'),
+                ToggleColumn::make('estado')
+                    ->disabled(fn() => ! auth()->user()?->can('marcas.editar')),
             ])
             ->filters([
                 //

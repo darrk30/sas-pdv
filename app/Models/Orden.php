@@ -69,7 +69,12 @@ class Orden extends Model
                 $orden->fecha_orden = now();
             }
             if (empty($orden->numero)) {
-                $orden->numero = static::where('empresa_id', $orden->empresa_id)->max('numero') + 1;
+                $orden->numero = DB::transaction(fn() =>
+                    DB::table('ordenes')
+                        ->where('empresa_id', $orden->empresa_id)
+                        ->lockForUpdate()
+                        ->max('numero') + 1
+                );
             }
             if (empty($orden->estado)) {
                 $orden->estado = EstadoOrden::PendientePago;

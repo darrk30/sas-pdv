@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class ProveedorResource extends Resource
 {
@@ -31,6 +32,11 @@ class ProveedorResource extends Resource
     protected static ?string $modelLabel = 'Proveedor';
 
     protected static ?string $pluralModelLabel = 'Proveedores';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('proveedores.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('proveedores.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('proveedores.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('proveedores.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

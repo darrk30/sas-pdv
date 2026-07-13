@@ -13,6 +13,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
@@ -26,6 +27,7 @@ class DespachoPage extends Page implements HasForms
     use HasVentaDetalleModal;
     use InteractsWithForms;
     use WithPagination;
+    use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.despacho';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-paper-airplane';
@@ -34,21 +36,23 @@ class DespachoPage extends Page implements HasForms
     protected static ?int $navigationSort = 4;
     protected static ?string $title = 'Despachos pendientes';
 
-    public static function canAccess(): bool { return auth()->user()?->can('ordenes.despacho') ?? false; }
-
-    public function getHeading(): string          { return ''; }
-    public function getMaxContentWidth(): ?string { return 'full'; }
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can('ordenes.despacho') ?? false;
+    }
 
     public static function getNavigationBadge(): ?string
     {
         $empresaId = Filament::getTenant()?->id;
         if (! $empresaId) return null;
 
-        $count = Venta::where('empresa_id', $empresaId)
-            ->whereNotNull('estado_despacho')
-            ->whereNotIn('estado_despacho', ['entregado'])
-            ->where('estado', EstadoVenta::Completada)
-            ->count();
+        $count = cache()->remember("badge_despachos_{$empresaId}", 30, fn() =>
+            Venta::where('empresa_id', $empresaId)
+                ->whereNotNull('estado_despacho')
+                ->whereNotIn('estado_despacho', ['entregado'])
+                ->where('estado', EstadoVenta::Completada)
+                ->count()
+        );
 
         return $count > 0 ? (string) $count : null;
     }
@@ -120,19 +124,19 @@ class DespachoPage extends Page implements HasForms
                     ->placeholder('Nombre o documento…')
                     ->prefixIcon('heroicon-o-magnifying-glass')
                     ->live(debounce: 300)
-                    ->afterStateUpdated(fn () => $this->resetPage()),
+                    ->afterStateUpdated(fn() => $this->resetPage()),
 
                 DatePicker::make('filtroFechaDesde')
                     ->label('Desde')
                     ->displayFormat('d/m/Y')
                     ->live()
-                    ->afterStateUpdated(fn () => $this->resetPage()),
+                    ->afterStateUpdated(fn() => $this->resetPage()),
 
                 DatePicker::make('filtroFechaHasta')
                     ->label('Hasta')
                     ->displayFormat('d/m/Y')
                     ->live()
-                    ->afterStateUpdated(fn () => $this->resetPage()),
+                    ->afterStateUpdated(fn() => $this->resetPage()),
             ]),
         ]);
     }
@@ -230,7 +234,7 @@ class DespachoPage extends Page implements HasForms
             'total'           => (float) $venta->total,
             'saldo'           => (float) $venta->saldo_pendiente,
             'es_cred_pend'    => (float) $venta->saldo_pendiente > 0,
-            'items'           => $venta->detalles->map(fn ($d) => [
+            'items'           => $venta->detalles->map(fn($d) => [
                 'descripcion' => $d->descripcion,
                 'cantidad'    => (float) $d->cantidad,
             ])->toArray(),

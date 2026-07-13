@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class DimensionResource extends Resource
 {
@@ -32,6 +33,11 @@ class DimensionResource extends Resource
     protected static ?string $pluralModelLabel = 'Dimensiones';
 
     protected static ?string $recordTitleAttribute = 'Dimension';
+
+    public static function canAccess(): bool              { return auth()->user()?->can('dimensiones.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('dimensiones.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('dimensiones.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('dimensiones.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

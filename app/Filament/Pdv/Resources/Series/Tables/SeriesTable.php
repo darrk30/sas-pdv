@@ -30,7 +30,8 @@ class SeriesTable
                     ->sortable(),
 
                 ToggleColumn::make('estado')
-                    ->label('Activa'),
+                    ->label('Activa')
+                    ->disabled(fn() => ! auth()->user()?->can('series.editar')),
             ])
             ->defaultSort('tipo')
             ->filters([])

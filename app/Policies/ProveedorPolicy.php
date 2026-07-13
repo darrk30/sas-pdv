@@ -9,7 +9,7 @@ class ProveedorPolicy
 {
     public function viewAny(User $user): bool { return $user->can('proveedores.ver'); }
     public function view(User $user, Proveedor $record): bool { return $user->can('proveedores.ver'); }
-    public function create(User $user): bool { return $user->can('proveedores.gestionar'); }
-    public function update(User $user, Proveedor $record): bool { return $user->can('proveedores.gestionar'); }
-    public function delete(User $user, Proveedor $record): bool { return $user->can('proveedores.gestionar'); }
+    public function create(User $user): bool { return $user->can('proveedores.crear'); }
+    public function update(User $user, Proveedor $record): bool { return $user->can('proveedores.editar'); }
+    public function delete(User $user, Proveedor $record): bool { return $user->can('proveedores.eliminar'); }
 }

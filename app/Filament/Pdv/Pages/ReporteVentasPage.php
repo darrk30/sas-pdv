@@ -29,6 +29,7 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -40,6 +41,7 @@ class ReporteVentasPage extends Page implements HasForms
 {
     use InteractsWithForms;
     use WithPagination;
+    use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.reporte-ventas';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
@@ -50,8 +52,6 @@ class ReporteVentasPage extends Page implements HasForms
 
     public static function canAccess(): bool { return auth()->user()?->can('caja.reporte_ventas') ?? false; }
 
-    public function getHeading(): string { return ''; }
-    public function getMaxContentWidth(): ?string { return 'full'; }
 
     // ── Estado de filtros (nullable: Select/DatePicker devuelven null al limpiar)
     public ?string $filtroCliente     = null;
