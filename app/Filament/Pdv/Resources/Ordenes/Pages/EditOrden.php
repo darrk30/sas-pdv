@@ -367,7 +367,7 @@ class EditOrden extends EditRecord
                         ->body('La venta fue generada y vinculada a la orden.')
                         ->send();
 
-                    $this->redirect(static::getResource()::getUrl('edit', ['record' => $this->record]));
+                    $this->redirect(static::getResource()::getUrl('view', ['record' => $this->record]));
                 }),
 
             Action::make('cancelar')
