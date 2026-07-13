@@ -115,7 +115,7 @@ class OrdenesTable
             ->recordActions([
 
                 EditAction::make()
-                    ->visible(fn(Orden $record): bool => ! $record->estaCancelada()),
+                    ->visible(fn(Orden $record): bool => $record->estado === EstadoOrden::PendientePago),
 
                 Action::make('cancelar')
                     ->label('Cancelar')
