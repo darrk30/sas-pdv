@@ -55,53 +55,53 @@
                                 </div>
                                 <div class="modal-var__valores">
                                     <template x-for="val in attr.valores" :key="val.id">
-                                        {{-- Un único root element por ítem (requerido por x-for) --}}
-                                        {{-- Para texto: display:contents lo hace transparente al flexbox --}}
-                                        {{-- Para color: display:flex-column apila círculo + precio    --}}
                                         <div :class="attr.tipo === 'color' ? 'modal-var__color-item' : 'modal-var__item'">
 
-                                            {{-- Botón color (círculo) --}}
-                                            <button
-                                                x-show="attr.tipo === 'color'"
-                                                type="button"
-                                                class="modal-var__valor modal-var__valor--color"
-                                                :class="{
-                                                    'modal-var__valor--sel':      seleccion[attr.id]?.id === val.id,
-                                                    'modal-var__valor--bloqueado': esValorBloqueado(attr.id, val)
-                                                }"
-                                                :disabled="esValorBloqueado(attr.id, val) && seleccion[attr.id]?.id !== val.id"
-                                                :style="`background-color:${val.valor}`"
-                                                :title="esValorBloqueado(attr.id, val) ? val.label + ' (sin stock)' : val.label"
-                                                @click="seleccionar(attr.id, val)"
-                                            ></button>
+                                            {{-- Botón color (círculo) — x-if elimina del DOM para evitar bug de display:contents --}}
+                                            <template x-if="attr.tipo === 'color'">
+                                                <button
+                                                    type="button"
+                                                    class="modal-var__valor modal-var__valor--color"
+                                                    :class="{
+                                                        'modal-var__valor--sel':       seleccion[attr.id]?.id === val.id,
+                                                        'modal-var__valor--bloqueado': esValorBloqueado(attr.id, val)
+                                                    }"
+                                                    :disabled="esValorBloqueado(attr.id, val) && seleccion[attr.id]?.id !== val.id"
+                                                    :style="`background-color:${val.valor}`"
+                                                    :title="esValorBloqueado(attr.id, val) ? val.label + ' (sin stock)' : val.label"
+                                                    @click="seleccionar(attr.id, val)"
+                                                ></button>
+                                            </template>
 
                                             {{-- Botón texto (talla, material, etc.) --}}
-                                            <button
-                                                x-show="attr.tipo !== 'color'"
-                                                type="button"
-                                                class="modal-var__valor modal-var__valor--texto"
-                                                :class="{
-                                                    'modal-var__valor--sel':      seleccion[attr.id]?.id === val.id,
-                                                    'modal-var__valor--bloqueado': esValorBloqueado(attr.id, val)
-                                                }"
-                                                :disabled="esValorBloqueado(attr.id, val) && seleccion[attr.id]?.id !== val.id"
-                                                :title="val.label"
-                                                @click="seleccionar(attr.id, val)"
-                                            >
-                                                <span x-text="val.label"></span>
+                                            <template x-if="attr.tipo !== 'color'">
+                                                <button
+                                                    type="button"
+                                                    class="modal-var__valor modal-var__valor--texto"
+                                                    :class="{
+                                                        'modal-var__valor--sel':       seleccion[attr.id]?.id === val.id,
+                                                        'modal-var__valor--bloqueado': esValorBloqueado(attr.id, val)
+                                                    }"
+                                                    :disabled="esValorBloqueado(attr.id, val) && seleccion[attr.id]?.id !== val.id"
+                                                    :title="val.label"
+                                                    @click="seleccionar(attr.id, val)"
+                                                >
+                                                    <span x-text="val.label"></span>
+                                                    <span
+                                                        x-show="val.precio_adicional > 0"
+                                                        class="modal-var__extra-badge"
+                                                        x-text="`+S/ ${parseFloat(val.precio_adicional).toFixed(2)}`"
+                                                    ></span>
+                                                </button>
+                                            </template>
+
+                                            {{-- Precio extra debajo del círculo de color --}}
+                                            <template x-if="attr.tipo === 'color' && val.precio_adicional > 0">
                                                 <span
-                                                    x-show="val.precio_adicional > 0"
                                                     class="modal-var__extra-badge"
                                                     x-text="`+S/ ${parseFloat(val.precio_adicional).toFixed(2)}`"
                                                 ></span>
-                                            </button>
-
-                                            {{-- Precio extra debajo del círculo de color --}}
-                                            <span
-                                                x-show="attr.tipo === 'color' && val.precio_adicional > 0"
-                                                class="modal-var__extra-badge"
-                                                x-text="`+S/ ${parseFloat(val.precio_adicional).toFixed(2)}`"
-                                            ></span>
+                                            </template>
 
                                         </div>
                                     </template>
