@@ -95,8 +95,8 @@
             </svg>
             Solicita tu demo
           </a>
-          <button class="hamburger" onclick="document.getElementById('mn').classList.add('open')">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <button class="hamburger" onclick="document.getElementById('mn').classList.add('open')" aria-label="Abrir menú">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
               <path d="M3 6h18M3 12h18M3 18h18" />
             </svg>
           </button>
@@ -108,7 +108,7 @@
   <div class="m-nav" id="mn">
     <div class="m-ov" onclick="document.getElementById('mn').classList.remove('open')"></div>
     <nav class="m-draw">
-      <button class="m-close" onclick="document.getElementById('mn').classList.remove('open')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <button class="m-close" onclick="document.getElementById('mn').classList.remove('open')" aria-label="Cerrar menú"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
           <path d="M18 6 6 18M6 6l12 12" />
         </svg></button>
       <a href="#caracteristicas" onclick="document.getElementById('mn').classList.remove('open')">Características</a>
@@ -681,6 +681,11 @@
             </div>
             <a href="https://wa.me/51942407799?text={{ $waMsg }}" target="_blank" rel="noopener"
               class="plan-cta {{ $s['cta_cls'] }}" style="display:block;text-align:center">Solicitar acceso</a>
+            <button class="plan-specs-btn" onclick="togglePlanSpecs(this)" aria-expanded="false">
+              Ver especificaciones
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="plan-specs">
             <div class="plan-divider">{{ $loop->first ? 'Incluye' : 'Todo lo de ' . $prevNombre . ', más' }}</div>
             <div class="plan-feat">
               {{-- Base --}}
@@ -759,6 +764,7 @@
                 </svg>Sucursales adicionales</div>
               @endif
             </div>
+            </div>{{-- /.plan-specs --}}
           </div>
           @endforeach
         </div>
@@ -904,13 +910,13 @@
           <p class="foot-tag">Sistema POS y tienda online para comercios minoristas. Conecta lo físico con lo digital.</p>
         </div>
         <div class="foot-col">
-          <h4>Producto</h4><a href="#caracteristicas">Características</a><a href="#tienda-online">Tienda online</a><a href="#como-funciona">Cómo funciona</a><a href="#planes">Planes</a>
+          <h3>Producto</h3><a href="#caracteristicas">Características</a><a href="#tienda-online">Tienda online</a><a href="#como-funciona">Cómo funciona</a><a href="#planes">Planes</a>
         </div>
         <div class="foot-col">
-          <h4>Para quién</h4><a href="#industrias">Ropa y moda</a><a href="#industrias">Minimarket</a><a href="#industrias">Ferretería</a><a href="#industrias">Cafetería</a>
+          <h3>Para quién</h3><a href="#industrias">Ropa y moda</a><a href="#industrias">Minimarket</a><a href="#industrias">Ferretería</a><a href="#industrias">Cafetería</a>
         </div>
         <div class="foot-col">
-          <h4>Contacto</h4><a href="#cta">Solicitar demo</a><a href="mailto:hola@tukipu.com">hola@tukipu.com</a>
+          <h3>Contacto</h3><a href="#cta">Solicitar demo</a><a href="mailto:hola@tukipu.com">hola@tukipu.com</a>
         </div>
       </div>
       <div class="foot-btm">

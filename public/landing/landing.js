@@ -30,3 +30,5 @@ const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.targe
 document.querySelectorAll('.fade-up').forEach(el=>io.observe(el));
 
 function toggleFaq(btn){const item=btn.closest('.faq-item');const isOpen=item.classList.contains('open');document.querySelectorAll('.faq-item.open').forEach(i=>{i.classList.remove('open');});if(!isOpen)item.classList.add('open');}
+
+function togglePlanSpecs(btn){const open=btn.getAttribute('aria-expanded')==='true';btn.setAttribute('aria-expanded',open?'false':'true');btn.nextElementSibling.classList.toggle('open',!open);btn.textContent='';const svg='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';btn.insertAdjacentHTML('afterbegin',(!open?'Ocultar':'Ver')+' especificaciones '+svg);}
