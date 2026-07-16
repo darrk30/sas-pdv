@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? config('app.name') }}</title>
+    <meta name="robots" content="noindex, nofollow">
     @php $empresaIcono = app('tienda.empresa')->icono; @endphp
     @if($empresaIcono)
     <link rel="icon" href="{{ asset('storage/' . $empresaIcono) }}">

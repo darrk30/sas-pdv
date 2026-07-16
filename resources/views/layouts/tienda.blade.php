@@ -7,10 +7,31 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="cliente-logueado" content="{{ Auth::guard('cliente')->check() ? '1' : '0' }}">
     <meta name="empresa-id" content="{{ app('tienda.empresa')->id }}">
-    <title>{{ $title ?? config('app.name') }}</title>
-    @php $empresaIcono = app('tienda.empresa')->icono; @endphp
+    @php
+        $empresa    = app('tienda.empresa');
+        $ubicacion  = collect([$empresa->distrito, $empresa->departamento])->filter()->implode(', ');
+        $seoDesc    = 'Tienda online de ' . $empresa->name . '. Compra nuestros productos fácil y rápido.' . ($ubicacion ? ' ' . $ubicacion . '.' : '');
+        $seoTitle   = $title ?? ($empresa->name . ' | Tienda Online');
+        $seoImage   = $empresa->logo ? asset('storage/' . $empresa->logo) : asset('favicon.ico');
+        $empresaIcono = $empresa->icono;
+    @endphp
+    <title>{{ $seoTitle }}</title>
+    <meta name="description" content="{{ $seoDesc }}">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ url()->current() }}">
+
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="{{ url()->current() }}">
+    <meta property="og:title"       content="{{ $seoTitle }}">
+    <meta property="og:description" content="{{ $seoDesc }}">
+    <meta property="og:image"       content="{{ $seoImage }}">
+    <meta property="og:locale"      content="es_PE">
+    <meta property="og:site_name"   content="{{ $empresa->name }}">
+
     @if($empresaIcono)
     <link rel="icon" href="{{ asset('storage/' . $empresaIcono) }}">
+    @else
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     @endif
 
     {{-- ── CSS crítico inline: evita flash de contenido sin estilos ────────── --}}
