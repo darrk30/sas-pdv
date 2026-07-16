@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\EstadoGeneral;
 use App\Http\Controllers\Pdv\ProductoExcelController;
 use App\Http\Controllers\Pdv\PushSubscriptionController;
 use App\Http\Controllers\Pdv\TicketDespachoController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Tienda\CarritoController;
 use App\Http\Middleware\TiendaEmpresa;
 use App\Livewire\Tienda\ProductoDetalle;
 use App\Livewire\Tienda\PromoDetalle;
+use App\Models\Plan;
 use Illuminate\Support\Facades\Route;
 
 // ── Rutas PDV autenticadas (descargas, tickets) ───────────────────────────────
@@ -33,6 +35,24 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::get('/cuenta-suspendida', fn() => view('suspendido'))->name('suspendido');
+
+// ── Dominio principal (sas-pdv.test) ─────────────────────────────────────────
+Route::domain(config('app.domain'))->group(function () {
+    Route::get('/', function () {
+        $planes = Plan::where('estado', EstadoGeneral::Activo)->orderBy('precio')->get();
+        return view('landing', compact('planes'));
+    })->name('landing');
+
+    Route::get('/sitemap.xml', function () {
+        return response()->view('sitemap', [], 200)
+            ->header('Content-Type', 'application/xml; charset=utf-8');
+    })->name('sitemap');
+
+    Route::get('/robots.txt', function () {
+        return response()->view('robots', [], 200)
+            ->header('Content-Type', 'text/plain');
+    })->name('robots');
+});
 
 // ── Tienda web — empresa resuelta desde el subdominio ──────────────────────
 Route::middleware([TiendaEmpresa::class])->group(function () {
