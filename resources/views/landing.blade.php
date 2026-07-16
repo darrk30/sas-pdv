@@ -29,47 +29,44 @@
   <meta name="twitter:image"       content="{{ asset('img/logotukipu.webp') }}">
 
   <!-- Datos estructurados JSON-LD (Google) -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        "name": "TUKIPU",
-        "url": "{{ url('/') }}",
-        "logo": "{{ asset('img/logotukipu.webp') }}",
-        "contactPoint": {
-          "@type": "ContactPoint",
-          "telephone": "+51942407799",
-          "contactType": "sales",
-          "areaServed": "PE",
-          "availableLanguage": "Spanish"
-        }
-      },
-      {
-        "@type": "SoftwareApplication",
-        "name": "TUKIPU",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "url": "{{ url('/') }}",
-        "description": "Sistema POS en la nube con tienda online integrada para comercios minoristas en Perú. Punto de venta, inventario, comprobantes electrónicos y catálogo web.",
-        "offers": [
-          @foreach($planes as $plan)
-          {
-            "@type": "Offer",
-            "name": "Plan {{ $plan->nombre }}",
-            "price": "{{ number_format($plan->precio, 2, '.', '') }}",
-            "priceCurrency": "PEN",
-            "description": "{{ $plan->descripcion }}"
-          }{{ $loop->last ? '' : ',' }}
-          @endforeach
+  @php
+    $ldJson = json_encode([
+      '@context' => 'https://schema.org',
+      '@graph'   => [
+        [
+          '@type' => 'Organization',
+          'name'  => 'TUKIPU',
+          'url'   => url('/'),
+          'logo'  => asset('img/logotukipu.webp'),
+          'contactPoint' => [
+            '@type'             => 'ContactPoint',
+            'telephone'         => '+51942407799',
+            'contactType'       => 'sales',
+            'areaServed'        => 'PE',
+            'availableLanguage' => 'Spanish',
+          ],
         ],
-        "inLanguage": "es-PE",
-        "countriesSupported": "PE"
-      }
-    ]
-  }
-  </script>
+        [
+          '@type'               => 'SoftwareApplication',
+          'name'                => 'TUKIPU',
+          'applicationCategory' => 'BusinessApplication',
+          'operatingSystem'     => 'Web',
+          'url'                 => url('/'),
+          'description'         => 'Sistema POS en la nube con tienda online integrada para comercios minoristas en Perú.',
+          'offers'              => $planes->map(fn($p) => [
+            '@type'        => 'Offer',
+            'name'         => 'Plan ' . $p->nombre,
+            'price'        => number_format($p->precio, 2, '.', ''),
+            'priceCurrency'=> 'PEN',
+            'description'  => $p->descripcion,
+          ])->values()->all(),
+          'inLanguage'         => 'es-PE',
+          'countriesSupported' => 'PE',
+        ],
+      ],
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  @endphp
+  <script type="application/ld+json">{!! $ldJson !!}</script>
 
   <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
   <link rel="stylesheet" href="{{ asset('landing/landing.css') }}">
@@ -781,7 +778,7 @@
                   <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg></div>
               <div class="addon-detail"><strong>Usuario adicional</strong><span>Agrega colaboradores a tu plan actual</span></div>
-              <div class="addon-price">S/ 5<small>/mes</small></div>
+              <div class="addon-price">S/ 15<small>/mes</small></div>
             </div>
             <div class="addon-item">
               <div style="width:38px;height:38px;background:var(--tl-l);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tl)" stroke-width="2">
