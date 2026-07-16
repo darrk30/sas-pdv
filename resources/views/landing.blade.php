@@ -68,7 +68,7 @@
   @endphp
   <script type="application/ld+json">{!! $ldJson !!}</script>
 
-  <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+  <link rel="icon" type="image/x-icon" href="{{ asset('img/iconotukipu.ico') }}">
   <link rel="stylesheet" href="{{ asset('landing/landing.css') }}">
 </head>
 

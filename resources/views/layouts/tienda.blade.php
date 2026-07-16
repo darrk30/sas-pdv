@@ -31,7 +31,7 @@
     @if($empresaIcono)
     <link rel="icon" href="{{ asset('storage/' . $empresaIcono) }}">
     @else
-    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('img/iconotukipu.ico') }}">
     @endif
 
     {{-- ── CSS crítico inline: evita flash de contenido sin estilos ────────── --}}
