@@ -8,7 +8,7 @@
   <!-- SEO básico -->
   <title>TUKIPU — Sistema POS y Tienda Online para negocios en Perú</title>
   <meta name="description" content="TUKIPU es el sistema POS en la nube para tiendas, minimarkets, ferreterías y más. Vende, gestiona inventario, emite comprobantes y ten tu tienda online desde S/50/mes.">
-  <meta name="keywords" content="sistema POS Peru, punto de venta en la nube, software para tiendas, tienda online Peru, POS minimarket, inventario en la nube, comprobantes electronicos Peru">
+  <meta name="keywords" content="sistema para punto de venta, software para tiendas, tienda virtual, sistema de inventario, sistema POS Peru, punto de venta en la nube, software para tiendas, tienda online Peru, POS minimarket, inventario en la nube, comprobantes electronicos Peru, sistema de ventas para negocios, programa para tienda, caja registradora online, boletas y facturas electronicas, software para bodega, sistema para ferreteria, sistema para cafeteria, sistema para ropa, TUKIPU">
   <meta name="robots" content="index, follow">
   <meta name="author" content="TUKIPU">
   <link rel="canonical" href="{{ url('/') }}">
