@@ -28,10 +28,18 @@ class Empresa extends Model
         'cod_local',
         'country_code',
         'modulos_activos',
+        'fe_envio_directo_boleta',
+        'fe_envio_directo_factura',
+        'impresion_comprobante_directo',
+        'igv_porcentaje',
     ];
 
     protected $casts = [
-        'modulos_activos' => 'array',
+        'modulos_activos'              => 'array',
+        'fe_envio_directo_boleta'      => 'boolean',
+        'fe_envio_directo_factura'     => 'boolean',
+        'impresion_comprobante_directo'=> 'boolean',
+        'igv_porcentaje'               => 'decimal:2',
     ];
 
     public function getRouteKeyName()
@@ -65,6 +73,17 @@ class Empresa extends Model
     public function suscripcion()
     {
         return $this->hasOne(Suscripcion::class);
+    }
+
+    public function facturacion()
+    {
+        return $this->hasOne(EmpresaFacturacion::class);
+    }
+
+    public function tieneFacturacionElectronica(): bool
+    {
+        return (bool) ($this->planActual()?->facturacion_electronica ?? false)
+            && $this->facturacion !== null;
     }
 
     public function planActual(): ?Plan

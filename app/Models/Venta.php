@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EstadoSunat;
 use App\Enums\EstadoVenta;
 use App\Enums\TipoPago;
 use App\Traits\BelongsToEmpresa;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Models\ResumenSunat;
+use App\Models\Nota;
 
 class Venta extends Model
 {
@@ -51,6 +54,9 @@ class Venta extends Model
         'sunat_codigo',
         'sunat_descripcion',
         'sunat_mensaje',
+        'estado_sunat',
+        'sunat_notas',
+        'resumen_sunat_id',
         'estado',
         'estado_despacho',
         'notas',
@@ -73,6 +79,7 @@ class Venta extends Model
         'saldo_pendiente'  => 'decimal:2',
         'estado_pago'      => 'string',
         'sunat_success'    => 'boolean',
+        'estado_sunat'     => EstadoSunat::class,
     ];
 
     protected static function booted(): void
@@ -122,6 +129,16 @@ class Venta extends Model
     public function pagos(): HasMany
     {
         return $this->hasMany(VentaPago::class);
+    }
+
+    public function resumenSunat(): BelongsTo
+    {
+        return $this->belongsTo(ResumenSunat::class);
+    }
+
+    public function notas(): HasMany
+    {
+        return $this->hasMany(Nota::class);
     }
 
     public function transacciones(): MorphMany
