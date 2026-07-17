@@ -70,11 +70,6 @@ class FacturadorService
         ];
     }
 
-    /**
-     * Construye el array details[] para facturas/boletas/notas.
-     * NOTA: tipAfeIgv se asume 10 (gravado) porque VentaDetalle no almacena este campo.
-     * unidad se asume NIU (unidad física). Ambos campos pueden añadirse a VentaDetalle en el futuro.
-     */
     private function buildDetails(Collection $detalles, float $igvPorcentaje): array
     {
         return $detalles->map(function (VentaDetalle $d) use ($igvPorcentaje): array {
@@ -83,9 +78,9 @@ class FacturadorService
                 ?? (string) $d->producto_id;
 
             return [
-                'tipAfeIgv'         => 10,
+                'tipAfeIgv'         => (int) ($d->tip_afe_igv ?? '10'),
                 'codProducto'       => $codProducto,
-                'unidad'            => 'NIU',
+                'unidad'            => $d->unidad ?? 'NIU',
                 'descripcion'       => $d->descripcion,
                 'cantidad'          => (float) $d->cantidad,
                 'mtoValorUnitario'  => (float) $d->valor_unitario,

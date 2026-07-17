@@ -80,6 +80,7 @@ class Venta extends Model
         'estado_pago'      => 'string',
         'sunat_success'    => 'boolean',
         'estado_sunat'     => EstadoSunat::class,
+        'sunat_notas'      => 'array',
     ];
 
     protected static function booted(): void

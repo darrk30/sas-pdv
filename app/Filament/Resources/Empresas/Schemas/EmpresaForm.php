@@ -333,6 +333,73 @@ class EmpresaForm
                                 ]),
                             ]),
 
+                        Tab::make('Facturación Electrónica')
+                            ->icon('heroicon-o-document-text')
+                            ->schema([
+                                Section::make('Configuración de Envío')
+                                    ->description('Controla cuándo y cómo se emiten los comprobantes electrónicos')
+                                    ->compact()
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            Toggle::make('fe_envio_directo_boleta')
+                                                ->label('Envío directo de Boletas')
+                                                ->helperText('Si está desactivado, las boletas se acumularán en resumen diario')
+                                                ->onColor('success'),
+                                            Toggle::make('fe_envio_directo_factura')
+                                                ->label('Envío directo de Facturas')
+                                                ->helperText('Si está desactivado, las facturas quedan en estado "Por Enviar"')
+                                                ->onColor('success'),
+                                            Toggle::make('impresion_comprobante_directo')
+                                                ->label('Impresión automática al emitir')
+                                                ->onColor('success'),
+                                            TextInput::make('igv_porcentaje')
+                                                ->label('Porcentaje IGV (%)')
+                                                ->numeric()
+                                                ->default(18)
+                                                ->suffix('%')
+                                                ->minValue(0)
+                                                ->maxValue(99),
+                                        ]),
+                                    ]),
+
+                                Section::make('Credenciales SOL y Facturador')
+                                    ->description('Datos de conexión al servidor de facturación FacturadorGreenter. Solo completar si el plan incluye FE.')
+                                    ->compact()
+                                    ->relationship('facturacion')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            TextInput::make('sol_user')
+                                                ->label('Usuario SOL')
+                                                ->maxLength(20),
+                                            TextInput::make('sol_pass')
+                                                ->label('Clave SOL')
+                                                ->password()
+                                                ->revealable()
+                                                ->dehydrated(fn($state) => filled($state)),
+                                        ]),
+                                        Grid::make(2)->schema([
+                                            TextInput::make('facturador_url')
+                                                ->label('URL del Facturador')
+                                                ->url()
+                                                ->placeholder('http://facturador.miempresa.com'),
+                                            TextInput::make('facturador_api_token')
+                                                ->label('Token API')
+                                                ->password()
+                                                ->revealable()
+                                                ->dehydrated(fn($state) => filled($state)),
+                                        ]),
+                                        Grid::make(2)->schema([
+                                            TextInput::make('cert_path')
+                                                ->label('Ruta del certificado (.pem)')
+                                                ->placeholder('/path/to/cert.pem'),
+                                            Toggle::make('produccion')
+                                                ->label('Entorno de Producción')
+                                                ->helperText('Desactivado = Beta/homologación SUNAT')
+                                                ->onColor('danger'),
+                                        ]),
+                                    ]),
+                            ]),
+
                         Tab::make('Suscripción y Plan')
                             ->icon('heroicon-o-credit-card')
                             ->schema([

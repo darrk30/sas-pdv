@@ -25,6 +25,8 @@ class VentaDetalle extends Model
         'subtotal',
         'valor_total',
         'igv',
+        'tip_afe_igv',
+        'unidad',
         'total',
         'costo_total',
     ];
