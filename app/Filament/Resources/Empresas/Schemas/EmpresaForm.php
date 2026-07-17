@@ -388,10 +388,22 @@ class EmpresaForm
                                                 ->revealable()
                                                 ->dehydrated(fn($state) => filled($state)),
                                         ]),
+                                        FileUpload::make('cert_path')
+                                            ->label('Certificado digital (.pem)')
+                                            ->helperText('Archivo .pem del certificado digital. Se guarda de forma privada en el servidor.')
+                                            ->disk('local')
+                                            ->directory('empresas/certs')
+                                            ->visibility('private')
+                                            ->acceptedFileTypes(['application/x-pem-file', 'application/octet-stream', 'text/plain'])
+                                            ->maxSize(512)
+                                            ->columnSpanFull(),
                                         Grid::make(2)->schema([
-                                            TextInput::make('cert_path')
-                                                ->label('Ruta del certificado (.pem)')
-                                                ->placeholder('/path/to/cert.pem'),
+                                            TextInput::make('cert_password')
+                                                ->label('Contraseña del certificado')
+                                                ->password()
+                                                ->revealable()
+                                                ->helperText('Solo si el .pem tiene contraseña')
+                                                ->dehydrated(fn($state) => filled($state)),
                                             Toggle::make('produccion')
                                                 ->label('Entorno de Producción')
                                                 ->helperText('Desactivado = Beta/homologación SUNAT')

@@ -14,14 +14,16 @@ class EmpresaFacturacion extends Model
         'sol_user',
         'sol_pass',
         'cert_path',
+        'cert_password',
         'facturador_url',
         'facturador_api_token',
         'produccion',
     ];
 
     protected $casts = [
-        'sol_pass'   => 'encrypted',
-        'produccion' => 'boolean',
+        'sol_pass'      => 'encrypted',
+        'cert_password' => 'encrypted',
+        'produccion'    => 'boolean',
     ];
 
     public function empresa(): BelongsTo

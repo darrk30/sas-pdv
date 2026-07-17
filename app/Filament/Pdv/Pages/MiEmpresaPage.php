@@ -11,7 +11,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Pages\Page;
@@ -51,11 +50,10 @@ class MiEmpresaPage extends Page implements HasForms
                 'impresion_comprobante_directo',
                 'igv_porcentaje',
             ]),
-            // Credenciales FE (contraseñas nunca se pre-rellenan)
-            'sol_user'              => $facturacion?->sol_user,
-            'cert_path'             => $facturacion?->cert_path,
-            'facturador_url'        => $facturacion?->facturador_url,
-            'produccion'            => $facturacion?->produccion ?? false,
+            // Credenciales FE (contraseñas y cert no se pre-rellenan por seguridad)
+            'sol_user'       => $facturacion?->sol_user,
+            'facturador_url' => $facturacion?->facturador_url,
+            'produccion'     => $facturacion?->produccion ?? false,
         ]);
     }
 
@@ -135,7 +133,7 @@ class MiEmpresaPage extends Page implements HasForms
                             ->disk('public')
                             ->directory('empresas/iconos')
                             ->imageEditor()
-                            ->imageCropAspectRatio('1:1')
+
                             ->maxSize(1024)
                             ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp', 'image/x-icon']),
                     ]),
@@ -162,7 +160,6 @@ class MiEmpresaPage extends Page implements HasForms
                     ->icon('heroicon-o-document-text')
                     ->description('Controla cómo y cuándo se emiten los comprobantes electrónicos.')
                     ->columns(2)
-                    ->hidden(fn(): bool => ! (Filament::getTenant()?->planActual()?->facturacion_electronica ?? false))
                     ->schema([
                         Toggle::make('fe_envio_directo_boleta')
                             ->label('Envío directo de Boletas')
@@ -186,9 +183,8 @@ class MiEmpresaPage extends Page implements HasForms
 
                 Section::make('Facturación Electrónica — Credenciales')
                     ->icon('heroicon-o-key')
-                    ->description('Datos de conexión al servidor de facturación. Deja en blanco los campos de contraseña para no modificarlos.')
+                    ->description('Datos de conexión al servidor de facturación. Las contraseñas en blanco no se modifican.')
                     ->columns(2)
-                    ->hidden(fn(): bool => ! (Filament::getTenant()?->planActual()?->facturacion_electronica ?? false))
                     ->schema([
                         TextInput::make('sol_user')
                             ->label('Usuario SOL')
@@ -207,13 +203,23 @@ class MiEmpresaPage extends Page implements HasForms
                             ->password()
                             ->revealable()
                             ->helperText('Dejar en blanco para no cambiar'),
-                        TextInput::make('cert_path')
-                            ->label('Ruta del certificado (.pem)')
-                            ->placeholder('/path/to/cert.pem')
+                        FileUpload::make('cert_archivo')
+                            ->label('Certificado digital (.pem)')
+                            ->helperText('Sube el archivo .pem. Si ya tienes uno cargado, solo súbelo nuevamente para actualizarlo.')
+                            ->disk('local')
+                            ->directory('empresas/certs')
+                            ->visibility('private')
+                            ->acceptedFileTypes(['application/x-pem-file', 'application/octet-stream', 'text/plain'])
+                            ->maxSize(512)
                             ->columnSpanFull(),
+                        TextInput::make('cert_password')
+                            ->label('Contraseña del certificado')
+                            ->password()
+                            ->revealable()
+                            ->helperText('Solo si tu .pem tiene contraseña. Dejar en blanco para no cambiar.'),
                         Toggle::make('produccion')
                             ->label('Entorno de Producción SUNAT')
-                            ->helperText('Desactivado = Beta/homologación')
+                            ->helperText('Desactivado = Beta/homologación SUNAT')
                             ->onColor('danger'),
                     ]),
 
@@ -227,26 +233,31 @@ class MiEmpresaPage extends Page implements HasForms
         $empresa = Filament::getTenant();
 
         // Separar campos de credenciales FE del resto
-        $credencialesKeys = ['sol_user', 'sol_pass', 'facturador_url', 'facturador_api_token', 'cert_path', 'produccion'];
+        $credencialesKeys = ['sol_user', 'sol_pass', 'facturador_url', 'facturador_api_token', 'cert_archivo', 'cert_password', 'produccion'];
         $credenciales     = array_intersect_key($data, array_flip($credencialesKeys));
         $empresaData      = array_diff_key($data, array_flip($credencialesKeys));
 
         $empresa->update($empresaData);
 
-        // Guardar credenciales FE solo si el plan lo permite
-        if ($empresa->planActual()?->facturacion_electronica) {
-            // Excluir campos vacíos (contraseñas en blanco no se sobreescriben)
-            $credencialesGuardar = array_filter(
-                $credenciales,
-                fn($v) => $v !== null && $v !== '',
-            );
+        // Guardar credenciales FE (siempre disponible, el plan controla la funcionalidad en runtime)
+        // Si el FileUpload devolvió un path de archivo, lo guardamos como cert_path
+        $certArchivo = $credenciales['cert_archivo'] ?? null;
+        unset($credenciales['cert_archivo']);
+        if ($certArchivo) {
+            $credenciales['cert_path'] = $certArchivo;
+        }
 
-            if (! empty($credencialesGuardar)) {
-                $empresa->facturacion()->updateOrCreate(
-                    ['empresa_id' => $empresa->id],
-                    $credencialesGuardar,
-                );
-            }
+        // Excluir campos vacíos (contraseñas en blanco = sin cambio)
+        $credencialesGuardar = array_filter(
+            $credenciales,
+            fn($v) => $v !== null && $v !== '' && $v !== [],
+        );
+
+        if (! empty($credencialesGuardar)) {
+            $empresa->facturacion()->updateOrCreate(
+                ['empresa_id' => $empresa->id],
+                $credencialesGuardar,
+            );
         }
 
         Notification::make()
