@@ -7,9 +7,11 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Pages\Page;
@@ -35,13 +37,26 @@ class MiEmpresaPage extends Page implements HasForms
 
     public function mount(): void
     {
-        $empresa = Filament::getTenant();
-        $this->form->fill($empresa->only([
-            'name', 'email', 'telefono',
-            'direccion', 'departamento', 'provincia', 'distrito', 'ubigeo',
-            'logo', 'icono',
-            'carta_activa_cliente',
-        ]));
+        $empresa      = Filament::getTenant();
+        $facturacion  = $empresa->facturacion;
+
+        $this->form->fill([
+            ...$empresa->only([
+                'name', 'email', 'telefono',
+                'direccion', 'departamento', 'provincia', 'distrito', 'ubigeo',
+                'logo', 'icono',
+                'carta_activa_cliente',
+                'fe_envio_directo_boleta',
+                'fe_envio_directo_factura',
+                'impresion_comprobante_directo',
+                'igv_porcentaje',
+            ]),
+            // Credenciales FE (contraseñas nunca se pre-rellenan)
+            'sol_user'              => $facturacion?->sol_user,
+            'cert_path'             => $facturacion?->cert_path,
+            'facturador_url'        => $facturacion?->facturador_url,
+            'produccion'            => $facturacion?->produccion ?? false,
+        ]);
     }
 
     public function form(Schema $schema): Schema
@@ -143,6 +158,65 @@ class MiEmpresaPage extends Page implements HasForms
                             ->required(),
                     ]),
 
+                Section::make('Facturación Electrónica — Configuración')
+                    ->icon('heroicon-o-document-text')
+                    ->description('Controla cómo y cuándo se emiten los comprobantes electrónicos.')
+                    ->columns(2)
+                    ->hidden(fn(): bool => ! (Filament::getTenant()?->planActual()?->facturacion_electronica ?? false))
+                    ->schema([
+                        Toggle::make('fe_envio_directo_boleta')
+                            ->label('Envío directo de Boletas')
+                            ->helperText('Desactivado: las boletas se acumulan en resumen diario')
+                            ->onColor('success'),
+                        Toggle::make('fe_envio_directo_factura')
+                            ->label('Envío directo de Facturas')
+                            ->helperText('Desactivado: las facturas quedan en estado "Por Enviar"')
+                            ->onColor('success'),
+                        Toggle::make('impresion_comprobante_directo')
+                            ->label('Impresión automática al emitir')
+                            ->onColor('success'),
+                        TextInput::make('igv_porcentaje')
+                            ->label('Porcentaje IGV (%)')
+                            ->numeric()
+                            ->default(18)
+                            ->suffix('%')
+                            ->minValue(0)
+                            ->maxValue(99),
+                    ]),
+
+                Section::make('Facturación Electrónica — Credenciales')
+                    ->icon('heroicon-o-key')
+                    ->description('Datos de conexión al servidor de facturación. Deja en blanco los campos de contraseña para no modificarlos.')
+                    ->columns(2)
+                    ->hidden(fn(): bool => ! (Filament::getTenant()?->planActual()?->facturacion_electronica ?? false))
+                    ->schema([
+                        TextInput::make('sol_user')
+                            ->label('Usuario SOL')
+                            ->maxLength(20),
+                        TextInput::make('sol_pass')
+                            ->label('Clave SOL')
+                            ->password()
+                            ->revealable()
+                            ->helperText('Dejar en blanco para no cambiar'),
+                        TextInput::make('facturador_url')
+                            ->label('URL del Facturador')
+                            ->url()
+                            ->placeholder('http://facturador.miempresa.com'),
+                        TextInput::make('facturador_api_token')
+                            ->label('Token API del Facturador')
+                            ->password()
+                            ->revealable()
+                            ->helperText('Dejar en blanco para no cambiar'),
+                        TextInput::make('cert_path')
+                            ->label('Ruta del certificado (.pem)')
+                            ->placeholder('/path/to/cert.pem')
+                            ->columnSpanFull(),
+                        Toggle::make('produccion')
+                            ->label('Entorno de Producción SUNAT')
+                            ->helperText('Desactivado = Beta/homologación')
+                            ->onColor('danger'),
+                    ]),
+
             ])
             ->statePath('data');
     }
@@ -151,7 +225,29 @@ class MiEmpresaPage extends Page implements HasForms
     {
         $data    = $this->form->getState();
         $empresa = Filament::getTenant();
-        $empresa->update($data);
+
+        // Separar campos de credenciales FE del resto
+        $credencialesKeys = ['sol_user', 'sol_pass', 'facturador_url', 'facturador_api_token', 'cert_path', 'produccion'];
+        $credenciales     = array_intersect_key($data, array_flip($credencialesKeys));
+        $empresaData      = array_diff_key($data, array_flip($credencialesKeys));
+
+        $empresa->update($empresaData);
+
+        // Guardar credenciales FE solo si el plan lo permite
+        if ($empresa->planActual()?->facturacion_electronica) {
+            // Excluir campos vacíos (contraseñas en blanco no se sobreescriben)
+            $credencialesGuardar = array_filter(
+                $credenciales,
+                fn($v) => $v !== null && $v !== '',
+            );
+
+            if (! empty($credencialesGuardar)) {
+                $empresa->facturacion()->updateOrCreate(
+                    ['empresa_id' => $empresa->id],
+                    $credencialesGuardar,
+                );
+            }
+        }
 
         Notification::make()
             ->title('Empresa actualizada')
