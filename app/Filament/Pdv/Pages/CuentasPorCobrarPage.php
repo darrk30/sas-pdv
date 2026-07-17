@@ -45,7 +45,7 @@ class CuentasPorCobrarPage extends Page implements HasForms
     protected static ?int $navigationSort = 5;
     protected static bool $shouldRegisterNavigation = false;
 
-    public static function canAccess(): bool { return auth()->user()?->can('reportes.cuentas_cobrar') ?? false; }
+    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('cuentas_por_cobrar') && (auth()->user()?->can('reportes.cuentas_cobrar') ?? false); }
 
 
     // public function getTitle(): string

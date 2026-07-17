@@ -10,6 +10,7 @@ use App\Filament\Pdv\Resources\Roles\Tables\RolesTable;
 use App\Models\Role;
 use BackedEnum;
 use Filament\Resources\Resource;
+use Filament\Facades\Filament;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -33,7 +34,7 @@ class RoleResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function canAccess(): bool              { return auth()->user()?->can('roles.ver') ?? false; }
+    public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('usuarios_roles') && (auth()->user()?->can('roles.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('roles.crear') ?? false; }
     public static function canEdit(Model $record): bool   { return auth()->user()?->can('roles.editar') ?? false; }
     public static function canDelete(Model $record): bool { return auth()->user()?->can('roles.eliminar') ?? false; }

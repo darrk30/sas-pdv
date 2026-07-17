@@ -33,7 +33,7 @@ class ReporteVendedorVentasPage extends Page implements HasForms
     protected static ?string $title = 'Ventas del vendedor';
     protected static bool $shouldRegisterNavigation = false;
 
-    public static function canAccess(): bool { return auth()->user()?->can('caja.reporte_vendedores') ?? false; }
+    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('reporte_vendedores') && (auth()->user()?->can('caja.reporte_vendedores') ?? false); }
 
 
     #[Url]

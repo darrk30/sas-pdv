@@ -11,6 +11,7 @@ use App\Models\Producto;
 use BackedEnum;
 use UnitEnum;
 use Filament\Resources\Resource;
+use Filament\Facades\Filament;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -34,7 +35,7 @@ class ProductoResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'Producto';
 
-    public static function canAccess(): bool              { return auth()->user()?->can('productos.ver') ?? false; }
+    public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('gestion_productos') && (auth()->user()?->can('productos.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('productos.crear') ?? false; }
     public static function canEdit(Model $record): bool   { return auth()->user()?->can('productos.editar') ?? false; }
     public static function canDelete(Model $record): bool { return auth()->user()?->can('productos.eliminar') ?? false; }

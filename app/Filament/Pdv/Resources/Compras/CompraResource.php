@@ -11,6 +11,7 @@ use App\Models\Compra;
 use BackedEnum;
 use UnitEnum;
 use Filament\Resources\Resource;
+use Filament\Facades\Filament;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -33,7 +34,7 @@ class CompraResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'codigo';
 
-    public static function canAccess(): bool              { return auth()->user()?->can('compras.ver') ?? false; }
+    public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('gestion_compras') && (auth()->user()?->can('compras.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('compras.crear') ?? false; }
     public static function canEdit(Model $record): bool   { return auth()->user()?->can('compras.editar') ?? false; }
     public static function canDelete(Model $record): bool { return auth()->user()?->can('compras.anular') ?? false; }

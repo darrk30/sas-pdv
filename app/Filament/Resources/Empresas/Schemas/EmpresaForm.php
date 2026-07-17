@@ -24,6 +24,17 @@ use Illuminate\Support\Facades\Hash;
 
 class EmpresaForm
 {
+    // Cuando un hijo cambia, recalcula si todos los hijos del padre están ON
+    private static function syncPadre(string $padre, array $hijos, Get $get, Set $set): void
+    {
+        $todos = array_reduce(
+            $hijos,
+            fn($carry, $hijo) => $carry && (bool) $get("modulos_activos.$hijo"),
+            true,
+        );
+        $set("modulos_activos.$padre", $todos);
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -130,150 +141,193 @@ class EmpresaForm
                             ->schema([
                                 Grid::make(2)->schema([
 
-                                    // ── CAJA ─────────────────────────────────────────
-                                    Section::make('Caja')
+                                    // ── PUNTO DE VENTA ───────────────────────────────
+                                    Section::make('Punto de Venta')
                                         ->icon('heroicon-o-receipt-percent')
-                                        ->description('Ventas en mostrador, sesiones y cierres de caja, ingresos y egresos')
-                                        ->compact()
-                                        ->columnSpan(1)
+                                        ->description('Ventas en mostrador, sesiones, cierres, ingresos y egresos')
+                                        ->compact()->columnSpan(1)
                                         ->schema([
                                             Toggle::make('modulos_activos.caja')
-                                                ->label('Activar módulo completo')
-                                                ->onColor('success')
-                                                ->live()
-                                                ->default(true)
-                                                ->columnSpanFull(),
-                                            Grid::make(2)
-                                                ->schema([
-                                                    Toggle::make('modulos_activos.punto_de_venta')->label('Punto de Venta')->default(true),
-                                                    Toggle::make('modulos_activos.sesion_cajas')->label('Sesiones de Caja')->default(true),
-                                                    Toggle::make('modulos_activos.cierres_caja')->label('Cierres de Caja')->default(true),
-                                                    Toggle::make('modulos_activos.ingresos_egresos')->label('Ingresos y Egresos')->default(true),
-                                                ])
-                                                ->hidden(fn(Get $get) => ! (bool) $get('modulos_activos.caja'))
-                                                ->columnSpanFull(),
+                                                ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
+                                                ->afterStateUpdated(function (bool $state, Set $set) {
+                                                    foreach (['punto_de_venta','sesion_cajas','ventas_turno','ingresos_egresos','cierres_caja'] as $s) {
+                                                        $set("modulos_activos.$s", $state);
+                                                    }
+                                                }),
+                                            Grid::make(2)->schema([
+                                                Toggle::make('modulos_activos.punto_de_venta')->label('Punto de Venta')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('caja', ['punto_de_venta','sesion_cajas','ventas_turno','ingresos_egresos','cierres_caja'], $get, $set)),
+                                                Toggle::make('modulos_activos.sesion_cajas')->label('Sesiones de Caja')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('caja', ['punto_de_venta','sesion_cajas','ventas_turno','ingresos_egresos','cierres_caja'], $get, $set)),
+                                                Toggle::make('modulos_activos.ventas_turno')->label('Ventas del Turno')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('caja', ['punto_de_venta','sesion_cajas','ventas_turno','ingresos_egresos','cierres_caja'], $get, $set)),
+                                                Toggle::make('modulos_activos.ingresos_egresos')->label('Ingresos y Egresos')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('caja', ['punto_de_venta','sesion_cajas','ventas_turno','ingresos_egresos','cierres_caja'], $get, $set)),
+                                                Toggle::make('modulos_activos.cierres_caja')->label('Cierres de Caja')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('caja', ['punto_de_venta','sesion_cajas','ventas_turno','ingresos_egresos','cierres_caja'], $get, $set)),
+                                            ])->columnSpanFull(),
                                         ]),
 
-                                    // ── PRODUCTOS ────────────────────────────────────
-                                    Section::make('Productos')
+                                    // ── INVENTARIO ───────────────────────────────────
+                                    Section::make('Inventario')
                                         ->icon('heroicon-o-cube')
-                                        ->description('Catálogo, órdenes web, ajustes, despacho, promociones y kardex')
-                                        ->compact()
-                                        ->columnSpan(1)
+                                        ->description('Gestión de productos, inventario, kardex y ajustes de stock')
+                                        ->compact()->columnSpan(1)
                                         ->schema([
-                                            Toggle::make('modulos_activos.productos')
-                                                ->label('Activar módulo completo')
-                                                ->onColor('success')
-                                                ->live()
-                                                ->default(true)
-                                                ->columnSpanFull(),
-                                            Grid::make(2)
-                                                ->schema([
-                                                    Toggle::make('modulos_activos.gestion_productos')->label('Gestión de Productos')->default(true),
-                                                    Toggle::make('modulos_activos.ordenes_web')->label('Órdenes Web')->default(true),
-                                                    Toggle::make('modulos_activos.ajustes_stock')->label('Ajustes de Stock')->default(true),
-                                                    Toggle::make('modulos_activos.despacho')->label('Despacho')->default(true),
-                                                    Toggle::make('modulos_activos.promociones')->label('Promociones')->default(true),
-                                                    Toggle::make('modulos_activos.kardex')->label('Kardex')->default(true),
-                                                ])
-                                                ->hidden(fn(Get $get) => ! (bool) $get('modulos_activos.productos'))
-                                                ->columnSpanFull(),
+                                            Toggle::make('modulos_activos.inventario')
+                                                ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
+                                                ->afterStateUpdated(function (bool $state, Set $set) {
+                                                    foreach (['gestion_productos','gestion_inventario','kardex','ajustes_stock'] as $s) {
+                                                        $set("modulos_activos.$s", $state);
+                                                    }
+                                                }),
+                                            Grid::make(2)->schema([
+                                                Toggle::make('modulos_activos.gestion_productos')->label('Productos')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('inventario', ['gestion_productos','gestion_inventario','kardex','ajustes_stock'], $get, $set)),
+                                                Toggle::make('modulos_activos.gestion_inventario')->label('Inventario')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('inventario', ['gestion_productos','gestion_inventario','kardex','ajustes_stock'], $get, $set)),
+                                                Toggle::make('modulos_activos.kardex')->label('Kardex')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('inventario', ['gestion_productos','gestion_inventario','kardex','ajustes_stock'], $get, $set)),
+                                                Toggle::make('modulos_activos.ajustes_stock')->label('Ajustes de Stock')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('inventario', ['gestion_productos','gestion_inventario','kardex','ajustes_stock'], $get, $set)),
+                                            ])->columnSpanFull(),
+                                        ]),
+
+                                    // ── PEDIDOS WEB ──────────────────────────────────
+                                    Section::make('Pedidos Web')
+                                        ->icon('heroicon-o-globe-alt')
+                                        ->description('Órdenes, clientes web, promociones y despachos')
+                                        ->compact()->columnSpan(1)
+                                        ->schema([
+                                            Toggle::make('modulos_activos.pedidos_web')
+                                                ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
+                                                ->afterStateUpdated(function (bool $state, Set $set) {
+                                                    foreach (['ordenes_web','clientes','promociones','despacho'] as $s) {
+                                                        $set("modulos_activos.$s", $state);
+                                                    }
+                                                }),
+                                            Grid::make(2)->schema([
+                                                Toggle::make('modulos_activos.ordenes_web')->label('Órdenes')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho'], $get, $set)),
+                                                Toggle::make('modulos_activos.clientes')->label('Clientes')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho'], $get, $set)),
+                                                Toggle::make('modulos_activos.promociones')->label('Promociones')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho'], $get, $set)),
+                                                Toggle::make('modulos_activos.despacho')->label('Despachos')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho'], $get, $set)),
+                                            ])->columnSpanFull(),
                                         ]),
 
                                     // ── COMPRAS ──────────────────────────────────────
                                     Section::make('Compras')
                                         ->icon('heroicon-o-shopping-cart')
                                         ->description('Registro de compras y gestión de proveedores')
-                                        ->compact()
-                                        ->columnSpan(1)
+                                        ->compact()->columnSpan(1)
                                         ->schema([
                                             Toggle::make('modulos_activos.compras')
-                                                ->label('Activar módulo completo')
-                                                ->onColor('success')
-                                                ->live()
-                                                ->default(true)
-                                                ->columnSpanFull(),
-                                            Grid::make(2)
-                                                ->schema([
-                                                    Toggle::make('modulos_activos.gestion_compras')->label('Compras')->default(true),
-                                                    Toggle::make('modulos_activos.proveedores')->label('Proveedores')->default(true),
-                                                ])
-                                                ->hidden(fn(Get $get) => ! (bool) $get('modulos_activos.compras'))
-                                                ->columnSpanFull(),
+                                                ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
+                                                ->afterStateUpdated(function (bool $state, Set $set) {
+                                                    foreach (['gestion_compras','proveedores'] as $s) {
+                                                        $set("modulos_activos.$s", $state);
+                                                    }
+                                                }),
+                                            Grid::make(2)->schema([
+                                                Toggle::make('modulos_activos.gestion_compras')->label('Compras')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('compras', ['gestion_compras','proveedores'], $get, $set)),
+                                                Toggle::make('modulos_activos.proveedores')->label('Proveedores')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('compras', ['gestion_compras','proveedores'], $get, $set)),
+                                            ])->columnSpanFull(),
+                                        ]),
+
+                                    // ── CATÁLOGO ─────────────────────────────────────
+                                    Section::make('Catálogo')
+                                        ->icon('heroicon-o-tag')
+                                        ->description('Categorías, marcas, atributos, producción y dimensiones')
+                                        ->compact()->columnSpan(1)
+                                        ->schema([
+                                            Toggle::make('modulos_activos.catalogo')
+                                                ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
+                                                ->afterStateUpdated(function (bool $state, Set $set) {
+                                                    foreach (['categorias','marcas','atributos','produccion','dimensiones'] as $s) {
+                                                        $set("modulos_activos.$s", $state);
+                                                    }
+                                                }),
+                                            Grid::make(2)->schema([
+                                                Toggle::make('modulos_activos.categorias')->label('Categorías')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('catalogo', ['categorias','marcas','atributos','produccion','dimensiones'], $get, $set)),
+                                                Toggle::make('modulos_activos.marcas')->label('Marcas')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('catalogo', ['categorias','marcas','atributos','produccion','dimensiones'], $get, $set)),
+                                                Toggle::make('modulos_activos.atributos')->label('Atributos')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('catalogo', ['categorias','marcas','atributos','produccion','dimensiones'], $get, $set)),
+                                                Toggle::make('modulos_activos.produccion')->label('Producción')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('catalogo', ['categorias','marcas','atributos','produccion','dimensiones'], $get, $set)),
+                                                Toggle::make('modulos_activos.dimensiones')->label('Dimensiones')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('catalogo', ['categorias','marcas','atributos','produccion','dimensiones'], $get, $set)),
+                                            ])->columnSpanFull(),
                                         ]),
 
                                     // ── REPORTES ─────────────────────────────────────
                                     Section::make('Reportes')
                                         ->icon('heroicon-o-document-chart-bar')
-                                        ->description('Reportes de ventas, productos, clientes y cuentas por cobrar')
-                                        ->compact()
-                                        ->columnSpan(1)
+                                        ->description('Todos los reportes del sistema')
+                                        ->compact()->columnSpan(1)
                                         ->schema([
                                             Toggle::make('modulos_activos.reportes')
-                                                ->label('Activar módulo completo')
-                                                ->onColor('success')
-                                                ->live()
-                                                ->default(true)
-                                                ->columnSpanFull(),
-                                            Grid::make(2)
-                                                ->schema([
-                                                    Toggle::make('modulos_activos.reporte_ventas')->label('Reporte de Ventas')->default(true),
-                                                    Toggle::make('modulos_activos.reporte_productos')->label('Reporte de Productos')->default(true),
-                                                    Toggle::make('modulos_activos.reporte_clientes')->label('Reporte de Clientes')->default(true),
-                                                    Toggle::make('modulos_activos.cuentas_por_cobrar')->label('Cuentas por Cobrar')->default(true),
-                                                ])
-                                                ->hidden(fn(Get $get) => ! (bool) $get('modulos_activos.reportes'))
-                                                ->columnSpanFull(),
-                                        ]),
-
-                                    // ── CATÁLOGO WEB ─────────────────────────────────
-                                    Section::make('Catálogo Web')
-                                        ->icon('heroicon-o-globe-alt')
-                                        ->description('Tienda online con categorías, marcas, atributos y producción')
-                                        ->compact()
-                                        ->columnSpan(1)
-                                        ->schema([
-                                            Toggle::make('modulos_activos.catalogo')
-                                                ->label('Activar módulo completo')
-                                                ->onColor('success')
-                                                ->live()
-                                                ->default(true)
-                                                ->columnSpanFull(),
-                                            Grid::make(2)
-                                                ->schema([
-                                                    Toggle::make('modulos_activos.produccion')->label('Producción')->default(true),
-                                                    Toggle::make('modulos_activos.categorias')->label('Categorías')->default(true),
-                                                    Toggle::make('modulos_activos.marcas')->label('Marcas')->default(true),
-                                                    Toggle::make('modulos_activos.atributos')->label('Atributos')->default(true),
-                                                ])
-                                                ->hidden(fn(Get $get) => ! (bool) $get('modulos_activos.catalogo'))
-                                                ->columnSpanFull(),
+                                                ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
+                                                ->afterStateUpdated(function (bool $state, Set $set) {
+                                                    foreach (['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','cuentas_por_cobrar'] as $s) {
+                                                        $set("modulos_activos.$s", $state);
+                                                    }
+                                                }),
+                                            Grid::make(2)->schema([
+                                                Toggle::make('modulos_activos.ventas_periodo')->label('Ventas por Período')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','cuentas_por_cobrar'], $get, $set)),
+                                                Toggle::make('modulos_activos.reporte_ventas')->label('Reporte de Ventas')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','cuentas_por_cobrar'], $get, $set)),
+                                                Toggle::make('modulos_activos.reporte_ganancias')->label('Reporte de Ganancias')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','cuentas_por_cobrar'], $get, $set)),
+                                                Toggle::make('modulos_activos.reporte_productos')->label('Productos más vendidos')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','cuentas_por_cobrar'], $get, $set)),
+                                                Toggle::make('modulos_activos.reporte_compras')->label('Reporte de Compras')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','cuentas_por_cobrar'], $get, $set)),
+                                                Toggle::make('modulos_activos.reporte_vendedores')->label('Vendedores')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','cuentas_por_cobrar'], $get, $set)),
+                                                Toggle::make('modulos_activos.reporte_ajustes')->label('Reporte de Ajustes')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','cuentas_por_cobrar'], $get, $set)),
+                                                Toggle::make('modulos_activos.reporte_clientes')->label('Reporte de Clientes')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','cuentas_por_cobrar'], $get, $set)),
+                                                Toggle::make('modulos_activos.cuentas_por_cobrar')->label('Cuentas por Cobrar')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','cuentas_por_cobrar'], $get, $set)),
+                                            ])->columnSpanFull(),
                                         ]),
 
                                     // ── CONFIGURACIÓN ────────────────────────────────
                                     Section::make('Configuración')
                                         ->icon('heroicon-o-cog-6-tooth')
                                         ->description('Cajas, series, métodos de pago/envío, impresoras, usuarios y roles')
-                                        ->compact()
-                                        ->columnSpan(1)
+                                        ->compact()->columnSpan(1)
                                         ->schema([
                                             Toggle::make('modulos_activos.configuracion')
-                                                ->label('Activar módulo completo')
-                                                ->onColor('success')
-                                                ->live()
-                                                ->default(true)
-                                                ->columnSpanFull(),
-                                            Grid::make(2)
-                                                ->schema([
-                                                    Toggle::make('modulos_activos.cajas_registradoras')->label('Cajas Registradoras')->default(true),
-                                                    Toggle::make('modulos_activos.metodos_pago')->label('Métodos de Pago')->default(true),
-                                                    Toggle::make('modulos_activos.metodos_envio')->label('Métodos de Envío')->default(true),
-                                                    Toggle::make('modulos_activos.series')->label('Series')->default(true),
-                                                    Toggle::make('modulos_activos.impresoras')->label('Impresoras')->default(true),
-                                                    Toggle::make('modulos_activos.usuarios_roles')->label('Usuarios y Roles')->default(true),
-                                                ])
-                                                ->hidden(fn(Get $get) => ! (bool) $get('modulos_activos.configuracion'))
-                                                ->columnSpanFull(),
+                                                ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
+                                                ->afterStateUpdated(function (bool $state, Set $set) {
+                                                    foreach (['cajas_registradoras','metodos_pago','metodos_envio','series','impresoras','usuarios_roles'] as $s) {
+                                                        $set("modulos_activos.$s", $state);
+                                                    }
+                                                }),
+                                            Grid::make(2)->schema([
+                                                Toggle::make('modulos_activos.cajas_registradoras')->label('Cajas')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('configuracion', ['cajas_registradoras','metodos_pago','metodos_envio','series','impresoras','usuarios_roles'], $get, $set)),
+                                                Toggle::make('modulos_activos.metodos_pago')->label('Métodos de Pago')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('configuracion', ['cajas_registradoras','metodos_pago','metodos_envio','series','impresoras','usuarios_roles'], $get, $set)),
+                                                Toggle::make('modulos_activos.metodos_envio')->label('Métodos de Envío')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('configuracion', ['cajas_registradoras','metodos_pago','metodos_envio','series','impresoras','usuarios_roles'], $get, $set)),
+                                                Toggle::make('modulos_activos.series')->label('Series')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('configuracion', ['cajas_registradoras','metodos_pago','metodos_envio','series','impresoras','usuarios_roles'], $get, $set)),
+                                                Toggle::make('modulos_activos.impresoras')->label('Impresoras')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('configuracion', ['cajas_registradoras','metodos_pago','metodos_envio','series','impresoras','usuarios_roles'], $get, $set)),
+                                                Toggle::make('modulos_activos.usuarios_roles')->label('Usuarios y Roles')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('configuracion', ['cajas_registradoras','metodos_pago','metodos_envio','series','impresoras','usuarios_roles'], $get, $set)),
+                                            ])->columnSpanFull(),
                                         ]),
 
                                 ]),

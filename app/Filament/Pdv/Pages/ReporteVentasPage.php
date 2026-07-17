@@ -50,7 +50,7 @@ class ReporteVentasPage extends Page implements HasForms
     protected static ?int $navigationSort = 2;
     protected static ?string $title = 'Reporte de Ventas';
 
-    public static function canAccess(): bool { return auth()->user()?->can('caja.reporte_ventas') ?? false; }
+    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('reporte_ventas') && (auth()->user()?->can('caja.reporte_ventas') ?? false); }
 
 
     // ── Estado de filtros (nullable: Select/DatePicker devuelven null al limpiar)

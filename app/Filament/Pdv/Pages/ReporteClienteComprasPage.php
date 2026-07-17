@@ -36,7 +36,7 @@ class ReporteClienteComprasPage extends Page implements HasForms
     protected static ?string $title = 'Compras del cliente';
     protected static bool $shouldRegisterNavigation = false;
 
-    public static function canAccess(): bool { return auth()->user()?->can('reportes.clientes') ?? false; }
+    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('reporte_clientes') && (auth()->user()?->can('reportes.clientes') ?? false); }
 
 
     #[Url]

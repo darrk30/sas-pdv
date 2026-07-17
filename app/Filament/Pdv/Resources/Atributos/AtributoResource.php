@@ -10,6 +10,7 @@ use App\Filament\Pdv\Resources\Atributos\Tables\AtributosTable;
 use App\Models\Atributo;
 use BackedEnum;
 use UnitEnum;
+use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -33,10 +34,10 @@ class AtributoResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'Atributo';
 
-    public static function canAccess(): bool              { return auth()->user()?->can('atributos.ver') ?? false; }
-    public static function canCreate(): bool              { return auth()->user()?->can('atributos.crear') ?? false; }
-    public static function canEdit(Model $record): bool   { return auth()->user()?->can('atributos.editar') ?? false; }
-    public static function canDelete(Model $record): bool { return auth()->user()?->can('atributos.eliminar') ?? false; }
+    public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('atributos') && (auth()->user()?->can('atributos.ver') ?? false); }
+    public static function canCreate(): bool              { return Filament::getTenant()->tieneModulo('atributos') && (auth()->user()?->can('atributos.crear') ?? false); }
+    public static function canEdit(Model $record): bool   { return Filament::getTenant()->tieneModulo('atributos') && (auth()->user()?->can('atributos.editar') ?? false); }
+    public static function canDelete(Model $record): bool { return Filament::getTenant()->tieneModulo('atributos') && (auth()->user()?->can('atributos.eliminar') ?? false); }
 
     public static function form(Schema $schema): Schema
     {

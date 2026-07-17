@@ -11,6 +11,7 @@ use App\Models\IngresoEgreso;
 use BackedEnum;
 use UnitEnum;
 use Filament\Resources\Resource;
+use Filament\Facades\Filament;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -33,7 +34,7 @@ class IngresoEgresoResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'motivo';
 
-    public static function canAccess(): bool              { return auth()->user()?->can('ingresos_egresos.ver') ?? false; }
+    public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('ingresos_egresos') && (auth()->user()?->can('ingresos_egresos.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('ingresos_egresos.crear') ?? false; }
     public static function canEdit(Model $record): bool   { return auth()->user()?->can('ingresos_egresos.crear') ?? false; }
     public static function canDelete(Model $record): bool { return auth()->user()?->can('ingresos_egresos.crear') ?? false; }

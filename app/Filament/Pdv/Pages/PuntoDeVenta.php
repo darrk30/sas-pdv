@@ -49,7 +49,7 @@ class PuntoDeVenta extends Page
     protected static ?int $navigationSort = 1;
     protected string $view = 'filament.pdv.pages.punto-de-venta';
 
-    public static function canAccess(): bool { return auth()->user()?->can('caja.punto_de_venta') ?? false; }
+    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('punto_de_venta') && (auth()->user()?->can('caja.punto_de_venta') ?? false); }
 
 
     // ── Filtros ───────────────────────────────────────────────────────────────

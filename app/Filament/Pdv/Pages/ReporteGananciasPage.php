@@ -35,7 +35,7 @@ class ReporteGananciasPage extends Page implements HasForms
     protected static ?int $navigationSort = 3;
     protected static ?string $title = 'Reporte de Ganancias';
 
-    public static function canAccess(): bool { return auth()->user()?->can('caja.reporte_ganancias') ?? false; }
+    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('reporte_ganancias') && (auth()->user()?->can('caja.reporte_ganancias') ?? false); }
 
 
     public ?string $filtroFechaDesde = null;

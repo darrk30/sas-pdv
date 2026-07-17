@@ -38,7 +38,7 @@ class DespachoPage extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->can('ordenes.despacho') ?? false;
+        return Filament::getTenant()->tieneModulo('despacho') && (auth()->user()?->can('ordenes.despacho') ?? false);
     }
 
     public static function getNavigationBadge(): ?string

@@ -32,7 +32,7 @@ class ReporteProductosPage extends Page implements HasForms
     protected static ?int $navigationSort = 4;
     protected static ?string $title            = 'Productos más vendidos';
 
-    public static function canAccess(): bool { return auth()->user()?->can('reportes.productos') ?? false; }
+    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('reporte_productos') && (auth()->user()?->can('reportes.productos') ?? false); }
 
 
     // ── Filtros ───────────────────────────────────────────────────────────────

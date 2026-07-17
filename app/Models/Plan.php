@@ -19,6 +19,7 @@ class Plan extends Model
         'maximo_locales',
         'tiene_variantes',
         'tiene_catalogo_web',
+        'facturacion_electronica',
         'estado',
     ];
 
@@ -26,8 +27,9 @@ class Plan extends Model
     {
         return [
             'precio'            => 'decimal:2',
-            'tiene_variantes'   => 'boolean',
-            'tiene_catalogo_web'=> 'boolean',
+            'tiene_variantes'          => 'boolean',
+            'tiene_catalogo_web'       => 'boolean',
+            'facturacion_electronica'  => 'boolean',
             'estado'            => EstadoGeneral::class,
         ];
     }

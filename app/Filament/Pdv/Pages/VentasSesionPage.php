@@ -38,7 +38,7 @@ class VentasSesionPage extends Page
     protected static ?int $navigationSort = 3;
     protected static ?string $title = 'Ventas del Turno';
 
-    public static function canAccess(): bool { return auth()->user()?->can('caja.ventas_turno') ?? false; }
+    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('ventas_turno') && (auth()->user()?->can('caja.ventas_turno') ?? false); }
 
 
     // ── Filtros ───────────────────────────────────────────────────────────────

@@ -41,7 +41,7 @@ class CierresCajaPage extends Page implements HasForms
     protected static ?int $navigationSort = 5;
     protected static ?string $title            = 'Cierres de Caja';
 
-    public static function canAccess(): bool { return auth()->user()?->can('caja.cierres') ?? false; }
+    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('cierres_caja') && (auth()->user()?->can('caja.cierres') ?? false); }
 
 
     // ── Filtros de la lista ───────────────────────────────────────────────────

@@ -33,7 +33,7 @@ class KardexPage extends Page implements HasForms
     protected static ?int $navigationSort = 3;
     protected static ?string $title = 'Kardex de Inventario';
 
-    public static function canAccess(): bool { return auth()->user()?->can('inventario.kardex') ?? false; }
+    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('kardex') && (auth()->user()?->can('inventario.kardex') ?? false); }
 
 
     // ── Filtros ───────────────────────────────────────────────────────────────

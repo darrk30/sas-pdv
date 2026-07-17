@@ -33,6 +33,7 @@ class ReporteVentasPeriodoPage extends Page implements HasForms
     protected static ?int $navigationSort = 1;
     protected static ?string $title = 'Ventas por período';
 
+    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('ventas_periodo') && (auth()->user()?->can('reportes.ventas_periodo') ?? false); }
 
     public ?string $filtroAgrupacion = 'dia';
     public ?string $filtroRango      = 'hoy';

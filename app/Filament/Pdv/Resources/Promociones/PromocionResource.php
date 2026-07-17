@@ -34,7 +34,7 @@ class PromocionResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'nombre';
 
-    public static function canAccess(): bool              { return auth()->user()?->can('promociones.ver') ?? false; }
+    public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('promociones') && (auth()->user()?->can('promociones.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('promociones.crear') ?? false; }
     public static function canEdit(Model $record): bool   { return auth()->user()?->can('promociones.editar') ?? false; }
     public static function canDelete(Model $record): bool { return auth()->user()?->can('promociones.eliminar') ?? false; }

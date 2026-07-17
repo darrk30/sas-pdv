@@ -38,12 +38,7 @@ class OrdenResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'codigo';
 
-    public static function canAccess(): bool
-    {
-        if (! auth()->user()?->can('ordenes.ver')) return false;
-        $plan = Filament::getTenant()?->suscripcion?->plan;
-        return $plan === null || $plan->tiene_catalogo_web;
-    }
+    public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('ordenes_web') && (auth()->user()?->can('ordenes.ver') ?? false); }
 
     public static function canCreate(): bool              { return auth()->user()?->can('ordenes.gestionar') ?? false; }
     public static function canEdit(Model $record): bool   {

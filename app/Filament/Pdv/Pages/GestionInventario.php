@@ -6,6 +6,7 @@ use App\Models\AjusteDetalle;
 use App\Models\Inventario;
 use BackedEnum;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
+use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -113,6 +114,6 @@ class GestionInventario extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->can('inventario.ver') ?? false;
+        return Filament::getTenant()->tieneModulo('gestion_inventario') && (auth()->user()?->can('inventario.ver') ?? false);
     }
 }

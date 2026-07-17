@@ -344,6 +344,7 @@ class ProductoForm
                         // --- PESTAÑA: VARIANTES ---
                         Tab::make('Variantes y Atributos')
                             ->icon('heroicon-m-list-bullet')
+                            ->visible(fn() => Filament::getTenant()->tieneVariantes())
                             ->schema([
                                 Repeater::make('atributos')
                                     ->label('Configuración de Variantes')
@@ -704,6 +705,7 @@ class ProductoForm
                             ->icon('heroicon-o-squares-2x2')
                             ->visible(
                                 fn(?Model $record): bool =>
+                                Filament::getTenant()->tieneVariantes() &&
                                 $record?->exists && $record->variantesActivas()->exists()
                             )
                             ->schema([

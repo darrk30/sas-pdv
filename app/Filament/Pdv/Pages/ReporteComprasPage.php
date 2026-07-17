@@ -34,7 +34,7 @@ class ReporteComprasPage extends Page implements HasForms
     protected static ?int $navigationSort = 6;
     protected static ?string $title = 'Reporte de Compras';
 
-    public static function canAccess(): bool { return auth()->user()?->can('compras.reporte') ?? false; }
+    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('reporte_compras') && (auth()->user()?->can('compras.reporte') ?? false); }
 
 
     // ── Filtros ───────────────────────────────────────────────────────────────

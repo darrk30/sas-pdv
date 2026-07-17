@@ -11,6 +11,7 @@ use App\Models\Categoria;
 use BackedEnum;
 use UnitEnum;
 use Filament\Resources\Resource;
+use Filament\Facades\Filament;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -33,7 +34,7 @@ class CategoriaResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'Categoria';
 
-    public static function canAccess(): bool              { return auth()->user()?->can('categorias.ver') ?? false; }
+    public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('categorias') && (auth()->user()?->can('categorias.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('categorias.crear') ?? false; }
     public static function canEdit(Model $record): bool   { return auth()->user()?->can('categorias.editar') ?? false; }
     public static function canDelete(Model $record): bool { return auth()->user()?->can('categorias.eliminar') ?? false; }

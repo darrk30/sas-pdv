@@ -115,6 +115,13 @@ class PlanForm
                             ->onColor('success')
                             ->default(false)
                             ->columnSpan(1),
+
+                        Toggle::make('facturacion_electronica')
+                            ->label('Facturación Electrónica')
+                            ->helperText('Permite emitir comprobantes electrónicos (boletas y facturas)')
+                            ->onColor('success')
+                            ->default(false)
+                            ->columnSpan(1),
                     ])->columnSpanFull(),
             ]);
     }

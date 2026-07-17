@@ -12,6 +12,7 @@ use App\Models\Dimension;
 use BackedEnum;
 use UnitEnum;
 use Filament\Resources\Resource;
+use Filament\Facades\Filament;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -34,7 +35,7 @@ class DimensionResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'Dimension';
 
-    public static function canAccess(): bool              { return auth()->user()?->can('dimensiones.ver') ?? false; }
+    public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('dimensiones') && (auth()->user()?->can('dimensiones.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('dimensiones.crear') ?? false; }
     public static function canEdit(Model $record): bool   { return auth()->user()?->can('dimensiones.editar') ?? false; }
     public static function canDelete(Model $record): bool { return auth()->user()?->can('dimensiones.eliminar') ?? false; }
