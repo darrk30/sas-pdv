@@ -254,11 +254,19 @@ class MiEmpresaPage extends Page implements HasForms
             fn($v) => $v !== null && $v !== '' && $v !== [],
         );
 
-        if (! empty($credencialesGuardar)) {
-            $empresa->facturacion()->updateOrCreate(
-                ['empresa_id' => $empresa->id],
-                $credencialesGuardar,
-            );
+        $facturacionExistente = $empresa->facturacion;
+
+        if ($facturacionExistente) {
+            // Registro ya existe: actualizar solo los campos enviados
+            if (! empty($credencialesGuardar)) {
+                $facturacionExistente->update($credencialesGuardar);
+            }
+        } elseif (! empty($credencialesGuardar['sol_user']) && ! empty($credencialesGuardar['facturador_url'])) {
+            // Solo crear si tiene los campos mínimos obligatorios
+            $empresa->facturacion()->create([
+                'empresa_id' => $empresa->id,
+                ...$credencialesGuardar,
+            ]);
         }
 
         // Sincronizar con el facturador si ya tiene configuración
