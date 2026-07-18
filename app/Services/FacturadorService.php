@@ -13,6 +13,7 @@ use App\Models\VentaDetalle;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class FacturadorService
 {
@@ -147,6 +148,61 @@ class FacturadorService
     }
 
     // ── API pública ───────────────────────────────────────────────────────────
+
+    /**
+     * Sincroniza los datos de la empresa (RUC, nombre, dirección, cert, SOL)
+     * en el FacturadorGreenter usando el endpoint POST /api/my-company/update.
+     * Se llama automáticamente al guardar datos de empresa o credenciales FE.
+     */
+    public function sincronizarEmpresa(Empresa $empresa): FacturadorResponse
+    {
+        $empresa->loadMissing('facturacion');
+        $config = $empresa->facturacion;
+
+        if (! $config?->facturador_url || ! $config?->facturador_api_token) {
+            return FacturadorResponse::fromError('Empresa sin URL o token del facturador configurados.');
+        }
+
+        $url = rtrim($config->facturador_url, '/') . '/api/my-company/update';
+
+        $payload = array_filter([
+            'razon_social'  => $empresa->name,
+            'ruc'           => $empresa->ruc,
+            'direccion'     => $empresa->direccion,
+            'departamento'  => $empresa->departamento,
+            'provincia'     => $empresa->provincia,
+            'distrito'      => $empresa->distrito,
+            'ubigeo'        => $empresa->ubigeo,
+            'telefono'      => $empresa->telefono,
+            'email'         => $empresa->email,
+            'sol_user'      => $config->sol_user,
+            'sol_pass'      => $config->sol_pass, // modelo lo desencripta automáticamente
+        ], fn($v) => $v !== null && $v !== '');
+
+        try {
+            $request = Http::withToken($config->facturador_api_token)->timeout(30);
+
+            if ($config->cert_path && Storage::disk('local')->exists($config->cert_path)) {
+                $certContent = Storage::disk('local')->get($config->cert_path);
+                $request     = $request->attach('cert', $certContent, 'certificado.pem');
+            }
+
+            $response = $request->post($url, $payload);
+
+            if ($response->successful()) {
+                return new FacturadorResponse(ok: true);
+            }
+
+            $json = $response->json() ?? [];
+            return FacturadorResponse::fromError($json['message'] ?? "Error HTTP {$response->status()} al sincronizar empresa.");
+        } catch (\Throwable $e) {
+            Log::error('FacturadorService::sincronizarEmpresa', [
+                'empresa_id' => $empresa->id,
+                'error'      => $e->getMessage(),
+            ]);
+            return FacturadorResponse::fromError($e->getMessage());
+        }
+    }
 
     /**
      * Envía una boleta o factura al facturador.

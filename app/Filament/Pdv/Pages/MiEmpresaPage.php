@@ -10,6 +10,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use App\Services\FacturadorService;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -258,6 +259,21 @@ class MiEmpresaPage extends Page implements HasForms
                 ['empresa_id' => $empresa->id],
                 $credencialesGuardar,
             );
+        }
+
+        // Sincronizar con el facturador si ya tiene configuración
+        $empresa->refresh();
+        if ($empresa->facturacion) {
+            $resultado = app(FacturadorService::class)->sincronizarEmpresa($empresa);
+
+            if (! $resultado->ok) {
+                Notification::make()
+                    ->title('Datos guardados')
+                    ->body('Los datos se guardaron, pero no se pudo sincronizar con el facturador: ' . $resultado->mensajeError())
+                    ->warning()
+                    ->send();
+                return;
+            }
         }
 
         Notification::make()
