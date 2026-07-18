@@ -2,14 +2,14 @@
 
     <div class="me-page-wrapper">
 
-        {{-- ── Encabezado informativo ──────────────────────────────────────── --}}
+        {{-- ── Hero ────────────────────────────────────────────────────────── --}}
         <div class="me-hero">
             <div class="me-hero-icon">
                 <x-heroicon-o-building-office-2 class="me-hero-svg" />
             </div>
             <div>
                 <h2 class="me-hero-title">Configura tu empresa</h2>
-                <p class="me-hero-sub">Mantén actualizados los datos de tu empresa. Los cambios se reflejan en el catálogo, documentos y el panel.</p>
+                <p class="me-hero-sub">Mantén actualizados los datos de tu empresa. Los cambios se reflejan en comprobantes, el catálogo y el facturador electrónico.</p>
             </div>
         </div>
 
@@ -33,16 +33,13 @@
     </div>
 
     <style>
-        /* ── Wrapper ──────────────────────────────────────────────────────── */
         .me-page-wrapper {
-            max-width: 820px;
-            margin: 0 auto;
             display: flex;
             flex-direction: column;
-            gap: 1.75rem;
+            gap: 1.5rem;
         }
 
-        /* ── Hero header ──────────────────────────────────────────────────── */
+        /* ── Hero ─────────────────────────────────────────────────────────── */
         .me-hero {
             display: flex;
             align-items: center;
@@ -84,14 +81,14 @@
         .me-form {
             display: flex;
             flex-direction: column;
-            gap: 1.25rem;
+            gap: 1rem;
         }
 
-        /* ── Footer / submit ──────────────────────────────────────────────── */
+        /* ── Footer ───────────────────────────────────────────────────────── */
         .me-footer {
             display: flex;
             justify-content: flex-end;
-            padding-top: .5rem;
+            padding-top: .25rem;
         }
     </style>
 
