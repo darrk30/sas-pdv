@@ -46,8 +46,8 @@ class SerieForm
                             TextInput::make('numero')
                                 ->label('Número actual')
                                 ->numeric()
-                                ->default(1)
-                                ->minValue(1)
+                                ->default(0)
+                                ->minValue(0)
                                 ->required()
                                 ->helperText('Siguiente correlativo que se asignará al emitir un comprobante.'),
 

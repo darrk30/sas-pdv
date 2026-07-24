@@ -94,6 +94,7 @@ class PdvPanelProvider extends PanelProvider
             })
             ->navigationGroups([
                 NavigationGroup::make('Punto de Venta'),
+                NavigationGroup::make('Facturación Electrónica'),
                 NavigationGroup::make('Inventario'),
                 NavigationGroup::make('Pedidos Web'),
                 NavigationGroup::make('Compras'),

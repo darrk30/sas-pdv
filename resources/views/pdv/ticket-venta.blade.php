@@ -173,6 +173,27 @@
         border-top: 1px dashed #000;
     }
 
+    /* ── QR y datos FE ──────────────────────────────────────── */
+    .tk-letras {
+        font-size: 9px;
+        font-style: italic;
+        margin: 2mm 0 1mm;
+        line-height: 1.4;
+    }
+    .tk-qr-wrap { text-align: center; margin: 2mm 0; }
+    .tk-qr-wrap img { width: 38mm; height: 38mm; }
+    .tk-qr-label { text-align: center; font-size: 9px; color: #444; margin-top: 1mm; }
+    .tk-hash-fe {
+        font-size: 7px; color: #555;
+        font-family: 'Courier New', monospace;
+        word-break: break-all; margin-top: 1mm;
+    }
+    .tk-nota-fe {
+        text-align: center; font-size: 9px;
+        font-style: italic; margin-top: 1mm;
+        line-height: 1.4; color: #333;
+    }
+
     /* ── Print ──────────────────────────────────────────────── */
     @media print {
         @page {
@@ -387,6 +408,26 @@
     <div class="tk-no-comprobante">
         Este documento NO constituye<br>
         un comprobante de pago electrónico.
+    </div>
+    @endif
+
+    {{-- ══ QR + LETRAS (solo boleta/factura electrónica) ══ --}}
+    @php $qrBase64 = $qrBase64 ?? null; @endphp
+    @if (($esFactura || $esBoleta) && $qrBase64)
+    <hr class="tk-sep">
+    @if ($venta->total_letras)
+    <div class="tk-letras">Son: {{ $venta->total_letras }}</div>
+    @endif
+    <div class="tk-qr-wrap">
+        <img src="{{ $qrBase64 }}" alt="QR SUNAT">
+    </div>
+    <div class="tk-qr-label">Consulte en sunat.gob.pe</div>
+    @if ($venta->hash)
+    <div class="tk-hash-fe">Hash: {{ $venta->hash }}</div>
+    @endif
+    <div class="tk-nota-fe">
+        Representación impresa de<br>
+        {{ $esFactura ? 'FACTURA ELECTRÓNICA' : 'BOLETA DE VENTA ELECTRÓNICA' }}
     </div>
     @endif
 

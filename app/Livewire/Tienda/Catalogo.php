@@ -62,6 +62,7 @@ class Catalogo extends Component
     {
         $productos = Producto::where('empresa_id', $this->empresaId)
             ->where('estado', 'activo')
+            ->where('visible_en_carta', true)
             ->when($this->buscar, fn($q) => $q->where(fn($q) =>
                 $q->where('nombre', 'like', '%' . $this->buscar . '%')
                   ->orWhere('codigo_interno', 'like', '%' . $this->buscar . '%')

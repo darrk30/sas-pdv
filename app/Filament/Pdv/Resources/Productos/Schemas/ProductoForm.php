@@ -75,15 +75,16 @@ class ProductoForm
                                         ->numeric()
                                         ->prefix('S/')
                                         ->required()
-                                        ->default(0) // Valor inicial
-                                        ->minValue(0) // Evita negativos
-                                        ->dehydrateStateUsing(fn($state) => empty($state) ? 0 : $state) // Si borran todo, envía 0
+                                        ->default(0)
+                                        ->minValue(0)
+                                        ->dehydrateStateUsing(fn($state) => empty($state) ? 0 : $state)
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                                            $precio = floatval($state ?: 0); // Si es null, usa 0
-                                            $descuento = floatval($get('porcentaje_descuento') ?: 0);
-                                            $precioFinal = $precio - ($precio * ($descuento / 100));
-                                            $set('precio_con_descuento', number_format($precioFinal, 2, '.', ''));
+                                            $precio      = floatval($state ?: 0);
+                                            $descuento   = floatval($get('porcentaje_descuento') ?: 0);
+                                            // precio calculado → floor
+                                            $precioFinal = (int) floor($precio - ($precio * ($descuento / 100)));
+                                            $set('precio_con_descuento', $precioFinal);
                                         }),
 
                                     TextInput::make('precio_costo')
@@ -103,23 +104,38 @@ class ProductoForm
                                         ->dehydrateStateUsing(fn($state) => empty($state) ? 0 : $state)
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                                            $descuento = floatval($state ?: 0);
-                                            $precio = floatval($get('precio_venta') ?: 0);
-                                            $precioFinal = $precio - ($precio * ($descuento / 100));
-                                            $set('precio_con_descuento', number_format($precioFinal, 2, '.', ''));
+                                            $descuento   = floatval($state ?: 0);
+                                            $precio      = floatval($get('precio_venta') ?: 0);
+                                            // precio calculado → floor (el usuario no lo escribió)
+                                            $precioFinal = (int) floor($precio - ($precio * ($descuento / 100)));
+                                            $set('precio_con_descuento', $precioFinal);
                                         }),
 
                                     TextInput::make('precio_con_descuento')
                                         ->label('Precio final al cliente')
                                         ->numeric()
                                         ->prefix('S/')
-                                        ->readOnly()  // ← reemplaza disabled(); el campo se ve bloqueado pero SÍ envía el valor
+                                        ->default(0)
+                                        ->minValue(0)
                                         ->dehydrated()
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
+                                            $precioFinal = floatval($state ?: 0);
+                                            $precio      = floatval($get('precio_venta') ?: 0);
+                                            // porcentaje calculado → floor (el usuario no lo escribió)
+                                            $descuento = $precio > 0
+                                                ? (int) floor(($precio - $precioFinal) / $precio * 100)
+                                                : 0;
+                                            $set('porcentaje_descuento', $descuento);
+                                        })
                                         ->formatStateUsing(function (Get $get, $state) {
-                                            $precio    = floatval($get('precio_venta'));
-                                            $descuento = floatval($get('porcentaje_descuento'));
-                                            $precioFinal = $precio - ($precio * ($descuento / 100));
-                                            return number_format($precioFinal, 2, '.', '');
+                                            $stored = floatval($state ?? 0);
+                                            $precio = floatval($get('precio_venta') ?: 0);
+                                            if ($stored == 0 && $precio > 0) {
+                                                $descuento = floatval($get('porcentaje_descuento') ?: 0);
+                                                return (int) floor($precio - ($precio * ($descuento / 100)));
+                                            }
+                                            return $stored;
                                         }),
                                 ]),
 

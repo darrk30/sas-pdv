@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
             $table->foreignId('venta_id')->constrained('ventas')->cascadeOnDelete();
             $table->foreignId('vendedor_id')->constrained('users');
-            $table->enum('tipo', ['credito', 'debito']);  // tipo doc 07 | 08
+            $table->string('tipo', 10);  // TipoNota: credito|debito
 
             // Comprobante
             $table->foreignId('serie_id')->constrained('series');
@@ -47,6 +47,7 @@ return new class extends Migration
             // por_enviar | aceptado | observado | rechazado
 
             $table->string('estado', 20)->default('emitida');  // emitida | anulada
+            $table->foreignId('resumen_sunat_id')->nullable()->constrained('resumenes_sunat')->nullOnDelete();
             $table->text('notas')->nullable();
             $table->timestamps();
 

@@ -161,43 +161,42 @@ class ComprasTable
                             ->send();
                     }),
 
-                DeleteAction::make()
-                    ->visible(fn(Compra $record): bool => ! $record->estaAnulada()),
+                // DeleteAction::make()->visible(fn(Compra $record): bool => ! $record->estaAnulada()),
 
             ])
 
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->action(function (\Illuminate\Support\Collection $records): void {
-                            $eliminados = 0;
-                            $omitidos   = 0;
+                // BulkActionGroup::make([
+                //     DeleteBulkAction::make()
+                //         ->action(function (\Illuminate\Support\Collection $records): void {
+                //             $eliminados = 0;
+                //             $omitidos   = 0;
 
-                            foreach ($records as $compra) {
-                                if (! $compra->estaAnulada()) {
-                                    $compra->delete();
-                                    $eliminados++;
-                                } else {
-                                    $omitidos++;
-                                }
-                            }
+                //             foreach ($records as $compra) {
+                //                 if (! $compra->estaAnulada()) {
+                //                     $compra->delete();
+                //                     $eliminados++;
+                //                 } else {
+                //                     $omitidos++;
+                //                 }
+                //             }
 
-                            if ($omitidos > 0) {
-                                Notification::make()
-                                    ->warning()
-                                    ->title("{$omitidos} compra(s) no eliminada(s)")
-                                    ->body('No se pueden eliminar compras anuladas.')
-                                    ->send();
-                            }
+                //             if ($omitidos > 0) {
+                //                 Notification::make()
+                //                     ->warning()
+                //                     ->title("{$omitidos} compra(s) no eliminada(s)")
+                //                     ->body('No se pueden eliminar compras anuladas.')
+                //                     ->send();
+                //             }
 
-                            if ($eliminados > 0) {
-                                Notification::make()
-                                    ->success()
-                                    ->title("{$eliminados} compra(s) eliminada(s)")
-                                    ->send();
-                            }
-                        }),
-                ]),
+                //             if ($eliminados > 0) {
+                //                 Notification::make()
+                //                     ->success()
+                //                     ->title("{$eliminados} compra(s) eliminada(s)")
+                //                     ->send();
+                //             }
+                //         }),
+                // ]),
             ])
 
             ->defaultSort('created_at', 'desc')

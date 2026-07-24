@@ -27,13 +27,16 @@ class CreateRole extends CreateRecord
     private function sincronizarPermisos($role): void
     {
         $empresaId = Filament::getTenant()?->id;
-        app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($empresaId);
+        $registrar = app(\Spatie\Permission\PermissionRegistrar::class);
+        $registrar->setPermissionsTeamId($empresaId);
 
         $permisosSeleccionados = $this->recogerPermisosDelForm();
 
         if ($permisosSeleccionados->isNotEmpty()) {
             $role->syncPermissions($permisosSeleccionados);
         }
+
+        $registrar->forgetCachedPermissions();
     }
 
     private function recogerPermisosDelForm(): \Illuminate\Support\Collection

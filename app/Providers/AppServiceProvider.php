@@ -4,10 +4,10 @@ namespace App\Providers;
 
 use App\Models\Empresa;
 use App\Policies\EmpresaPolicy;
-// use App\Events\VentaCompletada;
-// use App\Listeners\EmitirComprobanteElectronico;
+use App\Events\VentaCompletada;
+use App\Listeners\EmitirComprobanteElectronico;
 use Illuminate\Support\Facades\Gate;
-// use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -18,8 +18,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(Empresa::class, EmpresaPolicy::class);
 
-        // Facturación electrónica — descomentar para activar el envío automático al completar venta:
-        // Event::listen(VentaCompletada::class, EmitirComprobanteElectronico::class);
+        Event::listen(VentaCompletada::class, EmitirComprobanteElectronico::class);
 
         Gate::before(function (\App\Models\User $user, string $ability) {
             // Consulta directa sin team scope de Spatie para evitar ambigüedad en empresa_id

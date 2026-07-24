@@ -19,9 +19,10 @@ class RoleForm
         $plan           = $empresa?->planActual();
         $tieneTienda    = $plan === null || $plan->tiene_catalogo_web;
         $tieneVariantes = $plan === null || $plan->tiene_variantes;
+        $tieneFE        = $empresa?->tieneFacturacionElectronica() ?? false;
 
         // Permisos agrupados por módulo — excluir módulos exclusivos del super-admin
-        // y los permisos de tienda/variantes cuando el plan no los incluye
+        // y los permisos de tienda/variantes/FE cuando el plan no los incluye
         $permisosPorModulo = Permission::where('module', 'not like', 'admin_%')
             ->when(! $tieneTienda, fn ($q) => $q->whereNotIn('name', [
                 'ordenes.ver',
@@ -34,6 +35,7 @@ class RoleForm
                 'atributos.editar',
                 'atributos.eliminar',
             ]))
+            ->when(! $tieneFE, fn ($q) => $q->where('module', '!=', 'fe'))
             ->orderBy('module_label')
             ->orderBy('description')
             ->get()

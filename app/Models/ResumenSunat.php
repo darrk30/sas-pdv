@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\EstadoSunat;
+use App\Enums\TipoResumen;
 use App\Traits\BelongsToEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Nota;
 
 class ResumenSunat extends Model
 {
@@ -38,10 +40,16 @@ class ResumenSunat extends Model
         'fecha_respuesta'  => 'datetime',
         'sunat_success'    => 'boolean',
         'estado_sunat'     => EstadoSunat::class,
+        'tipo'             => TipoResumen::class,
     ];
 
     public function ventas(): HasMany
     {
         return $this->hasMany(Venta::class);
+    }
+
+    public function notas(): HasMany
+    {
+        return $this->hasMany(Nota::class);
     }
 }

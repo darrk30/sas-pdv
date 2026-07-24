@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\EstadoSunat;
+use App\Enums\TipoNota;
 use App\Traits\BelongsToEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Nota extends Model
 {
@@ -38,6 +40,7 @@ class Nota extends Model
         'estado_sunat',
         'estado',
         'notas',
+        'resumen_sunat_id',
     ];
 
     protected $casts = [
@@ -45,6 +48,7 @@ class Nota extends Model
         'total'         => 'decimal:2',
         'sunat_success' => 'boolean',
         'estado_sunat'  => EstadoSunat::class,
+        'tipo'          => TipoNota::class,
     ];
 
     public function venta(): BelongsTo
@@ -60,5 +64,10 @@ class Nota extends Model
     public function serie(): BelongsTo
     {
         return $this->belongsTo(Serie::class);
+    }
+
+    public function resumenSunat(): BelongsTo
+    {
+        return $this->belongsTo(ResumenSunat::class);
     }
 }

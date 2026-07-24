@@ -41,6 +41,10 @@ class SuperAdminSeeder extends Seeder
         ['module' => 'caja', 'module_label' => 'Caja / Ventas', 'name' => 'ingresos_egresos.ver',    'description' => 'Ver ingresos y egresos de caja'],
         ['module' => 'caja', 'module_label' => 'Caja / Ventas', 'name' => 'ingresos_egresos.crear',  'description' => 'Registrar ingresos y egresos de caja'],
 
+        // ── Facturación Electrónica ────────────────────────────────────────────
+        ['module' => 'fe', 'module_label' => 'Facturación Electrónica', 'name' => 'caja.resumen_boletas', 'description' => 'Ver y gestionar resumenes SUNAT (RC/RA)'],
+        ['module' => 'fe', 'module_label' => 'Facturación Electrónica', 'name' => 'caja.notas',           'description' => 'Ver y gestionar notas de crédito / débito'],
+
         // ── Productos / Inventario ─────────────────────────────────────────────
         ['module' => 'productos', 'module_label' => 'Productos / Inventario', 'name' => 'productos.ver',      'description' => 'Ver listado de productos'],
         ['module' => 'productos', 'module_label' => 'Productos / Inventario', 'name' => 'productos.crear',    'description' => 'Crear nuevos productos'],

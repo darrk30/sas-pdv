@@ -4,7 +4,9 @@ namespace App\Filament\Pdv\Resources\Ordenes\Pages;
 
 use App\Enums\EstadoOrden;
 use App\Enums\EstadoVenta;
+use App\Enums\TipoComprobante;
 use App\Enums\TipoPago;
+use App\Events\VentaCompletada;
 use App\Filament\Pdv\Resources\Ordenes\Concerns\ValidaStockOrden;
 use App\Filament\Pdv\Resources\Ordenes\OrdenResource;
 use App\Models\Inventario;
@@ -268,7 +270,8 @@ class EditOrden extends EditRecord
                         ->default(true),
                 ])
                 ->action(function (array $data): void {
-                    DB::transaction(function () use ($data): void {
+                    $venta = null;
+                    DB::transaction(function () use ($data, &$venta): void {
                         $orden   = $this->record->load('detalles');
                         $empresa = Filament::getTenant();
 
@@ -361,6 +364,11 @@ class EditOrden extends EditRecord
                         $this->descontarStockReal($orden, $empresa->id, $venta, "{$serie->serie}-{$correlativo}");
                     });
 
+                    // Emitir comprobante electrónico solo para boleta y factura
+                    if ($venta && in_array($venta->serie?->tipo, [TipoComprobante::Boleta, TipoComprobante::Factura])) {
+                        VentaCompletada::dispatch($venta);
+                    }
+
                     Notification::make()
                         ->success()
                         ->title('Pago confirmado')
@@ -424,7 +432,9 @@ class EditOrden extends EditRecord
                             ->lockForUpdate()->first();
                         if (! $inv) continue;
                         $antes   = (float) $inv->stock_real;
-                        $despues = max(0, $antes - $cantDet);
+                        $despues = ($prod->venta_sin_stock ?? false)
+                            ? $antes - $cantDet
+                            : max(0, $antes - $cantDet);
                         $inv->update(['stock_real' => $despues]);
                         $kardex->registrar([
                             'empresa_id'        => $empresaId,
@@ -451,7 +461,9 @@ class EditOrden extends EditRecord
                             ->lockForUpdate()->first();
                         if (! $inv) continue;
                         $antes   = (float) $inv->stock_real;
-                        $despues = max(0, $antes - $cantDet);
+                        $despues = ($prod->venta_sin_stock ?? false)
+                            ? $antes - $cantDet
+                            : max(0, $antes - $cantDet);
                         $inv->update(['stock_real' => $despues]);
                         $kardex->registrar([
                             'empresa_id'        => $empresaId,
@@ -482,7 +494,9 @@ class EditOrden extends EditRecord
                     ->lockForUpdate()->first();
                 if (! $inv) continue;
                 $antes   = (float) $inv->stock_real;
-                $despues = max(0, $antes - $cantidad);
+                $despues = ($variante->producto->venta_sin_stock ?? false)
+                    ? $antes - $cantidad
+                    : max(0, $antes - $cantidad);
                 $inv->update(['stock_real' => $despues]);
                 $kardex->registrar([
                     'empresa_id'        => $empresaId,
@@ -512,7 +526,9 @@ class EditOrden extends EditRecord
                     ->lockForUpdate()->first();
                 if (! $inv) continue;
                 $antes   = (float) $inv->stock_real;
-                $despues = max(0, $antes - $cantidad);
+                $despues = ($producto->venta_sin_stock ?? false)
+                    ? $antes - $cantidad
+                    : max(0, $antes - $cantidad);
                 $inv->update(['stock_real' => $despues]);
                 $kardex->registrar([
                     'empresa_id'        => $empresaId,

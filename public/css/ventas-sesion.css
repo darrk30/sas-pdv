@@ -130,6 +130,8 @@
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
+    min-width: 0;
+    flex: 1;
 }
 
 .vs-card__label {
@@ -137,11 +139,13 @@
     font-weight: 700;
     letter-spacing: .05em;
     text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .vs-card__value {
-    font-size: 1.25rem;
+    font-size: clamp(0.7rem, 1vw + 0.5rem, 1.25rem);
     font-weight: 700;
+    white-space: nowrap;
 }
 
 /* variantes de color */
@@ -478,6 +482,19 @@
     color: #92400e;
 }
 
+.vs-badge--despacho-dir {
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    color: #78350f;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .vs-badge--credito {
     background: #fef3c7;
     border: 1px solid #fde68a;
@@ -633,7 +650,7 @@
     }
 
     .vs-card { padding: 0.75rem; gap: 0.625rem; }
-    .vs-card__value { font-size: 1.125rem; }
+    .vs-card__value { font-size: clamp(0.75rem, 3.5vw, 1.125rem); }
 
     /* Métodos: columna */
     .vs-metodos {
@@ -1048,6 +1065,63 @@
     gap: 0.75rem;
 }
 
+/* ── Aviso SUNAT baja en modal anular ────────────────────────────────────── */
+.vs-anular-sunat-aviso {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 0.5rem;
+    padding: 0.7rem 0.9rem;
+    margin-top: 0.75rem;
+}
+.vs-anular-sunat-aviso svg {
+    flex-shrink: 0;
+    width: 1.15rem;
+    height: 1.15rem;
+    color: #1d4ed8;
+    margin-top: 0.1rem;
+}
+.vs-anular-sunat__titulo {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #1d4ed8;
+    margin: 0 0 0.15rem;
+}
+.vs-anular-sunat__texto {
+    font-size: 0.78rem;
+    color: #1e40af;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.vs-anular-motivo {
+    margin-top: 0.6rem;
+}
+.vs-anular-motivo__label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--vs-text-muted);
+    margin-bottom: 0.3rem;
+}
+.vs-anular-motivo__input {
+    width: 100%;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid var(--vs-border);
+    border-radius: 0.45rem;
+    font-size: 0.875rem;
+    background: var(--vs-bg);
+    color: var(--vs-text);
+    box-sizing: border-box;
+}
+.vs-anular-motivo__input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,.15);
+}
+
 .vs-btn-confirmar-anular {
     display: inline-flex;
     align-items: center;
@@ -1127,6 +1201,11 @@
     border-color: rgba(251,191,36,.25);
     color: #fbbf24;
 }
+.dark .vs-badge--despacho-dir {
+    background: rgba(251,191,36,.08);
+    border-color: rgba(251,191,36,.2);
+    color: #fbbf24;
+}
 .dark .vs-badge--credito {
     background: rgba(217,119,6,.1);
     border-color: rgba(217,119,6,.3);
@@ -1143,6 +1222,12 @@
 .dark .vs-anular-alerta svg           { color: #fb923c; }
 .dark .vs-anular-alerta__titulo       { color: #fdba74; }
 .dark .vs-anular-alerta__texto        { color: #fb923c; }
+
+.dark .vs-anular-sunat-aviso   { background: #1e3a5f; border-color: #1d4ed8; }
+.dark .vs-anular-sunat-aviso svg { color: #93c5fd; }
+.dark .vs-anular-sunat__titulo { color: #93c5fd; }
+.dark .vs-anular-sunat__texto  { color: #bfdbfe; }
+.dark .vs-anular-motivo__input { background: #1f2937; border-color: #374151; color: #f9fafb; }
 
 /* Pago pendiente en modal detalle */
 .dark .vs-modal__pago-item--pendiente {
@@ -1177,3 +1262,250 @@
     background: rgba(167,139,250,.1);
     border-color: rgba(167,139,250,.5);
 }
+
+/* ══════════════════════════════════════════════════════════
+   MODAL CONVERTIR TICKET → BOLETA / FACTURA
+   ══════════════════════════════════════════════════════════ */
+
+/* Contenedor modal */
+.vs-modal--convertir {
+    width: 100%;
+    max-width: 500px;
+    max-height: 92vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* Selector Boleta / Factura */
+.vs-conv-tipo-wrap {
+    display: flex;
+    gap: .625rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--vs-border);
+}
+.vs-conv-tipo-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    padding: .625rem 1rem;
+    border: 2px solid var(--vs-border);
+    border-radius: .5rem;
+    background: transparent;
+    color: var(--vs-text-muted);
+    font-size: .875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s;
+}
+.vs-conv-tipo-btn:hover {
+    border-color: #facc15;
+    color: var(--vs-text);
+}
+.vs-conv-tipo-btn--active {
+    background: #fefce8;
+    border-color: #eab308;
+    color: #854d0e;
+    font-weight: 600;
+}
+
+/* Sección cliente */
+.vs-conv-section {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--vs-border);
+}
+.vs-conv-label {
+    display: block;
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--vs-text-muted);
+    margin-bottom: .5rem;
+}
+.vs-conv-search-wrap {
+    position: relative;
+}
+.vs-conv-search-row {
+    display: flex;
+    align-items: center;
+    gap: .375rem;
+}
+.vs-conv-input {
+    flex: 1;
+    height: 2.375rem;
+    padding: 0 .75rem;
+    border: 1.5px solid var(--vs-border);
+    border-radius: .375rem;
+    background: var(--vs-bg);
+    color: var(--vs-text);
+    font-size: .875rem;
+    outline: none;
+    transition: border-color .15s;
+}
+.vs-conv-input:focus {
+    border-color: #eab308;
+    box-shadow: 0 0 0 3px rgba(234,179,8,.12);
+}
+.vs-conv-clear-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1.5px solid var(--vs-border);
+    border-radius: .375rem;
+    background: transparent;
+    color: var(--vs-text-muted);
+    cursor: pointer;
+    transition: all .15s;
+    flex-shrink: 0;
+}
+.vs-conv-clear-btn:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+.vs-conv-cliente-sel {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-top: .5rem;
+    padding: .5rem .75rem;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: .375rem;
+    font-size: .8125rem;
+    color: #166534;
+}
+.vs-conv-sugerencias {
+    position: absolute;
+    top: calc(100% + .25rem);
+    left: 0;
+    right: 0;
+    background: var(--vs-bg);
+    border: 1.5px solid var(--vs-border);
+    border-radius: .5rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    max-height: 11rem;
+    overflow-y: auto;
+    z-index: 60;
+    list-style: none;
+    margin: 0;
+    padding: .25rem;
+}
+.vs-conv-sugerencias li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem .75rem;
+    border-radius: .375rem;
+    cursor: pointer;
+    transition: background .12s;
+}
+.vs-conv-sugerencias li:hover {
+    background: #fef9c3;
+}
+.vs-conv-sug-nombre {
+    font-size: .875rem;
+    font-weight: 500;
+    color: var(--vs-text);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.vs-conv-sug-doc {
+    font-size: .75rem;
+    color: var(--vs-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.vs-conv-sug-empty {
+    padding: .625rem .75rem;
+    font-size: .8125rem;
+    color: var(--vs-text-muted);
+    text-align: center;
+}
+
+/* Preview IGV */
+.vs-conv-igv-preview {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    padding: .875rem 1.5rem;
+    background: var(--vs-bg-subtle);
+    border-bottom: 1px solid var(--vs-border);
+}
+.vs-conv-igv-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: .8125rem;
+    color: var(--vs-text-muted);
+}
+.vs-conv-igv-row span:last-child {
+    font-variant-numeric: tabular-nums;
+}
+.vs-conv-igv-row--total {
+    font-weight: 700;
+    font-size: .9375rem;
+    color: var(--vs-text);
+    margin-top: .25rem;
+    padding-top: .375rem;
+    border-top: 1px solid var(--vs-border);
+}
+
+/* Botón confirmar */
+.vs-btn-confirmar-convertir {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    padding: .625rem 1.25rem;
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    border-radius: .5rem;
+    font-size: .875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, opacity .15s;
+}
+.vs-btn-confirmar-convertir:hover {
+    background: #15803d;
+}
+.vs-btn-confirmar-convertir:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+
+/* ── Dark mode ── */
+.dark .vs-conv-tipo-btn { border-color: #374151; color: #9ca3af; }
+.dark .vs-conv-tipo-btn:hover { border-color: #ca8a04; color: #f9fafb; }
+.dark .vs-conv-tipo-btn--active {
+    background: rgba(234,179,8,.12);
+    border-color: #ca8a04;
+    color: #fde047;
+}
+.dark .vs-conv-input {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+}
+.dark .vs-conv-input:focus {
+    border-color: #ca8a04;
+    box-shadow: 0 0 0 3px rgba(202,138,4,.15);
+}
+.dark .vs-conv-clear-btn { border-color: #374151; color: #9ca3af; }
+.dark .vs-conv-clear-btn:hover { background: rgba(220,38,38,.15); border-color: #ef4444; color: #f87171; }
+.dark .vs-conv-cliente-sel { background: rgba(22,163,74,.1); border-color: rgba(22,163,74,.3); color: #4ade80; }
+.dark .vs-conv-sugerencias { background: #1f2937; border-color: #374151; }
+.dark .vs-conv-sugerencias li:hover { background: rgba(234,179,8,.1); }
+.dark .vs-conv-sug-nombre { color: #f9fafb; }
+.dark .vs-conv-sug-doc { color: #6b7280; }
+.dark .vs-conv-igv-preview { background: #111827; }
+.dark .vs-conv-igv-row--total { border-color: #374151; color: #f9fafb; }

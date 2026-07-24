@@ -120,8 +120,9 @@ body {
     $clienteTipoDoc = strtoupper($orden?->cliente_tipo_doc ?: $venta->cliente_tipo_doc ?: 'Doc');
     $clienteTel     = $orden?->cliente_telefono ?: $venta->cliente?->telefono;
 
-    $depPrvDst  = $orden?->notas_internas;
-    $dirAgencia = $orden?->direccion_agencia;
+    $depPrvDst       = $orden?->notas_internas;
+    $dirAgencia      = $orden?->direccion_agencia;
+    $despachoDireccion = $venta->despacho_direccion;
 @endphp
 <div class="wrap">
 {{-- ══ TÍTULO ══ --}}
@@ -156,7 +157,7 @@ body {
     @endif
 </table>
 
-@if ($depPrvDst || $dirAgencia)
+@if ($depPrvDst || $dirAgencia || $despachoDireccion)
 <div class="sep-dashed"></div>
 
 {{-- ══ DATOS DE ENVÍO ══ --}}
@@ -171,6 +172,12 @@ body {
 <div class="envio-campo">
     <div class="envio-label">Agencia:</div>
     <div class="envio-valor">{{ $dirAgencia }}</div>
+</div>
+@endif
+@if ($despachoDireccion && !$depPrvDst && !$dirAgencia)
+<div class="envio-campo">
+    <div class="envio-label">Dirección / Lugar:</div>
+    <div class="envio-valor">{{ $despachoDireccion }}</div>
 </div>
 @endif
 @endif

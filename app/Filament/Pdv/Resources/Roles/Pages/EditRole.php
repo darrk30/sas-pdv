@@ -19,15 +19,22 @@ class EditRole extends EditRecord
     protected function afterSave(): void
     {
         $this->sincronizarPermisos($this->record);
+
+        // Forzar recarga completa de página para que el menú SPA se actualice
+        $this->js('window.location.href = window.location.href');
     }
 
     private function sincronizarPermisos($role): void
     {
         $empresaId = Filament::getTenant()?->id;
-        app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($empresaId);
+        $registrar = app(\Spatie\Permission\PermissionRegistrar::class);
+        $registrar->setPermissionsTeamId($empresaId);
 
         $permisosSeleccionados = $this->recogerPermisosDelForm();
         $role->syncPermissions($permisosSeleccionados);
+
+        // Forzar limpieza del caché de permisos (belt-and-suspenders)
+        $registrar->forgetCachedPermissions();
     }
 
     private function recogerPermisosDelForm(): \Illuminate\Support\Collection

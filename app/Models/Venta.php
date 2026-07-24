@@ -59,6 +59,7 @@ class Venta extends Model
         'resumen_sunat_id',
         'estado',
         'estado_despacho',
+        'despacho_direccion',
         'notas',
     ];
 

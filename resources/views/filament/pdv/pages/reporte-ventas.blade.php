@@ -4,7 +4,6 @@
 
 @php
     $resumen = $this->getResumen();
-    $ventas  = $this->getVentas();
 @endphp
 
 <div class="vs-root">
@@ -44,6 +43,20 @@
             </div>
         </div>
 
+        @if(($resumen['descuentoTotal'] ?? 0) > 0)
+        <div class="vs-card vs-card--red">
+            <div class="vs-card__icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0c1.1.128 1.907 1.077 1.907 2.185ZM9.75 9.75c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75v-.008a.75.75 0 0 0-.75-.75H10.5a.75.75 0 0 0-.75.75v.008Zm4.5 4.5c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75v-.008a.75.75 0 0 0-.75-.75H15a.75.75 0 0 0-.75.75v.008Z"/>
+                </svg>
+            </div>
+            <div class="vs-card__body">
+                <span class="vs-card__label">Descuentos</span>
+                <span class="vs-card__value">- S/ {{ number_format($resumen['descuentoTotal'], 2) }}</span>
+            </div>
+        </div>
+        @endif
+
         @if(($resumen['creditoPendiente'] ?? 0) > 0)
         <div class="vs-card vs-card--amber">
             <div class="vs-card__icon">
@@ -54,6 +67,20 @@
             <div class="vs-card__body">
                 <span class="vs-card__label">Crédito pendiente</span>
                 <span class="vs-card__value">S/ {{ number_format($resumen['creditoPendiente'], 2) }}</span>
+            </div>
+        </div>
+        @endif
+
+        @if(($resumen['cortesias'] ?? 0) > 0)
+        <div class="vs-card vs-card--amber">
+            <div class="vs-card__icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
+                </svg>
+            </div>
+            <div class="vs-card__body">
+                <span class="vs-card__label">Cortesías</span>
+                <span class="vs-card__value">{{ $resumen['cortesias'] }} ventas</span>
             </div>
         </div>
         @endif
@@ -130,174 +157,8 @@
 
     </div>
 
-    {{-- ══ TABLA DE VENTAS ══ --}}
-    <div class="vs-panel">
-
-        @if($ventas->isEmpty())
-            <div class="vs-empty">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0c1.1.128 1.907 1.077 1.907 2.185Z"/>
-                </svg>
-                <p>No se encontraron ventas</p>
-            </div>
-        @else
-
-            <div class="vs-table-scroll">
-                <table class="vs-vtable">
-                    <colgroup>
-                        <col class="vs-col-comprobante">
-                        <col class="rv-col-fecha">
-                        <col>{{-- cliente: espacio libre --}}
-                        <col class="vs-col-items">
-                        <col class="vs-col-metodo">
-                        <col class="vs-col-total">
-                        <col class="vs-col-estado">
-                        <col class="vs-col-accion">
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th>Comprobante</th>
-                            <th>Fecha</th>
-                            <th>Cliente</th>
-                            <th>Ítems</th>
-                            <th>Método de pago</th>
-                            <th class="vs-th-right">Total</th>
-                            <th>Estado</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($ventas as $venta)
-                            @php
-                                $esAnulada   = $venta->estado === \App\Enums\EstadoVenta::Anulada;
-                                $esDespacho  = $venta->estado_despacho === \App\Enums\EstadoVenta::PendienteEnvio;
-                                $metodosTxt  = $venta->pagos
-                                    ->filter(fn($p) =>
-                                        $p->metodoPago?->condicion_pago !== \App\Enums\CondicionPago::Credito
-                                        || $venta->estado_pago === 'pendiente')
-                                    ->map(fn($p) => $p->metodoPago?->nombre)
-                                    ->filter()->unique()->implode(', ');
-                                $comprobante = ($venta->serie?->serie ?? '---') . '-' . $venta->correlativo;
-                            @endphp
-                            <tr class="vs-vrow {{ $esAnulada ? 'vs-vrow--anulada' : '' }}" wire:key="rv-{{ $venta->id }}">
-
-                                {{-- Comprobante --}}
-                                <td>
-                                    <div class="vs-cell-comprobante">
-                                        <span class="vs-comprobante">{{ $comprobante }}</span>
-                                        @if($esDespacho)
-                                            <span class="vs-badge vs-badge--despacho" style="margin-top:.2rem">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="10" height="10">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/>
-                                                </svg>
-                                                Envío
-                                            </span>
-                                        @endif
-                                    </div>
-                                </td>
-
-                                {{-- Fecha --}}
-                                <td>
-                                    <div class="rv-fecha">
-                                        <span class="rv-fecha__dia">{{ $venta->created_at->format('d/m/Y') }}</span>
-                                        <span class="rv-fecha__hora">{{ $venta->created_at->format('H:i') }}</span>
-                                    </div>
-                                </td>
-
-                                {{-- Cliente --}}
-                                <td>
-                                    <div class="vs-cell-cliente">
-                                        <span class="vs-cliente-nombre">{{ $venta->cliente_nombre }}</span>
-                                        <span class="vs-cliente-doc">{{ strtoupper($venta->cliente_tipo_doc) }} {{ $venta->cliente_num_doc }}</span>
-                                    </div>
-                                </td>
-
-                                {{-- Ítems --}}
-                                <td class="vs-td-center">
-                                    <span class="vs-items-count">{{ $venta->detalles_count }}</span>
-                                </td>
-
-                                {{-- Método --}}
-                                <td>
-                                    <span class="vs-metodo-text">{{ $metodosTxt ?: '—' }}</span>
-                                </td>
-
-                                {{-- Total --}}
-                                <td class="vs-td-right">
-                                    <span class="vs-total {{ $esAnulada ? 'vs-total--anulada' : '' }}">
-                                        S/ {{ number_format($venta->total, 2) }}
-                                    </span>
-                                </td>
-
-                                {{-- Estado --}}
-                                <td>
-                                    @if($esAnulada)
-                                        <span class="vs-badge vs-badge--anulada">Anulada</span>
-                                    @else
-                                        <span class="vs-badge vs-badge--ok">Completada</span>
-                                        @if(($venta->estado_pago ?? 'pagado') === 'pendiente')
-                                            <span class="vs-badge vs-badge--credito" style="display:block;margin-top:.2rem">Crédito</span>
-                                        @elseif(($venta->estado_pago ?? 'pagado') === 'parcial')
-                                            <span class="vs-badge vs-badge--credito" style="display:block;margin-top:.2rem">Pago parcial</span>
-                                            <span class="vs-parcial-info">
-                                                <span class="vs-parcial-info__label">Pagado</span>
-                                                <span class="vs-parcial-info__val">S/ {{ number_format($venta->monto_pagado, 2) }}</span>
-                                                <span class="vs-parcial-info__label">Saldo</span>
-                                                <span class="vs-parcial-info__val">S/ {{ number_format($venta->saldo_pendiente, 2) }}</span>
-                                            </span>
-                                        @endif
-                                    @endif
-                                </td>
-
-                                {{-- Acciones --}}
-                                <td class="vs-td-right">
-                                    <div class="vs-acciones">
-                                        <button class="vs-btn-detalle" wire:click="abrirDetalle({{ $venta->id }})">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.641 0-8.573-3.007-9.964-7.178Z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-                                            </svg>
-                                            Ver
-                                        </button>
-                                        <a href="{{ route('pdv.ticket.venta', $venta->id) }}?print=1"
-                                           target="_blank"
-                                           class="vs-btn-ticket"
-                                           title="Ver e imprimir ticket">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z"/>
-                                            </svg>
-                                        </a>
-                                        <a href="{{ route('pdv.ticket.venta.pdf', $venta->id) }}"
-                                           class="vs-btn-ticket-pdf"
-                                           title="Descargar PDF">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/>
-                                            </svg>
-                                        </a>
-                                        @if(! $esAnulada)
-                                            <button class="vs-btn-anular" wire:click="abrirAnular({{ $venta->id }})">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
-                                                </svg>
-                                            </button>
-                                        @endif
-                                    </div>
-                                </td>
-
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>{{-- /vs-table-scroll --}}
-
-            @if($ventas->hasPages())
-                <div class="vs-pagination">
-                    {{ $ventas->links('vendor.pagination.pdv') }}
-                </div>
-            @endif
-
-        @endif
-    </div>
+    {{-- ══ TABLA (Filament) ══ --}}
+    {{ $this->table }}
 
 </div>{{-- /vs-root --}}
 
@@ -442,9 +303,10 @@
 {{-- ══ MODAL ANULAR ══ --}}
 @if($modalAnular)
     @php
-        $va         = $this->getVentaAnular();
-        $tieneStock = $va ? $this->tieneItemsConStock() : false;
-        $codAnular  = $va ? (($va->serie?->serie ?? '---') . '-' . $va->correlativo) : '';
+        $va           = $this->getVentaAnular();
+        $tieneStock   = $va ? $this->tieneItemsConStock() : false;
+        $codAnular    = $va ? (($va->serie?->serie ?? '---') . '-' . $va->correlativo) : '';
+        $necesitaBaja = $va ? $this->necesitaBajaSunat() : false;
     @endphp
     @if($va)
     <div class="vs-overlay" wire:key="rv-modal-anular-{{ $va->id }}">
@@ -497,6 +359,30 @@
                     <p class="vs-anular-sin-stock">Ningún producto de esta venta tiene control de stock.</p>
                 @endif
 
+                {{-- SUNAT: baja si el comprobante ya fue enviado --}}
+                @if($necesitaBaja)
+                    <div class="vs-anular-sunat-aviso">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/>
+                        </svg>
+                        <div>
+                            <p class="vs-anular-sunat__titulo">Se enviará Comunicación de Baja a SUNAT</p>
+                            <p class="vs-anular-sunat__texto">Este comprobante ya fue registrado ante SUNAT ({{ $va->estado_sunat?->getLabel() }}). Se generará y enviará automáticamente una Baja (RA).</p>
+                        </div>
+                    </div>
+                    <div class="vs-anular-motivo">
+                        <label class="vs-anular-motivo__label" for="rv-motivo-baja">Motivo de anulación (SUNAT)</label>
+                        <input
+                            type="text"
+                            id="rv-motivo-baja"
+                            class="vs-anular-motivo__input"
+                            wire:model="motivoBaja"
+                            placeholder="Error en emisión"
+                            maxlength="100"
+                        />
+                    </div>
+                @endif
+
             </div>
 
             <div class="vs-modal__footer vs-modal__footer--anular">
@@ -514,5 +400,116 @@
     </div>
     @endif
 @endif
+
+{{-- ══ IFRAME IMPRESIÓN EN PÁGINA ══ --}}
+<div x-data="vsTicketPrint()"
+     @pdv-imprimir-ticket.window="cargar($event.detail.url)">
+    <iframe id="vs-ticket-frame"
+        style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;opacity:0;"
+        @load="onLoad()"></iframe>
+</div>
+
+{{-- ══ MODAL CONVERTIR TICKET ══ --}}
+@if($modalConvertir)
+<div class="vs-overlay" wire:key="modal-convertir-rv">
+    <div class="vs-overlay__backdrop" wire:click="cerrarConvertir"></div>
+    <div class="vs-modal vs-modal--convertir">
+
+        <div class="vs-modal__header">
+            <div>
+                <h3 class="vs-modal__titulo">Emitir comprobante electrónico</h3>
+                <p class="vs-modal__subtitulo">Ticket <strong>{{ $convertirCodigo }}</strong> · S/ {{ number_format($convertirTotal, 2) }}</p>
+            </div>
+            <button class="vs-modal__cerrar" wire:click="cerrarConvertir">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <div class="vs-conv-tipo-wrap">
+            <button class="vs-conv-tipo-btn {{ $convertirTipo === 'boleta' ? 'vs-conv-tipo-btn--active' : '' }}" wire:click="$set('convertirTipo', 'boleta')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0c1.1.128 1.907 1.077 1.907 2.185Z"/></svg>
+                Boleta
+            </button>
+            <button class="vs-conv-tipo-btn {{ $convertirTipo === 'factura' ? 'vs-conv-tipo-btn--active' : '' }}" wire:click="$set('convertirTipo', 'factura')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+                Factura
+            </button>
+        </div>
+
+        <div class="vs-conv-section">
+            <label class="vs-conv-label">{{ $convertirTipo === 'factura' ? 'Cliente (RUC requerido)' : 'Cliente (opcional)' }}</label>
+            <div class="vs-conv-search-wrap">
+                <div class="vs-conv-search-row">
+                    <input type="text" class="vs-conv-input" wire:model.live="convertirBusqueda"
+                        placeholder="Buscar por nombre o documento…" autocomplete="off"/>
+                    @if($convertirClienteId)
+                        <button class="vs-conv-clear-btn" wire:click="limpiarConvertirCliente" title="Quitar cliente">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                        </button>
+                    @endif
+                </div>
+                @if($convertirClienteId)
+                    <div class="vs-conv-cliente-sel">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+                        <span><strong>{{ $convertirClienteNombre }}</strong> · {{ strtoupper($convertirClienteTipoDoc) }} {{ $convertirClienteNumDoc }}</span>
+                    </div>
+                @endif
+                @if($convertirMostrarSug)
+                    @php $sug = $this->getConvertirSugeridos(); @endphp
+                    @if($sug->isNotEmpty())
+                        <ul class="vs-conv-sugerencias">
+                            @foreach($sug as $s)
+                                <li wire:click="seleccionarConvertirCliente({{ $s->id }})" wire:key="sug-rv-{{ $s->id }}">
+                                    <span class="vs-conv-sug-nombre">{{ $s->nombre_completo }}</span>
+                                    <span class="vs-conv-sug-doc">{{ strtoupper($s->tipo_documento->value) }} {{ $s->numero_documento }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <p class="vs-conv-sug-empty">Sin resultados</p>
+                    @endif
+                @endif
+            </div>
+        </div>
+
+        <div class="vs-conv-igv-preview">
+            <div class="vs-conv-igv-row"><span>Op. Gravadas</span><span>S/ {{ number_format($convertirOpGravadas, 2) }}</span></div>
+            <div class="vs-conv-igv-row"><span>IGV ({{ $convertirIgvPct }}%)</span><span>S/ {{ number_format($convertirIgv, 2) }}</span></div>
+            <div class="vs-conv-igv-row vs-conv-igv-row--total"><span>Total</span><span>S/ {{ number_format($convertirTotal, 2) }}</span></div>
+        </div>
+
+        <div class="vs-modal__footer">
+            <button class="vs-modal__btn-cerrar" wire:click="cerrarConvertir">Cancelar</button>
+            <button class="vs-btn-confirmar-convertir" wire:click="confirmarConvertir" wire:loading.attr="disabled">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                <span wire:loading.remove wire:target="confirmarConvertir">Emitir {{ $convertirTipo }}</span>
+                <span wire:loading wire:target="confirmarConvertir">Procesando…</span>
+            </button>
+        </div>
+
+    </div>
+</div>
+@endif
+
+<script>
+function vsTicketPrint() {
+    return {
+        pendingPrint: false,
+        cargar(url) {
+            this.pendingPrint = true;
+            const iframe = document.getElementById('vs-ticket-frame');
+            iframe.src = url;
+        },
+        onLoad() {
+            if (!this.pendingPrint) return;
+            this.pendingPrint = false;
+            const iframe = document.getElementById('vs-ticket-frame');
+            if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.print();
+            }
+        }
+    };
+}
+</script>
 
 </x-filament-panels::page>

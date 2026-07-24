@@ -147,7 +147,7 @@ class ReporteProductosPage extends Page implements HasForms
                 COALESCE(SUM(vd.costo_total), 0)             AS costo,
                 COALESCE(SUM(vd.total - vd.costo_total), 0)  AS utilidad
             ")
-            ->groupBy('vd.descripcion', 'categoria', 'unidad')
+            ->groupBy('vd.descripcion', \DB::raw("COALESCE(c.nombre, 'Sin categoría')"), \DB::raw("COALESCE(u.simbolo, 'und')"))
             ->orderByDesc($orderCol)
             ->paginate(50);
     }

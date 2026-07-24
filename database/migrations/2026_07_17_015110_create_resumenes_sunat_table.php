@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
 
-            $table->enum('tipo', ['diario', 'bajas']);
+            $table->string('tipo', 20);  // TipoResumen: diario|bajas|notas_diario|notas_bajas
             $table->date('fecha_referencia');
             $table->string('correlativo', 30);   // RC-20260410-001
 

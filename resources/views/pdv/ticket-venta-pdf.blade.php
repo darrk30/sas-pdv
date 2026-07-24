@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <style>
-@page { margin: 4mm 3mm; }
+@page { margin: 5mm 5mm; }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -122,6 +122,43 @@ body {
     border-top: 1px dashed #000;
     line-height: 1.5;
 }
+
+/* ── QR y letras ──────────────────────────────────── */
+.letras {
+    font-size: 7.5pt;
+    font-style: italic;
+    margin: 2mm 0 1mm;
+    line-height: 1.4;
+}
+.qr-wrap {
+    text-align: center;
+    margin: 2mm 0;
+}
+.qr-wrap img {
+    width: 40mm;
+    height: 40mm;
+}
+.qr-label {
+    text-align: center;
+    font-size: 7pt;
+    color: #444;
+    margin-top: 1mm;
+}
+.hash-fe {
+    font-size: 6.5pt;
+    color: #555;
+    font-family: 'Courier New', monospace;
+    word-break: break-all;
+    margin-top: 1mm;
+}
+.nota-fe {
+    text-align: center;
+    font-size: 7pt;
+    font-style: italic;
+    margin-top: 1mm;
+    line-height: 1.4;
+    color: #333;
+}
 </style>
 </head>
 <body>
@@ -135,12 +172,15 @@ body {
     $esTicket    = $tipoEnum === TipoComprobante::Ticket;
     $esSin       = $tipoEnum === TipoComprobante::SinComprobante || $tipoEnum === null;
     $tieneIgv    = ($esFactura || $esBoleta) && (float) $venta->igv > 0;
+    $esFE        = ($esFactura || $esBoleta) && ! empty($venta->qr_data);
 
     $clienteTel = $venta->cliente?->telefono;
     $clienteDir = $venta->cliente?->direccion ?? null;
 
     // DomPDF necesita rutas absolutas de disco para imágenes
     $logoPath = $empresa->logo ? public_path('storage/' . $empresa->logo) : null;
+    // $qrBase64 viene del servicio cuando $esFE; sino null
+    $qrBase64 = $qrBase64 ?? null;
 @endphp
 
 {{-- ══ CABECERA EMPRESA ══ --}}
@@ -309,5 +349,29 @@ body {
     un comprobante de pago electrónico.
 </div>
 @endif
+
+{{-- ══ QR + LETRAS (solo boleta/factura electrónica) ══ --}}
+@if ($esFE && $qrBase64)
+<div class="sep-dashed"></div>
+
+@if ($venta->total_letras)
+<div class="letras">Son: {{ $venta->total_letras }}</div>
+@endif
+
+<div class="qr-wrap">
+    <img src="{{ $qrBase64 }}" alt="QR SUNAT">
+</div>
+<div class="qr-label">Consulte en sunat.gob.pe</div>
+
+@if ($venta->hash)
+<div class="hash-fe">Hash: {{ $venta->hash }}</div>
+@endif
+
+<div class="nota-fe">
+    Representación impresa de<br>
+    {{ $esFactura ? 'FACTURA ELECTRÓNICA' : 'BOLETA DE VENTA ELECTRÓNICA' }}
+</div>
+@endif
+
 </body>
 </html>

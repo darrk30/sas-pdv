@@ -6,6 +6,7 @@ use App\Services\FacturadorService;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -54,9 +55,10 @@ class MiEmpresaPage extends Page implements HasForms
                 'impresion_comprobante_directo',
                 'igv_porcentaje',
             ]),
-            'sol_user'       => $facturacion?->sol_user,
-            'facturador_url' => $facturacion?->facturador_url,
-            'produccion'     => $facturacion?->produccion ?? false,
+            'sol_user'              => $facturacion?->sol_user,
+            'facturador_url'        => $facturacion?->facturador_url,
+            'facturador_api_token'  => $facturacion?->facturador_api_token,
+            'produccion'            => $facturacion?->produccion ?? false,
         ]);
     }
 
@@ -183,8 +185,7 @@ class MiEmpresaPage extends Page implements HasForms
                                                 'activo'   => 'Activo — los clientes pueden ver el catálogo',
                                                 'inactivo' => 'Inactivo — el catálogo está oculto al público',
                                             ])
-                                            ->native(false)
-                                            ->required(),
+                                            ->native(false),
                                     ]),
                             ]),
 
@@ -235,8 +236,7 @@ class MiEmpresaPage extends Page implements HasForms
 
                                         TextInput::make('facturador_url')
                                             ->label('URL del Facturador')
-                                            ->url()
-                                            ->placeholder('http://facturador.miempresa.com'),
+                                            ->placeholder('https://facturador.miempresa.com'),
 
                                         TextInput::make('facturador_api_token')
                                             ->label('Token API del Facturador')
@@ -244,13 +244,22 @@ class MiEmpresaPage extends Page implements HasForms
                                             ->revealable()
                                             ->helperText('Dejar en blanco para no cambiar'),
 
+                                        Placeholder::make('cert_estado')
+                                            ->label('Certificado actual')
+                                            ->content(function (): string {
+                                                $path = Filament::getTenant()->facturacion?->cert_path;
+                                                return $path
+                                                    ? '✓ ' . basename($path)
+                                                    : 'Sin certificado configurado.';
+                                            })
+                                            ->columnSpanFull(),
+
                                         FileUpload::make('cert_archivo')
-                                            ->label('Certificado digital (.pem)')
-                                            ->helperText('Sube el .pem para cargarlo o actualizarlo en el facturador.')
+                                            ->label('Subir / reemplazar certificado (.pem)')
+                                            ->helperText('Deja vacío si no quieres cambiar el certificado actual.')
                                             ->disk('local')
                                             ->directory('empresas/certs')
                                             ->visibility('private')
-                                            ->acceptedFileTypes(['application/x-pem-file', 'application/octet-stream', 'text/plain'])
                                             ->maxSize(512)
                                             ->columnSpanFull(),
 
@@ -276,10 +285,22 @@ class MiEmpresaPage extends Page implements HasForms
 
     public function save(): void
     {
-        $data    = $this->form->getState();
+        try {
+            $data = $this->form->getState();
+        } catch (\Filament\Support\Exceptions\Halt $e) {
+            return; // Filament detiene el proceso (ej. validación Halt)
+        } catch (\Throwable $e) {
+            Notification::make()
+                ->title('Error al guardar')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+            return;
+        }
+
         $empresa = Filament::getTenant();
 
-        $credencialesKeys = ['sol_user', 'sol_pass', 'facturador_url', 'facturador_api_token', 'cert_archivo', 'cert_password', 'produccion'];
+        $credencialesKeys = ['sol_user', 'sol_pass', 'facturador_url', 'facturador_api_token', 'cert_archivo', 'cert_password', 'produccion', 'cert_estado'];
         $credenciales     = array_intersect_key($data, array_flip($credencialesKeys));
         $empresaData      = array_diff_key($data, array_flip($credencialesKeys));
 
@@ -287,9 +308,11 @@ class MiEmpresaPage extends Page implements HasForms
 
         // Si se subió un cert nuevo, guardamos su path como cert_path
         $certArchivo = $credenciales['cert_archivo'] ?? null;
-        unset($credenciales['cert_archivo']);
+        unset($credenciales['cert_archivo'], $credenciales['cert_estado']);
         if ($certArchivo) {
             $credenciales['cert_path'] = $certArchivo;
+            // Limpiar el campo para que Filepond no intente previsualizar un archivo privado
+            $this->data['cert_archivo'] = null;
         }
 
         // Excluir vacíos (contraseñas en blanco = sin cambio)
@@ -304,7 +327,8 @@ class MiEmpresaPage extends Page implements HasForms
             if (! empty($credencialesGuardar)) {
                 $facturacionExistente->update($credencialesGuardar);
             }
-        } elseif (! empty($credencialesGuardar['sol_user']) && ! empty($credencialesGuardar['facturador_url'])) {
+        } elseif (! empty($credencialesGuardar['facturador_url']) || ! empty($credencialesGuardar['facturador_api_token'])) {
+            // Crear con URL o token como mínimo — sol_user y cert son nullable
             $empresa->facturacion()->create([
                 'empresa_id' => $empresa->id,
                 ...$credencialesGuardar,

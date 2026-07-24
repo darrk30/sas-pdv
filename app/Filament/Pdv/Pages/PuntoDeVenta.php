@@ -27,6 +27,7 @@ use App\Models\Variante;
 use App\Models\Venta;
 use App\Models\VentaDetalle;
 use App\Models\VentaPago;
+use App\Events\VentaCompletada;
 use App\Services\KardexService;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -35,6 +36,7 @@ use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use UnitEnum;
@@ -104,6 +106,15 @@ class PuntoDeVenta extends Page
     public array $pagosAgregados = [];
     public string $descuentoInput = '0';
     public bool $despachoRequerido = false;
+    public string $despachoDireccion = '';
+
+    // ── Modal impresión post-venta ─────────────────────────────────────────────
+    public bool   $modalImpresion   = false;
+    public ?int   $ventaIdImprimir  = null;
+    public string $ventaNumeroImpr  = '';
+    public float  $ventaTotalImpr   = 0.0;
+    public string $wspTelefono      = '';
+    public string $wspShareUrl      = '';
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -388,6 +399,7 @@ class PuntoDeVenta extends Page
 
         $query = Producto::where('empresa_id', $empresaId)
             ->where('estado', 'activo')
+            ->where('visible_en_carta', true)
             ->with([
                 'variantesActivas' => fn($q) => $q->with('inventario'),
                 'inventario',
@@ -973,13 +985,14 @@ class PuntoDeVenta extends Page
             ->values()
             ->toArray();
 
-        $this->metodoPagoId      = null;
-        $this->montoPagoInput    = '';
-        $this->pagoReferencia    = '';
-        $this->pagosAgregados    = [];
-        $this->descuentoInput    = '0';
-        $this->despachoRequerido = false;
-        $this->modalPago         = true;
+        $this->metodoPagoId       = null;
+        $this->montoPagoInput     = '';
+        $this->pagoReferencia     = '';
+        $this->pagosAgregados     = [];
+        $this->descuentoInput     = '0';
+        $this->despachoRequerido  = false;
+        $this->despachoDireccion  = '';
+        $this->modalPago          = true;
     }
 
     public function cerrarModalSinSesion(): void
@@ -997,6 +1010,7 @@ class PuntoDeVenta extends Page
         $this->pagosAgregados         = [];
         $this->descuentoInput         = '0';
         $this->despachoRequerido      = false;
+        $this->despachoDireccion      = '';
     }
 
     public function seleccionarMetodoPago(int $id): void
@@ -1165,6 +1179,7 @@ class PuntoDeVenta extends Page
         $clienteTipoDoc    = $this->clienteTipoDoc;
         $serieId           = $this->serieId;
         $despachoRequerido = $this->despachoRequerido;
+        $despachoDireccion = trim($this->despachoDireccion);
 
         // ── Ticket: sin IGV ───────────────────────────────────────────────
         $esTicket    = $this->esTicket();
@@ -1182,13 +1197,16 @@ class PuntoDeVenta extends Page
         $tipoPagoVenta = count($pagosCredito) > 0 ? TipoPago::Credito : TipoPago::Contado;
         $estadoPago    = $saldoPendiente > 0.01 ? 'pendiente' : 'pagado';
 
+        $venta = null;
+
         try {
             DB::transaction(function () use (
                 $empresaId, $descuento, $totalConDescuento,
                 $opGravadas, $opInafectas, $igv, $tasaIgv,
                 $montoPagado, $saldoPendiente, $tipoPagoVenta, $estadoPago,
                 $pagosContado, $pagosCredito, $carrito,
-                $clienteId, $clienteNombre, $clienteTipoDoc, $serieId, $despachoRequerido
+                $clienteId, $clienteNombre, $clienteTipoDoc, $serieId, $despachoRequerido, $despachoDireccion,
+                &$venta
             ) {
                 $serie = Serie::lockForUpdate()->findOrFail($serieId);
                 $nuevoNumero = $serie->numero + 1;
@@ -1231,8 +1249,9 @@ class PuntoDeVenta extends Page
                     'monto_pagado'     => $montoPagado,
                     'saldo_pendiente'  => $saldoPendiente,
                     'estado_pago'      => $estadoPago,
-                    'estado'           => EstadoVenta::Completada,
-                    'estado_despacho'  => $despachoRequerido ? 'pendiente_envio' : null,
+                    'estado'              => EstadoVenta::Completada,
+                    'estado_despacho'     => $despachoRequerido ? 'pendiente_envio' : null,
+                    'despacho_direccion'  => $despachoRequerido && $despachoDireccion !== '' ? $despachoDireccion : null,
                 ]);
 
                 $costoTotalVenta = 0.0;
@@ -1365,7 +1384,9 @@ class PuntoDeVenta extends Page
                                         "Stock insuficiente para \"{$item['nombre']}\": disponible {$stockAntes}, solicitado {$cantidad}."
                                     );
                                 }
-                                $stockDespues = max(0, $stockAntes - $cantidad);
+                                $stockDespues = $producto->venta_sin_stock
+                                    ? $stockAntes - $cantidad
+                                    : max(0, $stockAntes - $cantidad);
                                 $inv->update([
                                     'stock_real'    => $stockDespues,
                                     'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
@@ -1407,7 +1428,9 @@ class PuntoDeVenta extends Page
                                             "Stock insuficiente para \"{$item['nombre']}\": disponible {$stockAntes}, solicitado {$cantidad}."
                                         );
                                     }
-                                    $stockDespues = max(0, $stockAntes - $cantidad);
+                                    $stockDespues = $prodVariante->venta_sin_stock
+                                        ? $stockAntes - $cantidad
+                                        : max(0, $stockAntes - $cantidad);
                                     $inv->update([
                                     'stock_real'    => $stockDespues,
                                     'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
@@ -1460,7 +1483,9 @@ class PuntoDeVenta extends Page
                                                     "Stock insuficiente en combo \"{$item['nombre']}\": disponible {$stockAntes}, solicitado {$cantidadDetalle}."
                                                 );
                                             }
-                                            $stockDespues = max(0, $stockAntes - $cantidadDetalle);
+                                            $stockDespues = ($prodDetalle->venta_sin_stock ?? false)
+                                                ? $stockAntes - $cantidadDetalle
+                                                : max(0, $stockAntes - $cantidadDetalle);
                                             $inv->update([
                                     'stock_real'    => $stockDespues,
                                     'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
@@ -1497,7 +1522,9 @@ class PuntoDeVenta extends Page
                                                     "Stock insuficiente en combo \"{$item['nombre']}\": disponible {$stockAntes}, solicitado {$cantidadDetalle}."
                                                 );
                                             }
-                                            $stockDespues = max(0, $stockAntes - $cantidadDetalle);
+                                            $stockDespues = ($prodDetalle->venta_sin_stock ?? false)
+                                                ? $stockAntes - $cantidadDetalle
+                                                : max(0, $stockAntes - $cantidadDetalle);
                                             $inv->update([
                                     'stock_real'    => $stockDespues,
                                     'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
@@ -1540,6 +1567,11 @@ class PuntoDeVenta extends Page
             return;
         }
 
+        // Emitir comprobante electrónico solo para boleta y factura
+        if ($venta && in_array($venta->serie?->tipo, [TipoComprobante::Boleta, TipoComprobante::Factura])) {
+            VentaCompletada::dispatch($venta);
+        }
+
         $this->carrito = [];
         $this->cerrarModalPago();
         $this->autoSeleccionarComprobante();
@@ -1547,5 +1579,49 @@ class PuntoDeVenta extends Page
         $this->dispatch('cerrar-carrito-mobile');
 
         Notification::make()->title('Venta procesada correctamente')->success()->send();
+
+        // Abrir modal de impresión si la empresa no tiene impresión automática activa
+        if ($venta && ! Filament::getTenant()->impresion_comprobante_directo) {
+            $venta->loadMissing('serie');
+            $serie = $venta->serie;
+            $this->ventaIdImprimir = $venta->id;
+            $this->ventaNumeroImpr = ($serie?->serie ?? '---') . '-' . str_pad($venta->correlativo, 8, '0', STR_PAD_LEFT);
+            $this->ventaTotalImpr  = (float) $venta->total;
+            $this->wspTelefono     = '';
+            $this->wspShareUrl     = URL::temporarySignedRoute(
+                'pdv.ticket.venta.compartir',
+                now()->addHours(24),
+                ['id' => $venta->id]
+            );
+            $this->modalImpresion  = true;
+        }
+    }
+
+    public function cerrarModalImpresion(): void
+    {
+        $this->modalImpresion  = false;
+        $this->ventaIdImprimir = null;
+        $this->ventaNumeroImpr = '';
+        $this->ventaTotalImpr  = 0.0;
+        $this->wspTelefono     = '';
+        $this->wspShareUrl     = '';
+    }
+
+    public function enviarWhatsapp(): void
+    {
+        $tel = preg_replace('/\D/', '', $this->wspTelefono);
+
+        if (strlen($tel) < 9) {
+            Notification::make()->title('Ingresa un número de WhatsApp válido')->warning()->send();
+            return;
+        }
+
+        // Agregar código de Perú si solo tienen 9 dígitos
+        if (strlen($tel) === 9) {
+            $tel = '51' . $tel;
+        }
+
+        $texto = urlencode("Hola! Aquí está tu comprobante de compra ({$this->ventaNumeroImpr}): {$this->wspShareUrl}");
+        $this->dispatch('pdv-abrir-wsp', url: "https://wa.me/{$tel}?text={$texto}");
     }
 }

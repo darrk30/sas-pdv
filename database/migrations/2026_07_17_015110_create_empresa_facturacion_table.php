@@ -15,16 +15,17 @@ return new class extends Migration
             $table->id();
             $table->foreignId('empresa_id')->unique()->constrained('empresas')->cascadeOnDelete();
 
-            // Credenciales SOL
-            $table->string('sol_user', 20);
-            $table->text('sol_pass');            // encriptada con encrypt()
+            // Credenciales SOL (nullable: se pueden configurar después de crear el registro)
+            $table->string('sol_user', 20)->nullable();
+            $table->text('sol_pass')->nullable();           // encriptada con encrypt()
 
             // Certificado digital
-            $table->string('cert_path');         // ruta al .pem en el facturador
+            $table->string('cert_path')->nullable();
+            $table->text('cert_password')->nullable();      // encriptada con encrypt()
 
             // Conexión al FacturadorGreenter
-            $table->string('facturador_url');
-            $table->string('facturador_api_token');
+            $table->string('facturador_url')->nullable();
+            $table->string('facturador_api_token')->nullable();
             $table->boolean('produccion')->default(false);
 
             $table->timestamps();

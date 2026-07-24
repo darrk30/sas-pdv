@@ -10,7 +10,17 @@ use App\Http\Middleware\TiendaEmpresa;
 use App\Livewire\Tienda\ProductoDetalle;
 use App\Livewire\Tienda\PromoDetalle;
 use App\Models\Plan;
+use App\Models\Nota;
+use App\Models\ResumenSunat;
+use App\Models\Venta;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
+
+// ── Ticket compartido via WhatsApp (firmado, sin login) ──────────────────────
+Route::get('/ticket/venta/{id}/compartir', [TicketVentaController::class, 'compartir'])
+    ->name('pdv.ticket.venta.compartir')
+    ->middleware('signed')
+    ->where('id', '[0-9]+');
 
 // ── Rutas PDV autenticadas (descargas, tickets) ───────────────────────────────
 Route::middleware(['auth'])->group(function () {
@@ -32,6 +42,55 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/push/subscribe',   [PushSubscriptionController::class, 'subscribe'])->name('push.subscribe');
     Route::post('/push/unsubscribe', [PushSubscriptionController::class, 'unsubscribe'])->name('push.unsubscribe');
+
+    Route::get('/fe/comprobante/{venta}/{tipo}', function (Venta $venta, string $tipo) {
+        $user = auth()->user();
+        abort_unless($user && $user->empresas()->where('empresas.id', $venta->empresa_id)->exists(), 403);
+
+        $venta->loadMissing('serie');
+        $serie = $venta->serie?->serie ?? 'DOC';
+        $num   = str_pad((string) $venta->correlativo, 8, '0', STR_PAD_LEFT);
+
+        if ($tipo === 'xml' && $venta->path_xml && Storage::disk('local')->exists($venta->path_xml)) {
+            return Storage::disk('local')->download($venta->path_xml, "{$serie}-{$num}.xml", ['Content-Type' => 'application/xml']);
+        }
+        if ($tipo === 'cdr' && $venta->path_cdr_zip && Storage::disk('local')->exists($venta->path_cdr_zip)) {
+            return Storage::disk('local')->download($venta->path_cdr_zip, "{$serie}-{$num}-CDR.zip", ['Content-Type' => 'application/zip']);
+        }
+
+        abort(404, 'Archivo no disponible.');
+    })->name('fe.comprobante.download')->where('tipo', 'xml|cdr');
+
+    Route::get('/fe/nota/{nota}/{tipo}', function (Nota $nota, string $tipo) {
+        $user = auth()->user();
+        abort_unless($user && $user->empresas()->where('empresas.id', $nota->empresa_id)->exists(), 403);
+
+        $nota->loadMissing('serie');
+        $num = ($nota->serie?->serie ?? 'NC') . '-' . str_pad((string) $nota->correlativo, 8, '0', STR_PAD_LEFT);
+
+        if ($tipo === 'xml' && $nota->path_xml && Storage::disk('local')->exists($nota->path_xml)) {
+            return Storage::disk('local')->download($nota->path_xml, "{$num}.xml", ['Content-Type' => 'application/xml']);
+        }
+        if ($tipo === 'cdr' && $nota->path_cdr_zip && Storage::disk('local')->exists($nota->path_cdr_zip)) {
+            return Storage::disk('local')->download($nota->path_cdr_zip, "{$num}-CDR.zip", ['Content-Type' => 'application/zip']);
+        }
+
+        abort(404, 'Archivo no disponible.');
+    })->name('fe.nota.download')->where('tipo', 'xml|cdr');
+
+    Route::get('/fe/resumen/{resumen}/{tipo}', function (ResumenSunat $resumen, string $tipo) {
+        $user = auth()->user();
+        abort_unless($user && $user->empresas()->where('empresas.id', $resumen->empresa_id)->exists(), 403);
+
+        if ($tipo === 'xml' && $resumen->path_xml && Storage::disk('local')->exists($resumen->path_xml)) {
+            return Storage::disk('local')->download($resumen->path_xml, $resumen->correlativo . '.xml', ['Content-Type' => 'application/xml']);
+        }
+        if ($tipo === 'cdr' && $resumen->path_cdr_zip && Storage::disk('local')->exists($resumen->path_cdr_zip)) {
+            return Storage::disk('local')->download($resumen->path_cdr_zip, $resumen->correlativo . '-CDR.zip', ['Content-Type' => 'application/zip']);
+        }
+
+        abort(404, 'Archivo no disponible.');
+    })->name('fe.resumen.download')->where('tipo', 'xml|cdr');
 });
 
 Route::get('/cuenta-suspendida', fn() => view('suspendido'))->name('suspendido');
