@@ -337,7 +337,7 @@
 
             <button type="button"
                     class="chk__btn-confirmar"
-                    wire:click="confirmarOrden"
+                    wire:click="abrirConfirmacion"
                     wire:loading.attr="disabled"
                     wire:loading.class="chk__btn-confirmar--loading"
                     @disabled($metodosPago->isEmpty())>
@@ -345,8 +345,8 @@
                      stroke-width="2" width="16" height="16" style="flex-shrink:0">
                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                <span wire:loading.remove wire:target="confirmarOrden">Confirmar orden</span>
-                <span wire:loading wire:target="confirmarOrden">Procesando...</span>
+                <span wire:loading.remove wire:target="abrirConfirmacion">Revisar y confirmar</span>
+                <span wire:loading wire:target="abrirConfirmacion">Validando...</span>
             </button>
 
             <p class="chk__resumen-aviso">

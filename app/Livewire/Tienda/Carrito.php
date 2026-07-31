@@ -50,6 +50,9 @@ class Carrito extends Component
     public string $chkDireccion    = '';
     public ?int   $chkMetodoPagoId  = null;
 
+    // ── Modal de confirmación ─────────────────────────────────────
+    public bool   $modalConfirmacion  = false;
+
     // ── Modal de éxito ────────────────────────────────────────────
     public bool   $mostrarModalExito  = false;
     public bool   $esOrdenGuest       = false;
@@ -344,8 +347,20 @@ class Carrito extends Component
         $this->resetValidation(['chkMetodoEnvioId', 'chkDireccion', 'chkDepartamento', 'chkProvincia', 'chkDistrito']);
     }
 
+    public function abrirConfirmacion(): void
+    {
+        $this->validate();
+        $this->modalConfirmacion = true;
+    }
+
+    public function cerrarConfirmacion(): void
+    {
+        $this->modalConfirmacion = false;
+    }
+
     public function confirmarOrden(): void
     {
+        $this->modalConfirmacion = false;
         $this->validate();
 
         $userId  = Auth::guard('cliente')->id();
@@ -792,6 +807,7 @@ class Carrito extends Component
         $this->ordenTotal        = $total;
         $this->esOrdenGuest      = $esGuest;
         $this->whatsappUrl       = $this->buildWhatsappUrl($orden, $lineItems, $metodoEnvio, $metodoPago, $empresa, $costoEnvio, $total);
+        $this->modalConfirmacion = false;
         $this->mostrarFormOrden  = false;
         $this->mostrarModalExito = true;
     }

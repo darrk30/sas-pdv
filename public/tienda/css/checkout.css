@@ -690,3 +690,163 @@
     .chk__campo-grid { grid-template-columns: 1fr; }
     .chk__seccion-cuerpo { padding: 1rem; }
 }
+
+/* ── Modal de confirmación de datos ─────────────────────────── */
+.conf-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.48);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9900;
+    padding: 1rem;
+}
+
+.conf-modal {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 440px;
+    padding: 1.625rem 1.5rem 1.375rem;
+    box-shadow: 0 10px 48px rgba(0,0,0,.2);
+    display: flex;
+    flex-direction: column;
+    gap: 1.125rem;
+}
+
+.conf-modal__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.875rem;
+}
+
+.conf-modal__icono {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: #eff6ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #2563eb;
+}
+
+.conf-modal__titulos { flex: 1; }
+
+.conf-modal__titulo {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 0.25rem;
+    line-height: 1.3;
+}
+
+.conf-modal__sub {
+    font-size: 0.8125rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.45;
+}
+
+.conf-modal__datos {
+    background: #f9fafb;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.875rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.conf-dato {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+}
+
+.conf-dato__label {
+    color: #6b7280;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.conf-dato__valor {
+    color: #111827;
+    font-weight: 600;
+    text-align: right;
+    word-break: break-word;
+}
+
+.conf-modal__sep {
+    border: none;
+    border-top: 1.5px solid #e5e7eb;
+    margin: 0.125rem 0;
+}
+
+.conf-modal__total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    padding: 0.25rem 0;
+}
+
+.conf-modal__total-valor {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -.025em;
+}
+
+.conf-modal__acciones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.625rem;
+}
+
+.conf-modal__btn-editar {
+    padding: 0.65rem 1rem;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 9px;
+    background: #fff;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: var(--font);
+    color: #374151;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+
+.conf-modal__btn-editar:hover { border-color: #9ca3af; background: #f9fafb; }
+
+.conf-modal__btn-ok {
+    padding: 0.65rem 1rem;
+    border: none;
+    border-radius: 9px;
+    background: #111827;
+    font-size: 0.875rem;
+    font-weight: 700;
+    font-family: var(--font);
+    color: #fff;
+    cursor: pointer;
+    transition: background .15s, opacity .15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.conf-modal__btn-ok:hover:not(:disabled) { background: #1f2937; }
+.conf-modal__btn-ok:disabled { opacity: .65; cursor: not-allowed; }
+
+@media (max-width: 480px) {
+    .conf-modal { padding: 1.375rem 1.125rem 1.25rem; }
+    .conf-modal__acciones { grid-template-columns: 1fr; }
+    .conf-modal__btn-ok { order: -1; }
+}
