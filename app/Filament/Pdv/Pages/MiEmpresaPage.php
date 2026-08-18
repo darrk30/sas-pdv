@@ -8,6 +8,7 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -50,6 +51,7 @@ class MiEmpresaPage extends Page implements HasForms
                 'cod_local', 'country_code',
                 'logo', 'icono',
                 'carta_activa_cliente',
+                'bot_contexto',
                 'fe_envio_directo_boleta',
                 'fe_envio_directo_factura',
                 'impresion_comprobante_directo',
@@ -189,7 +191,23 @@ class MiEmpresaPage extends Page implements HasForms
                                     ]),
                             ]),
 
-                        // ── Tab 4: Facturación Electrónica ────────────────────
+                        // ── Tab 4: Bot WhatsApp ───────────────────────────────
+                        Tab::make('Bot WhatsApp')
+                            ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                            ->schema([
+                                Section::make('Contexto para el bot')
+                                    ->description('Esta información le da contexto al bot de WhatsApp: dirección, horario, formas de pago, datos de Yape/Plin, política de envíos, etc. El bot la puede usar para responder preguntas frecuentes.')
+                                    ->schema([
+                                        Textarea::make('bot_contexto')
+                                            ->label('')
+                                            ->placeholder("Ejemplos:\n📍 Estamos en Av. Lima 123, Miraflores\n🕐 Atención: Lunes a Sábado 9am - 8pm\n🛵 Delivery solo Lima Metropolitana\n💳 Yape: 987 654 321 (Juan Pérez)\n💳 Plin: mismo número\n📦 Envíos gratis por compras mayores a S/. 80")
+                                            ->rows(10)
+                                            ->nullable()
+                                            ->columnSpanFull(),
+                                    ]),
+                            ]),
+
+                        // ── Tab 5: Facturación Electrónica ────────────────────
                         Tab::make('Facturación Electrónica')
                             ->icon('heroicon-o-document-text')
                             ->schema([

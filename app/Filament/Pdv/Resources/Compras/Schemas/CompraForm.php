@@ -278,38 +278,67 @@ class CompraForm
                                         [$tipo, $id] = explode('_', $value, 2);
 
                                         if ($tipo === 'producto') {
-                                            return Producto::find($id)?->nombre;
+                                            $p   = Producto::find($id);
+                                            $tag = $p?->codigo_interno ?: $p?->codigo_barras;
+                                            return $p ? ($tag ? "[{$tag}] {$p->nombre}" : $p->nombre) : null;
                                         }
 
-                                        $variante = Variante::with(['producto', 'valores.valor'])->find($id);
-                                        return $variante ? AjusteDetalle::generarNombre(null, $variante) : null;
+                                        $variante = Variante::with(['producto', 'valores.valor', 'valores.productoAtributo.atributo'])->find($id);
+                                        if (! $variante) return null;
+                                        $nombre = AjusteDetalle::generarNombre(null, $variante);
+                                        return $variante->codigo ? "[{$variante->codigo}] {$nombre}" : $nombre;
                                     })
-                                    ->options(function (): array {
-                                        $opciones = [];
+                                    ->getSearchResultsUsing(function (string $search): array {
+                                        $empresa   = \Filament\Facades\Filament::getTenant();
+                                        $empresaId = $empresa?->id;
+                                        $opciones  = [];
 
+                                        // ── Productos simples ──────────────────────────────────────
                                         $simples = Producto::query()
                                             ->doesntHave('variantesActivas')
                                             ->where('control_de_stock', true)
-                                            ->where('estado', 'activo')
-                                            ->with('unidadMedida')
+                                            ->whereIn('estado', ['activo', 'inactivo'])
+                                            ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
+                                            ->where(function ($q) use ($search) {
+                                                $q->where('nombre', 'like', "%{$search}%")
+                                                  ->orWhere('codigo_interno', 'like', "%{$search}%")
+                                                  ->orWhere('codigo_barras', 'like', "%{$search}%");
+                                            })
+                                            ->limit(25)
                                             ->get();
 
-                                        foreach ($simples as $producto) {
-                                            $opciones["producto_{$producto->id}"] = $producto->nombre;
+                                        foreach ($simples as $p) {
+                                            $tag   = $p->codigo_interno ?: $p->codigo_barras;
+                                            $label = $tag ? "[{$tag}] {$p->nombre}" : $p->nombre;
+                                            if ($p->estado === 'inactivo') $label .= ' (inactivo)';
+                                            $opciones["producto_{$p->id}"] = $label;
                                         }
 
+                                        // ── Variantes ──────────────────────────────────────────────
                                         $variantes = Variante::query()
-                                            ->with(['producto', 'valores.valor'])
-                                            ->where('estado', 'activo')
+                                            ->with(['producto', 'valores.valor', 'valores.productoAtributo.atributo'])
+                                            ->whereIn('estado', ['activo', 'inactivo'])
                                             ->whereHas('producto', fn($q) => $q
                                                 ->where('control_de_stock', true)
-                                                ->where('estado', 'activo')
+                                                ->whereIn('estado', ['activo', 'inactivo'])
+                                                ->when($empresaId, fn($q2) => $q2->where('empresa_id', $empresaId))
                                             )
+                                            ->where(function ($q) use ($search) {
+                                                $q->where('codigo', 'like', "%{$search}%")
+                                                  ->orWhereHas('producto', fn($q2) => $q2
+                                                      ->where('nombre', 'like', "%{$search}%")
+                                                      ->orWhere('codigo_interno', 'like', "%{$search}%")
+                                                      ->orWhere('codigo_barras', 'like', "%{$search}%")
+                                                  );
+                                            })
+                                            ->limit(25)
                                             ->get();
 
-                                        foreach ($variantes as $variante) {
-                                            $nombreVariante = AjusteDetalle::generarNombre(null, $variante);
-                                            $opciones["variante_{$variante->id}"] = $nombreVariante;
+                                        foreach ($variantes as $v) {
+                                            $nombre = AjusteDetalle::generarNombre(null, $v);
+                                            $label  = $v->codigo ? "[{$v->codigo}] {$nombre}" : $nombre;
+                                            if ($v->estado === 'inactivo') $label .= ' (inactivo)';
+                                            $opciones["variante_{$v->id}"] = $label;
                                         }
 
                                         return $opciones;

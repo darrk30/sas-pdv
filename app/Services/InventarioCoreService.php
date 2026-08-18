@@ -207,7 +207,8 @@ class InventarioCoreService
         $reservaAntes = (float) $inv->stock_reserva;
         $delta        = $tipo === 'entrada' ? $cantidadBase : -$cantidadBase;
         $nuevoStock   = $stockAntes + $delta;
-        $nuevoReserva = max(0, $reservaAntes + $delta);
+        // stock_reserva nunca puede superar stock_real ni bajar de 0
+        $nuevoReserva = max(0, min($nuevoStock, $reservaAntes + $delta));
 
         $inv->update([
             'stock_real'        => $nuevoStock,

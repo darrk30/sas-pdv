@@ -32,6 +32,7 @@ class Empresa extends Model
         'fe_envio_directo_factura',
         'impresion_comprobante_directo',
         'igv_porcentaje',
+        'bot_contexto',
     ];
 
     protected $casts = [

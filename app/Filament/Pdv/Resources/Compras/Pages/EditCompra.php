@@ -9,6 +9,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
@@ -129,6 +130,9 @@ class EditCompra extends EditRecord
         $concepto    = $record->codigo ?? ('COMPRA-' . str_pad($record->id, 8, '0', STR_PAD_LEFT));
         $userId      = auth()->id();
 
+        // Ítems afectados = unión de lo que había antes + lo que hay ahora
+        $nuevos = $record->detalles()->with('unidad')->get();
+
         if ($estadoViejo !== $estadoNuevo) {
             if ($estadoNuevo === 'recibido') {
                 // pendiente → recibido: aplicar cantidades actuales con kardex
@@ -146,11 +150,15 @@ class EditCompra extends EditRecord
             }
         } elseif ($estadoNuevo === 'recibido') {
             // recibido → recibido con cambios: revertir snapshot + aplicar nuevos en una sola tx
-            $nuevos = $record->detalles()->with('unidad')->get();
             DB::transaction(function () use ($record, $service, $nuevos, $concepto, $userId): void {
                 $service->revertirDetalles($record->empresa_id, 'entrada', collect($this->snapshotDetalles), $record, $concepto . ' (reversión)', $userId);
                 $service->aplicarDetalles($record->empresa_id, 'entrada', $nuevos, $record, $concepto, $userId);
             });
+
+            // Tras el revert + re-apply, stock_reserva puede quedar desfasado si había
+            // órdenes pendientes que lo tenían consumido. Recalculamos desde las órdenes reales.
+            $afectados = $this->_afectadosUnion(collect($this->snapshotDetalles), $nuevos);
+            $this->_recalcularReservas($record->empresa_id, $afectados);
         }
         // pendiente → pendiente: sin acción de stock
 
@@ -162,5 +170,84 @@ class EditCompra extends EditRecord
             ->map(fn(\stdClass $row) => (array) $row)
             ->values()
             ->all();
+    }
+
+    // ── Colecta todos los (producto_id, variante_id) únicos de dos colecciones ──
+
+    private function _afectadosUnion(Collection $snapshot, Collection $nuevos): array
+    {
+        $pares = [];
+
+        foreach ($snapshot as $item) {
+            $key = ($item['variante_id'] ?? 0) . '_' . ($item['producto_id'] ?? 0);
+            $pares[$key] = ['producto_id' => $item['producto_id'] ?? null, 'variante_id' => $item['variante_id'] ?? null];
+        }
+
+        foreach ($nuevos as $item) {
+            $varId  = $item->variante_id ?? null;
+            $prodId = $item->producto_id ?? null;
+            $key    = ($varId ?? 0) . '_' . ($prodId ?? 0);
+            $pares[$key] = ['producto_id' => $prodId, 'variante_id' => $varId];
+        }
+
+        return array_values($pares);
+    }
+
+    // ── Recalcula stock_reserva basándose en órdenes pendientes reales ──────────
+    // Garantiza que stock_reserva = max(0, stock_real − cantidad_reservada_por_órdenes).
+    // Cubre órdenes directas (producto/variante) y órdenes de promoción (via promo_detalles).
+
+    private function _recalcularReservas(int $empresaId, array $afectados): void
+    {
+        foreach ($afectados as $par) {
+            $productoId = $par['producto_id'] ?? null;
+            $varianteId = $par['variante_id'] ?? null;
+
+            if (! $productoId && ! $varianteId) continue;
+
+            // ── Órdenes directas (pendiente_pago, no promo) ───────────────────
+            $directa = (float) DB::table('orden_detalles as od')
+                ->join('ordenes as o', 'o.id', '=', 'od.orden_id')
+                ->where('o.empresa_id', $empresaId)
+                ->where('o.estado', 'pendiente_pago')
+                ->whereNull('od.promocion_id')
+                ->when($varianteId,
+                    fn($q) => $q->where('od.variante_id', $varianteId),
+                    fn($q) => $q->where('od.producto_id', $productoId)->whereNull('od.variante_id'),
+                )
+                ->sum('od.cantidad');
+
+            // ── Órdenes via promoción ─────────────────────────────────────────
+            $porPromo = (float) DB::table('orden_detalles as od')
+                ->join('ordenes as o', 'o.id', '=', 'od.orden_id')
+                ->join('promocion_detalles as pd', 'pd.promocion_id', '=', 'od.promocion_id')
+                ->where('o.empresa_id', $empresaId)
+                ->where('o.estado', 'pendiente_pago')
+                ->whereNotNull('od.promocion_id')
+                ->when($varianteId,
+                    fn($q) => $q->where('pd.variante_id', $varianteId),
+                    fn($q) => $q->where('pd.producto_id', $productoId)->whereNull('pd.variante_id'),
+                )
+                ->selectRaw('COALESCE(SUM(od.cantidad * pd.cantidad), 0) as total')
+                ->value('total');
+
+            $reservado = $directa + $porPromo;
+
+            // ── Actualizar inventario ─────────────────────────────────────────
+            $invQuery = DB::table('inventarios')
+                ->where('empresa_id', $empresaId);
+
+            if ($varianteId) {
+                $invQuery->where('variante_id', $varianteId);
+            } else {
+                $invQuery->where('producto_id', $productoId)->whereNull('variante_id');
+            }
+
+            $inv = $invQuery->lockForUpdate()->first();
+            if (! $inv) continue;
+
+            $nuevoReserva = max(0.0, (float) $inv->stock_real - $reservado);
+            $invQuery->update(['stock_reserva' => $nuevoReserva]);
+        }
     }
 }

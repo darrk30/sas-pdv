@@ -41,4 +41,6 @@ return [
         'subject'     => env('VAPID_SUBJECT', 'mailto:admin@example.com'),
     ],
 
+    'bot_api_token' => env('BOT_API_TOKEN', ''),
+
 ];
