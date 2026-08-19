@@ -19,7 +19,18 @@ class CarruselProductos extends Component
 
         $this->productos = Producto::where('empresa_id', $empresaId)
             ->where('estado', 'activo')
+            ->where('visible_en_carta', true)
             ->when($excluirId, fn($q) => $q->where('id', '!=', $excluirId))
+            ->where(function ($q) use ($empresaId) {
+                $q->where('control_de_stock', false)
+                  ->orWhere('venta_sin_stock', true)
+                  ->orWhereExists(fn($sub) => $sub
+                      ->from('inventarios as i')
+                      ->whereColumn('i.producto_id', 'productos.id')
+                      ->where('i.empresa_id', $empresaId)
+                      ->where('i.stock_real', '>', 0)
+                  );
+            })
             ->addSelect([
                 'total_vendido' => OrdenDetalle::selectRaw('COALESCE(SUM(od.cantidad), 0)')
                     ->from('orden_detalles as od')
