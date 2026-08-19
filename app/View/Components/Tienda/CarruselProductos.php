@@ -29,6 +29,7 @@ class CarruselProductos extends Component
                       ->whereColumn('i.producto_id', 'productos.id')
                       ->where('i.empresa_id', $empresaId)
                       ->where('i.stock_real', '>', 0)
+                      ->where('i.estado_almacen', '!=', 'inactivo')
                   );
             })
             ->addSelect([
