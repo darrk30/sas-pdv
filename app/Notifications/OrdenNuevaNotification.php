@@ -19,6 +19,7 @@ class OrdenNuevaNotification extends Notification
         $url = 'http://' . $this->orden->empresa->slug . '.' . config('app.domain') . '/pdv/ordenes/' . $this->orden->id . '/edit';
 
         return [
+            'empresa_id' => $this->orden->empresa_id,
             'title'     => 'Nueva orden recibida',
             'body'      => $this->orden->codigo
                 . ' — ' . $this->orden->cliente_nombre

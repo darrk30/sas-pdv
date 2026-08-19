@@ -47,21 +47,25 @@ class ProductoExcelTemplateService
         'P' => ['CONTROL_STOCK',        15, false, 'TRUE,FALSE',                   'TRUE = controla stock. FALSE = no controla.'],
     ];
 
+    // Mismo layout que COLS_NUEVOS (A–P) para que el mismo archivo sirva en ambos modos.
+    // D (PRECIO_COSTO) y J (STOCK_INICIAL) se ignoran al actualizar.
     private const COLS_ACTUALIZAR = [
         'A' => ['CODIGO_INTERNO (*)',    20, true,  null,                           'Requerido. Identifica el producto a actualizar.'],
         'B' => ['NOMBRE',               32, false, null,                           'Dejar vacío para no cambiar.'],
         'C' => ['PRECIO_VENTA',         16, false, null,                           'Dejar vacío para no cambiar.'],
-        'D' => ['DESCUENTO',            12, false, null,                           'Porcentaje 0-100. Dejar vacío para no cambiar.'],
-        'E' => ['PRECIO_CON_DESCUENTO', 22, false, null,                           'Se calcula automáticamente. No editar.'],
-        'F' => ['UNIDAD_MEDIDA',        16, false, null,                           "Escribe el SÍMBOLO de la unidad.\nEjemplos: und  kg  lt  m  doc  caja\nDejar vacío para no cambiar."],
-        'G' => ['ESTADO',               13, false, 'activo,inactivo,archivado',    'Selecciona de la lista. Dejar vacío para no cambiar.'],
-        'H' => ['STOCK_MINIMO',         14, false, null,                           'Dejar vacío para no cambiar.'],
-        'I' => ['CODIGO_BARRAS',        18, false, null,                           'Dejar vacío para no cambiar.'],
-        'J' => ['CATEGORIA',            18, false, null,                           'Se crea si no existe.'],
-        'K' => ['MARCA',                15, false, null,                           'Se crea si no existe.'],
-        'L' => ['AREA_PRODUCCION',      20, false, null,                           'Debe existir en el sistema.'],
-        'M' => ['ETIQUETA',             13, false, 'nuevo,agotado,combo,promo,oferta', 'Selecciona de la lista. Dejar vacío para no cambiar.'],
-        'N' => ['CONTROL_STOCK',        15, false, 'TRUE,FALSE',                   'TRUE o FALSE. Dejar vacío para no cambiar.'],
+        'D' => ['PRECIO_COSTO',         16, false, null,                           'Ignorado al actualizar. El costo se gestiona vía compras o ajustes.'],
+        'E' => ['DESCUENTO',            12, false, null,                           'Porcentaje 0-100. Dejar vacío para no cambiar.'],
+        'F' => ['PRECIO_CON_DESCUENTO', 22, false, null,                           'Se calcula automáticamente. No editar.'],
+        'G' => ['UNIDAD_MEDIDA',        16, false, null,                           "Escribe el SÍMBOLO de la unidad.\nEjemplos: und  kg  lt  m  doc  caja\nDejar vacío para no cambiar."],
+        'H' => ['ESTADO',               13, false, 'activo,inactivo,archivado',    'Selecciona de la lista. Dejar vacío para no cambiar.'],
+        'I' => ['STOCK_MINIMO',         14, false, null,                           'Dejar vacío para no cambiar.'],
+        'J' => ['STOCK_INICIAL',        14, false, null,                           'Ignorado al actualizar. El stock se gestiona vía compras y ajustes.'],
+        'K' => ['CODIGO_BARRAS',        18, false, null,                           'Dejar vacío para no cambiar.'],
+        'L' => ['CATEGORIA',            18, false, null,                           'Se crea si no existe.'],
+        'M' => ['MARCA',                15, false, null,                           'Se crea si no existe.'],
+        'N' => ['AREA_PRODUCCION',      20, false, null,                           'Debe existir en el sistema.'],
+        'O' => ['ETIQUETA',             13, false, 'nuevo,agotado,combo,promo,oferta', 'Selecciona de la lista. Dejar vacío para no cambiar.'],
+        'P' => ['CONTROL_STOCK',        15, false, 'TRUE,FALSE',                   'TRUE o FALSE. Dejar vacío para no cambiar.'],
     ];
 
     private const COLS_PRECIOS = [
@@ -95,17 +99,19 @@ class ProductoExcelTemplateService
         'A' => 'CAMISETA-001',
         'B' => '',
         'C' => '27.90',  // PRECIO_VENTA
-        'D' => '',        // DESCUENTO
-        // E = PRECIO_CON_DESCUENTO (fórmula)
-        'F' => '',        // UNIDAD_MEDIDA
-        'G' => '',        // ESTADO
-        'H' => '10',     // STOCK_MINIMO
-        'I' => '',        // CODIGO_BARRAS
-        'J' => '',        // CATEGORIA
-        'K' => '',        // MARCA
-        'L' => '',        // AREA_PRODUCCION
-        'M' => 'promo',  // ETIQUETA
-        'N' => '',        // CONTROL_STOCK
+        // D = PRECIO_COSTO (ignorado)
+        'E' => '',        // DESCUENTO
+        // F = PRECIO_CON_DESCUENTO (fórmula)
+        'G' => '',        // UNIDAD_MEDIDA
+        'H' => '',        // ESTADO
+        'I' => '10',     // STOCK_MINIMO
+        // J = STOCK_INICIAL (ignorado)
+        'K' => '',        // CODIGO_BARRAS
+        'L' => '',        // CATEGORIA
+        'M' => '',        // MARCA
+        'N' => '',        // AREA_PRODUCCION
+        'O' => 'promo',  // ETIQUETA
+        'P' => '',        // CONTROL_STOCK
     ];
 
     private const EJEMPLO_PRECIOS = [

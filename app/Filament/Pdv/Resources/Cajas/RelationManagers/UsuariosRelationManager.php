@@ -40,7 +40,7 @@ class UsuariosRelationManager extends RelationManager
                     ->label('Turno')
                     ->formatStateUsing(function ($state) {
                         static $cache = null;
-                        $cache ??= Turno::pluck('nombre', 'id');
+                        $cache ??= Turno::where('empresa_id', Filament::getTenant()->id)->pluck('nombre', 'id');
                         return $cache[$state] ?? 'N/A';
                     })
                     ->badge()

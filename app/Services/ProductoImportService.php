@@ -177,25 +177,26 @@ class ProductoImportService
 
                 $cambios = [];
 
-                // A=CODIGO_INTERNO, B=NOMBRE, C=PRECIO_VENTA, D=DESCUENTO,
-                // E=PRECIO_CON_DESCUENTO (fórmula), F=UNIDAD_MEDIDA, G=ESTADO,
-                // H=STOCK_MINIMO, I=CODIGO_BARRAS, J=CATEGORIA, K=MARCA,
-                // L=AREA_PRODUCCION, M=ETIQUETA, N=CONTROL_STOCK
-                // precio_costo NO se actualiza (costo promedio = solo vía compras/ajustes)
+                // Mismo layout que importarNuevos (A–P) para que el mismo archivo funcione en ambos modos.
+                // D=PRECIO_COSTO y J=STOCK_INICIAL se ignoran (el costo y stock se gestionan via compras/ajustes).
+                // A=CODIGO_INTERNO, B=NOMBRE, C=PRECIO_VENTA, D=(ignorado), E=DESCUENTO,
+                // F=PRECIO_CON_DESCUENTO, G=UNIDAD_MEDIDA, H=ESTADO, I=STOCK_MINIMO,
+                // J=(ignorado), K=CODIGO_BARRAS, L=CATEGORIA, M=MARCA,
+                // N=AREA_PRODUCCION, O=ETIQUETA, P=CONTROL_STOCK
                 $this->asignarSiNoVacio($cambios, 'nombre',                      $fila['B'] ?? null);
                 $this->asignarDecimalSiNoVacio($cambios, 'precio_venta',         $fila['C'] ?? null);
-                $this->asignarDecimalSiNoVacio($cambios, 'porcentaje_descuento', $fila['D'] ?? null);
-                $this->asignarDecimalSiNoVacio($cambios, 'precio_con_descuento', $fila['E'] ?? null);
-                $this->asignarSiNoVacio($cambios, 'codigo_barras',               $fila['I'] ?? null);
+                $this->asignarDecimalSiNoVacio($cambios, 'porcentaje_descuento', $fila['E'] ?? null);
+                $this->asignarDecimalSiNoVacio($cambios, 'precio_con_descuento', $fila['F'] ?? null);
+                $this->asignarSiNoVacio($cambios, 'codigo_barras',               $fila['K'] ?? null);
 
-                $unidadId = $this->resolverUnidad($fila['F'] ?? null);
+                $unidadId = $this->resolverUnidad($fila['G'] ?? null);
                 if ($unidadId !== null) $cambios['unidad_medida_id'] = $unidadId;
 
-                $estado = $this->resolverEstado($fila['G'] ?? null);
+                $estado = $this->resolverEstado($fila['H'] ?? null);
                 if ($estado !== null) $cambios['estado'] = $estado;
 
-                // stock_minimo va en inventarios
-                $stockMinimo = $this->parseDecimal($fila['H'] ?? null);
+                // stock_minimo va en inventarios (columna I)
+                $stockMinimo = $this->parseDecimal($fila['I'] ?? null);
                 if ($stockMinimo !== null) {
                     Inventario::where('empresa_id', $empresaId)
                         ->where('producto_id', $producto->id)
@@ -203,19 +204,19 @@ class ProductoImportService
                         ->update(['stock_minimo' => $stockMinimo]);
                 }
 
-                $categoriaId = $this->resolverCategoria($fila['J'] ?? null);
+                $categoriaId = $this->resolverCategoria($fila['L'] ?? null);
                 if ($categoriaId !== null) $cambios['categoria_id'] = $categoriaId;
 
-                $marcaId = $this->resolverMarca($fila['K'] ?? null);
+                $marcaId = $this->resolverMarca($fila['M'] ?? null);
                 if ($marcaId !== null) $cambios['marca_id'] = $marcaId;
 
-                $produccionId = $this->resolverProduccion($fila['L'] ?? null);
+                $produccionId = $this->resolverProduccion($fila['N'] ?? null);
                 if ($produccionId !== null) $cambios['produccion_id'] = $produccionId;
 
-                $etiqueta = $this->resolverEtiqueta($fila['M'] ?? null);
+                $etiqueta = $this->resolverEtiqueta($fila['O'] ?? null);
                 if ($etiqueta !== null) $cambios['etiqueta'] = $etiqueta;
 
-                $rawBool = trim($fila['N'] ?? '');
+                $rawBool = trim($fila['P'] ?? '');
                 if ($rawBool !== '') {
                     $cambios['control_de_stock'] = $this->parseBooleano($rawBool, true);
                 }

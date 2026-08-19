@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Pdv\Pages\Tenancy\RegistrarLocalPage;
 use App\Http\Middleware\ValidarEstadoUsuarioEmpresa;
 use App\Http\Middleware\VerificarEmpresaActiva;
+use App\Livewire\PdvDatabaseNotifications;
 use App\Models\Empresa;
 use Filament\Facades\Filament;
 use Filament\FontProviders\GoogleFontProvider;
@@ -150,7 +151,7 @@ class PdvPanelProvider extends PanelProvider
             ->maxContentWidth(Width::Full)
             ->spa()
             ->databaseTransactions()
-            ->databaseNotifications()
+            ->databaseNotifications(livewireComponent: PdvDatabaseNotifications::class)
             ->databaseNotificationsPolling('30s')
             ->tenant(Empresa::class, slugAttribute: 'slug')
             ->tenantRegistration(RegistrarLocalPage::class)

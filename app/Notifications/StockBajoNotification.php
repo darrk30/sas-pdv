@@ -35,6 +35,7 @@ class StockBajoNotification extends Notification
         $agotado = $this->estadoStock === 'agotado';
 
         return [
+            'empresa_id' => $inventario->empresa_id,
             'title'     => $agotado ? 'Producto agotado' : 'Stock bajo',
             'body'      => $nombre
                 . ' — stock actual: '
