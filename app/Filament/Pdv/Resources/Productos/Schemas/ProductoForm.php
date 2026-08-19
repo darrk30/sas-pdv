@@ -929,6 +929,14 @@ class ProductoForm
 
                                         Toggle::make('venta_sin_stock')
                                             ->label('Venta sin stock'),
+
+                                        TextInput::make('orden')
+                                            ->label('Orden')
+                                            ->numeric()
+                                            ->integer()
+                                            ->default(0)
+                                            ->minValue(0)
+                                            ->helperText('Número de posición en el listado. Menor número = aparece primero.'),
                                     ]),
                             ]),
                     ])->columnSpanFull(),

@@ -120,11 +120,7 @@ class ProductosTable
                     DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort(function ($query) {
-                // Ordenar por estado para que los activos salgan primero
-                // Asumiendo que 'activo' debe ir arriba, usamos una lógica de campo calculado o orden simple
-                $query->orderByRaw("FIELD(estado, 'activo', 'inactivo', 'archivado') ASC");
-                $query->orderBy('created_at', 'desc');
-            });
+            ->reorderable('orden')
+            ->defaultSort('orden', 'asc');
     }
 }

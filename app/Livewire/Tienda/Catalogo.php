@@ -105,7 +105,8 @@ class Catalogo extends Component
                         ) > 0 THEN 0 ELSE 1 END
                 END ASC
             ', ['activo', 'activo'])
-            ->latest()
+            ->orderBy('orden')
+            ->orderBy('nombre')
             ->paginate(25);
 
         $marcaActiva     = $this->marcaId     ? Marca::find($this->marcaId)?->nombre         : null;

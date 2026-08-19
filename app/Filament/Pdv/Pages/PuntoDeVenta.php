@@ -446,6 +446,7 @@ class PuntoDeVenta extends Page
                         ) > 0 THEN 0 ELSE 1 END
                 END ASC
             ', ['activo', 'activo'])
+            ->orderBy('orden')
             ->orderBy('nombre')
             ->take($this->perPage)
             ->get();
