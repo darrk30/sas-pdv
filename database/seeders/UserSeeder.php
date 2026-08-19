@@ -31,8 +31,9 @@ class UserSeeder extends Seeder
         }
 
         // ── 2. Empresa Kittybell ──────────────────────────────────────────────
+        // Guard por RUC+slug para evitar duplicado si el seeder se ejecuta varias veces.
         $empresa = Empresa::firstOrCreate(
-            ['slug' => 'bodega'],
+            ['slug' => 'bodega', 'ruc' => '20000000001'],
             [
                 'name'                 => 'Kittybell',
                 'ruc'                  => '20000000001',

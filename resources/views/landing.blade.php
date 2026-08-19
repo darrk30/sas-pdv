@@ -619,7 +619,7 @@
         <div class="sec-head fade-up" style="text-align:center">
           <span class="sec-tag sec-tag-or">Planes y precios</span>
           <h2 class="sec-h">Elige el plan para tu negocio</h2>
-          <p class="sec-p" style="margin:0 auto">Todos los planes incluyen PDV, tienda online, inventario y comprobantes. Sin permanencia mínima ni contratos.</p>
+          <p class="sec-p" style="margin:0 auto">Todos los planes incluyen PDV, tienda online, inventario y comprobantes. Sin permanencia mínima ni contratos. Cancela cuando quieras.</p>
         </div>
         @php
         $planStyles = [
@@ -688,7 +688,7 @@
             <div class="plan-specs">
             <div class="plan-divider">{{ $loop->first ? 'Incluye' : 'Todo lo de ' . $prevNombre . ', más' }}</div>
             <div class="plan-feat">
-              {{-- Base --}}
+              {{-- Base: todos los planes --}}
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
                 </svg>Punto de venta PDV</div>
@@ -702,15 +702,26 @@
                 </svg>Inventario y control de stock</div>
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
-                </svg>Boletas, facturas y tickets</div>
+                </svg>Boletas y tickets de venta</div>
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
-                </svg>Reportes básicos de ventas</div>
+                </svg>Compras y control de proveedores</div>
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
                 </svg>Gestión de clientes</div>
-              {{-- Variantes --}}
+              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>Cierre de caja diario</div>
+              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>Reportes básicos de ventas</div>
+              {{-- Tier variantes: Comerciante y superior --}}
               @if($plan->tiene_variantes)
+              @if($plan->facturacion_electronica)
+              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>Facturas electrónicas</div>
+              @endif
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
                 </svg>Variantes (talla, color, material)</div>
@@ -722,11 +733,21 @@
                 </svg>Pedidos web con estados y notificaciones</div>
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
+                </svg>Notas de crédito / débito</div>
+              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>Costeo de productos</div>
+              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
+                  <path d="M20 6 9 17l-5-5" />
                 </svg>Reportes completos de ventas</div>
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
-                </svg>Notas de crédito / débito</div>
+                </svg>Cuentas por cobrar</div>
               @else
+              <div class="pf pf-dim"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pf-dim">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>Facturas electrónicas</div>
               <div class="pf pf-dim"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pf-dim">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
@@ -736,20 +757,17 @@
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>Promociones y combos</div>
               @endif
-              {{-- Multi-sucursal --}}
+              {{-- Tier multi-sucursal: Empresario --}}
               @if($multiLoc)
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Costeo de productos</div>
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
                 </svg>Reportes de ganancias y utilidades</div>
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
-                </svg>Múltiples sucursales</div>
+                </svg>Kardex de inventario</div>
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
-                </svg>Transferencias entre sucursales</div>
+                </svg>Múltiples sucursales</div>
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
                 </svg>Soporte prioritario WhatsApp</div>
@@ -757,11 +775,11 @@
               <div class="pf pf-dim"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pf-dim">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>Costeo de productos</div>
+                </svg>Reportes de ganancias y utilidades</div>
               <div class="pf pf-dim"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pf-dim">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>Sucursales adicionales</div>
+                </svg>Múltiples sucursales</div>
               @endif
             </div>
             </div>{{-- /.plan-specs --}}
@@ -791,7 +809,7 @@
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                 </svg></div>
               <div class="addon-detail"><strong>Sucursal adicional</strong><span>Gestiona más ubicaciones desde el mismo panel</span></div>
-              <div class="addon-price">S/ 50<small>/mes</small></div>
+              <div class="addon-price">S/ 30<small>/mes</small></div>
             </div>
           </div>
         </div>
