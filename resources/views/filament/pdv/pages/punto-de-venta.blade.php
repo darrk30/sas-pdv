@@ -10,11 +10,45 @@
             <p class="pdv-header__titulo">Punto de Venta</p>
             <p class="pdv-header__sub">Cajero: {{ auth()->user()->name }}</p>
         </div>
+
         <div class="pdv-header__right">
-            <p class="pdv-header__venta">Venta #{{ $this->getNumeroPreview() }}</p>
-            <p class="pdv-header__fecha">{{ now()->format('d/m/Y  H:i') }}</p>
+            {{-- Botón reimprimir último ticket --}}
+            @if($ultimaVentaId)
+            <div class="pdv-reprint-wrap" x-data="{ hover: false }">
+                <button
+                    type="button"
+                    class="pdv-reprint-btn"
+                    @mouseenter="hover = true"
+                    @mouseleave="hover = false"
+                    onclick="(function(){ var f = document.getElementById('pdv-reprint-frame'); if (f && f.contentWindow) f.contentWindow.print(); })()"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.169a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z"/>
+                    </svg>
+                </button>
+                <div class="pdv-reprint-tooltip" x-show="hover" style="display:none">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="11" height="11">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.169a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z"/>
+                    </svg>
+                    Reimprimir {{ $ultimaVentaNumero }}
+                </div>
+            </div>
+            @endif
+            <div class="pdv-header__right-text">
+                <p class="pdv-header__venta">Venta #{{ $this->getNumeroPreview() }}</p>
+                <p class="pdv-header__fecha">{{ now()->format('d/m/Y  H:i') }}</p>
+            </div>
         </div>
     </div>
+
+    {{-- Iframe oculto para reimpresión del último ticket --}}
+    @if($ultimaVentaId)
+    <iframe
+        id="pdv-reprint-frame"
+        src="{{ route('pdv.ticket.venta', $ultimaVentaId) }}"
+        style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;border:0;"
+    ></iframe>
+    @endif
 
     <div class="pdv-wrap" x-data="{ carritoOpen: false }" @cerrar-carrito-mobile.window="carritoOpen = false">
 
@@ -541,18 +575,83 @@
                         </div>
                     @endforeach
                 </div>
-                <div class="pdv-modal__footer">
+                <div class="pdv-modal__footer"
+                     x-data="{
+                         cant: 1,
+                         cortesia: false,
+                         esDecimal: {{ $productoEsDecimal ? 'true' : 'false' }},
+                         incrementar() { this.cant = this.esDecimal ? Math.round((this.cant + 1) * 1000) / 1000 : this.cant + 1; },
+                         decrementar() {
+                             let min = this.esDecimal ? 0.001 : 1;
+                             this.cant = Math.max(min, this.esDecimal ? Math.round((this.cant - 1) * 1000) / 1000 : this.cant - 1);
+                         },
+                         limpiarCant() {
+                             let v = this.esDecimal ? parseFloat(this.cant) : parseInt(this.cant);
+                             let min = this.esDecimal ? 0.001 : 1;
+                             this.cant = isNaN(v) ? min : Math.max(min, v);
+                         }
+                     }">
+
+                    {{-- Precio + cortesía --}}
                     <div class="pdv-modal__precio-row">
                         <div>
-                            <p class="pdv-modal__precio-label">Precio total</p>
+                            <p class="pdv-modal__precio-label">Precio unitario</p>
                             @if($precioAdicionalTotal > 0)
                                 <p class="pdv-modal__precio-detalle">S/ {{ number_format($precioBase, 2) }} + S/ {{ number_format($precioAdicionalTotal, 2) }}</p>
                             @endif
                         </div>
-                        <span class="pdv-modal__precio-total">S/ {{ number_format($precioBase + $precioAdicionalTotal, 2) }}</span>
+                        <div class="pdv-modal__precio-right">
+                            @if($productoEsCortesia)
+                                <button
+                                    type="button"
+                                    class="pdv-modal__cortesia-btn"
+                                    :class="{ 'pdv-modal__cortesia-btn--on': cortesia }"
+                                    @click="cortesia = !cortesia"
+                                    title="Marcar como cortesía (precio cero)"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="13" height="13">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
+                                    </svg>
+                                    <span x-text="cortesia ? 'Gratis' : 'Cortesía'"></span>
+                                </button>
+                            @endif
+                            <span class="pdv-modal__precio-total" x-show="!cortesia">
+                                S/ {{ number_format($precioBase + $precioAdicionalTotal, 2) }}
+                            </span>
+                            <span class="pdv-modal__precio-total pdv-modal__precio-gratis" x-show="cortesia" style="display:none">
+                                Gratis
+                            </span>
+                        </div>
                     </div>
+
+                    {{-- Cantidad --}}
+                    <div class="pdv-modal__qty-row">
+                        <span class="pdv-modal__qty-label">Cantidad</span>
+                        <div class="pdv-modal__qty">
+                            <button type="button" class="pdv-qty__btn pdv-qty__btn--menos" @click="decrementar()">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
+                            </button>
+                            <input
+                                type="number"
+                                class="pdv-modal__qty-input"
+                                x-model.number="cant"
+                                :min="esDecimal ? 0.001 : 1"
+                                :step="esDecimal ? 0.001 : 1"
+                                @blur="limpiarCant()"
+                                @keydown.enter="limpiarCant()"
+                            />
+                            <button type="button" class="pdv-qty__btn pdv-qty__btn--mas" @click="incrementar()">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
                     @php $todosSeleccionados = count($seleccionados) >= count($atributosModal); @endphp
-                    <button class="pdv-btn-confirmar" wire:click="confirmarModal" @if(! $todosSeleccionados) disabled @endif>
+                    <button
+                        class="pdv-btn-confirmar"
+                        @click="$wire.confirmarModalConParams(cant, cortesia)"
+                        @if(! $todosSeleccionados) disabled @endif
+                    >
                         {{ $todosSeleccionados ? 'Agregar al carrito' : 'Selecciona todas las opciones' }}
                     </button>
                 </div>
@@ -564,7 +663,7 @@
     {{-- ══ MODAL: impresión post-venta ══ --}}
     @if($modalImpresion && $ventaIdImprimir)
         <div class="pdv-overlay pdv-overlay--print" wire:key="modal-impresion"
-             x-data="pdvPrint({{ $ventaIdImprimir }}, @js($ventaNumeroImpr))" x-init="iframeLoaded = false"
+             x-data="pdvPrint({{ $ventaIdImprimir }}, @js($ventaNumeroImpr), {{ $autoImprimirModal ? 'true' : 'false' }})" x-init="iframeLoaded = false"
              @pdv-abrir-wsp.window="window.open($event.detail.url, '_blank')">
             <div class="pdv-overlay__backdrop" wire:click="cerrarModalImpresion"></div>
             <div class="pdv-modal pdv-modal--impresion">
@@ -595,7 +694,7 @@
                     id="pdv-ticket-frame"
                     src="{{ route('pdv.ticket.venta', $ventaIdImprimir) }}"
                     style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;border:0;"
-                    @load="iframeLoaded = true"
+                    @load="iframeLoaded = true; if (autoImprimir) $nextTick(() => imprimir())"
                 ></iframe>
 
                 {{-- Botón imprimir --}}
@@ -988,10 +1087,11 @@
     @endif
 
 <script>
-function pdvPrint(ventaId, numero) {
+function pdvPrint(ventaId, numero, autoImprimir) {
     return {
         ventaId,
         numero,
+        autoImprimir,
         iframeLoaded: false,
         imprimir() {
             const iframe = document.getElementById('pdv-ticket-frame');

@@ -1316,6 +1316,92 @@
     line-height: 1;
 }
 
+/* ── Precio right (precio + cortesía) ──────────────────── */
+.pdv-modal__precio-right {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    flex-shrink: 0;
+}
+
+/* ── Botón cortesía del modal ───────────────────────────── */
+.pdv-modal__cortesia-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 99px;
+    border: 1.5px solid var(--pdv-border);
+    background: transparent;
+    color: var(--pdv-text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+    white-space: nowrap;
+}
+.pdv-modal__cortesia-btn:hover {
+    border-color: #8b5cf6;
+    color: #7c3aed;
+    background: rgba(139,92,246,.08);
+}
+.pdv-modal__cortesia-btn--on {
+    background: #ede9fe;
+    border-color: #8b5cf6;
+    color: #6d28d9;
+}
+.pdv-modal__precio-gratis {
+    color: #16a34a !important;
+}
+
+/* ── Fila cantidad del modal ────────────────────────────── */
+.pdv-modal__qty-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 0.625rem 0.875rem;
+    border-radius: var(--pdv-radius-sm);
+    background: var(--pdv-gray-50);
+    border: 1px solid var(--pdv-border);
+}
+.pdv-modal__qty-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--pdv-text-muted);
+}
+.pdv-modal__qty {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.pdv-modal__qty-input {
+    width: 3.5rem;
+    height: 1.75rem;
+    border: 1.5px solid var(--pdv-border);
+    border-radius: var(--pdv-radius-sm);
+    background: var(--pdv-surface);
+    color: var(--pdv-text);
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 0 0.25rem;
+    outline: none;
+    -moz-appearance: textfield;
+}
+.pdv-modal__qty-input::-webkit-inner-spin-button,
+.pdv-modal__qty-input::-webkit-outer-spin-button { opacity: 1; }
+.pdv-modal__qty-input:focus {
+    border-color: var(--pdv-primary-dark);
+    box-shadow: 0 0 0 2px rgba(99,102,241,.2);
+}
+.pdv-modal__qty .pdv-qty__btn {
+    width: 1.625rem;
+    height: 1.625rem;
+    border-radius: var(--pdv-radius-sm);
+    flex-shrink: 0;
+}
+
 /* ── Botón confirmar modal ──────────────────────────────── */
 .pdv-btn-confirmar {
     width: 100%;
@@ -1367,6 +1453,15 @@
 }
 
 .pdv-header__right {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.625rem;
+    text-align: right;
+}
+.pdv-header__right-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
     text-align: right;
 }
 
@@ -1395,6 +1490,66 @@
     margin: 0;
     font-size: 0.75rem;
     color: var(--pdv-text-faint);
+}
+
+/* ── Botón reimprimir último ticket ──────────────────────── */
+.pdv-reprint-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.pdv-reprint-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border: 1.5px solid var(--pdv-border);
+    border-radius: var(--pdv-radius-md);
+    background: var(--pdv-surface);
+    color: var(--pdv-text-muted);
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s, box-shadow .15s;
+}
+.pdv-reprint-btn svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex-shrink: 0;
+}
+.pdv-reprint-btn:hover {
+    background: var(--pdv-primary-light);
+    border-color: var(--pdv-primary);
+    color: var(--pdv-primary);
+    box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+}
+.pdv-reprint-tooltip {
+    position: absolute;
+    top: calc(100% + 7px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    background: #1e293b;
+    color: #f1f5f9;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.35rem 0.7rem;
+    border-radius: var(--pdv-radius-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    pointer-events: none;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25);
+}
+.pdv-reprint-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: #1e293b;
 }
 
 /* ═══════════════════════════════════════════════════════════

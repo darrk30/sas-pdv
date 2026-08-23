@@ -1,6 +1,84 @@
 /* ── Reporte Productos más vendidos ─────────────────────────── */
 
-/* Encabezado */
+/* Variables locales */
+:root {
+    --rp-bg:         #ffffff;
+    --rp-border:     #e5e7eb;
+    --rp-radius:     0.75rem;
+    --rp-shadow:     0 1px 3px rgb(0 0 0 / .06);
+    --rp-text:       #111827;
+    --rp-text-muted: #6b7280;
+    --rp-text-faint: #9ca3af;
+}
+.dark {
+    --rp-bg:         rgb(15 23 42 / .7);
+    --rp-border:     rgb(71 85 105 / .4);
+    --rp-text:       #f1f5f9;
+    --rp-text-muted: #94a3b8;
+    --rp-text-faint: #64748b;
+}
+
+/* Contenedor raíz */
+.rp-root {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ── KPIs ──────────────────────────────────────────────────── */
+.rp-kpis {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+@media (min-width: 768px) { .rp-kpis { grid-template-columns: repeat(3, 1fr); } }
+
+.rp-kpi {
+    background: var(--rp-bg);
+    border: 1px solid var(--rp-border);
+    border-radius: var(--rp-radius);
+    padding: 0.875rem 1rem;
+    box-shadow: var(--rp-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    position: relative;
+    overflow: hidden;
+}
+.rp-kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+}
+.rp-kpi--gray::before  { background: #6b7280; }
+.rp-kpi--blue::before  { background: #3b82f6; }
+.rp-kpi--green::before { background: #22c55e; }
+
+.rp-kpi__label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--rp-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.rp-kpi__value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--rp-text);
+    line-height: 1.1;
+}
+.rp-kpi--green .rp-kpi__value { color: #15803d; }
+.dark .rp-kpi--green .rp-kpi__value { color: #4ade80; }
+.rp-kpi--blue  .rp-kpi__value { color: #1d4ed8; }
+.dark .rp-kpi--blue  .rp-kpi__value { color: #60a5fa; }
+
+.rp-kpi__sub {
+    font-size: 0.65rem;
+    color: var(--rp-text-faint);
+}
+
+/* Encabezado (legacy, ya no se usa en la nueva versión) */
 .rp-header {
     margin-bottom: 1.25rem;
 }

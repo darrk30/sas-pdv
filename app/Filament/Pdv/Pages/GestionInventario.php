@@ -4,11 +4,13 @@ namespace App\Filament\Pdv\Pages;
 
 use App\Models\AjusteDetalle;
 use App\Models\Inventario;
+use App\Services\InventarioExportService;
 use BackedEnum;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
+use Filament\Actions\Action as PageAction;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
-use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
@@ -27,6 +29,49 @@ class GestionInventario extends Page implements HasTable
         if ($q = request()->query('tableSearch')) {
             $this->tableSearch = $q;
         }
+    }
+
+    public function getStats(): array
+    {
+        $empresaId = Filament::getTenant()->id;
+
+        $counts = Inventario::query()
+            ->where('empresa_id', $empresaId)
+            ->where('estado_almacen', 'activo')
+            ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado'))
+            ->selectRaw("
+                SUM(CASE WHEN estado_inventario = 'disponible'   THEN 1 ELSE 0 END) AS disponible,
+                SUM(CASE WHEN estado_inventario = 'por_agotarse' THEN 1 ELSE 0 END) AS por_agotarse,
+                SUM(CASE WHEN estado_inventario = 'agotado'      THEN 1 ELSE 0 END) AS agotado,
+                COUNT(*) AS total
+            ")
+            ->first();
+
+        return [
+            'disponible'   => (int) ($counts->disponible   ?? 0),
+            'por_agotarse' => (int) ($counts->por_agotarse ?? 0),
+            'agotado'      => (int) ($counts->agotado      ?? 0),
+            'total'        => (int) ($counts->total        ?? 0),
+        ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            PageAction::make('exportarExcelHeader')
+                ->label('Excel')
+                ->icon('heroicon-o-table-cells')
+                ->color('success')
+                ->action(fn() => app(InventarioExportService::class)
+                    ->generarExcel(Filament::getTenant(), $this->getStats())),
+
+            PageAction::make('exportarPdfHeader')
+                ->label('PDF')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('danger')
+                ->action(fn() => app(InventarioExportService::class)
+                    ->generarPdf(Filament::getTenant(), $this->getStats())),
+        ];
     }
 
     // Estas propiedades de navegación SÍ son estáticas en Filament
@@ -80,6 +125,28 @@ class GestionInventario extends Page implements HasTable
                     ->sortable()
                     ->weight('bold'),
 
+                TextColumn::make('codigo')
+                    ->label('Código')
+                    ->state(function (Inventario $record): string {
+                        if ($record->variante_id && $record->variante) {
+                            return $record->variante->codigo ?? '—';
+                        }
+                        return $record->producto?->codigo_interno ?? '—';
+                    })
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $q) use ($search): void {
+                            $q->whereHas('variante', fn(Builder $vq) =>
+                                $vq->where('codigo', 'like', "%{$search}%")
+                            )
+                            ->orWhereHas('producto', fn(Builder $pq) =>
+                                $pq->where('codigo_interno', 'like', "%{$search}%")
+                            );
+                        });
+                    })
+                    ->copyable()
+                    ->color('gray')
+                    ->fontFamily('mono'),
+
                 TextColumn::make('stock_real')
                     ->label('Stock Actual')
                     ->numeric()
@@ -107,9 +174,22 @@ class GestionInventario extends Page implements HasTable
                     ->multiple()
                     ->placeholder('Todos los estados'),
             ])
-            ->recordActions([
-                // Acciones (se pueden añadir después)
-            ]);
+            ->toolbarActions([
+                Action::make('exportarExcel')
+                    ->label('Excel')
+                    ->icon('heroicon-o-table-cells')
+                    ->color('success')
+                    ->action(fn() => app(InventarioExportService::class)
+                        ->generarExcel(Filament::getTenant(), $this->getStats())),
+
+                Action::make('exportarPdf')
+                    ->label('PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('danger')
+                    ->action(fn() => app(InventarioExportService::class)
+                        ->generarPdf(Filament::getTenant(), $this->getStats())),
+            ])
+            ->recordActions([]);
     }
 
     public static function canAccess(): bool

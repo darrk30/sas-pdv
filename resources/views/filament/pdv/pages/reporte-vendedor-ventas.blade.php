@@ -4,7 +4,6 @@
 
 @php
     $resumen = $this->getResumen();
-    $ventas  = $this->getVentas();
 @endphp
 
 <div class="vs-root">
@@ -43,101 +42,44 @@
     </div>
 
     {{-- Filtros --}}
-    <div class="rg-form-wrap">
-        {{ $this->form }}
-        @if($this->hayFiltros())
-            <div class="rg-form-limpiar">
-                <button wire:click="limpiarFiltros" class="vs-filter-reset">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="14" height="14">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
-                    </svg>
-                    Limpiar filtros
-                </button>
-            </div>
-        @endif
+    <div class="rg-form-wrap" x-data="{ open: {{ $this->hayFiltros() ? 'true' : 'false' }} }">
+
+        <button type="button" class="rg-filtros-toggle" @click="open = !open">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke-width="1.5" stroke="currentColor" width="15" height="15">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"/>
+            </svg>
+            <span>Filtros</span>
+            @if($this->hayFiltros())
+                <span class="rg-filtros-activo-dot" title="Hay filtros activos"></span>
+            @endif
+            <svg class="rg-filtros-chevron" :class="{ 'rg-filtros-chevron--open': open }"
+                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke-width="2" stroke="currentColor" width="14" height="14">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+            </svg>
+        </button>
+
+        <div class="rg-filtros-body" :class="{ 'rg-filtros-body--open': open }">
+            {{ $this->form }}
+            @if($this->hayFiltros())
+                <div class="rg-form-limpiar">
+                    <button wire:click="limpiarFiltros" class="vs-filter-reset">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                             stroke-width="1.5" stroke="currentColor" width="14" height="14">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                        Limpiar filtros
+                    </button>
+                </div>
+            @endif
+        </div>
+
     </div>
 
-    {{-- Tabla --}}
-    <div class="vs-panel">
-        @if($ventas->isEmpty())
-            <div class="rg-empty">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                </svg>
-                <p>No se encontraron ventas con los filtros seleccionados</p>
-            </div>
-        @else
-            <div class="rg-table-scroll">
-                <table class="rg-table rg-table--wide">
-                    <thead>
-                        <tr>
-                            <th>Comprobante</th>
-                            <th>Fecha</th>
-                            <th>Cliente</th>
-                            <th>Pago</th>
-                            <th class="rg-th-right">Total</th>
-                            <th class="rg-th-right">IGV</th>
-                            <th class="rg-th-right">Costo</th>
-                            <th class="rg-th-right">Utilidad</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($ventas as $v)
-                            @php
-                                $util    = (float) $v->utilidad;
-                                $esCredit = ($v->estado_pago ?? '') === 'pendiente';
-                            @endphp
-                            <tr wire:key="vta-{{ $v->id }}">
-                                <td>
-                                    <span class="rg-comprobante">{{ $v->serie }}-{{ $v->correlativo }}</span>
-                                </td>
-                                <td>
-                                    <div class="rg-fecha">
-                                        <span class="rg-fecha__dia">{{ \Carbon\Carbon::parse($v->created_at)->format('d/m/Y') }}</span>
-                                        <span class="rg-fecha__hora">{{ \Carbon\Carbon::parse($v->created_at)->format('H:i') }}</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span style="font-size:.8rem;color:var(--vs-text)">{{ $v->cliente_nombre ?: '—' }}</span>
-                                </td>
-                                <td>
-                                    @if($esCredit)
-                                        <div style="display:flex;flex-direction:column;gap:.15rem">
-                                            <span class="vs-badge vs-badge--credito">Crédito</span>
-                                            <span style="font-size:.7rem;color:#d97706">pend. S/ {{ number_format((float)$v->saldo_pendiente, 2) }}</span>
-                                        </div>
-                                    @else
-                                        <span style="font-size:.75rem;color:var(--vs-text-muted)">Contado</span>
-                                    @endif
-                                </td>
-                                <td class="rg-td-right">
-                                    <span class="rg-monto">S/ {{ number_format((float)$v->total, 2) }}</span>
-                                </td>
-                                <td class="rg-td-right">
-                                    @if((float)$v->igv > 0)
-                                        <span class="rg-monto" style="color:var(--vs-text-muted)">S/ {{ number_format((float)$v->igv, 2) }}</span>
-                                    @else
-                                        <span style="color:var(--vs-text-faint)">—</span>
-                                    @endif
-                                </td>
-                                <td class="rg-td-right">
-                                    <span class="rg-monto rg-monto--costo">S/ {{ number_format((float)$v->costo_total, 2) }}</span>
-                                </td>
-                                <td class="rg-td-right">
-                                    <span class="rg-monto rg-monto--util {{ $util >= 0 ? 'rg-monto--pos' : 'rg-monto--neg' }}">
-                                        S/ {{ number_format($util, 2) }}
-                                    </span>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @if($ventas->hasPages())
-                <div class="rg-pagination">{{ $ventas->links('vendor.pagination.pdv') }}</div>
-            @endif
-        @endif
-    </div>
+    {{-- Tabla Filament --}}
+    {{ $this->table }}
 
 </div>
 </x-filament-panels::page>

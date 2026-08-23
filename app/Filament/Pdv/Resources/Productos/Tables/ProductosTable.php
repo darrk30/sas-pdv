@@ -5,8 +5,6 @@ namespace App\Filament\Pdv\Resources\Productos\Tables;
 use App\Enums\EstadoGeneral;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
@@ -115,11 +113,7 @@ class ProductosTable
                         ->action(fn($record) => $record->update(['estado' => EstadoGeneral::Archivado])),
                 ]),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ])
+            ->toolbarActions([])
             ->reorderable('orden')
             ->defaultSort('orden', 'asc');
     }

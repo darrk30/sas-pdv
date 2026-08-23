@@ -136,6 +136,9 @@ class VentasSesionPage extends Page implements HasTable
                 TextColumn::make('comprobante')
                     ->label('Comprobante')
                     ->state(fn (Venta $r): string => ($r->serie?->serie ?? '---') . '-' . str_pad((string) $r->correlativo, 8, '0', STR_PAD_LEFT))
+                    ->description(fn (Venta $r): ?string => (float) $r->saldo_pendiente > 0
+                        ? '⚠ Saldo: S/ ' . number_format((float) $r->saldo_pendiente, 2)
+                        : null)
                     ->weight('medium')
                     ->searchable(false)
                     ->sortable(false),
@@ -189,6 +192,15 @@ class VentasSesionPage extends Page implements HasTable
                     ->money('PEN')
                     ->alignEnd()
                     ->weight('semibold'),
+
+                TextColumn::make('saldo_pendiente')
+                    ->label('Saldo pendiente')
+                    ->money('PEN')
+                    ->alignEnd()
+                    ->color('danger')
+                    ->formatStateUsing(fn ($state): string => (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—')
+                    ->tooltip('Monto aún no pagado de esta venta')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('created_at')
                     ->label('Hora')

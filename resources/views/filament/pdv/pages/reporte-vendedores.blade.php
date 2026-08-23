@@ -3,25 +3,7 @@
 <link rel="stylesheet" href="{{ asset('css/reporte-ganancias.css') }}?v={{ filemtime(public_path('css/reporte-ganancias.css')) }}">
 
 @php
-    $resumen    = $this->getResumen();
-    $vendedores = $this->getVendedores();
-
-    $margenColor = fn(float $util, float $ingresos) => match(true) {
-        $ingresos <= 0 => 'cero',
-        ($util / $ingresos * 100) >= 30 => 'alto',
-        ($util / $ingresos * 100) >= 10 => 'medio',
-        ($util / $ingresos * 100) >  0  => 'bajo',
-        default => 'cero',
-    };
-
-    $urlDetalle = fn($v) =>
-        \App\Filament\Pdv\Pages\ReporteVendedorVentasPage::getUrl() . '?' .
-        http_build_query([
-            'vendedorId'     => $v->vendedor_id,
-            'vendedorNombre' => $v->vendedor,
-            'fechaDesde'     => $this->filtroFechaDesde,
-            'fechaHasta'     => $this->filtroFechaHasta,
-        ]);
+    $resumen = $this->getResumen();
 @endphp
 
 <div class="vs-root">
@@ -70,101 +52,44 @@
     </div>
 
     {{-- Filtros --}}
-    <div class="rg-form-wrap">{{ $this->form }}</div>
+    <div class="rg-form-wrap" x-data="{ open: {{ $this->hayFiltros() ? 'true' : 'false' }} }">
 
-    {{-- Tabla --}}
-    <div class="vs-panel">
-        @if($vendedores->isEmpty())
-            <div class="rg-empty">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
-                </svg>
-                <p>No hay ventas en el período seleccionado</p>
-            </div>
-        @else
-            <div class="rg-table-scroll">
-                <table class="rg-table rg-table--wide">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Vendedor</th>
-                            <th class="rg-th-right">N° Ventas</th>
-                            <th class="rg-th-right">Total facturado</th>
-                            <th class="rg-th-right">Cobrado</th>
-                            <th class="rg-th-right">Crédito pend.</th>
-                            <th class="rg-th-right">Costo</th>
-                            <th class="rg-th-right">Utilidad</th>
-                            <th class="rg-th-right">Margen</th>
-                            <th class="rg-th-right">Última venta</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @php $offset = ($vendedores->currentPage() - 1) * $vendedores->perPage(); @endphp
-                        @foreach($vendedores as $i => $v)
-                            @php
-                                $util             = (float) $v->utilidad;
-                                $ingresos         = (float) $v->ingresos;
-                                $cobrado          = (float) $v->cobrado;
-                                $creditoPendiente = (float) $v->credito_pendiente;
-                                $margen           = $ingresos > 0 ? round($util / $ingresos * 100, 1) : 0.0;
-                            @endphp
-                            <tr wire:key="vend-{{ $v->vendedor_id }}">
-                                <td class="rg-td-center" style="width:2.5rem;color:var(--vs-text-muted);font-size:.75rem;font-weight:700">
-                                    {{ $offset + $i + 1 }}
-                                </td>
-                                <td>
-                                    <span style="font-size:.8125rem;font-weight:700;color:var(--vs-text)">{{ $v->vendedor }}</span>
-                                </td>
-                                <td class="rg-td-right">
-                                    <span class="rg-monto">{{ number_format($v->cantidad) }}</span>
-                                </td>
-                                <td class="rg-td-right">
-                                    <span class="rg-monto">S/ {{ number_format($ingresos, 2) }}</span>
-                                </td>
-                                <td class="rg-td-right">
-                                    <span class="rg-monto rg-monto--pos">S/ {{ number_format($cobrado, 2) }}</span>
-                                </td>
-                                <td class="rg-td-right">
-                                    @if($creditoPendiente > 0)
-                                        <span class="vs-badge vs-badge--credito">S/ {{ number_format($creditoPendiente, 2) }}</span>
-                                    @else
-                                        <span style="color:var(--vs-text-faint)">—</span>
-                                    @endif
-                                </td>
-                                <td class="rg-td-right">
-                                    <span class="rg-monto rg-monto--costo">S/ {{ number_format((float)$v->costo, 2) }}</span>
-                                </td>
-                                <td class="rg-td-right">
-                                    <span class="rg-monto rg-monto--util {{ $util >= 0 ? 'rg-monto--pos' : 'rg-monto--neg' }}">
-                                        S/ {{ number_format($util, 2) }}
-                                    </span>
-                                </td>
-                                <td class="rg-td-right">
-                                    <span class="rg-margen rg-margen--{{ $margenColor($util, $ingresos) }}">
-                                        {{ number_format($margen, 1) }}%
-                                    </span>
-                                </td>
-                                <td class="rg-td-right">
-                                    <span style="font-size:.75rem;color:var(--vs-text-muted)">
-                                        {{ $v->ultima_venta ? \Carbon\Carbon::parse($v->ultima_venta)->format('d/m/Y') : '—' }}
-                                    </span>
-                                </td>
-                                <td class="rg-td-right">
-                                    <a href="{{ $urlDetalle($v) }}" class="rg-btn-link">
-                                        Ver ventas →
-                                    </a>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @if($vendedores->hasPages())
-                <div class="rg-pagination">{{ $vendedores->links('vendor.pagination.pdv') }}</div>
+        <button type="button" class="rg-filtros-toggle" @click="open = !open">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke-width="1.5" stroke="currentColor" width="15" height="15">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"/>
+            </svg>
+            <span>Filtros</span>
+            @if($this->hayFiltros())
+                <span class="rg-filtros-activo-dot" title="Hay filtros activos"></span>
             @endif
-        @endif
+            <svg class="rg-filtros-chevron" :class="{ 'rg-filtros-chevron--open': open }"
+                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke-width="2" stroke="currentColor" width="14" height="14">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+            </svg>
+        </button>
+
+        <div class="rg-filtros-body" :class="{ 'rg-filtros-body--open': open }">
+            {{ $this->form }}
+            @if($this->hayFiltros())
+                <div class="rg-form-limpiar">
+                    <button wire:click="limpiarFiltros" class="vs-filter-reset">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                             stroke-width="1.5" stroke="currentColor" width="14" height="14">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                        Limpiar filtros
+                    </button>
+                </div>
+            @endif
+        </div>
+
     </div>
+
+    {{-- Tabla Filament --}}
+    {{ $this->table }}
 
 </div>
 </x-filament-panels::page>

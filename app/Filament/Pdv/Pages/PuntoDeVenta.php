@@ -35,6 +35,7 @@ use Filament\Notifications\Notification;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
@@ -95,6 +96,8 @@ class PuntoDeVenta extends Page
     public array $variantesInfo = [];
     public array $exclusionesMap = [];
     public array $valoresDeshabilitados = [];
+    public float $modalCantidad = 1.0;
+    public bool  $modalCortesia = false;
 
     // ── Modal pago ────────────────────────────────────────────────────────────
     public bool $modalPago = false;
@@ -109,19 +112,35 @@ class PuntoDeVenta extends Page
     public string $despachoDireccion = '';
 
     // ── Modal impresión post-venta ─────────────────────────────────────────────
-    public bool   $modalImpresion   = false;
-    public ?int   $ventaIdImprimir  = null;
-    public string $ventaNumeroImpr  = '';
-    public float  $ventaTotalImpr   = 0.0;
-    public string $wspTelefono      = '';
-    public string $wspShareUrl      = '';
+    public bool   $modalImpresion    = false;
+    public bool   $autoImprimirModal = false;
+    public ?int   $ventaIdImprimir   = null;
+    public string $ventaNumeroImpr   = '';
+    public float  $ventaTotalImpr    = 0.0;
+    public string $wspTelefono       = '';
+    public string $wspShareUrl       = '';
+
+    // ── Reimpresión del último ticket ──────────────────────────────────────────
+    public ?int   $ultimaVentaId     = null;
+    public string $ultimaVentaNumero = '';
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    private function cacheKeyUltimaVenta(): string
+    {
+        return 'pdv:ultima_venta:' . Filament::getTenant()->id . ':' . auth()->id();
+    }
 
     public function mount(): void
     {
         $this->autoSeleccionarComprobante();
         $this->autoSeleccionarClienteGeneral();
+
+        $cached = Cache::get($this->cacheKeyUltimaVenta());
+        if ($cached) {
+            $this->ultimaVentaId     = $cached['id'];
+            $this->ultimaVentaNumero = $cached['numero'];
+        }
     }
 
     // ── Series ────────────────────────────────────────────────────────────────
@@ -555,6 +574,8 @@ class PuntoDeVenta extends Page
         $this->exclusionesMap = $exclusionesMap;
 
         $this->calcularDeshabilitados();
+        $this->modalCantidad = 1.0;
+        $this->modalCortesia = false;
         $this->modalAbierto = true;
     }
 
@@ -658,6 +679,14 @@ class PuntoDeVenta extends Page
             ->sum('precio_adicional');
     }
 
+    public function confirmarModalConParams(float $cantidad, bool $esCortesia): void
+    {
+        $min = $this->productoEsDecimal ? 0.001 : 1;
+        $this->modalCantidad = max($min, $cantidad);
+        $this->modalCortesia = $esCortesia && $this->productoEsCortesia;
+        $this->confirmarModal();
+    }
+
     public function confirmarModal(): void
     {
         if (! $this->productoModalId || count($this->seleccionados) < count($this->atributosModal)) {
@@ -690,8 +719,11 @@ class PuntoDeVenta extends Page
 
         $nombre = $sufijo ? "{$this->productoModalNombre} ({$sufijo})" : $this->productoModalNombre;
 
-        $precioNormal = $this->precioBase + $this->precioAdicionalTotal;
-        $this->agregarVariante($variante->id, $nombre, $precioNormal, false, $precioNormal, $this->productoEsCortesia);
+        $precioNormal    = $this->precioBase + $this->precioAdicionalTotal;
+        $esCortesiaFinal = $this->productoEsCortesia && $this->modalCortesia;
+        $precioFinal     = $esCortesiaFinal ? 0.0 : $precioNormal;
+
+        $this->agregarVariante($variante->id, $nombre, $precioFinal, $esCortesiaFinal, $precioNormal, $this->productoEsCortesia, $this->modalCantidad);
         $this->cerrarModal();
     }
 
@@ -710,6 +742,8 @@ class PuntoDeVenta extends Page
         $this->variantesInfo         = [];
         $this->exclusionesMap        = [];
         $this->valoresDeshabilitados = [];
+        $this->modalCantidad         = 1.0;
+        $this->modalCortesia         = false;
     }
 
     // ── Carrito: agregar ──────────────────────────────────────────────────────
@@ -743,13 +777,13 @@ class PuntoDeVenta extends Page
         $this->pushCarrito("producto_{$productoId}", 'producto', $productoId, $nombre, $precio, $esCortesia, $esDecimal, $precioNormal, $puedeCortesia);
     }
 
-    private function agregarVariante(int $varianteId, string $nombre, float $precio, bool $esCortesia = false, float $precioNormal = 0, bool $puedeCortesia = false): void
+    private function agregarVariante(int $varianteId, string $nombre, float $precio, bool $esCortesia = false, float $precioNormal = 0, bool $puedeCortesia = false, float $cantidad = 1.0): void
     {
         if ($this->productoControlStock && ! $this->productoVentaSinStock) {
             $inv       = Inventario::where('variante_id', $varianteId)->first();
             $stock     = (float) ($inv?->stock_real ?? 0);
             $enCarrito = (float) ($this->carrito["variante_{$varianteId}"]['cantidad'] ?? 0);
-            if ($enCarrito + 1 > $stock) {
+            if ($enCarrito + $cantidad > $stock) {
                 Notification::make()
                     ->title('Stock insuficiente')
                     ->body("Disponible: {$stock}.")
@@ -758,7 +792,7 @@ class PuntoDeVenta extends Page
             }
         }
 
-        $this->pushCarrito("variante_{$varianteId}", 'variante', $varianteId, $nombre, $precio, $esCortesia, $this->productoEsDecimal, $precioNormal, $puedeCortesia);
+        $this->pushCarrito("variante_{$varianteId}", 'variante', $varianteId, $nombre, $precio, $esCortesia, $this->productoEsDecimal, $precioNormal, $puedeCortesia, $cantidad);
     }
 
     public function agregarPromocion(int $promocionId): void
@@ -785,11 +819,11 @@ class PuntoDeVenta extends Page
         $this->pushCarrito("promocion_{$promocionId}", 'promocion', $promocionId, $promocion->nombre, (float) $promocion->precio);
     }
 
-    private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio, bool $esCortesia = false, bool $esDecimal = false, float $precioNormal = 0, bool $puedeCortesia = false): void
+    private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio, bool $esCortesia = false, bool $esDecimal = false, float $precioNormal = 0, bool $puedeCortesia = false, float $cantidadAgregar = 1.0): void
     {
         $carrito = $this->carrito;
         if (isset($carrito[$key])) {
-            $carrito[$key]['cantidad'] += $esDecimal ? 1.0 : 1;
+            $carrito[$key]['cantidad'] += $cantidadAgregar;
         } else {
             $carrito[$key] = [
                 'key'           => $key,
@@ -801,7 +835,7 @@ class PuntoDeVenta extends Page
                 'cortesia'      => $esCortesia,
                 'puede_cortesia'=> $puedeCortesia,
                 'decimal'       => $esDecimal,
-                'cantidad'      => $esDecimal ? 1.0 : 1,
+                'cantidad'      => $cantidadAgregar,
             ];
         }
         $this->carrito = $carrito;
@@ -994,6 +1028,12 @@ class PuntoDeVenta extends Page
         $this->despachoRequerido  = false;
         $this->despachoDireccion  = '';
         $this->modalPago          = true;
+
+        // Pre-seleccionar efectivo y montar el monto exacto para que el cajero solo presione "Agregar"
+        $this->autoSeleccionarEfectivo();
+        if ($this->metodoPagoId) {
+            $this->montoPagoInput = number_format($this->getSaldoRestante(), 2, '.', '');
+        }
     }
 
     public function cerrarModalSinSesion(): void
@@ -1581,31 +1621,43 @@ class PuntoDeVenta extends Page
 
         Notification::make()->title('Venta procesada correctamente')->success()->send();
 
-        // Abrir modal de impresión si la empresa no tiene impresión automática activa
-        if ($venta && ! Filament::getTenant()->impresion_comprobante_directo) {
+        // Siempre mostrar el modal de impresión.
+        // Si impresion_comprobante_directo está DESACTIVADO, además se dispara automáticamente
+        // el diálogo de impresión de Windows al cargar el iframe.
+        if ($venta) {
             $venta->loadMissing('serie');
             $serie = $venta->serie;
-            $this->ventaIdImprimir = $venta->id;
-            $this->ventaNumeroImpr = ($serie?->serie ?? '---') . '-' . str_pad($venta->correlativo, 8, '0', STR_PAD_LEFT);
-            $this->ventaTotalImpr  = (float) $venta->total;
-            $this->wspTelefono     = '';
-            $this->wspShareUrl     = URL::temporarySignedRoute(
+            $this->ventaIdImprimir   = $venta->id;
+            $this->ventaNumeroImpr   = ($serie?->serie ?? '---') . '-' . str_pad($venta->correlativo, 8, '0', STR_PAD_LEFT);
+            $this->ventaTotalImpr    = (float) $venta->total;
+            $this->wspTelefono       = '';
+            $this->wspShareUrl       = URL::temporarySignedRoute(
                 'pdv.ticket.venta.compartir',
                 now()->addHours(24),
                 ['id' => $venta->id]
             );
-            $this->modalImpresion  = true;
+            $this->autoImprimirModal = ! Filament::getTenant()->impresion_comprobante_directo;
+            $this->modalImpresion    = true;
+
+            // Guardar referencia para el botón de reimpresión (persiste entre recargas)
+            $this->ultimaVentaId     = $venta->id;
+            $this->ultimaVentaNumero = $this->ventaNumeroImpr;
+            Cache::put($this->cacheKeyUltimaVenta(), [
+                'id'     => $venta->id,
+                'numero' => $this->ventaNumeroImpr,
+            ], now()->addDays(30));
         }
     }
 
     public function cerrarModalImpresion(): void
     {
-        $this->modalImpresion  = false;
-        $this->ventaIdImprimir = null;
-        $this->ventaNumeroImpr = '';
-        $this->ventaTotalImpr  = 0.0;
-        $this->wspTelefono     = '';
-        $this->wspShareUrl     = '';
+        $this->modalImpresion    = false;
+        $this->autoImprimirModal = false;
+        $this->ventaIdImprimir   = null;
+        $this->ventaNumeroImpr   = '';
+        $this->ventaTotalImpr    = 0.0;
+        $this->wspTelefono       = '';
+        $this->wspShareUrl       = '';
     }
 
     public function enviarWhatsapp(): void

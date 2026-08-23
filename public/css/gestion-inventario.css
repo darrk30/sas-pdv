@@ -1,0 +1,129 @@
+/* ── Gestion Inventario page ─────────────────────────────────── */
+
+/* ── Variables globales (light) ──────────────────────────────── */
+:root {
+    --gi-kpi-gray-bg:    #f8fafc;
+    --gi-kpi-gray-bd:    #e2e8f0;
+    --gi-kpi-green-bg:   #f0fdf4;
+    --gi-kpi-green-bd:   #bbf7d0;
+    --gi-kpi-amber-bg:   #fffbeb;
+    --gi-kpi-amber-bd:   #fde68a;
+    --gi-kpi-red-bg:     #fef2f2;
+    --gi-kpi-red-bd:     #fecaca;
+
+    --gi-kpi-label-gray:  #64748b;
+    --gi-kpi-label-green: #16a34a;
+    --gi-kpi-label-amber: #b45309;
+    --gi-kpi-label-red:   #dc2626;
+
+    --gi-kpi-value:  #0f172a;
+    --gi-kpi-sub:    #94a3b8;
+}
+
+/* ── Variables dark (Filament pone clase .dark en <html>) ──────── */
+.dark {
+    --gi-kpi-gray-bg:    #1e293b;
+    --gi-kpi-gray-bd:    #334155;
+    --gi-kpi-green-bg:   #0d2418;
+    --gi-kpi-green-bd:   #166534;
+    --gi-kpi-amber-bg:   #1c1508;
+    --gi-kpi-amber-bd:   #92400e;
+    --gi-kpi-red-bg:     #1c0d0d;
+    --gi-kpi-red-bd:     #991b1b;
+
+    --gi-kpi-label-gray:  #94a3b8;
+    --gi-kpi-label-green: #4ade80;
+    --gi-kpi-label-amber: #fbbf24;
+    --gi-kpi-label-red:   #f87171;
+
+    --gi-kpi-value: #f1f5f9;
+    --gi-kpi-sub:   #64748b;
+}
+
+/* ── Layout raíz ─────────────────────────────────────────────── */
+.gi-root {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ── Grid de KPIs ────────────────────────────────────────────── */
+.gi-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.875rem;
+}
+@media (max-width: 900px) { .gi-kpis { grid-template-columns: repeat(2, 1fr); } }
+
+/* ── Tarjeta base ────────────────────────────────────────────── */
+.gi-kpi {
+    border-radius: 0.625rem;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    position: relative;
+    overflow: hidden;
+    border-width: 1px;
+    border-style: solid;
+    transition: box-shadow 0.15s;
+}
+.gi-kpi:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+
+/* ── Variantes de color ──────────────────────────────────────── */
+.gi-kpi--gray  {
+    background: var(--gi-kpi-gray-bg);
+    border-color: var(--gi-kpi-gray-bd);
+    border-top: 3px solid #64748b;
+}
+.gi-kpi--green {
+    background: var(--gi-kpi-green-bg);
+    border-color: var(--gi-kpi-green-bd);
+    border-top: 3px solid #22c55e;
+}
+.gi-kpi--amber {
+    background: var(--gi-kpi-amber-bg);
+    border-color: var(--gi-kpi-amber-bd);
+    border-top: 3px solid #f59e0b;
+}
+.gi-kpi--red {
+    background: var(--gi-kpi-red-bg);
+    border-color: var(--gi-kpi-red-bd);
+    border-top: 3px solid #ef4444;
+}
+
+/* ── Textos ──────────────────────────────────────────────────── */
+.gi-kpi__label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+.gi-kpi--gray  .gi-kpi__label { color: var(--gi-kpi-label-gray);  }
+.gi-kpi--green .gi-kpi__label { color: var(--gi-kpi-label-green); }
+.gi-kpi--amber .gi-kpi__label { color: var(--gi-kpi-label-amber); }
+.gi-kpi--red   .gi-kpi__label { color: var(--gi-kpi-label-red);   }
+
+.gi-kpi__value {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--gi-kpi-value);
+    font-variant-numeric: tabular-nums;
+}
+
+.gi-kpi__sub {
+    font-size: 0.72rem;
+    color: var(--gi-kpi-sub);
+}
+
+/* ── Icono decorativo ────────────────────────────────────────── */
+.gi-kpi__icon {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.08;
+    width: 3rem;
+    height: 3rem;
+}

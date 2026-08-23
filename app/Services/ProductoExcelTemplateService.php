@@ -45,9 +45,10 @@ class ProductoExcelTemplateService
         'N' => ['AREA_PRODUCCION',      20, false, null,                           'Nombre del área de producción. Debe existir previamente.'],
         'O' => ['ETIQUETA',             13, false, 'nuevo,agotado,combo,promo,oferta', 'Selecciona de la lista o deja vacío.'],
         'P' => ['CONTROL_STOCK',        15, false, 'TRUE,FALSE',                   'TRUE = controla stock. FALSE = no controla.'],
+        'Q' => ['ORDEN',               10, false, null,                           'Orden de visualización en catálogo y PDV. Menor número = aparece primero. Default: 0.'],
     ];
 
-    // Mismo layout que COLS_NUEVOS (A–P) para que el mismo archivo sirva en ambos modos.
+    // Mismo layout que COLS_NUEVOS (A–Q) para que el mismo archivo sirva en ambos modos.
     // D (PRECIO_COSTO) y J (STOCK_INICIAL) se ignoran al actualizar.
     private const COLS_ACTUALIZAR = [
         'A' => ['CODIGO_INTERNO (*)',    20, true,  null,                           'Requerido. Identifica el producto a actualizar.'],
@@ -66,6 +67,7 @@ class ProductoExcelTemplateService
         'N' => ['AREA_PRODUCCION',      20, false, null,                           'Debe existir en el sistema.'],
         'O' => ['ETIQUETA',             13, false, 'nuevo,agotado,combo,promo,oferta', 'Selecciona de la lista. Dejar vacío para no cambiar.'],
         'P' => ['CONTROL_STOCK',        15, false, 'TRUE,FALSE',                   'TRUE o FALSE. Dejar vacío para no cambiar.'],
+        'Q' => ['ORDEN',               10, false, null,                           'Orden de visualización. Vacío = no cambia.'],
     ];
 
     private const COLS_PRECIOS = [
@@ -93,6 +95,7 @@ class ProductoExcelTemplateService
         'N' => '',
         'O' => 'nuevo',
         'P' => 'TRUE',
+        'Q' => '1',
     ];
 
     private const EJEMPLO_ACTUALIZAR = [
@@ -104,7 +107,7 @@ class ProductoExcelTemplateService
         // F = PRECIO_CON_DESCUENTO (fórmula)
         'G' => '',        // UNIDAD_MEDIDA
         'H' => '',        // ESTADO
-        'I' => '10',     // STOCK_MINIMO
+        'I' => '10',      // STOCK_MINIMO
         // J = STOCK_INICIAL (ignorado)
         'K' => '',        // CODIGO_BARRAS
         'L' => '',        // CATEGORIA
@@ -112,6 +115,7 @@ class ProductoExcelTemplateService
         'N' => '',        // AREA_PRODUCCION
         'O' => 'promo',  // ETIQUETA
         'P' => '',        // CONTROL_STOCK
+        'Q' => '1',      // ORDEN
     ];
 
     private const EJEMPLO_PRECIOS = [

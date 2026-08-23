@@ -12,12 +12,6 @@
         ];
     @endphp
 
-    {{-- ── Título ─────────────────────────────────────────────────────────── --}}
-    <div class="kdx-title">
-        <h1>Kardex de Inventario</h1>
-        <p>Historial de movimientos de stock</p>
-    </div>
-
     {{-- ── Filtros ───────────────────────────────────────────────────────── --}}
     <div class="kdx-form-wrap">
         {{ $this->form }}
@@ -36,8 +30,8 @@
     {{-- ── Panel chips + tabla ────────────────────────────────────────────── --}}
     <div class="kdx-panel">
 
-        {{-- Chips de resumen --}}
-        <div style="padding: .75rem 1rem; border-bottom: 1px solid var(--kdx-border);">
+        {{-- Chips de resumen + botones export --}}
+        <div class="kdx-chips-bar">
             <div class="kdx-chips">
                 <span class="kdx-chip kdx-chip--gray">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,6 +52,20 @@
                     </svg>
                     Salidas: {{ number_format($resumen['salidas']) }}
                 </span>
+            </div>
+            <div class="kdx-export-btns">
+                <button wire:click="exportarExcel" class="kdx-export-btn kdx-export-btn--excel">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18M10 3v18M14 3v18M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/>
+                    </svg>
+                    Excel
+                </button>
+                <button wire:click="exportarPdf" class="kdx-export-btn kdx-export-btn--pdf">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    PDF
+                </button>
             </div>
         </div>
 

@@ -4,6 +4,7 @@ namespace App\Filament\Pdv\Pages;
 
 use App\Models\Kardex;
 use App\Models\Producto;
+use App\Services\KardexExportService;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -35,6 +36,29 @@ class KardexPage extends Page implements HasForms
 
     public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('kardex') && (auth()->user()?->can('inventario.kardex') ?? false); }
 
+public function exportarExcel(): mixed
+    {
+        return app(KardexExportService::class)
+            ->generarExcel(Filament::getTenant(), $this->getFiltros(), $this->getResumen());
+    }
+
+    public function exportarPdf(): mixed
+    {
+        return app(KardexExportService::class)
+            ->generarPdf(Filament::getTenant(), $this->getFiltros(), $this->getResumen());
+    }
+
+    private function getFiltros(): array
+    {
+        return [
+            'producto' => $this->filtroProducto,
+            'desde'    => $this->filtroFechaDesde,
+            'hasta'    => $this->filtroFechaHasta,
+            'tipo'     => $this->filtroTipo,
+            'origen'   => $this->filtroOrigen,
+        ];
+    }
+
 
     // ── Filtros ───────────────────────────────────────────────────────────────
     // filtroProducto: "p:{id}" para producto simple | "v:{id}" para variante
@@ -46,9 +70,10 @@ class KardexPage extends Page implements HasForms
 
     public function mount(): void
     {
-        $this->filtroFechaDesde = now()->subDays(30)->toDateString();
-        $this->filtroFechaHasta = now()->toDateString();
-        $this->form->fill();
+        $this->form->fill([
+            'filtroFechaDesde' => now()->toDateString(),
+            'filtroFechaHasta' => now()->toDateString(),
+        ]);
     }
 
     // ── Form Filament ─────────────────────────────────────────────────────────
@@ -112,12 +137,13 @@ class KardexPage extends Page implements HasForms
 
     public function limpiarFiltros(): void
     {
-        $this->filtroProducto   = null;
-        $this->filtroFechaDesde = now()->subDays(30)->toDateString();
-        $this->filtroFechaHasta = now()->toDateString();
-        $this->filtroTipo       = null;
-        $this->filtroOrigen     = null;
-        $this->form->fill();
+        $this->form->fill([
+            'filtroProducto'   => null,
+            'filtroFechaDesde' => now()->toDateString(),
+            'filtroFechaHasta' => now()->toDateString(),
+            'filtroTipo'       => null,
+            'filtroOrigen'     => null,
+        ]);
         $this->resetPage();
     }
 

@@ -4,9 +4,7 @@
 <link rel="stylesheet" href="{{ asset('css/reporte-compras.css') }}?v={{ filemtime(public_path('css/reporte-compras.css')) }}">
 
 @php
-    $resumen = $this->getResumen();
-    $compras = $this->getCompras();
-
+    $resumen   = $this->getResumen();
     $labelTipo = fn(string $t) => match($t) {
         'factura'        => 'Factura',
         'boleta'         => 'Boleta',
@@ -14,17 +12,11 @@
         'sin_comprobante'=> 'Sin comprob.',
         default          => $t,
     };
-    $classTipo = fn(string $t) => match($t) {
-        'factura'        => 'rc-badge--factura',
-        'boleta'         => 'rc-badge--boleta',
-        'ticket'         => 'rc-badge--ticket',
-        default          => 'rc-badge--sin',
-    };
 @endphp
 
 <div class="vs-root">
 
-    {{-- TÍTULO --}}
+    {{-- ══ TÍTULO ══ --}}
     <div class="vs-title">
         <div>
             <h1>Reporte de Compras</h1>
@@ -32,7 +24,7 @@
         </div>
     </div>
 
-    {{-- KPIs --}}
+    {{-- ══ KPIs ══ --}}
     <div class="rg-kpis">
         <div class="rg-kpi rg-kpi--gray">
             <span class="rg-kpi__label">Compras</span>
@@ -56,145 +48,46 @@
         </div>
     </div>
 
-    {{-- FILTROS --}}
-    <div class="rg-form-wrap">{{ $this->form }}</div>
+    {{-- ══ FILTROS ══ --}}
+    <div class="rg-form-wrap" x-data="{ open: {{ $this->hayFiltros() ? 'true' : 'false' }} }">
 
-    {{-- TABLA --}}
-    <div class="vs-panel">
-        @if($compras->isEmpty())
-            <div class="rg-empty">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
-                </svg>
-                <p>No se encontraron compras en el período seleccionado</p>
-            </div>
-        @else
-            <div class="rg-table-scroll">
-                <table class="rg-table rg-table--wide" style="min-width:860px">
-                    <thead>
-                        <tr>
-                            <th>Comprobante</th>
-                            <th>Fecha</th>
-                            <th>Proveedor</th>
-                            <th>Estado</th>
-                            <th>Despacho</th>
-                            <th>Pago</th>
-                            <th class="rg-th-right">Total</th>
-                            <th class="rg-th-right">Saldo</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($compras as $c)
-                            @php
-                                $pagado = (float) ($c->pagos_sum_monto ?? 0);
-                                $saldo  = (float) $c->total - $pagado;
-                                $es_anulada = $c->estado === 'anulado';
-                            @endphp
-                            <tr wire:key="rc-{{ $c->id }}" class="{{ $es_anulada ? 'rc-row--anulado' : '' }}">
-
-                                {{-- Comprobante --}}
-                                <td>
-                                    <span class="rc-comprobante">
-                                        @if($c->serie && $c->correlativo)
-                                            {{ $c->serie }}-{{ $c->correlativo }}
-                                        @else
-                                            {{ $c->codigo ?? '—' }}
-                                        @endif
-                                    </span>
-                                    <span class="rc-comprobante__tipo">
-                                        <span class="rc-badge {{ $classTipo($c->tipo_comprobante) }}">
-                                            {{ $labelTipo($c->tipo_comprobante) }}
-                                        </span>
-                                    </span>
-                                </td>
-
-                                {{-- Fecha --}}
-                                <td>
-                                    <div class="rg-fecha">
-                                        <span class="rg-fecha__dia">{{ \Carbon\Carbon::parse($c->fecha_compra)->format('d/m/Y') }}</span>
-                                        <span class="rg-fecha__hora">{{ \Carbon\Carbon::parse($c->created_at)->format('H:i') }}</span>
-                                    </div>
-                                </td>
-
-                                {{-- Proveedor --}}
-                                <td>
-                                    <span class="rc-proveedor">{{ $c->proveedor?->nombre ?? '—' }}</span>
-                                    <span class="rc-proveedor__user">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="10" height="10" style="display:inline;vertical-align:middle">
-                                            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM12.735 14c.618 0 1.093-.561.872-1.139a6.002 6.002 0 0 0-11.215 0c-.22.578.254 1.139.872 1.139h9.47Z"/>
-                                        </svg>
-                                        {{ $c->registradoPor?->name ?? '—' }}
-                                    </span>
-                                </td>
-
-                                {{-- Estado --}}
-                                <td>
-                                    <span class="rc-badge rc-badge--{{ $c->estado }}">
-                                        {{ match($c->estado) { 'borrador' => 'Borrador', 'confirmado' => 'Confirmado', 'anulado' => 'Anulado', default => $c->estado } }}
-                                    </span>
-                                </td>
-
-                                {{-- Estado despacho --}}
-                                <td>
-                                    <span class="rc-badge {{ $c->estado_despacho === 'recibido' ? 'rc-badge--recibido' : 'rc-badge--pendiente' }}">
-                                        {{ $c->estado_despacho === 'recibido' ? 'Recibido' : 'Pendiente' }}
-                                    </span>
-                                </td>
-
-                                {{-- Estado pago --}}
-                                <td>
-                                    <span class="rc-badge rc-badge--{{ $c->estado_pago }}">
-                                        {{ match($c->estado_pago) { 'pagado' => 'Pagado', 'pendiente' => 'Pendiente', default => $c->estado_pago } }}
-                                    </span>
-                                </td>
-
-                                {{-- Total --}}
-                                <td class="rg-td-right">
-                                    <span class="rg-monto">S/ {{ number_format((float)$c->total, 2) }}</span>
-                                </td>
-
-                                {{-- Saldo --}}
-                                <td class="rg-td-right">
-                                    @if($saldo > 0.01)
-                                        <span class="rg-monto rg-monto--neg">S/ {{ number_format($saldo, 2) }}</span>
-                                    @else
-                                        <span style="font-size:.72rem;color:#15803d;font-weight:600">✓ Saldado</span>
-                                    @endif
-                                </td>
-
-                                {{-- Acciones --}}
-                                <td>
-                                    <div class="rc-acciones">
-                                        <button class="rc-btn rc-btn--detalle"
-                                            wire:click="abrirDetalle({{ $c->id }})"
-                                            wire:loading.class="rc-btn--cargando"
-                                            wire:loading.attr="disabled"
-                                            wire:target="abrirDetalle({{ $c->id }})">
-                                            Detalle
-                                        </button>
-
-                                        <button class="rc-btn {{ $saldo > 0.01 ? 'rc-btn--pagos-alerta' : 'rc-btn--pagos' }}"
-                                            wire:click="abrirPagos({{ $c->id }})"
-                                            wire:loading.class="rc-btn--cargando"
-                                            wire:loading.attr="disabled"
-                                            wire:target="abrirPagos({{ $c->id }})">
-                                            Pagos{{ $saldo > 0.01 ? ' !' : '' }}
-                                        </button>
-                                    </div>
-                                </td>
-
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-
-            @if($compras->hasPages())
-                <div class="rg-pagination">{{ $compras->links('vendor.pagination.pdv') }}</div>
+        {{-- Botón toggle solo visible en móvil --}}
+        <button type="button" class="rc-filtros-toggle" @click="open = !open">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke-width="1.5" stroke="currentColor" width="15" height="15">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"/>
+            </svg>
+            <span>Filtros</span>
+            @if($this->hayFiltros())
+                <span class="rc-filtros-activo-dot" title="Hay filtros activos"></span>
             @endif
-        @endif
+            <svg class="rc-filtros-chevron" :class="{ 'rc-filtros-chevron--open': open }"
+                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke-width="2" stroke="currentColor" width="14" height="14">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+            </svg>
+        </button>
+
+        <div class="rc-filtros-body" :class="{ 'rc-filtros-body--open': open }">
+            {{ $this->form }}
+            @if($this->hayFiltros())
+                <div class="rc-form-limpiar">
+                    <button wire:click="limpiarFiltros" class="vs-filter-reset">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                             stroke-width="1.5" stroke="currentColor" width="14" height="14">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                        Limpiar filtros
+                    </button>
+                </div>
+            @endif
+        </div>
+
     </div>
+
+    {{-- ══ TABLA FILAMENT ══ --}}
+    {{ $this->table }}
 
 </div>{{-- /vs-root --}}
 
@@ -236,7 +129,6 @@
                 </button>
             </div>
 
-            {{-- Proveedor --}}
             @if($cd->proveedor)
             <div class="vs-modal__cliente">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -345,7 +237,6 @@
 
             <div class="vs-modal__body">
 
-                {{-- Saldo --}}
                 <div class="rc-saldo-pendiente {{ $saldoModal > 0.01 ? 'rc-saldo-pendiente--deuda' : 'rc-saldo-pendiente--ok' }}">
                     <div style="flex:1">
                         <div class="rc-saldo-pendiente__label">
@@ -364,7 +255,6 @@
                     </div>
                 </div>
 
-                {{-- Lista de pagos --}}
                 @if($cp->pagos->isEmpty())
                     <p style="font-size:.8rem;color:var(--vs-text-muted);text-align:center;padding:1.5rem 0">
                         No hay pagos registrados para esta compra.
@@ -383,20 +273,10 @@
                         <tbody>
                             @foreach($cp->pagos as $pago)
                                 <tr>
-                                    <td>
-                                        <span style="font-weight:600">{{ $pago->metodoPago?->nombre ?? '—' }}</span>
-                                    </td>
-                                    <td>
-                                        <span style="font-size:.75rem;color:var(--vs-text-muted)">{{ $pago->referencia ?: '—' }}</span>
-                                    </td>
-                                    <td class="rc-ta-right">
-                                        <span style="font-weight:700;color:#15803d">S/ {{ number_format($pago->monto, 2) }}</span>
-                                    </td>
-                                    <td class="rc-ta-right">
-                                        <span style="font-size:.72rem;color:var(--vs-text-muted)">
-                                            {{ $pago->created_at ? \Carbon\Carbon::parse($pago->created_at)->format('d/m/Y') : '—' }}
-                                        </span>
-                                    </td>
+                                    <td><span style="font-weight:600">{{ $pago->metodoPago?->nombre ?? '—' }}</span></td>
+                                    <td><span style="font-size:.75rem;color:var(--vs-text-muted)">{{ $pago->referencia ?: '—' }}</span></td>
+                                    <td class="rc-ta-right"><span style="font-weight:700;color:#15803d">S/ {{ number_format($pago->monto, 2) }}</span></td>
+                                    <td class="rc-ta-right"><span style="font-size:.72rem;color:var(--vs-text-muted)">{{ $pago->created_at ? \Carbon\Carbon::parse($pago->created_at)->format('d/m/Y') : '—' }}</span></td>
                                 </tr>
                             @endforeach
                         </tbody>

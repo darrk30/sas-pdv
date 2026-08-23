@@ -100,6 +100,7 @@ class ProductoImportService
                     'produccion_id'         => $this->resolverProduccion($fila['N'] ?? null),
                     'etiqueta'              => $this->resolverEtiqueta($fila['O'] ?? null),
                     'control_de_stock'      => $controlDeStock,
+                    'orden'                 => (int) ($this->parseDecimal($fila['Q'] ?? null) ?? 0),
                     'visible_en_carta'      => true,
                     'es_cortesia'           => false,
                     'venta_sin_stock'       => false,
@@ -219,6 +220,11 @@ class ProductoImportService
                 $rawBool = trim($fila['P'] ?? '');
                 if ($rawBool !== '') {
                     $cambios['control_de_stock'] = $this->parseBooleano($rawBool, true);
+                }
+
+                $orden = $this->parseDecimal($fila['Q'] ?? null);
+                if ($orden !== null) {
+                    $cambios['orden'] = (int) $orden;
                 }
 
                 // Regenerar slug si cambió el nombre

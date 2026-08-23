@@ -86,6 +86,57 @@
     justify-content: flex-end;
 }
 
+/* ── Toggle de filtros (solo en móvil) ─────────────────────── */
+.rg-filtros-toggle { display: none; }
+
+.rg-filtros-chevron {
+    transition: transform .2s ease;
+    flex-shrink: 0;
+}
+.rg-filtros-chevron--open { transform: rotate(180deg); }
+
+@media (min-width: 768px) {
+    .rg-filtros-body { display: block !important; }
+}
+
+@media (max-width: 767px) {
+    .rg-form-wrap { padding: 0.625rem 0.75rem; }
+
+    .rg-filtros-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        width: 100%;
+        padding: 0.45rem 0;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--vs-text);
+        text-align: left;
+    }
+
+    .rg-filtros-activo-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #3b82f6;
+        flex-shrink: 0;
+    }
+
+    .rg-filtros-chevron {
+        margin-left: auto;
+        color: var(--vs-text-faint);
+    }
+
+    .rg-filtros-body         { display: none; margin-top: 0.75rem; }
+    .rg-filtros-body--open   { display: block; }
+
+    .rg-form-limpiar { justify-content: stretch; }
+    .rg-form-limpiar .vs-filter-reset { width: 100%; justify-content: center; }
+}
+
 /* ── Tabla ganancias ───────────────────────────────────────── */
 .rg-table-scroll {
     overflow-x: auto;

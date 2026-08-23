@@ -37,6 +37,63 @@
 .dark .rc-badge--entrada    { background: #14532d; color: #86efac; }
 .dark .rc-badge--salida     { background: #7f1d1d; color: #fca5a5; }
 
+/* ── Limpiar filtros ─────────────────────────────────────────── */
+.rc-form-limpiar {
+    margin-top: 0.625rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* ── Toggle de filtros (solo aparece en móvil) ───────────────── */
+.rc-filtros-toggle { display: none; }
+
+.rc-filtros-chevron {
+    transition: transform .2s ease;
+    flex-shrink: 0;
+}
+.rc-filtros-chevron--open { transform: rotate(180deg); }
+
+/* ══ RESPONSIVE ══════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+    .rc-filtros-body { display: block !important; }
+}
+
+@media (max-width: 767px) {
+    .rc-filtros-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        width: 100%;
+        padding: 0.45rem 0;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--vs-text);
+        text-align: left;
+    }
+
+    .rc-filtros-activo-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #3b82f6;
+        flex-shrink: 0;
+    }
+
+    .rc-filtros-chevron {
+        margin-left: auto;
+        color: var(--vs-text-faint);
+    }
+
+    .rc-filtros-body         { display: none; margin-top: 0.75rem; }
+    .rc-filtros-body--open   { display: block; }
+
+    .rc-form-limpiar { justify-content: stretch; }
+    .rc-form-limpiar .vs-filter-reset { width: 100%; justify-content: center; }
+}
+
 /* ── Saldo pendiente ─────────────────────────────────────────── */
 .rc-saldo {
     font-size: 0.72rem;

@@ -169,12 +169,21 @@
     color: var(--kdx-text);
 }
 
-/* ── Chips de resumen ──────────────────────────────────────── */
+/* ── Barra chips + botones export ──────────────────────────── */
+.kdx-chips-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .5rem;
+    padding: .6rem 1rem;
+    border-bottom: 1px solid var(--kdx-border);
+}
+
 .kdx-chips {
     display: flex;
     flex-wrap: wrap;
     gap: .5rem;
-    margin-bottom: 1rem;
 }
 .kdx-chip {
     display: inline-flex;
@@ -442,6 +451,40 @@
     text-decoration: underline;
     padding: 0;
 }
+
+/* ── Botones export en tabla ───────────────────────────────── */
+.kdx-export-btns {
+    display: flex;
+    gap: .375rem;
+}
+.kdx-export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .3rem .7rem;
+    font-size: .75rem;
+    font-weight: 600;
+    border-radius: .4rem;
+    border: 1px solid;
+    cursor: pointer;
+    transition: opacity .15s;
+}
+.kdx-export-btn:hover { opacity: .85; }
+.kdx-export-btn--excel {
+    background: #16a34a;
+    border-color: #15803d;
+    color: #fff;
+}
+.kdx-export-btn--pdf {
+    background: #dc2626;
+    border-color: #b91c1c;
+    color: #fff;
+}
+
+/* ── Reduce padding vertical del form Filament ─────────────── */
+.kdx-form-wrap .fi-fo-field-wrp { padding-top: 0 !important; padding-bottom: 0 !important; }
+.kdx-form-wrap .fi-sc-section-content-ctn { padding-top: 0 !important; padding-bottom: 0 !important; }
+.kdx-form-wrap > [class*="fi-"] { margin-bottom: 0 !important; }
 
 /* ── Paginación ────────────────────────────────────────────── */
 .kdx-pagination {

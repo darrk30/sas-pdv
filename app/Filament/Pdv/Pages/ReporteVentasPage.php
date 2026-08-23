@@ -21,11 +21,12 @@ use App\Models\Venta;
 use App\Models\VentaPago;
 use App\Services\KardexService;
 use App\Services\PdfVentaService;
+use App\Services\ReporteVentasExportService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -97,18 +98,6 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->live(debounce: 300)
                     ->columnSpan(['default' => 1, 'sm' => 2, 'md' => 2]),
 
-                TextInput::make('filtroCorrelativo')
-                    ->label('Correlativo')
-                    ->placeholder('Ej: 00001')
-                    ->live(debounce: 300),
-
-                Select::make('filtroEstado')
-                    ->label('Estado')
-                    ->placeholder('Todos los estados')
-                    ->options(['completada' => 'Completadas', 'anulada' => 'Anuladas'])
-                    ->native(false)
-                    ->live(),
-
                 Select::make('filtroSerie')
                     ->label('Serie')
                     ->placeholder('Todas las series')
@@ -117,6 +106,11 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->native(false)
                     ->searchable()
                     ->live(),
+
+                TextInput::make('filtroCorrelativo')
+                    ->label('Correlativo')
+                    ->placeholder('Ej: 00001')
+                    ->live(debounce: 300),
 
                 Select::make('filtroMetodo')
                     ->label('Método de pago')
@@ -127,14 +121,25 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->searchable()
                     ->live(),
 
-                DatePicker::make('filtroFechaDesde')
+                DateTimePicker::make('filtroFechaDesde')
                     ->label('Desde')
-                    ->displayFormat('d/m/Y')
+                    ->displayFormat('d/m/Y H:i')
+                    ->format('Y-m-d H:i:s')
+                    ->seconds(false)
                     ->live(),
 
-                DatePicker::make('filtroFechaHasta')
+                DateTimePicker::make('filtroFechaHasta')
                     ->label('Hasta')
-                    ->displayFormat('d/m/Y')
+                    ->displayFormat('d/m/Y H:i')
+                    ->format('Y-m-d H:i:s')
+                    ->seconds(false)
+                    ->live(),
+
+                Select::make('filtroEstado')
+                    ->label('Estado')
+                    ->placeholder('Todos los estados')
+                    ->options(['completada' => 'Completadas', 'anulada' => 'Anuladas'])
+                    ->native(false)
                     ->live(),
 
             ]),
@@ -197,11 +202,11 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
         }
 
         if (! empty($this->filtroFechaDesde)) {
-            $q->whereDate('created_at', '>=', $this->filtroFechaDesde);
+            $q->where('created_at', '>=', $this->filtroFechaDesde);
         }
 
         if (! empty($this->filtroFechaHasta)) {
-            $q->whereDate('created_at', '<=', $this->filtroFechaHasta);
+            $q->where('created_at', '<=', $this->filtroFechaHasta);
         }
 
         return $q;
@@ -230,24 +235,31 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                 TextColumn::make('comprobante')
                     ->label('Comprobante')
                     ->state(fn (Venta $r): string => ($r->serie?->serie ?? '---') . '-' . str_pad((string) $r->correlativo, 8, '0', STR_PAD_LEFT))
+                    ->description(fn (Venta $r): ?string => (float) $r->saldo_pendiente > 0
+                        ? '⚠ Saldo: S/ ' . number_format((float) $r->saldo_pendiente, 2)
+                        : null)
                     ->weight('medium')
                     ->searchable(false)
-                    ->sortable(false),
+                    ->sortable(false)
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('created_at')
                     ->label('Fecha')
                     ->dateTime('d/m/Y H:i')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('cliente_nombre')
                     ->label('Cliente')
                     ->description(fn (Venta $r): string => strtoupper($r->cliente_tipo_doc) . ' ' . $r->cliente_num_doc)
-                    ->searchable(false),
+                    ->searchable(false)
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('detalles_count')
                     ->label('Ítems')
                     ->alignCenter()
-                    ->sortable(false),
+                    ->sortable(false)
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('cortesias_count')
                     ->label('Cortesía')
@@ -255,7 +267,8 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->badge()
                     ->color('warning')
                     ->formatStateUsing(fn (int $state): string => $state > 0 ? 'Sí' : '—')
-                    ->sortable(false),
+                    ->sortable(false)
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('metodo')
                     ->label('Método')
@@ -266,19 +279,20 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                         ->map(fn ($p) => $p->metodoPago?->nombre)
                         ->filter()->unique()->implode(', ') ?: '—')
                     ->searchable(false)
-                    ->sortable(false),
+                    ->sortable(false)
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('op_gravadas')
                     ->label('Op. Gravada')
                     ->money('PEN')
                     ->alignEnd()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('igv')
                     ->label('IGV')
                     ->money('PEN')
                     ->alignEnd()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('descuento_total')
                     ->label('Descuento')
@@ -292,16 +306,27 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->label('Total')
                     ->money('PEN')
                     ->alignEnd()
-                    ->weight('semibold'),
+                    ->weight('semibold')
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('saldo_pendiente')
+                    ->label('Saldo pendiente')
+                    ->money('PEN')
+                    ->alignEnd()
+                    ->color('danger')
+                    ->formatStateUsing(fn ($state): string => (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—')
+                    ->tooltip('Monto aún no pagado de esta venta')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('estado')
                     ->label('Estado')
-                    ->badge(),
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('estado_sunat')
                     ->label('SUNAT')
                     ->badge()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('notas_count')
                     ->label('NC')
@@ -309,13 +334,13 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->color('success')
                     ->formatStateUsing(fn (int $state): string => $state > 0 ? $state . ' NC' : '—')
                     ->tooltip('Notas de Crédito emitidas sobre esta venta')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('sunat_descripcion')
                     ->label('Desc. SUNAT')
                     ->wrap()
                     ->color('gray')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->recordActions([
                 ActionGroup::make([
@@ -431,9 +456,117 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     $this->buildNotaAction(),
                 ]),
             ])
+            ->toolbarActions($this->accionesExportacion())
             ->paginated([25, 50, 100])
             ->emptyStateHeading('Sin ventas')
             ->emptyStateIcon('heroicon-o-receipt-percent');
+    }
+
+    private function accionesExportacion(): array
+    {
+        return [
+            Action::make('descargarExcel')
+                ->label('Excel')
+                ->icon('heroicon-o-table-cells')
+                ->color('success')
+                ->action(function () {
+                    return app(ReporteVentasExportService::class)->generarExcel(
+                        $this->getVentasParaExportar(),
+                        $this->getFiltrosInfo(),
+                        $this->getColumnasVisibles(),
+                        $this->getResumen(),
+                        Filament::getTenant(),
+                    );
+                }),
+
+            Action::make('descargarPdf')
+                ->label('PDF')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('danger')
+                ->action(function () {
+                    return app(ReporteVentasExportService::class)->generarPdf(
+                        $this->getVentasParaExportar(),
+                        $this->getFiltrosInfo(),
+                        $this->getColumnasVisibles(),
+                        $this->getResumen(),
+                        Filament::getTenant(),
+                    );
+                }),
+        ];
+    }
+
+    private function getVentasParaExportar(): \Illuminate\Database\Eloquent\Collection
+    {
+        $q = Venta::where('empresa_id', Filament::getTenant()->id)
+            ->with(['serie', 'pagos.metodoPago'])
+            ->withCount([
+                'detalles',
+                'notas',
+                'detalles as cortesias_count' => fn($q) => $q->where('precio_unitario', 0),
+            ])
+            ->orderBy('created_at', 'desc');
+
+        $this->aplicarFiltros($q);
+
+        return $q->get();
+    }
+
+    private function getColumnasVisibles(): array
+    {
+        $visible = [];
+
+        foreach ($this->tableColumns as $item) {
+            if ($item['type'] === 'column' && ($item['isToggled'] ?? false)) {
+                $visible[] = $item['name'];
+            }
+            if ($item['type'] === 'group') {
+                foreach ($item['columns'] ?? [] as $col) {
+                    if ($col['isToggled'] ?? false) {
+                        $visible[] = $col['name'];
+                    }
+                }
+            }
+        }
+
+        return $visible;
+    }
+
+    private function getFiltrosInfo(): array
+    {
+        $info = [];
+
+        if (! empty($this->filtroFechaDesde) || ! empty($this->filtroFechaHasta)) {
+            $desde = ! empty($this->filtroFechaDesde)
+                ? \Illuminate\Support\Carbon::parse($this->filtroFechaDesde)->format('d/m/Y H:i')
+                : '—';
+            $hasta = ! empty($this->filtroFechaHasta)
+                ? \Illuminate\Support\Carbon::parse($this->filtroFechaHasta)->format('d/m/Y H:i')
+                : '—';
+            $info['Período'] = "{$desde} → {$hasta}";
+        }
+
+        if (! empty($this->filtroCliente)) {
+            $info['Cliente'] = $this->filtroCliente;
+        }
+
+        if (! empty($this->filtroCorrelativo)) {
+            $info['Correlativo'] = $this->filtroCorrelativo;
+        }
+
+        if (! empty($this->filtroSerie)) {
+            $info['Serie'] = $this->filtroSerie;
+        }
+
+        if (! empty($this->filtroMetodo)) {
+            $nombre = MetodoPago::find($this->filtroMetodo)?->nombre ?? $this->filtroMetodo;
+            $info['Método de pago'] = $nombre;
+        }
+
+        if (! empty($this->filtroEstado)) {
+            $info['Estado'] = ucfirst($this->filtroEstado);
+        }
+
+        return $info;
     }
 
     // ── Resumen (refleja los filtros activos) ─────────────────────────────────
