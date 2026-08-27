@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('venta_detalles', 'tip_afe_igv')) {
+            return;
+        }
+
         Schema::table('venta_detalles', function (Blueprint $table) {
             // Código de afectación IGV: 10=gravado, 20=exonerado, 30=inafecto
             $table->string('tip_afe_igv', 2)->default('10')->after('igv');

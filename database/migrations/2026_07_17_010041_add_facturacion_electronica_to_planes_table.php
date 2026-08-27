@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('plans', 'facturacion_electronica')) {
+            return;
+        }
+
         Schema::table('plans', function (Blueprint $table) {
             $table->boolean('facturacion_electronica')->default(false)->after('tiene_catalogo_web');
         });
