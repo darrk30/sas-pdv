@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('plans', 'tiene_variantes')) {
+            return;
+        }
+
         Schema::table('plans', function (Blueprint $table) {
             $table->boolean('tiene_variantes')->default(false)->after('maximo_locales');
             $table->boolean('tiene_catalogo_web')->default(false)->after('tiene_variantes');

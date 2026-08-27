@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('empresas', 'modulos_activos')) {
+            return;
+        }
+
         Schema::table('empresas', function (Blueprint $table) {
             $table->json('modulos_activos')->nullable()->after('carta_activa_admin');
         });

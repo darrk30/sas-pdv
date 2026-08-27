@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('ventas', 'estado_sunat')) {
+            return;
+        }
+
         Schema::table('ventas', function (Blueprint $table) {
             // Estado del ciclo de vida con SUNAT
             $table->string('estado_sunat', 20)->default('no_aplica')->after('sunat_mensaje');

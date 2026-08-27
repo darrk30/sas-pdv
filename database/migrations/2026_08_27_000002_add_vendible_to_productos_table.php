@@ -9,6 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('productos', 'vendible')) {
+            return;
+        }
+
         Schema::table('productos', function (Blueprint $table) {
             $table->boolean('vendible')->default(true)->after('venta_sin_stock');
         });

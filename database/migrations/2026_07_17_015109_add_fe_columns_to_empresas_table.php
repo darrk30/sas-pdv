@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('empresas', 'fe_envio_directo_boleta')) {
+            return;
+        }
+
         Schema::table('empresas', function (Blueprint $table) {
             $table->boolean('fe_envio_directo_boleta')->default(false)->after('modulos_activos');
             $table->boolean('fe_envio_directo_factura')->default(false)->after('fe_envio_directo_boleta');

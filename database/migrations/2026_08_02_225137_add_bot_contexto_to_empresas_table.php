@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('empresas', 'bot_contexto')) {
+            return;
+        }
+
         Schema::table('empresas', function (Blueprint $table) {
             $table->text('bot_contexto')->nullable()->after('igv_porcentaje');
         });

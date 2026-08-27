@@ -9,13 +9,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('carritos', function (Blueprint $table) {
-            $table->dropForeign(['user_id']);
-            $table->foreign('user_id')->references('id')->on('clientes')->cascadeOnDelete();
+            try { $table->dropForeign(['user_id']); } catch (\Throwable) {}
+            try { $table->foreign('user_id')->references('id')->on('clientes')->cascadeOnDelete(); } catch (\Throwable) {}
         });
 
         Schema::table('lista_deseos', function (Blueprint $table) {
-            $table->dropForeign(['user_id']);
-            $table->foreign('user_id')->references('id')->on('clientes')->cascadeOnDelete();
+            try { $table->dropForeign(['user_id']); } catch (\Throwable) {}
+            try { $table->foreign('user_id')->references('id')->on('clientes')->cascadeOnDelete(); } catch (\Throwable) {}
         });
     }
 
