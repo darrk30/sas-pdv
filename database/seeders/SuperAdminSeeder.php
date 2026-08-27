@@ -80,6 +80,11 @@ class SuperAdminSeeder extends Seeder
         ['module' => 'compras', 'module_label' => 'Compras / Proveedores', 'name' => 'proveedores.editar',    'description' => 'Editar proveedores'],
         ['module' => 'compras', 'module_label' => 'Compras / Proveedores', 'name' => 'proveedores.eliminar',  'description' => 'Eliminar proveedores'],
 
+        // ── Gastos ────────────────────────────────────────────────────────────
+        ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos.ver',    'description' => 'Ver listado de gastos'],
+        ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos.crear',  'description' => 'Registrar y editar gastos'],
+        ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos.anular', 'description' => 'Anular gastos registrados'],
+
         // ── Catálogo ───────────────────────────────────────────────────────────
         ['module' => 'catalogo', 'module_label' => 'Catálogo', 'name' => 'categorias.ver',       'description' => 'Ver categorías'],
         ['module' => 'catalogo', 'module_label' => 'Catálogo', 'name' => 'categorias.crear',     'description' => 'Crear categorías'],

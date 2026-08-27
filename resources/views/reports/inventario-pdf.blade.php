@@ -14,17 +14,7 @@ body {
 }
 .page { padding: 12mm 10mm; }
 
-.header {
-    background: #1E3A5F; color: #fff;
-    padding: 8px 12px; margin-bottom: 6px;
-    border-radius: 3px;
-    display: flex; justify-content: space-between; align-items: center;
-}
-.header-empresa  { font-size: 11px; font-weight: bold; letter-spacing: 0.3px; }
-.header-ruc      { font-size: 8.5px; margin-top: 2px; opacity: 0.85; }
-.header-right    { text-align: right; }
-.header-reporte  { font-size: 13px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; }
-.header-meta     { font-size: 8px; margin-top: 2px; opacity: 0.85; }
+/* header via inline styles en <td> para compatibilidad DomPDF */
 
 .stats-wrap {
     width: 100%; border-collapse: separate; border-spacing: 6px 0;
@@ -74,16 +64,18 @@ tbody td.mono   { font-family: DejaVu Sans Mono, monospace; }
 <body>
 <div class="page">
 
-<div class="header">
-    <div>
-        <div class="header-empresa">{{ strtoupper($empresa->nombre) }}</div>
-        <div class="header-ruc">RUC {{ $empresa->ruc ?? '' }}</div>
-    </div>
-    <div class="header-right">
-        <div class="header-reporte">Inventario Activo</div>
-        <div class="header-meta">Generado: {{ now()->format('d/m/Y H:i') }}</div>
-    </div>
-</div>
+<table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
+    <tr>
+        <td style="background:#1E3A5F;padding:8px 12px;vertical-align:middle;">
+            <div style="font-size:11px;font-weight:bold;color:#fff;letter-spacing:0.3px;">{{ strtoupper($empresa->nombre) }}</div>
+            <div style="font-size:8.5px;color:#c7d7ee;margin-top:2px;">RUC {{ $empresa->ruc ?? '' }}</div>
+        </td>
+        <td style="background:#1E3A5F;padding:8px 12px;text-align:right;vertical-align:middle;">
+            <div style="font-size:13px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;color:#fff;">Inventario Activo</div>
+            <div style="font-size:8px;color:#c7d7ee;margin-top:2px;">Generado: {{ now()->format('d/m/Y H:i') }}</div>
+        </td>
+    </tr>
+</table>
 
 {{-- Stats (tabla HTML para DomPDF — no soporta flex) --}}
 <table class="stats-wrap">

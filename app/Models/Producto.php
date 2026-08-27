@@ -30,6 +30,7 @@ class Producto extends Model
         'visible_en_carta',
         'control_de_stock',
         'venta_sin_stock',
+        'vendible',
         'etiqueta',
         'orden',
         'estado',
@@ -44,6 +45,7 @@ class Producto extends Model
         'visible_en_carta' => 'boolean',
         'control_de_stock' => 'boolean',
         'venta_sin_stock' => 'boolean',
+        'vendible' => 'boolean',
         'precio_costo' => 'float',
         'precio_venta' => 'float',
         'estado' => EstadoGeneral::class, // Cast automático a Enum

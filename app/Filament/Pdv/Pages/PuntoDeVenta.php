@@ -419,6 +419,7 @@ class PuntoDeVenta extends Page
         $query = Producto::where('empresa_id', $empresaId)
             ->where('estado', 'activo')
             ->where('visible_en_carta', true)
+            ->where('vendible', true)
             ->with([
                 'variantesActivas' => fn($q) => $q->with('inventario'),
                 'inventario',

@@ -8,13 +8,7 @@
 body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 7.5px; color: #1a202c; background: #fff; }
 .page { padding: 10mm 8mm; }
 
-.header { background: #1E3A5F; color: #fff; padding: 7px 10px; margin-bottom: 6px; border-radius: 3px; }
-.header table { width: 100%; border-collapse: collapse; }
-.header-empresa { font-size: 11px; font-weight: bold; }
-.header-ruc     { font-size: 8px; opacity: 0.85; margin-top: 2px; }
-.header-right   { text-align: right; }
-.header-reporte { font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
-.header-meta    { font-size: 7.5px; opacity: 0.85; margin-top: 2px; }
+/* header via inline styles en <td> para compatibilidad DomPDF */
 
 /* Stats — tabla horizontal para DomPDF */
 .stats-wrap { width: 100%; border-collapse: separate; border-spacing: 5px 0; margin-bottom: 8px; }
@@ -72,20 +66,18 @@ tbody td.center { text-align: center; }
 <body>
 <div class="page">
 
-<div class="header">
-    <table>
-        <tr>
-            <td>
-                <div class="header-empresa">{{ strtoupper($empresa->nombre) }}</div>
-                <div class="header-ruc">RUC {{ $empresa->ruc ?? '' }}</div>
-            </td>
-            <td class="header-right">
-                <div class="header-reporte">Kardex de Inventario</div>
-                <div class="header-meta">Generado: {{ now()->format('d/m/Y H:i') }}</div>
-            </td>
-        </tr>
-    </table>
-</div>
+<table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
+    <tr>
+        <td style="background:#1E3A5F;padding:8px 12px;vertical-align:middle;">
+            <div style="font-size:11px;font-weight:bold;color:#fff;">{{ strtoupper($empresa->nombre) }}</div>
+            <div style="font-size:8px;color:#c7d7ee;margin-top:2px;">RUC {{ $empresa->ruc ?? '' }}</div>
+        </td>
+        <td style="background:#1E3A5F;padding:8px 12px;text-align:right;vertical-align:middle;">
+            <div style="font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;color:#fff;">Kardex de Inventario</div>
+            <div style="font-size:7.5px;color:#c7d7ee;margin-top:2px;">Generado: {{ now()->format('d/m/Y H:i') }}</div>
+        </td>
+    </tr>
+</table>
 
 {{-- Stats horizontales --}}
 <table class="stats-wrap">

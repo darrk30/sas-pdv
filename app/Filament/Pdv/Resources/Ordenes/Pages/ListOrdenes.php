@@ -3,6 +3,7 @@
 namespace App\Filament\Pdv\Resources\Ordenes\Pages;
 
 use App\Filament\Pdv\Resources\Ordenes\OrdenResource;
+use App\Filament\Pdv\Widgets\OrdenesStatsWidget;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -14,6 +15,13 @@ class ListOrdenes extends ListRecords
     {
         return [
             CreateAction::make(),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            OrdenesStatsWidget::class,
         ];
     }
 }

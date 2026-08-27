@@ -930,6 +930,11 @@ class ProductoForm
                                         Toggle::make('venta_sin_stock')
                                             ->label('Venta sin stock'),
 
+                                        Toggle::make('vendible')
+                                            ->label('Producto vendible')
+                                            ->helperText('Si está activo, aparece en el catálogo del PDV')
+                                            ->default(true),
+
                                         TextInput::make('orden')
                                             ->label('Orden')
                                             ->numeric()

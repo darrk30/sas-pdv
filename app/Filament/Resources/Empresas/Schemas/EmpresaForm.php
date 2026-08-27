@@ -301,6 +301,19 @@ class EmpresaForm
                                             ])->columnSpanFull(),
                                         ]),
 
+                                    // ── GASTOS ───────────────────────────────────────
+                                    Section::make('Gastos')
+                                        ->icon('heroicon-o-banknotes')
+                                        ->description('Registro y control de gastos operativos de la empresa')
+                                        ->compact()->columnSpan(1)
+                                        ->schema([
+                                            Toggle::make('modulos_activos.gastos')
+                                                ->label('Activar módulo de Gastos')
+                                                ->onColor('success')
+                                                ->default(true)
+                                                ->columnSpanFull(),
+                                        ]),
+
                                     // ── CONFIGURACIÓN ────────────────────────────────
                                     Section::make('Configuración')
                                         ->icon('heroicon-o-cog-6-tooth')

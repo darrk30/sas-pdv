@@ -144,6 +144,8 @@ class Empresa extends Model
             'reporte_ajustes'     => true,
             'reporte_clientes'    => true,
             'cuentas_por_cobrar'  => true,
+            // Gastos
+            'gastos'              => true,
             // Configuración
             'configuracion'       => true,
             'cajas_registradoras' => true,

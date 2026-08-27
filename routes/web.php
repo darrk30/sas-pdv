@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\EstadoGeneral;
+use App\Http\Controllers\Pdv\ClienteExcelController;
 use App\Http\Controllers\Pdv\ProductoExcelController;
+use App\Http\Controllers\Pdv\ProveedorExcelController;
 use App\Http\Controllers\Pdv\PushSubscriptionController;
 use App\Http\Controllers\Pdv\TicketDespachoController;
 use App\Http\Controllers\Pdv\TicketVentaController;
@@ -27,6 +29,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/plantillas/productos/{tipo}', [ProductoExcelController::class, 'descargar'])
         ->name('productos.plantilla')
         ->where('tipo', 'nuevos|actualizar|precios');
+
+    Route::get('/plantillas/clientes', [ClienteExcelController::class, 'descargar'])
+        ->name('clientes.plantilla');
+
+    Route::get('/plantillas/proveedores', [ProveedorExcelController::class, 'descargar'])
+        ->name('proveedores.plantilla');
 
     Route::get('/ticket/venta/{id}', [TicketVentaController::class, 'show'])
         ->name('pdv.ticket.venta')
