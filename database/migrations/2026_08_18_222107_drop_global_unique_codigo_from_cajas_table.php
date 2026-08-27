@@ -12,7 +12,7 @@ return new class extends Migration
             // El unique global en codigo solo permite UNA caja con 'CAJA-001' en todo el sistema.
             // En multi-tenant cada empresa debe poder tener su propio 'CAJA-001'.
             // Se mantiene el unique compuesto (empresa_id, codigo) que sí es correcto.
-            $table->dropUnique(['codigo']);
+            try { $table->dropUnique(['codigo']); } catch (\Throwable) {}
         });
     }
 

@@ -22,10 +22,12 @@ return new class extends Migration
     {
         foreach ($this->tablas as ['tabla' => $tabla, 'fk' => $fk]) {
             Schema::table($tabla, function (Blueprint $table) use ($fk) {
-                $table->dropForeign($fk);
-                $table->foreign('empresa_id')
-                    ->references('id')->on('empresas')
-                    ->onDelete('cascade');
+                try { $table->dropForeign($fk); } catch (\Throwable) {}
+                try {
+                    $table->foreign('empresa_id')
+                        ->references('id')->on('empresas')
+                        ->onDelete('cascade');
+                } catch (\Throwable) {}
             });
         }
     }
