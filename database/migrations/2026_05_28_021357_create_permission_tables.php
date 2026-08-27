@@ -22,6 +22,10 @@ return new class extends Migration
         }
 
         // 1. TABLA PERMISSIONS
+        if (Schema::hasTable($tableNames['permissions'])) {
+            return;
+        }
+
         Schema::create($tableNames['permissions'], static function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('name');
