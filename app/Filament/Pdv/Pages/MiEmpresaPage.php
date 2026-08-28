@@ -176,7 +176,7 @@ class MiEmpresaPage extends Page implements HasForms
                             ->icon('heroicon-o-shopping-bag')
                             ->hidden(function (): bool {
                                 $plan = Filament::getTenant()?->suscripcion?->plan;
-                                return $plan !== null && ! $plan->tiene_catalogo_web;
+                                return $plan === null || ! $plan->tiene_catalogo_web;
                             })
                             ->schema([
                                 Section::make()
