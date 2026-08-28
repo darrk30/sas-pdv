@@ -12,6 +12,13 @@ class UltimasComprasWidget extends BaseWidget
 {
     protected static ?string $heading = 'Últimas compras';
     protected static ?int $sort = 7;
+
+    public static function canView(): bool
+    {
+        $empresa = Filament::getTenant();
+        return ($empresa?->tieneModulo('compras') || $empresa?->tieneModulo('gestion_compras'))
+            && (auth()->user()?->can('compras.ver') ?? false);
+    }
     protected int|string|array $columnSpan = 1;
 
     public function table(Table $table): Table

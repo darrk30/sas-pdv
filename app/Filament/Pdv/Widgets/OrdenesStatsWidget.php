@@ -10,6 +10,8 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class OrdenesStatsWidget extends BaseWidget
 {
+    protected static bool $isDiscovered = false;
+
     protected int | array | null $columns = [
         'default' => 2,
         'sm'      => 2,

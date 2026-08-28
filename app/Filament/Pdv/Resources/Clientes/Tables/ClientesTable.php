@@ -137,7 +137,7 @@ class ClientesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    //DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('nombre')

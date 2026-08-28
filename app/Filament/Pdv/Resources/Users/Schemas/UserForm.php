@@ -13,14 +13,14 @@ use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Auth;
+use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Hash;
 
 class UserForm
 {
     public static function configure(Schema $schema): Schema
     {
-        $miSucursalId = Auth::user()->empresas()->first()?->id;
+        $miSucursalId = Filament::getTenant()?->id;
         return $schema
             ->components([
                 // Contenedor principal responsive

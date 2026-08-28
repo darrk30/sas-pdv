@@ -274,6 +274,7 @@ class ProductoForm
                                         ->relationship('produccion', 'nombre')
                                         ->native(false)
                                         ->preload()
+                                        ->visible(fn () => Filament::getTenant()->tieneModulo('produccion') && (auth()->user()?->can('produccion.ver') ?? false))
                                         ->createOptionForm([
                                             TextInput::make('nombre')->required(),
                                             Select::make('impresora_id')

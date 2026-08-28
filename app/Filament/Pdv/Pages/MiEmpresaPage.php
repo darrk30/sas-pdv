@@ -194,6 +194,7 @@ class MiEmpresaPage extends Page implements HasForms
                         // ── Tab 4: Bot WhatsApp ───────────────────────────────
                         Tab::make('Bot WhatsApp')
                             ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                            ->visible(false)
                             ->schema([
                                 Section::make('Contexto para el bot')
                                     ->description('Esta información le da contexto al bot de WhatsApp: dirección, horario, formas de pago, datos de Yape/Plin, política de envíos, etc. El bot la puede usar para responder preguntas frecuentes.')
@@ -210,6 +211,7 @@ class MiEmpresaPage extends Page implements HasForms
                         // ── Tab 5: Facturación Electrónica ────────────────────
                         Tab::make('Facturación Electrónica')
                             ->icon('heroicon-o-document-text')
+                            ->visible(fn () => Filament::getTenant()->tieneFacturacionElectronica())
                             ->schema([
                                 Section::make('Configuración de Envío')
                                     ->description('Define cuándo y cómo se emiten los comprobantes electrónicos.')
@@ -291,6 +293,21 @@ class MiEmpresaPage extends Page implements HasForms
                                             ->label('Entorno de Producción SUNAT')
                                             ->helperText('Desactivado = Beta / homologación')
                                             ->onColor('danger'),
+                                    ]),
+                            ]),
+
+                        // ── Tab 6: Configuración (solo planes sin FE) ─────────
+                        Tab::make('Configuración')
+                            ->icon('heroicon-o-cog-6-tooth')
+                            ->visible(fn () => ! Filament::getTenant()->tieneFacturacionElectronica())
+                            ->schema([
+                                Section::make('Impresión y comprobantes')
+                                    ->columns(2)
+                                    ->schema([
+                                        Toggle::make('impresion_comprobante_directo')
+                                            ->label('Impresión automática al emitir')
+                                            ->helperText('Activa para imprimir el ticket automáticamente al registrar una venta')
+                                            ->onColor('success'),
                                     ]),
                             ]),
 

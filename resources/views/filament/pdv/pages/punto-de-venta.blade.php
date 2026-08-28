@@ -780,6 +780,7 @@
                         <h3 class="pdv-modal__titulo">Procesar Venta</h3>
                         <p class="pdv-modal__subtitulo">Selecciona método y completa el pago</p>
                     </div>
+                    @if(\Filament\Facades\Filament::getTenant()->tieneModulo('despacho') && auth()->user()?->can('tienda.ver'))
                     <div class="pdv-despacho-wrap">
                         <label class="pdv-despacho-label">
                             <input
@@ -805,6 +806,7 @@
                             ></textarea>
                         @endif
                     </div>
+                    @endif
                     <button class="pdv-modal__cerrar" wire:click="cerrarModalPago">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>

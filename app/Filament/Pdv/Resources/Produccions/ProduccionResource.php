@@ -23,14 +23,14 @@ class ProduccionResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-beaker';
 
-    protected static ?string $navigationLabel = 'Producción';
+    protected static ?string $navigationLabel = 'Áreas';
 
     protected static string|UnitEnum|null $navigationGroup = 'Catálogo';
     protected static ?int $navigationSort = 4;
 
-    protected static ?string $modelLabel = 'Producción';
+    protected static ?string $modelLabel = 'Área';
 
-    protected static ?string $pluralModelLabel = 'Producciones';
+    protected static ?string $pluralModelLabel = 'Áreas';
 
     protected static ?string $recordTitleAttribute = 'Produccion';
 

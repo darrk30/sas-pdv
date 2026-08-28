@@ -2,8 +2,9 @@
 
 namespace App\Filament\Pdv\Resources\Atributos\Tables;
 
+use App\Models\ProductoAtributo;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
@@ -73,11 +74,19 @@ class AtributosTable
             ])
             ->recordActions([
                 EditAction::make(),
+                Action::make('eliminar')
+                    ->label('Eliminar')
+                    ->icon('heroicon-m-trash')
+                    ->color('danger')
+                    ->requiresConfirmation(fn($record) => ProductoAtributo::where('atributo_id', $record->id)->exists())
+                    ->modalHeading(fn($record) => "Eliminar atributo: {$record->nombre}")
+                    ->modalDescription(fn($record) => '⚠️ Este atributo está asociado a ' . ProductoAtributo::where('atributo_id', $record->id)->count() . ' producto(s). Al eliminarlo se eliminarán sus valores y las variantes generadas, lo que puede causar inconsistencias en el inventario. Esta acción no se puede deshacer.')
+                    ->modalIconColor('warning')
+                    ->action(fn($record) => $record->delete())
+                    ->visible(fn() => auth()->user()?->can('atributos.eliminar') ?? false),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                BulkActionGroup::make([]),
             ])
             ->defaultSort('created_at', 'desc');
     }

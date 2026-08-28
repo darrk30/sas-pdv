@@ -68,31 +68,42 @@ class ResumenDashboardWidget extends BaseWidget
         $utilidad = $data['totalVentas'] - $data['totalCosto'];
         $n        = $data['nVentas'];
 
-        return [
+        $empresa = Filament::getTenant();
+
+        $stats = [
             Stat::make('Ventas', 'S/ ' . number_format($data['totalVentas'], 2))
                 ->description($n . ' ' . ($n === 1 ? 'venta completada' : 'ventas completadas'))
                 ->descriptionIcon('heroicon-o-receipt-percent')
                 ->color('success')
                 ->icon('heroicon-o-banknotes'),
 
-            Stat::make('Utilidad', 'S/ ' . number_format($utilidad, 2))
+        ];
+
+        if ($empresa->tieneModulo('reporte_ganancias')) {
+            $stats[] = Stat::make('Utilidad', 'S/ ' . number_format($utilidad, 2))
                 ->description('Ventas − Costo')
                 ->descriptionIcon('heroicon-o-arrow-trending-up')
                 ->color($utilidad >= 0 ? 'info' : 'danger')
-                ->icon('heroicon-o-arrow-trending-up'),
+                ->icon('heroicon-o-arrow-trending-up');
+        }
 
-            Stat::make('Órdenes pendientes', (string) $data['ordenesPendientes'])
+        if ($empresa->tieneModulo('ordenes_web') || $empresa->tieneModulo('pedidos_web')) {
+            $stats[] = Stat::make('Órdenes pendientes', (string) $data['ordenesPendientes'])
                 ->description('Por confirmar pago')
                 ->descriptionIcon('heroicon-o-clock')
                 ->color($data['ordenesPendientes'] > 0 ? 'warning' : 'gray')
-                ->icon('heroicon-o-clipboard-document-list'),
+                ->icon('heroicon-o-clipboard-document-list');
+        }
 
-            Stat::make('Despachos pendientes', (string) $data['despachosPendientes'])
+        if ($empresa->tieneModulo('despacho')) {
+            $stats[] = Stat::make('Despachos pendientes', (string) $data['despachosPendientes'])
                 ->description('Por enviar al cliente')
                 ->descriptionIcon('heroicon-o-truck')
                 ->color($data['despachosPendientes'] > 0 ? 'warning' : 'gray')
-                ->icon('heroicon-o-paper-airplane'),
-        ];
+                ->icon('heroicon-o-paper-airplane');
+        }
+
+        return $stats;
     }
 
     private function cacheKey(): string

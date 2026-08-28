@@ -282,6 +282,12 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+.kdx-prod-codigo {
+    font-size: .68rem;
+    color: var(--kdx-text-faint);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .02em;
+}
 
 .kdx-concepto-texto {
     color: var(--kdx-text);

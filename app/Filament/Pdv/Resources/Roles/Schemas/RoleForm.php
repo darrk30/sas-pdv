@@ -17,25 +17,42 @@ class RoleForm
         $empresa        = Filament::getTenant();
         $empresaId      = $empresa?->id;
         $plan           = $empresa?->planActual();
-        $tieneTienda    = $plan === null || $plan->tiene_catalogo_web;
+        $tieneTienda    = ($plan === null || $plan->tiene_catalogo_web) && ($empresa?->tieneModulo('pedidos_web') ?? true);
         $tieneVariantes = $plan === null || $plan->tiene_variantes;
         $tieneFE        = $empresa?->tieneFacturacionElectronica() ?? false;
 
-        // Permisos agrupados por módulo — excluir módulos exclusivos del super-admin
-        // y los permisos de tienda/variantes/FE cuando el plan no los incluye
+        // Módulos completos a excluir según modulos_activos de la empresa
+        $excludeModulos = [];
+        if (! $tieneFE)                                           $excludeModulos[] = 'fe';
+        if (! $tieneTienda)                                       $excludeModulos[] = 'tienda';
+        if (! ($empresa?->tieneModulo('compras')   ?? true))     $excludeModulos[] = 'compras';
+        if (! ($empresa?->tieneModulo('gastos')    ?? true))     $excludeModulos[] = 'gastos';
+        if (! ($empresa?->tieneModulo('catalogo')  ?? true))     $excludeModulos[] = 'catalogo';
+        if (! ($empresa?->tieneModulo('reportes')  ?? true))     $excludeModulos[] = 'reportes';
+        if (! ($empresa?->tieneModulo('inventario') ?? true))    $excludeModulos[] = 'productos';
+
+        // Permisos individuales a excluir por sub-módulo inactivo dentro de 'config'
+        $excludePermisos = [];
+        $configMap = [
+            'metodos_envio'     => ['metodos_envio.ver', 'metodos_envio.crear', 'metodos_envio.editar', 'metodos_envio.eliminar'],
+            'metodos_pago'      => ['metodos_pago.ver',  'metodos_pago.crear',  'metodos_pago.editar',  'metodos_pago.eliminar'],
+            'cajas_registradoras'=> ['cajas.ver',        'cajas.crear',         'cajas.editar',         'cajas.eliminar'],
+            'series'            => ['series.ver',        'series.crear',        'series.editar',        'series.eliminar'],
+            'impresoras'        => ['impresoras.ver',    'impresoras.crear',    'impresoras.editar',    'impresoras.eliminar'],
+        ];
+        foreach ($configMap as $modulo => $permisos) {
+            if (! ($empresa?->tieneModulo($modulo) ?? true)) {
+                $excludePermisos = array_merge($excludePermisos, $permisos);
+            }
+        }
+
+        // Permisos agrupados por módulo — excluir módulos inactivos y admin
         $permisosPorModulo = Permission::where('module', 'not like', 'admin_%')
-            ->when(! $tieneTienda, fn ($q) => $q->whereNotIn('name', [
-                'ordenes.ver',
-                'ordenes.gestionar',
-                'ordenes.cancelar',
-            ]))
+            ->when(! empty($excludeModulos),  fn ($q) => $q->whereNotIn('module', $excludeModulos))
+            ->when(! empty($excludePermisos), fn ($q) => $q->whereNotIn('name', $excludePermisos))
             ->when(! $tieneVariantes, fn ($q) => $q->whereNotIn('name', [
-                'atributos.ver',
-                'atributos.crear',
-                'atributos.editar',
-                'atributos.eliminar',
+                'atributos.ver', 'atributos.crear', 'atributos.editar', 'atributos.eliminar',
             ]))
-            ->when(! $tieneFE, fn ($q) => $q->where('module', '!=', 'fe'))
             ->orderBy('module_label')
             ->orderBy('description')
             ->get()

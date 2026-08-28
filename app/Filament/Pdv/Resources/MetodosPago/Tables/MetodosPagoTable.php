@@ -71,7 +71,7 @@ class MetodosPagoTable
 
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    //DeleteBulkAction::make(),
                 ]),
             ])
 

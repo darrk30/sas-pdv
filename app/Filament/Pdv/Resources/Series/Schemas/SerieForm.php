@@ -24,7 +24,19 @@ class SerieForm
 
                             Select::make('tipo')
                                 ->label('Tipo de Comprobante')
-                                ->options(TipoComprobante::class)
+                                ->options(function () {
+                                    $tieneFE = Filament::getTenant()->tieneFacturacionElectronica();
+                                    $excluir = $tieneFE ? [] : [
+                                        TipoComprobante::Factura->value,
+                                        TipoComprobante::Boleta->value,
+                                        TipoComprobante::NotaCredito->value,
+                                        TipoComprobante::NotaDebito->value,
+                                    ];
+                                    return collect(TipoComprobante::cases())
+                                        ->reject(fn($case) => in_array($case->value, $excluir))
+                                        ->mapWithKeys(fn($case) => [$case->value => $case->getLabel()])
+                                        ->all();
+                                })
                                 ->native(false)
                                 ->required(),
 

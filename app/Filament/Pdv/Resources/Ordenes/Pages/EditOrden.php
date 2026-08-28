@@ -280,10 +280,18 @@ class EditOrden extends EditRecord
                         $serie->update(['numero' => $nuevoNumero]);
                         $correlativo = str_pad($nuevoNumero, 8, '0', STR_PAD_LEFT);
 
-                        $montoPagado = collect($data['pagos'])->sum('monto');
-                        $total       = (float) $orden->total;
-                        $saldo       = round($total - $montoPagado, 2);
+                        // Ticket y Sin Comprobante no llevan IGV
+                        $esTicket  = in_array($serie->tipo, [
+                            TipoComprobante::Ticket->value,
+                            TipoComprobante::SinComprobante->value,
+                        ]);
+                        $tasaIgv   = $esTicket ? 0.0 : 0.18;
+                        $total     = (float) $orden->total;
+                        $igv       = $esTicket ? 0.0 : round($total / 1.18 * 0.18, 2);
+                        $opGravadas = $esTicket ? 0.0 : round($total / 1.18, 2);
 
+                        $montoPagado     = collect($data['pagos'])->sum('monto');
+                        $saldo           = round($total - $montoPagado, 2);
                         $costoTotalOrden = $orden->detalles->sum(fn($d) => (float) $d->costo_total);
 
                         $venta = Venta::create([
@@ -299,12 +307,12 @@ class EditOrden extends EditRecord
                             'correlativo'      => $correlativo,
                             'fecha_emision'    => now(),
                             'tipo_pago'        => TipoPago::Contado,
-                            'op_gravadas'      => $orden->subtotal,
+                            'op_gravadas'      => $opGravadas,
                             'op_exoneradas'    => 0,
                             'op_inafectas'     => 0,
                             'descuento_total'  => $orden->descuento_total,
-                            'igv'              => $orden->igv,
-                            'total'            => $orden->total,
+                            'igv'              => $igv,
+                            'total'            => $total,
                             'costo_total'      => $costoTotalOrden,
                             'monto_pagado'     => $montoPagado,
                             'saldo_pendiente'  => max(0, $saldo),
@@ -323,6 +331,7 @@ class EditOrden extends EditRecord
                                 (float) $detalle->precio_unitario,
                                 $costoUnitario,
                                 (float) $detalle->descuento,
+                                $tasaIgv,
                             );
 
                             VentaDetalle::create([

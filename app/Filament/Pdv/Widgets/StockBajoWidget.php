@@ -13,6 +13,13 @@ class StockBajoWidget extends BaseWidget
 {
     protected static ?string $heading = 'Productos por agotarse / agotados';
     protected static ?int $sort = 8;
+
+    public static function canView(): bool
+    {
+        $empresa = Filament::getTenant();
+        return ($empresa?->tieneModulo('inventario') || $empresa?->tieneModulo('gestion_inventario'))
+            && (auth()->user()?->can('productos.ver') ?? false);
+    }
     protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table

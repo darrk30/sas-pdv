@@ -24,6 +24,11 @@ class EditProducto extends EditRecord
 
     protected static string $resource = ProductoResource::class;
 
+    public function getTitle(): string
+    {
+        return 'Editar ' . ($this->getRecord()->nombre ?? 'Producto');
+    }
+
     protected function getHeaderActions(): array
     {
         return [

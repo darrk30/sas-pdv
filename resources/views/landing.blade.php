@@ -702,7 +702,7 @@
                 </svg>Inventario y control de stock</div>
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
-                </svg>Boletas y tickets de venta</div>
+                </svg>{{ $plan->facturacion_electronica ? 'Boletas, facturas y tickets de venta' : 'Tickets de venta' }}</div>
               <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
                   <path d="M20 6 9 17l-5-5" />
                 </svg>Compras y control de proveedores</div>

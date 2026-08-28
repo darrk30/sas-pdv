@@ -34,9 +34,15 @@ class AtributoResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'Atributo';
 
-    public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('atributos') && (auth()->user()?->can('atributos.ver') ?? false); }
-    public static function canCreate(): bool              { return Filament::getTenant()->tieneModulo('atributos') && (auth()->user()?->can('atributos.crear') ?? false); }
-    public static function canEdit(Model $record): bool   { return Filament::getTenant()->tieneModulo('atributos') && (auth()->user()?->can('atributos.editar') ?? false); }
+    private static function tieneVariantes(): bool
+    {
+        $plan = Filament::getTenant()?->planActual();
+        return $plan === null || $plan->tiene_variantes;
+    }
+
+    public static function canAccess(): bool              { return static::tieneVariantes() && Filament::getTenant()->tieneModulo('atributos') && (auth()->user()?->can('atributos.ver') ?? false); }
+    public static function canCreate(): bool              { return static::tieneVariantes() && Filament::getTenant()->tieneModulo('atributos') && (auth()->user()?->can('atributos.crear') ?? false); }
+    public static function canEdit(Model $record): bool   { return static::tieneVariantes() && Filament::getTenant()->tieneModulo('atributos') && (auth()->user()?->can('atributos.editar') ?? false); }
     public static function canDelete(Model $record): bool { return Filament::getTenant()->tieneModulo('atributos') && (auth()->user()?->can('atributos.eliminar') ?? false); }
 
     public static function form(Schema $schema): Schema

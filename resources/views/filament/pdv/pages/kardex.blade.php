@@ -111,6 +111,14 @@
                                         {{ $mov->variante_nombre }}
                                     </div>
                                 @endif
+                                @php
+                                    $codigo = $mov->variante_id
+                                        ? ($mov->variante?->codigo ?: $mov->variante?->codigo_barras)
+                                        : ($mov->producto?->codigo_interno ?: $mov->producto?->codigo_barras);
+                                @endphp
+                                @if ($codigo)
+                                    <div class="kdx-prod-codigo">{{ $codigo }}</div>
+                                @endif
                             </td>
 
                             {{-- Concepto / Origen --}}

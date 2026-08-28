@@ -221,7 +221,7 @@ public function exportarExcel(): mixed
     public function getMovimientos(): LengthAwarePaginator
     {
         $q = Kardex::where('empresa_id', Filament::getTenant()->id)
-            ->with(['user'])
+            ->with(['user', 'producto:id,codigo_interno,codigo_barras', 'variante:id,codigo,codigo_barras'])
             ->orderBy('fecha', 'desc')
             ->orderBy('id', 'desc');
 
