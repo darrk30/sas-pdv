@@ -24,7 +24,7 @@ class AccesosRapidosWidget extends Widget
         $user    = auth()->user();
         $accesos = [];
 
-        if ($empresa->tieneModulo('punto_de_venta') && $user->can('caja.ver')) {
+        if ($empresa->tieneModulo('punto_de_venta') && $user->can('caja.punto_de_venta')) {
             $accesos[] = [
                 'label' => 'Punto de Venta',
                 'url'   => PuntoDeVenta::getUrl(),
@@ -51,7 +51,7 @@ class AccesosRapidosWidget extends Widget
             ];
         }
 
-        if (($empresa->tieneModulo('ordenes_web') || $empresa->tieneModulo('pedidos_web')) && $user->can('tienda.ver')) {
+        if (($empresa->tieneModulo('ordenes_web') || $empresa->tieneModulo('pedidos_web')) && $user->can('ordenes.ver')) {
             $accesos[] = [
                 'label' => 'Órdenes Web',
                 'url'   => OrdenResource::getUrl('index'),
@@ -60,7 +60,7 @@ class AccesosRapidosWidget extends Widget
             ];
         }
 
-        if ($empresa->tieneModulo('despacho') && $user->can('tienda.ver')) {
+        if ($empresa->tieneModulo('despacho') && $user->can('ordenes.despacho')) {
             $accesos[] = [
                 'label' => 'Despachos',
                 'url'   => DespachoPage::getUrl(),

@@ -76,6 +76,7 @@ class EmpresaForm
 
                         Tab::make('Sistema')
                             ->icon('heroicon-o-cog-6-tooth')
+                            ->hidden(fn ($record) => ! ($record?->suscripcion?->plan?->tiene_catalogo_web ?? false))
                             ->schema([
                                 Grid::make(2)->schema([
                                     Select::make('carta_activa_cliente')
