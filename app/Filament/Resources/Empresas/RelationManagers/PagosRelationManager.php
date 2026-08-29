@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Empresas\RelationManagers;
 
 use App\Enums\MetodoPago;
 use App\Filament\Resources\Empresas\EmpresaResource;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -52,6 +53,20 @@ class PagosRelationManager extends RelationManager
                     ->label('N° Operación')
                     ->searchable()
                     ->placeholder('Sin referencia'),
+
+                TextColumn::make('estado')
+                    ->label('Estado')
+                    ->badge()
+                    ->color(fn (string $state) => match ($state) {
+                        'aprobado'  => 'success',
+                        'rechazado' => 'danger',
+                        default     => 'warning',
+                    })
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'aprobado'  => 'Aprobado',
+                        'rechazado' => 'Rechazado',
+                        default     => 'Pendiente',
+                    }),
             ])
             ->headerActions([
                 CreateAction::make()
@@ -68,6 +83,71 @@ class PagosRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
+                Action::make('aprobar')
+                    ->label('Aprobar')
+                    ->icon('heroicon-m-check-circle')
+                    ->color('success')
+                    ->visible(fn ($record) => $record->estado === 'pendiente')
+                    ->requiresConfirmation()
+                    ->modalHeading('Aprobar pago y renovar suscripción')
+                    ->modalDescription(fn ($record) => "Se aprobará el pago de S/ {$record->monto} y se extenderá la suscripción según el ciclo del plan activo.")
+                    ->action(function ($record, $livewire) {
+                        $empresa     = $livewire->ownerRecord;
+                        $suscripcion = $empresa->suscripcion;
+
+                        if (! $suscripcion) {
+                            Notification::make()->warning()->title('Sin suscripción')->send();
+                            return;
+                        }
+
+                        // Aprobar este pago
+                        $record->update(['estado' => 'aprobado']);
+
+                        // Rechazar otros pagos pendientes de la misma suscripción
+                        $suscripcion->pagos()
+                            ->where('estado', 'pendiente')
+                            ->where('id', '!=', $record->id)
+                            ->update(['estado' => 'rechazado']);
+
+                        // Extender fecha_fin según ciclo del plan
+                        $ciclo    = $suscripcion->plan?->ciclo_facturacion ?? 'mensual';
+                        $base     = $suscripcion->fecha_fin && $suscripcion->fecha_fin->isFuture()
+                                    ? $suscripcion->fecha_fin
+                                    : now();
+                        $nuevaFin = match ($ciclo) {
+                            'anual'      => $base->copy()->addYear(),
+                            'trimestral' => $base->copy()->addMonths(3),
+                            default      => $base->copy()->addMonth(),
+                        };
+
+                        $suscripcion->update([
+                            'estado'       => 'activo',
+                            'fecha_inicio' => $base->copy()->startOfDay(),
+                            'fecha_fin'    => $nuevaFin,
+                        ]);
+
+                        $empresa->update([
+                            'estado'                       => 'activo',
+                            'suscripcion_proxima_a_vencer' => false,
+                        ]);
+
+                        Notification::make()
+                            ->success()
+                            ->title('Pago aprobado')
+                            ->body("Suscripción renovada hasta {$nuevaFin->format('d/m/Y')}.")
+                            ->send();
+                    }),
+
+                Action::make('rechazar')
+                    ->label('Rechazar')
+                    ->icon('heroicon-m-x-circle')
+                    ->color('danger')
+                    ->visible(fn ($record) => $record->estado === 'pendiente')
+                    ->requiresConfirmation()
+                    ->modalHeading('Rechazar pago')
+                    ->modalDescription('El cliente deberá registrar un nuevo comprobante.')
+                    ->action(fn ($record) => $record->update(['estado' => 'rechazado'])),
+
                 EditAction::make()->modalHeading('Editar Pago'),
                 DeleteAction::make()->modalHeading('Eliminar Pago'),
             ])

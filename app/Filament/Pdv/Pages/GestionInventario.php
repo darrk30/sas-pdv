@@ -7,7 +7,6 @@ use App\Models\Inventario;
 use App\Services\InventarioExportService;
 use BackedEnum;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
-use Filament\Actions\Action as PageAction;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Filament\Actions\Action;
@@ -17,6 +16,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
+use Livewire\Attributes\On;
 use UnitEnum;
 
 class GestionInventario extends Page implements HasTable
@@ -29,6 +29,30 @@ class GestionInventario extends Page implements HasTable
         if ($q = request()->query('tableSearch')) {
             $this->tableSearch = $q;
         }
+
+        $this->js(<<<'JS'
+            if (!window.__scannerInventario) {
+                window.__scannerInventario = true;
+                var buf = '', last = 0;
+                document.addEventListener('keydown', function (e) {
+                    var a = document.activeElement;
+                    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)) {
+                        buf = ''; return;
+                    }
+                    if (e.key === 'Enter') {
+                        if (buf.length >= 4) {
+                            var code = buf; buf = '';
+                            Livewire.dispatch('barcode-result', { path: 'inventario_barcode_filter', code: code });
+                        } else { buf = ''; }
+                        return;
+                    }
+                    var now = Date.now();
+                    if (now - last > 60 && buf.length > 0) buf = '';
+                    last = now;
+                    if (e.key.length === 1) buf += e.key;
+                });
+            }
+        JS);
     }
 
     public function getStats(): array
@@ -55,23 +79,17 @@ class GestionInventario extends Page implements HasTable
         ];
     }
 
+    #[On('barcode-result')]
+    public function filtrarPorBarcode(string $path, string $code): void
+    {
+        if ($path === 'inventario_barcode_filter') {
+            $this->tableSearch = $code;
+        }
+    }
+
     protected function getHeaderActions(): array
     {
-        return [
-            PageAction::make('exportarExcelHeader')
-                ->label('Excel')
-                ->icon('heroicon-o-table-cells')
-                ->color('success')
-                ->action(fn() => app(InventarioExportService::class)
-                    ->generarExcel(Filament::getTenant(), $this->getStats())),
-
-            PageAction::make('exportarPdfHeader')
-                ->label('PDF')
-                ->icon('heroicon-o-document-arrow-down')
-                ->color('danger')
-                ->action(fn() => app(InventarioExportService::class)
-                    ->generarPdf(Filament::getTenant(), $this->getStats())),
-        ];
+        return [];
     }
 
     // Estas propiedades de navegación SÍ son estáticas en Filament
@@ -140,12 +158,22 @@ class GestionInventario extends Page implements HasTable
                             )
                             ->orWhereHas('producto', fn(Builder $pq) =>
                                 $pq->where('codigo_interno', 'like', "%{$search}%")
+                                   ->orWhere('codigo_barras', 'like', "%{$search}%")
                             );
                         });
                     })
                     ->copyable()
                     ->color('gray')
                     ->fontFamily('mono'),
+
+                TextColumn::make('producto.codigo_barras')
+                    ->label('Cód. Barras')
+                    ->searchable()
+                    ->copyable()
+                    ->fontFamily('mono')
+                    ->color('gray')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('stock_real')
                     ->label('Stock Actual')
@@ -175,6 +203,14 @@ class GestionInventario extends Page implements HasTable
                     ->placeholder('Todos los estados'),
             ])
             ->toolbarActions([
+                Action::make('escanear_barcode')
+                    ->label('')
+                    ->icon('heroicon-o-camera')
+                    ->color('gray')
+                    ->extraAttributes([
+                        'x-on:click' => "window.dispatchEvent(new CustomEvent('open-barcode-scanner', { detail: { path: 'inventario_barcode_filter' } }))",
+                    ]),
+
                 Action::make('exportarExcel')
                     ->label('Excel')
                     ->icon('heroicon-o-table-cells')

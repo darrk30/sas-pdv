@@ -3,162 +3,81 @@
 <head>
 <meta charset="UTF-8">
 <style>
-@page { margin: 5mm 5mm; }
+@page { margin: 3mm 3mm; size: 80mm auto; }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-    font-family: 'Courier New', Courier, monospace;
+    font-family: Helvetica, Arial, sans-serif;
     font-size: 9pt;
     color: #000;
+    line-height: 1.35;
     width: 100%;
-    line-height: 1.4;
 }
 
-/* ── Cabecera empresa ─────────────────────────────── */
-.empresa {
-    text-align: center;
-    margin-bottom: 3mm;
-}
-.empresa-logo {
-    max-width: 40mm;
-    max-height: 15mm;
-    display: block;
-    margin: 0 auto 2mm;
-}
-.empresa-nombre {
-    font-size: 11pt;
-    font-weight: bold;
-    text-transform: uppercase;
-}
-.empresa-info {
-    font-size: 8pt;
-    margin-top: 1mm;
-    line-height: 1.5;
-}
+/* ── Empresa ──────────────────────────────────── */
+.empresa { text-align: center; margin-bottom: 2mm; }
+.empresa-logo { display: block; max-width: 48mm; max-height: 18mm; margin: 0 auto 2mm; }
+.empresa-nombre { font-size: 11pt; font-weight: bold; text-transform: uppercase; letter-spacing: .3pt; }
+.empresa-info { font-size: 8pt; margin-top: 1mm; line-height: 1.5; }
 
-/* ── Separadores ──────────────────────────────────── */
-.sep-dashed { border-top: 1px dashed #000; margin: 2mm 0; }
-.sep-solid  { border-top: 1px solid #000;  margin: 2mm 0; }
 
-/* ── Comprobante ──────────────────────────────────── */
-.comprobante {
-    text-align: center;
-    margin-bottom: 1mm;
-}
-.comprobante-tipo { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
-.comprobante-num  { font-size: 9pt; font-weight: bold; }
-.comprobante-fecha { font-size: 8pt; color: #333; }
+/* ── Comprobante ──────────────────────────────── */
+.comp { text-align: center; margin: 1.5mm 0; }
+.comp-tipo { font-size: 11pt; font-weight: bold; text-transform: uppercase; }
+.comp-num  { font-size: 10pt; font-weight: bold; }
 
-/* ── Cliente ──────────────────────────────────────── */
-.cliente { font-size: 8pt; margin-bottom: 1mm; }
-.cliente-titulo { font-weight: bold; font-size: 8pt; text-transform: uppercase; margin-bottom: 1mm; }
-.cliente table { width: 100%; border-collapse: collapse; }
-.cliente td { padding: 0; vertical-align: top; }
-.cliente-label { width: 14mm; color: #444; }
+/* ── Separador ────────────────────────────────── */
+.sep { border-top: 1pt solid #000; margin: 2mm 0; }
 
-/* ── Tabla ítems ──────────────────────────────────── */
-.items-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 8pt;
-    margin: 1mm 0;
-}
-.items-table th {
-    text-align: left;
-    font-weight: bold;
-    font-size: 8pt;
-    padding: 0 0.5mm 1mm;
-    border-bottom: 1px solid #000;
-}
-.items-table th.r { text-align: right; }
-.items-table td {
-    padding: 0.8mm 0.5mm;
-    vertical-align: top;
-}
-.items-table td.r { text-align: right; white-space: nowrap; }
-.td-und { font-size: 7pt; color: #444; }
-.td-desc { }
+/* ── Datos ────────────────────────────────────── */
+.datos { font-size: 8.5pt; margin: 1mm 0; }
+.datos table { width: 100%; border-collapse: collapse; }
+.datos td { padding: 0.3mm 0; vertical-align: top; }
+.datos td.lbl { font-weight: bold; white-space: nowrap; padding-right: 1mm; }
 
-/* ── Totales ──────────────────────────────────────── */
-.totales { font-size: 8pt; margin-top: 1mm; }
-.totales table { width: 100%; border-collapse: collapse; }
-.totales td { padding: 0.3mm 0; }
-.totales td.val { text-align: right; white-space: nowrap; }
-.total-grande {
-    font-size: 11pt;
-    font-weight: bold;
-    border-top: 1px solid #000;
-    padding-top: 1mm;
-    margin-top: 1mm;
+/* ── Tabla ítems ──────────────────────────────── */
+.items { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin: 1mm 0; }
+.items thead tr { border-bottom: 1pt solid #000; }
+.items th {
+    font-weight: bold; font-size: 8pt; text-transform: uppercase;
+    text-align: left; padding: 0 0.5mm 1.5mm;
 }
-.total-grande table { width: 100%; }
-.total-grande td.val { text-align: right; }
+.items th.r { text-align: right; }
+.items tbody tr:last-child td { border-bottom: none; padding-bottom: 1.5mm; }
+.items td { padding: 0.8mm 0.5mm; vertical-align: top; }
+.items td.r { text-align: right; white-space: nowrap; }
+.items td.c { text-align: center; }
 
-/* ── Pagos ────────────────────────────────────────── */
-.pagos-titulo { font-weight: bold; font-size: 8pt; text-transform: uppercase; margin-bottom: 1mm; }
-.pagos-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
-.pagos-table td { padding: 0.3mm 0; vertical-align: top; }
-.pagos-table td.val { text-align: right; white-space: nowrap; }
-.pago-ref { font-size: 7pt; color: #555; }
+/* ── Totales ──────────────────────────────────── */
+.tots { font-size: 8.5pt; margin: 1mm 0; }
+.tots table { width: 100%; border-collapse: collapse; }
+.tots td { padding: 0.4mm 0; }
+.tots td.val { text-align: right; white-space: nowrap; }
+.tot-total { font-size: 11.5pt; font-weight: bold; border-top: 1pt solid #000; padding-top: 1.5mm; margin-top: 0.5mm; }
+.tot-total table { width: 100%; }
+.tot-total td.val { text-align: right; }
+.letras { font-size: 8pt; font-style: italic; margin-top: 1mm; }
 
-/* ── Pie ──────────────────────────────────────────── */
-.gracias {
-    text-align: center;
-    font-size: 10pt;
-    font-weight: bold;
-    margin: 2mm 0 1mm;
-}
-.subgracias {
-    text-align: center;
-    font-size: 8pt;
-}
-.no-comprobante {
-    text-align: center;
-    font-size: 7.5pt;
-    font-style: italic;
-    margin-top: 2mm;
-    padding-top: 1mm;
-    border-top: 1px dashed #000;
-    line-height: 1.5;
-}
+/* ── Pagos ────────────────────────────────────── */
+.pagos { font-size: 8.5pt; margin: 1mm 0; }
+.pagos table { width: 100%; border-collapse: collapse; }
+.pagos td { padding: 0.4mm 0; vertical-align: top; }
+.pagos td.val { text-align: right; white-space: nowrap; }
+.pagos td.lbl { font-weight: bold; }
 
-/* ── QR y letras ──────────────────────────────────── */
-.letras {
-    font-size: 7.5pt;
-    font-style: italic;
-    margin: 2mm 0 1mm;
-    line-height: 1.4;
-}
-.qr-wrap {
-    text-align: center;
-    margin: 2mm 0;
-}
-.qr-wrap img {
-    width: 40mm;
-    height: 40mm;
-}
-.qr-label {
-    text-align: center;
-    font-size: 7pt;
-    color: #444;
-    margin-top: 1mm;
-}
-.hash-fe {
-    font-size: 6.5pt;
-    color: #555;
-    font-family: 'Courier New', monospace;
-    word-break: break-all;
-    margin-top: 1mm;
-}
-.nota-fe {
-    text-align: center;
-    font-size: 7pt;
-    font-style: italic;
-    margin-top: 1mm;
-    line-height: 1.4;
-    color: #333;
-}
+/* ── QR + FE data ─────────────────────────────── */
+.fe-wrap { width: 100%; border-collapse: collapse; margin: 1.5mm 0; }
+.fe-wrap td { vertical-align: top; padding: 0; }
+.fe-qr { width: 32mm; }
+.fe-qr img { width: 30mm; height: 30mm; display: block; }
+.fe-data { font-size: 7.5pt; line-height: 1.5; padding-left: 2mm; }
+.fe-hash { font-size: 6.5pt; color: #444; word-break: break-all; margin-bottom: 1mm; }
+
+/* ── Pie ──────────────────────────────────────── */
+.footer { text-align: center; margin-top: 2mm; font-size: 8pt; line-height: 1.7; }
+.footer-gracias { font-size: 10.5pt; font-weight: bold; text-transform: uppercase; margin-top: 1.5mm; }
+.no-comp { font-size: 7.5pt; font-style: italic; margin-top: 1.5mm; }
 </style>
 </head>
 <body>
@@ -166,212 +85,184 @@ body {
     use App\Enums\TipoComprobante;
     $serie       = $venta->serie;
     $tipoEnum    = $serie?->tipo;
-    $comprobante = ($serie?->serie ?? '---') . '-' . str_pad($venta->correlativo, 8, '0', STR_PAD_LEFT);
+    $comprobante = ($serie?->serie ?? '---') . ' - ' . str_pad($venta->correlativo, 8, '0', STR_PAD_LEFT);
     $esFactura   = $tipoEnum === TipoComprobante::Factura;
     $esBoleta    = $tipoEnum === TipoComprobante::Boleta;
     $esTicket    = $tipoEnum === TipoComprobante::Ticket;
     $esSin       = $tipoEnum === TipoComprobante::SinComprobante || $tipoEnum === null;
-    $tieneIgv    = ($esFactura || $esBoleta) && (float) $venta->igv > 0;
-    $esFE        = ($esFactura || $esBoleta) && ! empty($venta->qr_data);
+    $esFE        = $esFactura || $esBoleta;
+    $tieneIgv    = $esFE && (float) $venta->igv > 0;
 
-    $clienteTel = $venta->cliente?->telefono;
-    $clienteDir = $venta->cliente?->direccion ?? null;
+    $pagos       = $venta->pagos->filter(fn($p) => $p->monto > 0);
+    $totalPagado = $pagos->sum('monto');
+    $vuelto      = max(0, $totalPagado - (float) $venta->total);
+    $condicion   = ((float)($venta->saldo_pendiente ?? 0) > 0) ? 'CRÉDITO' : 'CONTADO';
 
-    // DomPDF necesita rutas absolutas de disco para imágenes
-    $logoPath = $empresa->logo ? public_path('storage/' . $empresa->logo) : null;
-    // $qrBase64 viene del servicio cuando $esFE; sino null
+    $clienteNombre  = $venta->cliente_nombre ?: ($venta->cliente?->razon_social ?? $venta->cliente?->nombre ?? 'PUBLICO EN GENERAL');
+    $clienteDoc     = $venta->cliente_num_doc ?: ($venta->cliente?->numero_documento ?? '00000000');
+    $clienteTipoDoc = strtoupper($venta->cliente_tipo_doc ?? $venta->cliente?->tipo_documento ?? 'DNI');
+    $clienteTel     = $venta->cliente?->telefono ?? null;
+    $clienteDir     = $venta->cliente?->direccion ?? null;
+    $fechaEmision   = $venta->fecha_emision?->format('d/m/Y H:i') ?? $venta->created_at->format('d/m/Y H:i');
+    $cajero         = $venta->sesionCaja?->cajero?->name ?? null;
+
+    $logoPath = $empresa->logo ? public_path('storage/'.$empresa->logo) : null;
     $qrBase64 = $qrBase64 ?? null;
 @endphp
 
-{{-- ══ CABECERA EMPRESA ══ --}}
+{{-- ══ EMPRESA ══ --}}
 <div class="empresa">
-    @if ($logoPath && file_exists($logoPath))
+    @if($logoPath && file_exists($logoPath))
         <img src="{{ $logoPath }}" class="empresa-logo" alt="Logo">
     @endif
     <div class="empresa-nombre">{{ $empresa->name }}</div>
     <div class="empresa-info">
-        @if ($empresa->ruc)RUC: {{ $empresa->ruc }}<br>@endif
-        @if ($empresa->direccion){{ $empresa->direccion }}<br>@endif
-        @if ($empresa->provincia || $empresa->departamento)
-            {{ implode(', ', array_filter([$empresa->provincia ?? null, $empresa->departamento ?? null])) }}<br>
+        @if($empresa->ruc)RUC: {{ $empresa->ruc }}<br>@endif
+        @if($empresa->direccion){{ $empresa->direccion }}<br>@endif
+        @if($empresa->provincia || $empresa->departamento)
+            {{ implode(' - ', array_filter([$empresa->provincia ?? null, $empresa->departamento ?? null])) }}<br>
         @endif
-        @if ($empresa->telefono)Tel: {{ $empresa->telefono }}@endif
+        @if($empresa->telefono)TELF: {{ $empresa->telefono }}@endif
     </div>
 </div>
 
-<div class="sep-solid"></div>
+<div style="margin:2mm 0"></div>
 
 {{-- ══ COMPROBANTE ══ --}}
-<div class="comprobante">
-    <div class="comprobante-tipo">
-        @if ($esFactura) FACTURA ELECTRÓNICA
-        @elseif ($esBoleta) BOLETA DE VENTA ELECTRÓNICA
-        @elseif ($esTicket) TICKET DE VENTA
+<div class="comp">
+    <div class="comp-tipo">
+        @if($esFactura)FACTURA ELECTRÓNICA
+        @elseif($esBoleta)BOL. ELECTRÓNICA
+        @elseif($esTicket)TICKET DE VENTA
         @else COMPROBANTE DE VENTA
         @endif
     </div>
-    <div class="comprobante-num">{{ $comprobante }}</div>
-    <div class="comprobante-fecha">
-        {{ $venta->fecha_emision?->format('d/m/Y H:i') ?? $venta->created_at->format('d/m/Y H:i') }}
-    </div>
+    <div class="comp-num">{{ $comprobante }}</div>
 </div>
 
-{{-- ══ CLIENTE ══ --}}
-@if ($venta->cliente_nombre || $venta->cliente_num_doc)
-<div class="sep-dashed"></div>
-<div class="cliente">
-    <div class="cliente-titulo">Cliente</div>
-    <table>
-        @if ($venta->cliente_nombre)
-        <tr>
-            <td class="cliente-label">Nombre:</td>
-            <td>{{ $venta->cliente_nombre }}</td>
-        </tr>
-        @endif
-        @if ($venta->cliente_num_doc)
-        <tr>
-            <td class="cliente-label">{{ strtoupper($venta->cliente_tipo_doc ?? 'Doc') }}:</td>
-            <td>{{ $venta->cliente_num_doc }}</td>
-        </tr>
-        @endif
-        @if ($clienteTel)
-        <tr>
-            <td class="cliente-label">Tel:</td>
-            <td>{{ $clienteTel }}</td>
-        </tr>
-        @endif
-        @if ($clienteDir)
-        <tr>
-            <td class="cliente-label">Dir:</td>
-            <td>{{ $clienteDir }}</td>
-        </tr>
-        @endif
-    </table>
+<div class="sep"></div>
+
+{{-- ══ DATOS ══ --}}
+<div class="datos">
+<table>
+    @if($cajero)
+    <tr><td class="lbl">CAJERO:</td><td>{{ $cajero }}</td></tr>
+    @endif
+    <tr><td class="lbl">FECHA DE EMISION:</td><td>{{ $fechaEmision }}</td></tr>
+    <tr><td class="lbl">CLIENTE:</td><td>{{ $clienteNombre }}</td></tr>
+    <tr><td class="lbl">{{ $clienteTipoDoc }}:</td><td>{{ $clienteDoc }}</td></tr>
+    @if($clienteTel)
+    <tr><td class="lbl">TELEFONO:</td><td>{{ $clienteTel }}</td></tr>
+    @endif
+    @if($clienteDir)
+    <tr><td class="lbl">DIRECCION:</td><td>{{ $clienteDir }}</td></tr>
+    @endif
+</table>
 </div>
-@endif
 
-<div class="sep-dashed"></div>
+<div class="sep"></div>
 
-{{-- ══ ÍTEMS ══ --}}
-<table class="items-table">
+{{-- ══ PRODUCTOS ══ --}}
+<table class="items">
     <thead>
         <tr>
-            <th>Cant</th>
-            <th>Und</th>
-            <th>Descripción</th>
-            <th class="r">P.U.</th>
-            <th class="r">Total</th>
+            <th style="width:8mm">CANT.</th>
+            <th>PRODUCTO</th>
+            <th class="r" style="width:12mm">P.U.</th>
+            <th class="r" style="width:12mm">IMP.</th>
         </tr>
     </thead>
     <tbody>
-        @foreach ($venta->detalles as $d)
+        @foreach($venta->detalles as $d)
         @php
             $cant    = (float) $d->cantidad;
-            $cantFmt = $cant == floor($cant)
-                ? number_format($cant, 0)
-                : rtrim(rtrim(number_format($cant, 3, '.', ''), '0'), '.');
-            $simbolo = $d->producto?->unidadMedida?->simbolo
-                ?? $d->variante?->producto?->unidadMedida?->simbolo
-                ?? '';
+            $cantFmt = $cant == floor($cant) ? number_format($cant,0) : rtrim(rtrim(number_format($cant,3,'.',''),'0'),'.');
         @endphp
         <tr>
-            <td>{{ $cantFmt }}</td>
-            <td class="td-und">{{ $simbolo }}</td>
-            <td class="td-desc">{{ $d->descripcion }}</td>
-            <td class="r">{{ number_format($d->precio_unitario, 2) }}</td>
-            <td class="r">{{ number_format($d->total, 2) }}</td>
+            <td class="c">{{ $cantFmt }}</td>
+            <td>{{ $d->descripcion }}</td>
+            <td class="r">{{ number_format($d->precio_unitario,2) }}</td>
+            <td class="r">{{ number_format($d->total,2) }}</td>
         </tr>
         @endforeach
     </tbody>
 </table>
 
-<div class="sep-solid"></div>
-
 {{-- ══ TOTALES ══ --}}
-<div class="totales">
-    @if ((float)$venta->descuento_total > 0)
-    <table><tr>
-        <td>Descuento</td>
-        <td class="val">- S/ {{ number_format($venta->descuento_total, 2) }}</td>
-    </tr></table>
-    @endif
-
-    @if ($tieneIgv)
+<div class="tots">
     <table>
-        <tr><td>Op. Gravada</td><td class="val">S/ {{ number_format($venta->op_gravadas, 2) }}</td></tr>
-        <tr><td>IGV (18%)</td><td class="val">S/ {{ number_format($venta->igv, 2) }}</td></tr>
+        @if((float)$venta->descuento_total > 0)
+        <tr><td>DESCUENTO</td><td class="val">- S/ {{ number_format($venta->descuento_total,2) }}</td></tr>
+        @endif
+        @if($tieneIgv)
+        <tr><td>SUB TOTAL</td><td class="val">S/ {{ number_format((float)$venta->op_gravadas + (float)$venta->op_exoneradas,2) }}</td></tr>
+        <tr><td>OP. GRAVADA</td><td class="val">S/ {{ number_format($venta->op_gravadas,2) }}</td></tr>
+        <tr><td>IGV</td><td class="val">S/ {{ number_format($venta->igv,2) }}</td></tr>
+        @endif
     </table>
-    @endif
-
-    <div class="total-grande">
-        <table><tr>
-            <td>TOTAL</td>
-            <td class="val">S/ {{ number_format($venta->total, 2) }}</td>
-        </tr></table>
+    <div class="tot-total">
+        <table><tr><td>TOTAL</td><td class="val">S/ {{ number_format($venta->total,2) }}</td></tr></table>
     </div>
+    @if($venta->total_letras)
+    <div class="letras">SON: {{ strtoupper($venta->total_letras) }}</div>
+    @endif
 </div>
 
-{{-- ══ MÉTODOS DE PAGO ══ --}}
-@php $pagos = $venta->pagos->filter(fn($p) => $p->monto > 0); @endphp
-@if ($pagos->isNotEmpty())
-<div class="sep-dashed"></div>
-<div class="pagos-titulo">Forma de pago</div>
-<table class="pagos-table">
-    @foreach ($pagos as $pago)
+<div class="sep"></div>
+
+{{-- ══ QR + CONDICION / PAGOS ══ --}}
+@if($esFE && $qrBase64)
+<table class="fe-wrap">
     <tr>
-        <td>
-            {{ $pago->metodoPago?->nombre ?? '—' }}
-            @if ($pago->referencia)
-                <br><span class="pago-ref">Ref: {{ $pago->referencia }}</span>
+        <td class="fe-qr"><img src="{{ $qrBase64 }}" alt="QR"></td>
+        <td class="fe-data">
+            @if($venta->hash)
+            <strong>CÓDIGO HASH:</strong><br>
+            <div class="fe-hash">{{ $venta->hash }}</div>
             @endif
+            <strong style="font-size:7pt">MÉTODOS DE PAGO</strong><br>
+            @foreach($pagos as $pago)
+            {{ strtoupper($pago->metodoPago?->nombre ?? 'EFECTIVO') }}: S/ {{ number_format($pago->monto,2) }}<br>
+            @endforeach
+            @if($vuelto > 0)VUELTO: S/ {{ number_format($vuelto,2) }}<br>@endif
         </td>
-        <td class="val">S/ {{ number_format($pago->monto, 2) }}</td>
+    </tr>
+</table>
+@else
+@if($pagos->isNotEmpty())
+<div class="pagos">
+<div style="font-size:7pt;font-weight:bold;text-transform:uppercase;letter-spacing:.04em;color:#555;margin-bottom:1mm">Métodos de pago</div>
+<table>
+    @foreach($pagos as $pago)
+    <tr>
+        <td>{{ strtoupper($pago->metodoPago?->nombre ?? 'EFECTIVO') }}</td>
+        <td class="val">S/ {{ number_format($pago->monto,2) }}</td>
     </tr>
     @endforeach
-    @if ((float)$venta->saldo_pendiente > 0)
-    <tr>
-        <td><em>Saldo pendiente</em></td>
-        <td class="val">S/ {{ number_format($venta->saldo_pendiente, 2) }}</td>
-    </tr>
+    @if($vuelto > 0)
+    <tr><td>VUELTO</td><td class="val">S/ {{ number_format($vuelto,2) }}</td></tr>
+    @endif
+    @if((float)($venta->saldo_pendiente??0)>0)
+    <tr><td><em>Saldo pendiente</em></td><td class="val">S/ {{ number_format($venta->saldo_pendiente,2) }}</td></tr>
     @endif
 </table>
+</div>
+@endif
 @endif
 
-<div class="sep-dashed"></div>
+<div class="sep"></div>
 
 {{-- ══ PIE ══ --}}
-<div class="gracias">¡Gracias por su preferencia!</div>
-<div class="subgracias">Vuelva pronto.</div>
-
-@if ($esTicket || $esSin)
-<div class="no-comprobante">
-    Este documento NO constituye<br>
-    un comprobante de pago electrónico.
+<div class="footer">
+    @if($esFE)
+    Representación impresa de la {{ $esFactura ? 'FACTURA ELECTRÓNICA' : 'BOL. ELECTRÓNICA' }}<br>
+    consulte en: <strong>www.sunat.gob.pe</strong><br>
+    @endif
+    @if($esTicket || $esSin)
+    <div class="no-comp">Este documento NO constituye un comprobante de pago electrónico.</div>
+    @endif
+    <div class="footer-gracias">GRACIAS POR SU PREFERENCIA</div>
 </div>
-@endif
-
-{{-- ══ QR + LETRAS (solo boleta/factura electrónica) ══ --}}
-@if ($esFE && $qrBase64)
-<div class="sep-dashed"></div>
-
-@if ($venta->total_letras)
-<div class="letras">Son: {{ $venta->total_letras }}</div>
-@endif
-
-<div class="qr-wrap">
-    <img src="{{ $qrBase64 }}" alt="QR SUNAT">
-</div>
-<div class="qr-label">Consulte en sunat.gob.pe</div>
-
-@if ($venta->hash)
-<div class="hash-fe">Hash: {{ $venta->hash }}</div>
-@endif
-
-<div class="nota-fe">
-    Representación impresa de<br>
-    {{ $esFactura ? 'FACTURA ELECTRÓNICA' : 'BOLETA DE VENTA ELECTRÓNICA' }}
-</div>
-@endif
 
 </body>
 </html>

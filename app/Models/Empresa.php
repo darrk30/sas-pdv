@@ -33,10 +33,12 @@ class Empresa extends Model
         'impresion_comprobante_directo',
         'igv_porcentaje',
         'bot_contexto',
+        'suscripcion_proxima_a_vencer',
     ];
 
     protected $casts = [
-        'modulos_activos'              => 'array',
+        'modulos_activos'                    => 'array',
+        'suscripcion_proxima_a_vencer'       => 'boolean',
         'fe_envio_directo_boleta'      => 'boolean',
         'fe_envio_directo_factura'     => 'boolean',
         'impresion_comprobante_directo'=> 'boolean',

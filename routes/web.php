@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\EstadoGeneral;
+use App\Http\Controllers\Pdv\ArqueoCajaController;
 use App\Http\Controllers\Pdv\ClienteExcelController;
 use App\Http\Controllers\Pdv\ProductoExcelController;
 use App\Http\Controllers\Pdv\ProveedorExcelController;
@@ -46,6 +47,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/ticket/despacho/{id}', [TicketDespachoController::class, 'show'])
         ->name('pdv.ticket.despacho')
+        ->where('id', '[0-9]+');
+
+    Route::get('/arqueo-caja/{id}', [ArqueoCajaController::class, 'pdf'])
+        ->name('pdv.arqueo-caja.pdf')
         ->where('id', '[0-9]+');
 
     Route::post('/push/subscribe',   [PushSubscriptionController::class, 'subscribe'])->name('push.subscribe');

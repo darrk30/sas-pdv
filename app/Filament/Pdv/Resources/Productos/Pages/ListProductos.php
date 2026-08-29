@@ -15,10 +15,46 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\HtmlString;
+use Livewire\Attributes\On;
 
 class ListProductos extends ListRecords
 {
     protected static string $resource = ProductoResource::class;
+
+    public function mount(): void
+    {
+        $this->js(<<<'JS'
+            if (!window.__scannerProductos) {
+                window.__scannerProductos = true;
+                var buf = '', last = 0;
+                document.addEventListener('keydown', function (e) {
+                    var a = document.activeElement;
+                    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)) {
+                        buf = ''; return;
+                    }
+                    if (e.key === 'Enter') {
+                        if (buf.length >= 4) {
+                            var code = buf; buf = '';
+                            Livewire.dispatch('barcode-result', { path: 'productos_barcode_filter', code: code });
+                        } else { buf = ''; }
+                        return;
+                    }
+                    var now = Date.now();
+                    if (now - last > 60 && buf.length > 0) buf = '';
+                    last = now;
+                    if (e.key.length === 1) buf += e.key;
+                });
+            }
+        JS);
+    }
+
+    #[On('barcode-result')]
+    public function filtrarPorBarcode(string $path, string $code): void
+    {
+        if ($path === 'productos_barcode_filter') {
+            $this->tableSearch = $code;
+        }
+    }
 
     protected function getHeaderActions(): array
     {

@@ -232,13 +232,18 @@
                                     @if($tieneVariantes)
                                         <p class="pdv-card__meta">{{ $producto->variantesActivas->count() }} variantes</p>
                                     @endif
-                                    <p class="pdv-card__precio">
-                                        @if($tieneVariantes)
-                                            Desde S/ {{ number_format($producto->variantesActivas->min('precio_final'), 2) }}
-                                        @else
-                                            S/ {{ number_format($producto->precio_venta, 2) }}
-                                        @endif
-                                    </p>
+                                    @if(!$tieneVariantes && $producto->porcentaje_descuento > 0 && $producto->precio_con_descuento)
+                                        <p class="pdv-card__precio-original">S/ {{ number_format($producto->precio_venta, 2) }}</p>
+                                        <p class="pdv-card__precio pdv-card__precio--oferta">S/ {{ number_format($producto->precio_con_descuento, 2) }}</p>
+                                    @else
+                                        <p class="pdv-card__precio">
+                                            @if($tieneVariantes)
+                                                Desde S/ {{ number_format($producto->variantesActivas->min('precio_final'), 2) }}
+                                            @else
+                                                S/ {{ number_format($producto->precio_venta, 2) }}
+                                            @endif
+                                        </p>
+                                    @endif
                                 </div>
                             </button>
                         @endforeach
@@ -358,13 +363,17 @@
             </div>
 
             {{-- ── TIPO DE COMPROBANTE ── --}}
-            @php $series = $this->getSeries(); @endphp
+            @php
+                $series  = $this->getSeries();
+                $tieneFE = \Filament\Facades\Filament::getTenant()->tieneFacturacionElectronica();
+            @endphp
             <div class="pdv-comprobante">
                 @foreach([
-                    ['tipo' => 'factura', 'label' => 'Factura',  'color' => 'info'],
-                    ['tipo' => 'boleta',  'label' => 'Boleta',   'color' => 'success'],
-                    ['tipo' => 'ticket',  'label' => 'Ticket',   'color' => 'warning'],
+                    ['tipo' => 'factura', 'label' => 'Factura',  'color' => 'info',    'soloFE' => true],
+                    ['tipo' => 'boleta',  'label' => 'Boleta',   'color' => 'success', 'soloFE' => true],
+                    ['tipo' => 'ticket',  'label' => 'Ticket',   'color' => 'warning', 'soloFE' => false],
                 ] as $c)
+                    @if($c['soloFE'] && !$tieneFE) @continue @endif
                     @php
                         $serie      = $series->first(fn($s) => $s->tipo->value === $c['tipo']);
                         $activo     = $tipoComprobante === $c['tipo'];
@@ -414,10 +423,10 @@
                                             class="pdv-item__badge-cortesia {{ $esCortesia ? 'pdv-item__badge-cortesia--on' : 'pdv-item__badge-cortesia--off' }}"
                                             title="{{ $esCortesia ? 'Quitar cortesía' : 'Aplicar como cortesía (gratis)' }}"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="10" height="10">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="11" height="11">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
                                             </svg>
-                                            {{ $esCortesia ? 'Gratis' : 'Cortesía' }}
+                                            {{ $esCortesia ? 'GRATIS' : 'Cortesía' }}
                                         </button>
                                     @endif
                                 </div>
@@ -426,6 +435,10 @@
                                     @if($esCortesia)
                                         <span class="pdv-item__precio-gratis">Gratis</span>
                                     @else
+                                        @php $tieneDescuento = isset($item['precio_normal']) && $item['precio_normal'] > $item['precio']; @endphp
+                                        @if($tieneDescuento)
+                                            <span class="pdv-item__precio-tachado">S/ {{ number_format($item['precio_normal'], 2) }}</span>
+                                        @endif
                                         <span
                                             x-data="{ editing: false, val: '{{ number_format($item['precio'], 2, '.', '') }}' }"
                                             class="pdv-item__precio-editable"
@@ -433,7 +446,7 @@
                                             <span
                                                 x-show="!editing"
                                                 @click="editing = true; $nextTick(() => $refs.inp_{{ $item['key'] }}.select())"
-                                                class="pdv-item__precio-valor"
+                                                class="pdv-item__precio-valor {{ $tieneDescuento ? 'pdv-item__precio-valor--oferta' : '' }}"
                                                 title="Toca para editar el precio"
                                             >S/ <span x-text="parseFloat(val).toFixed(2)"></span> c/u</span>
                                             <input
@@ -1077,6 +1090,32 @@
                             <input type="text" class="pdv-field__input" wire:model.live="ncApellidos" placeholder="Apellidos"/>
                         </div>
                     @endif
+
+                    <div class="pdv-field">
+                        <label class="pdv-field__label">Teléfono</label>
+                        <input type="text" class="pdv-field__input" wire:model.live="ncTelefono" placeholder="Ej: 999 888 777"/>
+                    </div>
+
+                    <div class="pdv-field">
+                        <label class="pdv-field__label">Dirección</label>
+                        <input type="text" class="pdv-field__input" wire:model.live="ncDireccion" placeholder="Calle, av., número..."/>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+                        <div class="pdv-field">
+                            <label class="pdv-field__label">Departamento</label>
+                            <input type="text" class="pdv-field__input" wire:model.live="ncDepartamento" placeholder="Departamento"/>
+                        </div>
+                        <div class="pdv-field">
+                            <label class="pdv-field__label">Provincia</label>
+                            <input type="text" class="pdv-field__input" wire:model.live="ncProvincia" placeholder="Provincia"/>
+                        </div>
+                    </div>
+
+                    <div class="pdv-field">
+                        <label class="pdv-field__label">Distrito</label>
+                        <input type="text" class="pdv-field__input" wire:model.live="ncDistrito" placeholder="Distrito"/>
+                    </div>
 
                 </div>
                 <div class="pdv-modal__footer">

@@ -246,11 +246,11 @@ class CompraForm
                                 return $data;
                             })
                             ->table([
-                                TableColumn::make('Producto / Variante'),
-                                TableColumn::make('Unidad'),
-                                TableColumn::make('Cantidad'),
-                                TableColumn::make('Costo Unit.'),
-                                TableColumn::make('Subtotal'),
+                                TableColumn::make('Producto / Variante')->width('40%'),
+                                TableColumn::make('Unidad')->width('15%'),
+                                TableColumn::make('Cantidad')->width('10%'),
+                                TableColumn::make('Costo Unit.')->width('15%'),
+                                TableColumn::make('Subtotal')->width('15%'),
                             ])
                             ->schema([
 
@@ -321,7 +321,7 @@ class CompraForm
                                             $set('costo_unitario', $variante?->precio_costo ?? $variante?->producto?->precio_costo ?? null);
                                         }
 
-                                        $set('cantidad', null);
+                                        $set('cantidad', 1);
                                         $set('costo_total', null);
                                     }),
 

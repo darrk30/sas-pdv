@@ -75,6 +75,9 @@ class FacturadorService
     {
         $divisor = 1 + $igvPorcentaje / 100;
 
+        // SUNAT no acepta ítems con precio cero (cortesías); se excluyen del XML
+        $detalles = $detalles->filter(fn(VentaDetalle $d) => (float) $d->precio_unitario > 0);
+
         return $detalles->values()->map(function (VentaDetalle $d) use (
             $igvPorcentaje, $divisor, $discountRatio
         ): array {
@@ -252,9 +255,10 @@ class FacturadorService
 
         $igvPct = (float) ($empresa->igv_porcentaje ?? 18);
 
-        // Descuento distribuido proporcionalmente en precios: ratio = total_pagado / total_original
+        // Descuento distribuido proporcionalmente — solo ítems con precio > 0 (cortesías excluidas)
+        $detallesFE    = $venta->detalles->filter(fn($d) => (float) $d->precio_unitario > 0);
         $totalOriginal = round(
-            $venta->detalles->sum(fn($d) => (float) $d->precio_unitario * (float) $d->cantidad),
+            $detallesFE->sum(fn($d) => (float) $d->precio_unitario * (float) $d->cantidad),
             2
         );
         $totalPagado   = (float) ($venta->total ?? 0);

@@ -39,6 +39,9 @@ class ResumenBoletasPage extends Page implements HasTable
     protected static ?int $navigationSort = 1;
     protected static ?string $title = 'Resumenes SUNAT';
 
+    public function getHeading(): string { return 'Resumenes SUNAT'; }
+    public function getSubheading(): ?string { return 'RC Diario (boletas) · RA Baja (anulaciones de facturas)'; }
+
     public static function canAccess(): bool
     {
         $empresa = Filament::getTenant();
@@ -75,7 +78,7 @@ class ResumenBoletasPage extends Page implements HasTable
     {
         return [
             Action::make('generarResumen')
-                ->label('Generar resumen del día')
+                ->label('Generar resumen')
                 ->icon('heroicon-o-paper-airplane')
                 ->color('primary')
                 ->modalHeading('Generar Resumen Diario (RC)')

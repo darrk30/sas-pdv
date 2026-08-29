@@ -8,19 +8,16 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-    font-family: 'Courier New', Courier, monospace;
+    font-family: Helvetica, Arial, sans-serif;
     font-size: 9pt;
     color: #000;
-    line-height: 1.5;
+    line-height: 1.35;
 }
 
 .wrap {
     margin: 0 6mm;
 }
 
-/* ── Separadores ──────────────────────────────────── */
-.sep-dashed { border-top: 1px dashed #000; margin: 3mm 0; }
-.sep-solid  { border-top: 2px solid #000;  margin: 3mm 0; }
 
 /* ── Título despacho ──────────────────────────────── */
 .dsp-titulo {
@@ -45,7 +42,6 @@ body {
     text-transform: uppercase;
     letter-spacing: .06em;
     color: #555;
-    border-bottom: 1px solid #ccc;
     padding-bottom: 1mm;
     margin-bottom: 2mm;
 }
@@ -68,13 +64,12 @@ body {
     letter-spacing: .04em;
     color: #555;
     padding: 0 1mm 1.5mm;
-    border-bottom: 1px solid #000;
 }
 .items-table th.r { text-align: right; }
 .items-table td {
     padding: 1.2mm 1mm;
     vertical-align: top;
-    border-bottom: 1px dashed #ccc;
+    border-bottom: 1px solid #ddd;
 }
 .items-table tbody tr:last-child td { border-bottom: none; }
 .items-table td.r { text-align: right; white-space: nowrap; }
@@ -104,7 +99,6 @@ body {
     color: #666;
     margin-top: 4mm;
     padding-top: 2mm;
-    border-top: 1px dashed #aaa;
     line-height: 1.7;
 }
 </style>
@@ -134,7 +128,7 @@ body {
     @endif
 </div>
 
-<div class="sep-solid"></div>
+<div style="margin:2mm 0"></div>
 
 {{-- ══ DATOS DEL CLIENTE ══ --}}
 <div class="seccion-titulo">Datos del cliente</div>
@@ -158,7 +152,7 @@ body {
 </table>
 
 @if ($depPrvDst || $dirAgencia || $despachoDireccion)
-<div class="sep-dashed"></div>
+<div style="margin:2mm 0"></div>
 
 {{-- ══ DATOS DE ENVÍO ══ --}}
 <div class="seccion-titulo">Datos de envío</div>
@@ -182,7 +176,7 @@ body {
 @endif
 @endif
 
-<div class="sep-dashed"></div>
+<div style="margin:2mm 0"></div>
 
 {{-- ══ ÍTEMS ══ --}}
 <div class="seccion-titulo">Productos</div>

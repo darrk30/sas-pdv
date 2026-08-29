@@ -12,10 +12,11 @@ class PagosCliente extends Model
     protected $fillable = [
         'suscripcion_id',
         'monto',
+        'estado',
         'path_url',
         'fecha_pago',
         'metodo_pago',
-        'referencia'
+        'referencia',
     ];
 
     protected function casts(): array

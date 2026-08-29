@@ -6,6 +6,7 @@ use App\Enums\EstadoPromocion;
 use App\Models\AjusteDetalle;
 use App\Models\Producto;
 use App\Models\Variante;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -110,62 +111,34 @@ class PromocionForm
 
                                 Select::make('item_id')
                                     ->label('Producto / Variante')
-                                    ->placeholder('Buscar producto...')
+                                    ->placeholder('Buscar por nombre, código interno o código de barras...')
                                     ->searchable()
+                                    ->preload()
                                     ->required()
                                     ->live()
                                     ->formatStateUsing(function (?Model $record) {
-                                        if (! $record) {
-                                            return null;
-                                        }
-                                        if ($record->variante_id) {
-                                            return 'variante_' . $record->variante_id;
-                                        }
-                                        if ($record->producto_id) {
-                                            return 'producto_' . $record->producto_id;
-                                        }
+                                        if (! $record) return null;
+                                        if ($record->variante_id) return 'variante_' . $record->variante_id;
+                                        if ($record->producto_id) return 'producto_' . $record->producto_id;
                                         return null;
                                     })
                                     ->getOptionLabelUsing(function ($value): ?string {
-                                        if (blank($value)) {
-                                            return null;
-                                        }
+                                        if (blank($value)) return null;
                                         [$tipo, $id] = explode('_', $value, 2);
 
                                         if ($tipo === 'producto') {
-                                            return Producto::find($id)?->nombre;
+                                            $p   = Producto::find($id);
+                                            $tag = $p?->codigo_interno ?: $p?->codigo_barras;
+                                            return $p ? ($tag ? "[{$tag}] {$p->nombre}" : $p->nombre) : null;
                                         }
 
-                                        $variante = Variante::with(['producto', 'valores.valor'])->find($id);
-                                        return $variante
-                                            ? AjusteDetalle::generarNombre(null, $variante)
-                                            : null;
+                                        $variante = Variante::with(['producto', 'valores.valor', 'valores.productoAtributo.atributo'])->find($id);
+                                        if (! $variante) return null;
+                                        $nombre = AjusteDetalle::generarNombre(null, $variante);
+                                        return $variante->codigo ? "[{$variante->codigo}] {$nombre}" : $nombre;
                                     })
-                                    ->options(function (): array {
-                                        $opciones = [];
-
-                                        $simples = Producto::query()
-                                            ->doesntHave('variantesActivas')
-                                            ->where('estado', 'activo')
-                                            ->get();
-                                        foreach ($simples as $producto) {
-                                            $opciones["producto_{$producto->id}"] = $producto->nombre;
-                                        }
-
-                                        $variantes = Variante::query()
-                                            ->with(['producto', 'valores.valor'])
-                                            ->where('estado', 'activo')
-                                            ->whereHas('producto', fn($q) => $q
-                                                ->where('estado', 'activo'))
-                                            ->get();
-
-                                        foreach ($variantes as $variante) {
-                                            $nombreVariante = AjusteDetalle::generarNombre(null, $variante);
-                                            $opciones["variante_{$variante->id}"] = $nombreVariante;
-                                        }
-                                        
-                                        return $opciones;
-                                    })
+                                    ->options(fn() => self::_buscarItems('', Filament::getTenant()?->id))
+                                    ->getSearchResultsUsing(fn(string $search) => self::_buscarItems($search, Filament::getTenant()?->id))
                                     ->afterStateUpdated(function (?string $state, Set $set): void {
                                         if (blank($state)) {
                                             $set('producto_id', null);
@@ -241,5 +214,58 @@ class PromocionForm
             ])->columnSpanFull(),
 
         ]);
+    }
+
+    private static function _buscarItems(string $search, ?int $empresaId): array
+    {
+        $opciones  = [];
+        $esPreload = blank($search);
+        $limite    = $esPreload ? 50 : 25;
+
+        $simples = Producto::query()
+            ->doesntHave('variantesActivas')
+            ->whereIn('estado', ['activo', 'inactivo'])
+            ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
+            ->when(! $esPreload, fn($q) => $q->where(function ($q) use ($search) {
+                $q->where('nombre', 'like', "%{$search}%")
+                  ->orWhere('codigo_interno', 'like', "%{$search}%")
+                  ->orWhere('codigo_barras', 'like', "%{$search}%");
+            }))
+            ->orderBy('nombre')
+            ->limit($limite)
+            ->get();
+
+        foreach ($simples as $p) {
+            $tag   = $p->codigo_interno ?: $p->codigo_barras;
+            $label = $tag ? "[{$tag}] {$p->nombre}" : $p->nombre;
+            if ($p->estado === 'inactivo') $label .= ' (inactivo)';
+            $opciones["producto_{$p->id}"] = $label;
+        }
+
+        $variantes = Variante::query()
+            ->with(['producto', 'valores.valor', 'valores.productoAtributo.atributo'])
+            ->join('productos as p_ord', 'p_ord.id', '=', 'variantes.producto_id')
+            ->select('variantes.*')
+            ->whereIn('variantes.estado', ['activo', 'inactivo'])
+            ->whereIn('p_ord.estado', ['activo', 'inactivo'])
+            ->when($empresaId, fn($q) => $q->where('p_ord.empresa_id', $empresaId))
+            ->when(! $esPreload, fn($q) => $q->where(function ($q) use ($search) {
+                $q->where('variantes.codigo', 'like', "%{$search}%")
+                  ->orWhere('p_ord.nombre', 'like', "%{$search}%")
+                  ->orWhere('p_ord.codigo_interno', 'like', "%{$search}%")
+                  ->orWhere('p_ord.codigo_barras', 'like', "%{$search}%");
+            }))
+            ->orderBy('p_ord.nombre')
+            ->limit($limite)
+            ->get();
+
+        foreach ($variantes as $v) {
+            $nombre = AjusteDetalle::generarNombre(null, $v);
+            $label  = $v->codigo ? "[{$v->codigo}] {$nombre}" : $nombre;
+            if ($v->estado === 'inactivo') $label .= ' (inactivo)';
+            $opciones["variante_{$v->id}"] = $label;
+        }
+
+        return $opciones;
     }
 }

@@ -486,6 +486,9 @@
     border-color: #b91c1c;
     color: #fff;
 }
+.kdx-export-btn:disabled { opacity: .65; cursor: not-allowed; }
+@keyframes kdx-rotate { to { transform: rotate(360deg); } }
+.kdx-spin { animation: kdx-rotate .7s linear infinite; }
 
 /* ── Reduce padding vertical del form Filament ─────────────── */
 .kdx-form-wrap .fi-fo-field-wrp { padding-top: 0 !important; padding-bottom: 0 !important; }

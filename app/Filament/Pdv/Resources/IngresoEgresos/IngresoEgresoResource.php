@@ -7,6 +7,7 @@ use App\Filament\Pdv\Resources\IngresoEgresos\Pages\EditIngresoEgreso;
 use App\Filament\Pdv\Resources\IngresoEgresos\Pages\ListIngresoEgresos;
 use App\Filament\Pdv\Resources\IngresoEgresos\Schemas\IngresoEgresoForm;
 use App\Filament\Pdv\Resources\IngresoEgresos\Tables\IngresoEgresosTable;
+use App\Helpers\OwnerScope;
 use App\Models\IngresoEgreso;
 use BackedEnum;
 use UnitEnum;
@@ -15,6 +16,7 @@ use Filament\Facades\Filament;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class IngresoEgresoResource extends Resource
@@ -33,6 +35,11 @@ class IngresoEgresoResource extends Resource
     protected static ?string $pluralModelLabel = 'Ingresos y Egresos';
 
     protected static ?string $recordTitleAttribute = 'motivo';
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->forCurrentUser();
+    }
 
     public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('ingresos_egresos') && (auth()->user()?->can('ingresos_egresos.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('ingresos_egresos.crear') ?? false; }

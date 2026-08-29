@@ -80,12 +80,18 @@ class PuntoDeVenta extends Page
     public string $ncApellidos = '';
     public string $ncTipoDoc = 'dni';
     public string $ncNumeroDoc = '';
+    public string $ncTelefono = '';
+    public string $ncDireccion = '';
+    public string $ncDepartamento = '';
+    public string $ncProvincia = '';
+    public string $ncDistrito = '';
 
     // ── Modal variantes ───────────────────────────────────────────────────────
     public bool $modalAbierto = false;
     public ?int $productoModalId = null;
     public string $productoModalNombre = '';
     public float $precioBase = 0;
+    public float $precioBaseOriginal = 0;
     public array $atributosModal = [];
     public array $seleccionados = [];
     public float $precioAdicionalTotal = 0;
@@ -263,6 +269,11 @@ class PuntoDeVenta extends Page
         $this->ncApellidos       = '';
         $this->ncTipoDoc         = 'dni';
         $this->ncNumeroDoc       = '';
+        $this->ncTelefono        = '';
+        $this->ncDireccion       = '';
+        $this->ncDepartamento    = '';
+        $this->ncProvincia       = '';
+        $this->ncDistrito        = '';
         $this->modalNuevoCliente = true;
         $this->resetValidation(['ncNombre', 'ncNumeroDoc']);
     }
@@ -305,6 +316,11 @@ class PuntoDeVenta extends Page
             'apellidos'        => $this->ncApellidos,
             'tipo_documento'   => $this->ncTipoDoc,
             'numero_documento' => $this->ncNumeroDoc,
+            'telefono'         => $this->ncTelefono ?: null,
+            'direccion'        => $this->ncDireccion ?: null,
+            'departamento'     => $this->ncDepartamento ?: null,
+            'provincia'        => $this->ncProvincia ?: null,
+            'distrito'         => $this->ncDistrito ?: null,
         ]);
 
         $this->cerrarModalNuevoCliente();
@@ -520,14 +536,20 @@ class PuntoDeVenta extends Page
 
         if ($producto->variantesActivas->isEmpty()) {
             $puedeCortesia = (bool) $producto->es_cortesia;
-            $precio        = (float) $producto->precio_venta;
-            $this->agregarProductoSimple($productoId, $producto->nombre, $precio, false, $precio, $puedeCortesia);
+            $precioNormal  = (float) $producto->precio_venta;
+            $precio        = ($producto->porcentaje_descuento > 0 && $producto->precio_con_descuento)
+                ? (float) $producto->precio_con_descuento
+                : $precioNormal;
+            $this->agregarProductoSimple($productoId, $producto->nombre, $precio, false, $precioNormal, $puedeCortesia);
             return;
         }
 
         $this->productoModalId      = $productoId;
         $this->productoModalNombre  = $producto->nombre;
-        $this->precioBase           = (float) $producto->precio_venta;
+        $this->precioBaseOriginal   = (float) $producto->precio_venta;
+        $this->precioBase           = ($producto->porcentaje_descuento > 0 && $producto->precio_con_descuento)
+            ? (float) $producto->precio_con_descuento
+            : (float) $producto->precio_venta;
         $this->seleccionados        = [];
         $this->precioAdicionalTotal = 0;
 
@@ -720,9 +742,9 @@ class PuntoDeVenta extends Page
 
         $nombre = $sufijo ? "{$this->productoModalNombre} ({$sufijo})" : $this->productoModalNombre;
 
-        $precioNormal    = $this->precioBase + $this->precioAdicionalTotal;
         $esCortesiaFinal = $this->productoEsCortesia && $this->modalCortesia;
-        $precioFinal     = $esCortesiaFinal ? 0.0 : $precioNormal;
+        $precioNormal    = $this->precioBaseOriginal + $this->precioAdicionalTotal;
+        $precioFinal     = $esCortesiaFinal ? 0.0 : ($this->precioBase + $this->precioAdicionalTotal);
 
         $this->agregarVariante($variante->id, $nombre, $precioFinal, $esCortesiaFinal, $precioNormal, $this->productoEsCortesia, $this->modalCantidad);
         $this->cerrarModal();
@@ -757,14 +779,18 @@ class PuntoDeVenta extends Page
         if ($nombre === '') {
             $nombre        = $producto->nombre;
             $puedeCortesia = (bool) $producto->es_cortesia;
-            $precio        = (float) $producto->precio_venta;
-            $precioNormal  = $precio;
+            $precioNormal  = (float) $producto->precio_venta;
+            $precio        = ($producto->porcentaje_descuento > 0 && $producto->precio_con_descuento)
+                ? (float) $producto->precio_con_descuento
+                : $precioNormal;
             $esCortesia    = false;
         }
 
+        $baseKey = "producto_{$productoId}";
+
         if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
             $stock     = (float) ($producto->inventario?->stock_real ?? 0);
-            $enCarrito = (float) ($this->carrito["producto_{$productoId}"]['cantidad'] ?? 0);
+            $enCarrito = $this->cantidadEnCarritoPorBase($baseKey);
             if ($enCarrito + 1 > $stock) {
                 Notification::make()
                     ->title('Stock insuficiente')
@@ -774,16 +800,19 @@ class PuntoDeVenta extends Page
             }
         }
 
-        $esDecimal = $producto->unidadMedida?->esContinua() ?? false;
-        $this->pushCarrito("producto_{$productoId}", 'producto', $productoId, $nombre, $precio, $esCortesia, $esDecimal, $precioNormal, $puedeCortesia);
+        $esDecimal   = $producto->unidadMedida?->esContinua() ?? false;
+        $resolvedKey = $this->resolveCarritoKey($baseKey, $esCortesia);
+        $this->pushCarrito($resolvedKey, 'producto', $productoId, $nombre, $precio, $esCortesia, $esDecimal, $precioNormal, $puedeCortesia);
     }
 
     private function agregarVariante(int $varianteId, string $nombre, float $precio, bool $esCortesia = false, float $precioNormal = 0, bool $puedeCortesia = false, float $cantidad = 1.0): void
     {
+        $baseKey = "variante_{$varianteId}";
+
         if ($this->productoControlStock && ! $this->productoVentaSinStock) {
             $inv       = Inventario::where('variante_id', $varianteId)->first();
             $stock     = (float) ($inv?->stock_real ?? 0);
-            $enCarrito = (float) ($this->carrito["variante_{$varianteId}"]['cantidad'] ?? 0);
+            $enCarrito = $this->cantidadEnCarritoPorBase($baseKey);
             if ($enCarrito + $cantidad > $stock) {
                 Notification::make()
                     ->title('Stock insuficiente')
@@ -793,7 +822,8 @@ class PuntoDeVenta extends Page
             }
         }
 
-        $this->pushCarrito("variante_{$varianteId}", 'variante', $varianteId, $nombre, $precio, $esCortesia, $this->productoEsDecimal, $precioNormal, $puedeCortesia, $cantidad);
+        $resolvedKey = $this->resolveCarritoKey($baseKey, $esCortesia);
+        $this->pushCarrito($resolvedKey, 'variante', $varianteId, $nombre, $precio, $esCortesia, $this->productoEsDecimal, $precioNormal, $puedeCortesia, $cantidad);
     }
 
     public function agregarPromocion(int $promocionId): void
@@ -818,6 +848,45 @@ class PuntoDeVenta extends Page
         }
 
         $this->pushCarrito("promocion_{$promocionId}", 'promocion', $promocionId, $promocion->nombre, (float) $promocion->precio);
+    }
+
+    /**
+     * Devuelve la key real a usar para agregar un ítem al carrito.
+     * Nunca mezcla ítems con distinto estado de cortesía.
+     */
+    private function resolveCarritoKey(string $baseKey, bool $esCortesia = false): string
+    {
+        if (! isset($this->carrito[$baseKey])) {
+            return $baseKey;
+        }
+        // Si el ítem existente tiene el mismo estado de cortesía, agrupar
+        if ((bool) $this->carrito[$baseKey]['cortesia'] === $esCortesia) {
+            return $baseKey;
+        }
+        // Estado distinto → buscar ranura con mismo estado o libre
+        $i = 2;
+        while (true) {
+            $k = "{$baseKey}_{$i}";
+            if (! isset($this->carrito[$k])) {
+                return $k;
+            }
+            if ((bool) $this->carrito[$k]['cortesia'] === $esCortesia) {
+                return $k;
+            }
+            $i++;
+        }
+    }
+
+    /** Suma la cantidad total en carrito para todas las keys que correspondan a la misma base. */
+    private function cantidadEnCarritoPorBase(string $baseKey): float
+    {
+        $total = 0.0;
+        foreach ($this->carrito as $key => $item) {
+            if ($key === $baseKey || str_starts_with($key, "{$baseKey}_")) {
+                $total += (float) $item['cantidad'];
+            }
+        }
+        return $total;
     }
 
     private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio, bool $esCortesia = false, bool $esDecimal = false, float $precioNormal = 0, bool $puedeCortesia = false, float $cantidadAgregar = 1.0): void
@@ -848,9 +917,36 @@ class PuntoDeVenta extends Page
         if (! isset($carrito[$key])) return;
         if (! ($carrito[$key]['puede_cortesia'] ?? false)) return;
 
-        $activo = ! ($carrito[$key]['cortesia'] ?? false);
-        $carrito[$key]['cortesia'] = $activo;
-        $carrito[$key]['precio']   = $activo ? 0.0 : (float) ($carrito[$key]['precio_normal'] ?? 0);
+        $item       = $carrito[$key];
+        $turningOn  = ! ($item['cortesia'] ?? false);
+
+        // Busca otro ítem del mismo producto con el estado destino para absorberlo
+        foreach ($carrito as $k => $other) {
+            if ($k === $key) continue;
+            if ($other['tipo'] !== $item['tipo'] || $other['id'] !== $item['id']) continue;
+
+            $otherEsCortesia = (bool) ($other['cortesia'] ?? false);
+
+            if ($turningOn && $otherEsCortesia) {
+                // Ya hay un ítem cortesía del mismo producto → absorber en ese
+                $carrito[$k]['cantidad'] += $item['cantidad'];
+                unset($carrito[$key]);
+                $this->carrito = $carrito;
+                return;
+            }
+
+            if (! $turningOn && ! $otherEsCortesia) {
+                // Ya hay un ítem normal del mismo producto → absorber en ese
+                $carrito[$k]['cantidad'] += $item['cantidad'];
+                unset($carrito[$key]);
+                $this->carrito = $carrito;
+                return;
+            }
+        }
+
+        // No hay ítem destino → simplemente cambiar estado
+        $carrito[$key]['cortesia'] = $turningOn;
+        $carrito[$key]['precio']   = $turningOn ? 0.0 : (float) ($item['precio_normal'] ?? 0);
         $this->carrito = $carrito;
     }
 
@@ -1637,7 +1733,7 @@ class PuntoDeVenta extends Page
                 now()->addHours(24),
                 ['id' => $venta->id]
             );
-            $this->autoImprimirModal = ! Filament::getTenant()->impresion_comprobante_directo;
+            $this->autoImprimirModal = false;
             $this->modalImpresion    = true;
 
             // Guardar referencia para el botón de reimpresión (persiste entre recargas)

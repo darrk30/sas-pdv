@@ -922,7 +922,8 @@ class ProductoForm
 
                                         Toggle::make('visible_en_carta')
                                             ->label('Visible en carta')
-                                            ->default(true),
+                                            ->default(true)
+                                            ->visible(fn() => (bool) (Filament::getTenant()->planActual()?->tiene_catalogo_web ?? false)),
 
                                         Toggle::make('control_de_stock')
                                             ->label('Control de stock')
@@ -934,7 +935,8 @@ class ProductoForm
                                         Toggle::make('vendible')
                                             ->label('Producto vendible')
                                             ->helperText('Si está activo, aparece en el catálogo del PDV')
-                                            ->default(true),
+                                            ->default(true)
+                                            ->visible(fn() => (bool) (Filament::getTenant()->planActual()?->tiene_catalogo_web ?? false)),
 
                                         TextInput::make('orden')
                                             ->label('Orden')

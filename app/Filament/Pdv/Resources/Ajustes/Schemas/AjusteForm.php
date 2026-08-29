@@ -77,11 +77,11 @@ class AjusteForm
                                 return $data;
                             })
                             ->table([
-                                TableColumn::make('Producto / Variante'),
-                                TableColumn::make('Unidad'),
-                                TableColumn::make('Cantidad'),
-                                TableColumn::make('Costo Unit.'),
-                                TableColumn::make('Subtotal'),
+                                TableColumn::make('Producto / Variante')->width('40%'),
+                                TableColumn::make('Unidad')->width('15%'),
+                                TableColumn::make('Cantidad')->width('10%'),
+                                TableColumn::make('Costo Unit.')->width('15%'),
+                                TableColumn::make('Subtotal')->width('15%'),
                             ])
                             ->schema([
 
@@ -115,37 +115,9 @@ class AjusteForm
                                         $variante = Variante::with(['producto', 'valores.valor'])->find($id);
                                         return $variante ? AjusteDetalle::generarNombre(null, $variante) : null;
                                     })
-                                    ->options(function (): array {
-                                        $opciones = [];
-
-                                        $simples = Producto::query()
-                                            ->doesntHave('variantesActivas')
-                                            ->whereHas('inventario')
-                                            ->where('control_de_stock', true)
-                                            ->where('estado', 'activo')
-                                            ->with('unidadMedida')
-                                            ->get();
-
-                                        foreach ($simples as $producto) {
-                                            $opciones["producto_{$producto->id}"] = $producto->nombre;
-                                        }
-
-                                        $variantes = Variante::query()
-                                            ->with(['producto', 'valores.valor'])
-                                            ->where('estado', 'activo')
-                                            ->whereHas('producto', fn($q) => $q
-                                                ->where('control_de_stock', true)
-                                                ->where('estado', 'activo')
-                                            )
-                                            ->get();
-
-                                        foreach ($variantes as $variante) {
-                                            $nombreVariante = AjusteDetalle::generarNombre(null, $variante);
-                                            $opciones["variante_{$variante->id}"] = $nombreVariante;
-                                        }
-
-                                        return $opciones;
-                                    })
+                                    ->options(fn() => self::_buscarItems('', \Filament\Facades\Filament::getTenant()?->id))
+                                    ->getSearchResultsUsing(fn(string $search) => self::_buscarItems($search, \Filament\Facades\Filament::getTenant()?->id))
+                                    ->preload()
                                     ->afterStateUpdated(function (?string $state, Set $set): void {
                                         if (blank($state)) {
                                             $set('producto_id', null);
@@ -176,7 +148,7 @@ class AjusteForm
                                             $set('costo_unitario', $variante?->precio_costo ?? $variante?->producto?->precio_costo ?? null);
                                         }
 
-                                        $set('cantidad', null);
+                                        $set('cantidad', 1);
                                         $set('costo_total', null);
                                     }),
 
@@ -283,6 +255,60 @@ class AjusteForm
         } else {
             $set('costo_total', null);
         }
+    }
+
+    private static function _buscarItems(string $search, ?int $empresaId): array
+    {
+        $opciones  = [];
+        $esPreload = blank($search);
+        $limite    = $esPreload ? 50 : 25;
+
+        $simples = Producto::query()
+            ->doesntHave('variantesActivas')
+            ->whereHas('inventario')
+            ->where('control_de_stock', true)
+            ->where('estado', 'activo')
+            ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
+            ->when(! $esPreload, fn($q) => $q->where(function ($q) use ($search) {
+                $q->where('nombre', 'like', "%{$search}%")
+                  ->orWhere('codigo_interno', 'like', "%{$search}%")
+                  ->orWhere('codigo_barras', 'like', "%{$search}%");
+            }))
+            ->orderBy('nombre')
+            ->limit($limite)
+            ->get();
+
+        foreach ($simples as $p) {
+            $tag   = $p->codigo_interno ?: $p->codigo_barras;
+            $label = $tag ? "[{$tag}] {$p->nombre}" : $p->nombre;
+            $opciones["producto_{$p->id}"] = $label;
+        }
+
+        $variantes = Variante::query()
+            ->with(['producto', 'valores.valor', 'valores.productoAtributo.atributo'])
+            ->join('productos as p_ord', 'p_ord.id', '=', 'variantes.producto_id')
+            ->select('variantes.*')
+            ->where('variantes.estado', 'activo')
+            ->where('p_ord.control_de_stock', true)
+            ->where('p_ord.estado', 'activo')
+            ->when($empresaId, fn($q) => $q->where('p_ord.empresa_id', $empresaId))
+            ->when(! $esPreload, fn($q) => $q->where(function ($q) use ($search) {
+                $q->where('variantes.codigo', 'like', "%{$search}%")
+                  ->orWhere('p_ord.nombre', 'like', "%{$search}%")
+                  ->orWhere('p_ord.codigo_interno', 'like', "%{$search}%")
+                  ->orWhere('p_ord.codigo_barras', 'like', "%{$search}%");
+            }))
+            ->orderBy('p_ord.nombre')
+            ->limit($limite)
+            ->get();
+
+        foreach ($variantes as $v) {
+            $nombre = AjusteDetalle::generarNombre(null, $v);
+            $label  = $v->codigo ? "[{$v->codigo}] {$nombre}" : $nombre;
+            $opciones["variante_{$v->id}"] = $label;
+        }
+
+        return $opciones;
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Filament\Pdv\Resources\SesionCajas\Tables;
 
 use App\Enums\EstadoSesion;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -73,7 +74,25 @@ class SesionCajasTable
                     ->options(EstadoSesion::class),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->label('Cerrar')
+                    ->hidden(fn($record) => ! $record->estaAbierta()),
+
+                Action::make('arqueo_a4')
+                    ->label('A4')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('indigo')
+                    ->url(fn($record) => route('pdv.arqueo-caja.pdf', $record->id) . '?formato=a4')
+                    ->openUrlInNewTab()
+                    ->hidden(fn($record) => $record->estaAbierta()),
+
+                Action::make('arqueo_ticket')
+                    ->label('Ticket')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(fn($record) => route('pdv.arqueo-caja.pdf', $record->id) . '?formato=ticket')
+                    ->openUrlInNewTab()
+                    ->hidden(fn($record) => $record->estaAbierta()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

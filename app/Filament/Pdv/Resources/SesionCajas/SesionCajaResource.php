@@ -7,6 +7,7 @@ use App\Filament\Pdv\Resources\SesionCajas\Pages\EditSesionCaja;
 use App\Filament\Pdv\Resources\SesionCajas\Pages\ListSesionCajas;
 use App\Filament\Pdv\Resources\SesionCajas\Schemas\SesionCajaForm;
 use App\Filament\Pdv\Resources\SesionCajas\Tables\SesionCajasTable;
+use App\Helpers\OwnerScope;
 use App\Models\SesionCaja;
 use BackedEnum;
 use UnitEnum;
@@ -15,6 +16,7 @@ use Filament\Facades\Filament;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class SesionCajaResource extends Resource
@@ -33,6 +35,11 @@ class SesionCajaResource extends Resource
     protected static ?string $pluralModelLabel = 'Sesiones de Caja';
 
     protected static ?string $recordTitleAttribute = 'fecha_apertura';
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->forCurrentUser();
+    }
 
     public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('sesion_cajas') && (auth()->user()?->can('sesiones.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('sesiones.ver') ?? false; }

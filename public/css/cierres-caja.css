@@ -556,6 +556,36 @@
 .dark .cc-cuadre-item { background: #111827; border-color: #374151; }
 .dark .cc-cuadre-item--credit { background: #1c1500; border-color: #854d0e; }
 
+/* ── Skeleton shimmer (reporte-sesion) ──────────────────────── */
+@keyframes rs-shimmer {
+    0%   { background-position: -800px 0; }
+    100% { background-position:  800px 0; }
+}
+
+.rs-skel { padding: .5rem 0 1rem; }
+.rs-skel-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: .65rem;
+    margin-bottom: 1.25rem;
+}
+.rs-skel-kpi  { height: 5.5rem; border-radius: .75rem; }
+.rs-skel-rows { display: flex; flex-direction: column; gap: .55rem; }
+.rs-skel-row  { height: .95rem; border-radius: .35rem; }
+
+.rs-skel-kpi,
+.rs-skel-row {
+    background: linear-gradient(90deg, #e9eef4 25%, #f4f8fb 50%, #e9eef4 75%);
+    background-size: 1600px 100%;
+    animation: rs-shimmer 1.3s ease-in-out infinite;
+}
+
+.dark .rs-skel-kpi,
+.dark .rs-skel-row {
+    background: linear-gradient(90deg, #26313e 25%, #323f4e 50%, #26313e 75%);
+    background-size: 1600px 100%;
+}
+
 /* ── Print ──────────────────────────────────────────────────── */
 @media print {
     .cc-overlay { position: static; background: none; padding: 0; }

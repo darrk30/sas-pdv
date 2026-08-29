@@ -308,13 +308,13 @@ class ProductoExcelTemplateService
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_FORMULA]],
         ]);
 
-        // 4. Activar protección de hoja (sin contraseña — solo previene edición accidental)
+        // 4. Activar protección de hoja — solo bloquea la columna de fórmula
         $protection = $sheet->getProtection();
         $protection->setSheet(true);
         $protection->setPassword('');
-        $protection->setSort(false);
-        $protection->setInsertRows(false);
-        $protection->setDeleteRows(false);
+        $protection->setSort(true);
+        $protection->setInsertRows(true);
+        $protection->setDeleteRows(true);
     }
 
     private function aplicarAnchos(Worksheet $sheet, array $columnas): void

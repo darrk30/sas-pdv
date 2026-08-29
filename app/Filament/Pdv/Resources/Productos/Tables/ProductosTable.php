@@ -28,6 +28,16 @@ class ProductosTable
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('codigo_barras')
+                    ->label('Cód. Barras')
+                    ->searchable()
+                    ->copyable()
+                    ->fontFamily('mono')
+                    ->color('gray')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->icon('heroicon-o-qr-code'),
+
                 TextColumn::make('categoria.nombre')
                     ->label('Categoría')
                     ->searchable()
@@ -113,7 +123,15 @@ class ProductosTable
                         ->action(fn($record) => $record->update(['estado' => EstadoGeneral::Archivado])),
                 ]),
             ])
-            ->toolbarActions([])
+            ->toolbarActions([
+                Action::make('escanear_barcode')
+                    ->label('')
+                    ->icon('heroicon-o-camera')
+                    ->color('gray')
+                    ->extraAttributes([
+                        'x-on:click' => "window.dispatchEvent(new CustomEvent('open-barcode-scanner', { detail: { path: 'productos_barcode_filter' } }))",
+                    ]),
+            ])
             ->reorderable('orden')
             ->defaultSort('orden', 'asc');
     }

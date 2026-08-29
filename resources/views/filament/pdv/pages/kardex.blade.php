@@ -54,15 +54,31 @@
                 </span>
             </div>
             <div class="kdx-export-btns">
-                <button wire:click="exportarExcel" class="kdx-export-btn kdx-export-btn--excel">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                <button wire:click="exportarExcel"
+                        wire:loading.attr="disabled"
+                        wire:target="exportarExcel"
+                        class="kdx-export-btn kdx-export-btn--excel">
+                    <svg wire:loading.remove wire:target="exportarExcel"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18M10 3v18M14 3v18M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/>
+                    </svg>
+                    <svg wire:loading wire:target="exportarExcel"
+                         class="kdx-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 018-8V4"/>
                     </svg>
                     Excel
                 </button>
-                <button wire:click="exportarPdf" class="kdx-export-btn kdx-export-btn--pdf">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                <button wire:click="exportarPdf"
+                        wire:loading.attr="disabled"
+                        wire:target="exportarPdf"
+                        class="kdx-export-btn kdx-export-btn--pdf">
+                    <svg wire:loading.remove wire:target="exportarPdf"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <svg wire:loading wire:target="exportarPdf"
+                         class="kdx-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 018-8V4"/>
                     </svg>
                     PDF
                 </button>

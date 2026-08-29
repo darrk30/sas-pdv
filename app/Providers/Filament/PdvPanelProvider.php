@@ -57,6 +57,11 @@ class PdvPanelProvider extends PanelProvider
         parent::register();
 
         FilamentView::registerRenderHook(
+            PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+            fn () => view('filament.pdv.components.alerta-suscripcion'),
+        );
+
+        FilamentView::registerRenderHook(
             PanelsRenderHook::BODY_END,
             fn () => view('filament.pdv.components.barcode-scanner'),
         );
