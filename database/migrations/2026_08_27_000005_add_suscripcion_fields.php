@@ -13,7 +13,7 @@ return new class extends Migration
         });
 
         Schema::table('pagos_clientes', function (Blueprint $table) {
-            $table->enum('estado', ['pendiente', 'aprobado', 'rechazado'])->default('pendiente')->after('sonto')->nullable(false);
+            $table->enum('estado', ['pendiente', 'aprobado', 'rechazado'])->default('pendiente')->after('monto')->nullable(false);
         });
     }
 
