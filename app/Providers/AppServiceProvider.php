@@ -6,6 +6,7 @@ use App\Models\Empresa;
 use App\Policies\EmpresaPolicy;
 use App\Events\VentaCompletada;
 use App\Listeners\EmitirComprobanteElectronico;
+use Filament\Tables\Table;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -16,6 +17,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Table::configureUsing(function (Table $table): void {
+            $table->defaultPaginationPageOption(50);
+        });
+
         Gate::policy(Empresa::class, EmpresaPolicy::class);
 
         Event::listen(VentaCompletada::class, EmitirComprobanteElectronico::class);
