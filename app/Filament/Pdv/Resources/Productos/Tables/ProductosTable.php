@@ -128,9 +128,9 @@ class ProductosTable
                     ->label('')
                     ->icon('heroicon-o-camera')
                     ->color('gray')
-                    ->extraAttributes([
-                        'x-on:click' => "window.dispatchEvent(new CustomEvent('open-barcode-scanner', { detail: { path: 'productos_barcode_filter' } }))",
-                    ]),
+                    ->action(fn ($livewire) => $livewire->js(
+                        "window.dispatchEvent(new CustomEvent('open-barcode-scanner', { detail: { path: 'productos_barcode_filter' } }))"
+                    )),
             ])
             ->reorderable('orden')
             ->defaultSort('orden', 'asc');

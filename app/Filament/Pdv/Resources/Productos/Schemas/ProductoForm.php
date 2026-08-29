@@ -226,7 +226,8 @@ class ProductoForm
                                                 ->label('')
                                                 ->color('gray')
                                                 ->action(function ($component, $livewire): void {
-                                                    $livewire->dispatch('open-barcode-scanner', path: $component->getStatePath());
+                                                    $path = $component->getStatePath();
+                                                    $livewire->js("window.dispatchEvent(new CustomEvent('open-barcode-scanner', { detail: { path: '{$path}' } }))");
                                                 })
                                         ),
 
@@ -817,7 +818,8 @@ class ProductoForm
                                                     ->label('')
                                                     ->color('gray')
                                                     ->action(function ($component, $livewire): void {
-                                                        $livewire->dispatch('open-barcode-scanner', path: $component->getStatePath());
+                                                        $path = $component->getStatePath();
+                                                        $livewire->js("window.dispatchEvent(new CustomEvent('open-barcode-scanner', { detail: { path: '{$path}' } }))");
                                                     })
                                             ),
 

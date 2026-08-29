@@ -16,6 +16,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Notifications\Notification;
 use Livewire\Attributes\On;
 use UnitEnum;
 
@@ -85,6 +86,16 @@ class GestionInventario extends Page implements HasTable
         if ($path === 'inventario_barcode_filter') {
             $this->tableSearch = $code;
         }
+    }
+
+    #[On('camera-not-available')]
+    public function handleCameraNotAvailable(): void
+    {
+        Notification::make()
+            ->title('Cámara no disponible')
+            ->body('Activa los permisos de cámara en el navegador o usa un escáner USB conectado al equipo.')
+            ->warning()
+            ->send();
     }
 
     protected function getHeaderActions(): array
@@ -207,9 +218,9 @@ class GestionInventario extends Page implements HasTable
                     ->label('')
                     ->icon('heroicon-o-camera')
                     ->color('gray')
-                    ->extraAttributes([
-                        'x-on:click' => "window.dispatchEvent(new CustomEvent('open-barcode-scanner', { detail: { path: 'inventario_barcode_filter' } }))",
-                    ]),
+                    ->action(fn ($livewire) => $livewire->js(
+                        "window.dispatchEvent(new CustomEvent('open-barcode-scanner', { detail: { path: 'inventario_barcode_filter' } }))"
+                    )),
 
                 Action::make('exportarExcel')
                     ->label('Excel')

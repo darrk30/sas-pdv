@@ -56,6 +56,16 @@ class ListProductos extends ListRecords
         }
     }
 
+    #[On('camera-not-available')]
+    public function handleCameraNotAvailable(): void
+    {
+        Notification::make()
+            ->title('Cámara no disponible')
+            ->body('Activa los permisos de cámara en el navegador o usa un escáner USB conectado al equipo.')
+            ->warning()
+            ->send();
+    }
+
     protected function getHeaderActions(): array
     {
         return [
