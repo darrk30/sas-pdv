@@ -14,21 +14,19 @@ body {
 }
 .page { padding: 12mm 10mm; }
 
-/* header via inline styles en <td> para compatibilidad DomPDF */
-
 .stats-wrap {
-    width: 100%; border-collapse: separate; border-spacing: 6px 0;
+    width: 100%; border-collapse: collapse;
     margin-bottom: 10px;
 }
 .stat-box {
-    width: 25%; border-radius: 3px; padding: 6px 8px;
+    width: 25%; padding: 6px 8px;
     text-align: center; vertical-align: top;
 }
 .stat-box--gray  { background: #EBF0F8; border-top: 3px solid #4A5568; }
 .stat-box--green { background: #F0FDF4; border-top: 3px solid #22C55E; }
 .stat-box--amber { background: #FFFBEB; border-top: 3px solid #F59E0B; }
 .stat-box--red   { background: #FEF2F2; border-top: 3px solid #EF4444; }
-.stat-label { font-size: 7px; text-transform: uppercase; letter-spacing: 0.4px; color: #6b7280; font-weight: bold; }
+.stat-label { font-size: 7px; text-transform: uppercase; color: #6b7280; font-weight: bold; }
 .stat-value { font-size: 18px; font-weight: bold; color: #1a202c; }
 .stat-sub   { font-size: 6.5px; color: #9ca3af; }
 
@@ -36,29 +34,19 @@ table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
 thead tr { background: #1E3A5F; color: #fff; }
 thead th {
     padding: 4px 5px; text-align: left; font-size: 7.5px;
-    font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px;
+    font-weight: bold; text-transform: uppercase;
     border: 1px solid #164172; white-space: nowrap;
 }
-thead th.right  { text-align: right; }
-tbody tr:nth-child(even) { background: #EBF0F8; }
-tbody tr:nth-child(odd)  { background: #fff; }
+thead th.right { text-align: right; }
 tbody td { padding: 3px 5px; font-size: 7.5px; border: 1px solid #d1d9e6; vertical-align: middle; }
-tbody td.right  { text-align: right; }
-tbody td.mono   { font-family: DejaVu Sans Mono, monospace; }
+tbody td.right { text-align: right; }
+tbody td.mono  { font-family: DejaVu Sans Mono, monospace; }
 
-.badge-disponible   { background: #dcfce7; color: #166534; padding: 1px 5px; border-radius: 99px; font-size: 7px; font-weight: 700; }
-.badge-por-agotarse { background: #fef3c7; color: #92400e; padding: 1px 5px; border-radius: 99px; font-size: 7px; font-weight: 700; }
-.badge-agotado      { background: #fee2e2; color: #991b1b; padding: 1px 5px; border-radius: 99px; font-size: 7px; font-weight: 700; }
+.badge-disponible   { background: #dcfce7; color: #166534; padding: 1px 4px; font-size: 7px; font-weight: 700; }
+.badge-por-agotarse { background: #fef3c7; color: #92400e; padding: 1px 4px; font-size: 7px; font-weight: 700; }
+.badge-agotado      { background: #fee2e2; color: #991b1b; padding: 1px 4px; font-size: 7px; font-weight: 700; }
 
-.totals-row { background: #FFF3CD !important; font-weight: bold; }
-.totals-row td { border-top: 2px solid #e2a800; font-size: 7.5px; }
-
-.footer {
-    margin-top: 10px; border-top: 1px solid #d1d9e6;
-    padding-top: 4px; font-size: 7px; color: #9ca3af;
-    display: flex; justify-content: space-between;
-}
-.num { font-variant-numeric: tabular-nums; }
+.totals-row td { background: #FFF3CD; border-top: 2px solid #e2a800; font-size: 7.5px; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -67,17 +55,16 @@ tbody td.mono   { font-family: DejaVu Sans Mono, monospace; }
 <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
     <tr>
         <td style="background:#1E3A5F;padding:8px 12px;vertical-align:middle;">
-            <div style="font-size:11px;font-weight:bold;color:#fff;letter-spacing:0.3px;">{{ strtoupper($empresa->nombre) }}</div>
+            <div style="font-size:11px;font-weight:bold;color:#fff;">{{ strtoupper($empresa->nombre) }}</div>
             <div style="font-size:8.5px;color:#c7d7ee;margin-top:2px;">RUC {{ $empresa->ruc ?? '' }}</div>
         </td>
         <td style="background:#1E3A5F;padding:8px 12px;text-align:right;vertical-align:middle;">
-            <div style="font-size:13px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;color:#fff;">Inventario Activo</div>
+            <div style="font-size:13px;font-weight:bold;text-transform:uppercase;color:#fff;">Inventario Activo</div>
             <div style="font-size:8px;color:#c7d7ee;margin-top:2px;">Generado: {{ now()->format('d/m/Y H:i') }}</div>
         </td>
     </tr>
 </table>
 
-{{-- Stats (tabla HTML para DomPDF — no soporta flex) --}}
 <table class="stats-wrap">
     <tr>
         <td class="stat-box stat-box--gray">
@@ -106,7 +93,7 @@ tbody td.mono   { font-family: DejaVu Sans Mono, monospace; }
 <table>
     <thead>
         <tr>
-            <th class="center" style="width:22px">#</th>
+            <th style="width:22px;text-align:right;">#</th>
             <th>Producto</th>
             <th>Código</th>
             <th class="right">Stock Actual</th>
@@ -117,7 +104,8 @@ tbody td.mono   { font-family: DejaVu Sans Mono, monospace; }
     <tbody>
         @foreach($registros as $i => $inv)
         @php
-            $estadoVal = $inv->estado_inventario?->value ?? '';
+            $bg         = $i % 2 === 0 ? '#EBF0F8' : '#ffffff';
+            $estadoVal  = $inv->estado_inventario?->value ?? '';
             $badgeClass = match($estadoVal) {
                 'disponible'   => 'badge-disponible',
                 'por_agotarse' => 'badge-por-agotarse',
@@ -138,12 +126,12 @@ tbody td.mono   { font-family: DejaVu Sans Mono, monospace; }
                 $codigo = $inv->producto?->codigo_interno ?? '—';
             }
         @endphp
-        <tr>
+        <tr style="background:{{ $bg }}">
             <td class="right" style="color:#6b7280;font-weight:700">{{ $i + 1 }}</td>
             <td style="font-weight:600">{{ $nombre }}</td>
             <td class="mono">{{ $codigo }}</td>
-            <td class="right num">{{ number_format((float)$inv->stock_real, 2) }}</td>
-            <td class="right num" style="color:#6b7280">{{ number_format((float)($inv->stock_minimo ?? 0), 2) }}</td>
+            <td class="right">{{ number_format((float)$inv->stock_real, 2) }}</td>
+            <td class="right" style="color:#6b7280">{{ number_format((float)($inv->stock_minimo ?? 0), 2) }}</td>
             <td><span class="{{ $badgeClass }}">{{ $estadoLabel }}</span></td>
         </tr>
         @endforeach
@@ -152,17 +140,19 @@ tbody td.mono   { font-family: DejaVu Sans Mono, monospace; }
             <td class="right">—</td>
             <td>TOTAL ({{ $registros->count() }} registros)</td>
             <td></td>
-            <td class="right num">{{ number_format($registros->sum(fn($r) => (float)$r->stock_real), 2) }}</td>
+            <td class="right">{{ number_format($registros->sum(fn($r) => (float)$r->stock_real), 2) }}</td>
             <td></td>
             <td></td>
         </tr>
     </tbody>
 </table>
 
-<div class="footer">
-    <span>{{ $empresa->nombre }} — RUC {{ $empresa->ruc ?? '' }}</span>
-    <span>Reporte generado por SAS-PDV · {{ now()->format('d/m/Y H:i') }} · {{ $usuarioNombre }}</span>
-</div>
+<table style="width:100%;border-collapse:collapse;margin-top:10px;border-top:1px solid #d1d9e6;">
+    <tr>
+        <td style="padding-top:4px;font-size:7px;color:#9ca3af;">{{ $empresa->nombre }} — RUC {{ $empresa->ruc ?? '' }}</td>
+        <td style="padding-top:4px;font-size:7px;color:#9ca3af;text-align:right;">Reporte generado por SAS-PDV · {{ now()->format('d/m/Y H:i') }} · {{ $usuarioNombre }}</td>
+    </tr>
+</table>
 
 </div>
 </body>

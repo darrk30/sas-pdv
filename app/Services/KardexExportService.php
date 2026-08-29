@@ -60,7 +60,12 @@ class KardexExportService
 
         $pdf = Pdf::loadView('reports.kardex-pdf', compact(
             'movimientos', 'empresa', 'filtros', 'resumen', 'usuarioNombre', 'origenMeta'
-        ))->setPaper('a4', 'landscape');
+        ))->setPaper('a4', 'landscape')
+        ->setOption([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled'      => false,
+            'defaultFont'          => 'DejaVu Sans',
+        ]);
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();

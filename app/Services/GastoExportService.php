@@ -31,7 +31,12 @@ class GastoExportService
             'gastos'        => $gastos,
             'resumen'       => $resumen,
             'usuarioNombre' => auth()->user()?->name ?? 'Sistema',
-        ])->setPaper('a4', 'landscape');
+        ])->setPaper('a4', 'landscape')
+        ->setOption([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled'      => false,
+            'defaultFont'          => 'DejaVu Sans',
+        ]);
 
         $nombre = 'gastos-' . now()->format('Ymd-His') . '.pdf';
 

@@ -62,7 +62,13 @@ class InventarioExportService
 
         $pdf = Pdf::loadView('reports.inventario-pdf', compact(
             'registros', 'empresa', 'stats', 'usuarioNombre'
-        ))->setPaper('a4', 'portrait');
+        ))
+        ->setPaper('a4', 'portrait')
+        ->setOption([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled'      => false,
+            'defaultFont'          => 'DejaVu Sans',
+        ]);
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();

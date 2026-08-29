@@ -8,59 +8,41 @@
 body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 7.5px; color: #1a202c; background: #fff; }
 .page { padding: 10mm 8mm; }
 
-/* header via inline styles en <td> para compatibilidad DomPDF */
-
-/* Stats — tabla horizontal para DomPDF */
-.stats-wrap { width: 100%; border-collapse: separate; border-spacing: 5px 0; margin-bottom: 8px; }
-.stat-box { width: 33.3%; border-radius: 3px; padding: 5px 8px; text-align: center; vertical-align: top; }
+.stats-wrap { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.stat-box { width: 33.3%; padding: 5px 8px; text-align: center; vertical-align: top; }
 .stat-box--gray  { background: #EBF0F8; border-top: 3px solid #4A5568; }
 .stat-box--green { background: #F0FDF4; border-top: 3px solid #22C55E; }
 .stat-box--red   { background: #FEF2F2; border-top: 3px solid #EF4444; }
-.stat-label { font-size: 7px; text-transform: uppercase; letter-spacing: 0.4px; color: #6b7280; font-weight: bold; }
+.stat-label { font-size: 7px; text-transform: uppercase; color: #6b7280; font-weight: bold; }
 .stat-value { font-size: 16px; font-weight: bold; color: #1a202c; }
 .stat-sub   { font-size: 6.5px; color: #9ca3af; }
-
-.filtros-wrap { background: #EBF0F8; border-left: 3px solid #1E3A5F; padding: 4px 7px; margin-bottom: 7px; border-radius: 0 2px 2px 0; }
-.filtros-titulo { font-size: 7.5px; font-weight: bold; color: #1E3A5F; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.4px; }
-.filtros-grid   { display: flex; flex-wrap: wrap; gap: 2px 14px; }
-.filtro-item    { font-size: 7px; }
-.filtro-label   { font-weight: bold; color: #2C5282; }
 
 table.main { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
 thead tr { background: #1E3A5F; color: #fff; }
 thead th {
     padding: 3px 4px; text-align: left; font-size: 7px;
-    font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px;
+    font-weight: bold; text-transform: uppercase;
     border: 1px solid #164172; white-space: nowrap;
 }
 thead th.right  { text-align: right; }
 thead th.center { text-align: center; }
-tbody tr:nth-child(even) { background: #EBF0F8; }
-tbody tr:nth-child(odd)  { background: #fff; }
 tbody td { padding: 2.5px 4px; font-size: 7px; border: 1px solid #d1d9e6; vertical-align: middle; }
 tbody td.right  { text-align: right; }
 tbody td.center { text-align: center; }
+tbody td.mono   { font-family: DejaVu Sans Mono, monospace; }
 
-.badge-entrada { background: #dcfce7; color: #166534; padding: 1px 4px; border-radius: 99px; font-size: 6.5px; font-weight: 700; }
-.badge-salida  { background: #fee2e2; color: #991b1b; padding: 1px 4px; border-radius: 99px; font-size: 6.5px; font-weight: 700; }
-.badge-ajuste  { background: #fef3c7; color: #92400e; padding: 1px 4px; border-radius: 99px; font-size: 6.5px; font-weight: 700; }
-.badge-compra  { background: #dbeafe; color: #1e40af; padding: 1px 4px; border-radius: 99px; font-size: 6.5px; font-weight: 700; }
-.badge-venta   { background: #ede9fe; color: #6d28d9; padding: 1px 4px; border-radius: 99px; font-size: 6.5px; font-weight: 700; }
+.badge-entrada { background: #dcfce7; color: #166534; padding: 1px 4px; font-size: 6.5px; font-weight: 700; }
+.badge-salida  { background: #fee2e2; color: #991b1b; padding: 1px 4px; font-size: 6.5px; font-weight: 700; }
+.badge-ajuste  { background: #fef3c7; color: #92400e; padding: 1px 4px; font-size: 6.5px; font-weight: 700; }
+.badge-compra  { background: #dbeafe; color: #1e40af; padding: 1px 4px; font-size: 6.5px; font-weight: 700; }
+.badge-venta   { background: #ede9fe; color: #6d28d9; padding: 1px 4px; font-size: 6.5px; font-weight: 700; }
 
 .qty-entrada { color: #166534; font-weight: 700; }
 .qty-salida  { color: #991b1b; font-weight: 700; }
 .stock-up    { color: #166534; font-weight: 700; }
 .stock-down  { color: #991b1b; font-weight: 700; }
 
-.totals-row { background: #FFF3CD !important; font-weight: bold; }
-.totals-row td { border-top: 2px solid #e2a800; }
-
-.footer {
-    margin-top: 8px; border-top: 1px solid #d1d9e6;
-    padding-top: 3px; font-size: 6.5px; color: #9ca3af;
-    display: flex; justify-content: space-between;
-}
-.num { font-variant-numeric: tabular-nums; }
+.totals-row td { background: #FFF3CD; border-top: 2px solid #e2a800; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -73,13 +55,12 @@ tbody td.center { text-align: center; }
             <div style="font-size:8px;color:#c7d7ee;margin-top:2px;">RUC {{ $empresa->ruc ?? '' }}</div>
         </td>
         <td style="background:#1E3A5F;padding:8px 12px;text-align:right;vertical-align:middle;">
-            <div style="font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;color:#fff;">Kardex de Inventario</div>
+            <div style="font-size:12px;font-weight:bold;text-transform:uppercase;color:#fff;">Kardex de Inventario</div>
             <div style="font-size:7.5px;color:#c7d7ee;margin-top:2px;">Generado: {{ now()->format('d/m/Y H:i') }}</div>
         </td>
     </tr>
 </table>
 
-{{-- Stats horizontales --}}
 <table class="stats-wrap">
     <tr>
         <td class="stat-box stat-box--gray">
@@ -112,14 +93,14 @@ tbody td.center { text-align: center; }
 @endphp
 
 @if(!empty($filtrosInfo))
-<div class="filtros-wrap">
-    <div class="filtros-titulo">Filtros aplicados</div>
-    <div class="filtros-grid">
+<table style="width:100%;border-collapse:collapse;margin-bottom:7px;background:#EBF0F8;border-left:3px solid #1E3A5F;">
+    <tr>
+        <td style="padding:4px 7px;font-size:8px;font-weight:bold;color:#1E3A5F;text-transform:uppercase;white-space:nowrap;vertical-align:top;">Filtros:</td>
         @foreach($filtrosInfo as $label => $valor)
-        <div class="filtro-item"><span class="filtro-label">{{ $label }}:</span> {{ $valor }}</div>
+        <td style="padding:4px 8px 4px 0;font-size:7px;vertical-align:top;"><span style="font-weight:bold;color:#2C5282;">{{ $label }}:</span> {{ $valor }}</td>
         @endforeach
-    </div>
-</div>
+    </tr>
+</table>
 @endif
 
 <table class="main">
@@ -140,14 +121,15 @@ tbody td.center { text-align: center; }
     <tbody>
         @foreach($movimientos as $i => $mov)
         @php
+            $bg         = $i % 2 === 0 ? '#EBF0F8' : '#ffffff';
             $esEntrada  = $mov->tipo === 'entrada';
             $stockSube  = (float)$mov->stock_despues > (float)$mov->stock_antes;
             $origenLabel = $origenMeta[$mov->movible_type] ?? null;
             $origenKey   = strtolower($origenLabel ?? '');
         @endphp
-        <tr>
+        <tr style="background:{{ $bg }}">
             <td class="center" style="color:#6b7280;font-weight:700">{{ $i + 1 }}</td>
-            <td class="num" style="white-space:nowrap">{{ \Carbon\Carbon::parse($mov->fecha)->format('d/m/Y') }}<br><span style="color:#9ca3af;font-size:6.5px">{{ \Carbon\Carbon::parse($mov->fecha)->format('H:i') }}</span></td>
+            <td style="white-space:nowrap">{{ \Carbon\Carbon::parse($mov->fecha)->format('d/m/Y') }}<br><span style="color:#9ca3af;font-size:6.5px">{{ \Carbon\Carbon::parse($mov->fecha)->format('H:i') }}</span></td>
             <td>
                 <span style="font-weight:600">{{ $mov->producto_nombre }}</span>
                 @if($mov->variante_nombre)<br><span style="color:#9ca3af">{{ $mov->variante_nombre }}</span>@endif
@@ -155,9 +137,9 @@ tbody td.center { text-align: center; }
             <td>{{ $mov->concepto }}</td>
             <td class="center">@if($origenLabel)<span class="badge-{{ $origenKey }}">{{ $origenLabel }}</span>@else —@endif</td>
             <td class="center"><span class="{{ $esEntrada ? 'badge-entrada' : 'badge-salida' }}">{{ $esEntrada ? 'Entrada' : 'Salida' }}</span></td>
-            <td class="right num"><span class="{{ $esEntrada ? 'qty-entrada' : 'qty-salida' }}">{{ $esEntrada ? '+' : '-' }}{{ number_format((float)$mov->cantidad, 2) }}</span></td>
-            <td class="right num" style="color:#6b7280">{{ number_format((float)$mov->stock_antes, 2) }}</td>
-            <td class="right num"><span class="{{ $stockSube ? 'stock-up' : 'stock-down' }}">{{ number_format((float)$mov->stock_despues, 2) }}</span></td>
+            <td class="right"><span class="{{ $esEntrada ? 'qty-entrada' : 'qty-salida' }}">{{ $esEntrada ? '+' : '-' }}{{ number_format((float)$mov->cantidad, 2) }}</span></td>
+            <td class="right" style="color:#6b7280">{{ number_format((float)$mov->stock_antes, 2) }}</td>
+            <td class="right"><span class="{{ $stockSube ? 'stock-up' : 'stock-down' }}">{{ number_format((float)$mov->stock_despues, 2) }}</span></td>
             <td>{{ $mov->user?->name ?? 'Sistema' }}</td>
         </tr>
         @endforeach
@@ -173,10 +155,12 @@ tbody td.center { text-align: center; }
     </tbody>
 </table>
 
-<div class="footer">
-    <span>{{ $empresa->nombre }} — RUC {{ $empresa->ruc ?? '' }}</span>
-    <span>Reporte generado por SAS-PDV · {{ now()->format('d/m/Y H:i') }} · {{ $usuarioNombre }}</span>
-</div>
+<table style="width:100%;border-collapse:collapse;margin-top:8px;border-top:1px solid #d1d9e6;">
+    <tr>
+        <td style="padding-top:3px;font-size:6.5px;color:#9ca3af;">{{ $empresa->nombre }} — RUC {{ $empresa->ruc ?? '' }}</td>
+        <td style="padding-top:3px;font-size:6.5px;color:#9ca3af;text-align:right;">Reporte generado por SAS-PDV · {{ now()->format('d/m/Y H:i') }} · {{ $usuarioNombre }}</td>
+    </tr>
+</table>
 
 </div>
 </body>

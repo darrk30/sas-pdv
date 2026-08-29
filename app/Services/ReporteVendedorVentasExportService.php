@@ -259,7 +259,12 @@ class ReporteVendedorVentasExportService
             'moneyKeys'       => $moneyKeys,
             'usuarioNombre'   => $usuarioNombre,
             'vendedorNombre'  => $vendedorNombre,
-        ])->setPaper('a4', 'landscape');
+        ])->setPaper('a4', 'landscape')
+        ->setOption([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled'      => false,
+            'defaultFont'          => 'DejaVu Sans',
+        ]);
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();
