@@ -20,6 +20,7 @@ class Plan extends Model
         'tiene_variantes',
         'tiene_catalogo_web',
         'facturacion_electronica',
+        'tiene_impresion_directa',
         'estado',
     ];
 
@@ -30,6 +31,7 @@ class Plan extends Model
             'tiene_variantes'          => 'boolean',
             'tiene_catalogo_web'       => 'boolean',
             'facturacion_electronica'  => 'boolean',
+            'tiene_impresion_directa'  => 'boolean',
             'estado'            => EstadoGeneral::class,
         ];
     }

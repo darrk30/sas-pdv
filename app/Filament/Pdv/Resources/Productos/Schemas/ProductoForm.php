@@ -284,7 +284,8 @@ class ProductoForm
                                                     TextInput::make('nombre')->required(),
                                                     TextInput::make('descripcion'),
                                                 ])
-                                                ->createOptionUsing(fn(array $data) => \App\Models\Impresora::create($data)->id),
+                                                ->createOptionUsing(fn(array $data) => \App\Models\Impresora::create($data)->id)
+                                                ->hidden(fn (): bool => ! Filament::getTenant()->tieneImpresionDirecta()),
                                         ])
                                         ->createOptionUsing(fn(array $data) => \App\Models\Produccion::create($data)->id),
 

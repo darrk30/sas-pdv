@@ -28,6 +28,7 @@ use App\Models\Venta;
 use App\Models\VentaDetalle;
 use App\Models\VentaPago;
 use App\Events\VentaCompletada;
+use App\Services\ImpresionDirectaService;
 use App\Services\KardexService;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -1718,25 +1719,39 @@ class PuntoDeVenta extends Page
 
         Notification::make()->title('Venta procesada correctamente')->success()->send();
 
-        // Siempre mostrar el modal de impresión.
-        // Si impresion_comprobante_directo está DESACTIVADO, además se dispara automáticamente
-        // el diálogo de impresión de Windows al cargar el iframe.
         if ($venta) {
             $venta->loadMissing('serie');
-            $serie = $venta->serie;
-            $this->ventaIdImprimir   = $venta->id;
-            $this->ventaNumeroImpr   = ($serie?->serie ?? '---') . '-' . str_pad($venta->correlativo, 8, '0', STR_PAD_LEFT);
-            $this->ventaTotalImpr    = (float) $venta->total;
-            $this->wspTelefono       = '';
-            $this->wspShareUrl       = URL::temporarySignedRoute(
+            $serie    = $venta->serie;
+            $empresa  = Filament::getTenant();
+
+            $this->ventaIdImprimir = $venta->id;
+            $this->ventaNumeroImpr = ($serie?->serie ?? '---') . '-' . str_pad($venta->correlativo, 8, '0', STR_PAD_LEFT);
+            $this->ventaTotalImpr  = (float) $venta->total;
+            $this->wspTelefono     = '';
+            $this->wspShareUrl     = URL::temporarySignedRoute(
                 'pdv.ticket.venta.compartir',
                 now()->addHours(24),
                 ['id' => $venta->id]
             );
-            $this->autoImprimirModal = false;
+
+            // Intentar impresión directa por WebSocket
+            $imprimioDirecto = false;
+            try {
+                $imprimioDirecto = app(ImpresionDirectaService::class)
+                    ->imprimirComprobante($venta, $empresa);
+
+                // Comandas por área (solo si hay áreas con impresoras configuradas)
+                app(ImpresionDirectaService::class)
+                    ->imprimirComandas($venta, $empresa);
+            } catch (\Throwable) {
+                // No interrumpir el flujo si falla la impresión
+            }
+
+            // Si hubo impresión directa el modal NO auto-abre el diálogo del navegador
+            $this->autoImprimirModal = ! $imprimioDirecto;
             $this->modalImpresion    = true;
 
-            // Guardar referencia para el botón de reimpresión (persiste entre recargas)
+            // Guardar referencia para el botón de reimpresión
             $this->ultimaVentaId     = $venta->id;
             $this->ultimaVentaNumero = $this->ventaNumeroImpr;
             Cache::put($this->cacheKeyUltimaVenta(), [
@@ -1755,6 +1770,52 @@ class PuntoDeVenta extends Page
         $this->ventaTotalImpr    = 0.0;
         $this->wspTelefono       = '';
         $this->wspShareUrl       = '';
+    }
+
+    public function reimprimirDirecto(): void
+    {
+        if (! $this->ultimaVentaId) {
+            return;
+        }
+
+        $empresa = Filament::getTenant();
+
+        $config = $empresa->cachedConfigImpresion();
+
+        if (! $config['impresion_comprobante_directo']) {
+            // Impresión directa no activa → usar el iframe del navegador
+            $this->dispatch('pdv-reprint-browser');
+            return;
+        }
+
+        try {
+            $venta = \App\Models\Venta::find($this->ultimaVentaId);
+
+            if (! $venta) {
+                $this->dispatch('pdv-reprint-browser');
+                return;
+            }
+
+            $ok = app(ImpresionDirectaService::class)->imprimirComprobante($venta, $empresa);
+
+            if ($ok) {
+                Notification::make()
+                    ->title('Comprobante enviado a la impresora')
+                    ->success()
+                    ->duration(3000)
+                    ->send();
+            } else {
+                // Servicio no disparó el evento (ej: sin impresora asignada) → fallback navegador
+                $this->dispatch('pdv-reprint-browser');
+            }
+        } catch (\Throwable) {
+            Notification::make()
+                ->title('Error al reimprimir')
+                ->body('No se pudo enviar a la impresora. Intenta con el botón de imprimir del navegador.')
+                ->danger()
+                ->send();
+            $this->dispatch('pdv-reprint-browser');
+        }
     }
 
     public function enviarWhatsapp(): void

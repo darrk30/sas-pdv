@@ -92,4 +92,26 @@
         }
     </style>
 
+    {{-- Listener para copiar al portapapeles --}}
+    <span
+        x-data
+        x-on:tukipu-copiar.window="
+            const texto = $event.detail.texto ?? '';
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(texto).catch(() => fallbackCopy(texto));
+            } else {
+                fallbackCopy(texto);
+            }
+            function fallbackCopy(t) {
+                const ta = document.createElement('textarea');
+                ta.value = t;
+                ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+        "
+    ></span>
+
 </x-filament-panels::page>

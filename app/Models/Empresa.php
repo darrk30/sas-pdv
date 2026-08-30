@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Observers\EmpresaObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 #[ObservedBy([EmpresaObserver::class])]
 class Empresa extends Model
@@ -31,6 +33,7 @@ class Empresa extends Model
         'fe_envio_directo_boleta',
         'fe_envio_directo_factura',
         'impresion_comprobante_directo',
+        'api_token_impresion',
         'igv_porcentaje',
         'bot_contexto',
         'suscripcion_proxima_a_vencer',
@@ -41,7 +44,7 @@ class Empresa extends Model
         'suscripcion_proxima_a_vencer'       => 'boolean',
         'fe_envio_directo_boleta'      => 'boolean',
         'fe_envio_directo_factura'     => 'boolean',
-        'impresion_comprobante_directo'=> 'boolean',
+        'impresion_comprobante_directo' => 'boolean',
         'igv_porcentaje'               => 'decimal:2',
     ];
 
@@ -210,5 +213,36 @@ class Empresa extends Model
         // El toggle padre es solo un helper "seleccionar todo" en la UI;
         // el estado real de acceso lo determina únicamente el sub-módulo.
         return (bool) ($activos[$modulo] ?? true);
+    }
+
+    // ── Cache de configuración de impresión ───────────────────────────────────
+    // Se usa en el PDV para no consultar la BD en cada venta.
+    // Se invalida automáticamente en EmpresaObserver::updated().
+
+    public function configImpresionCacheKey(): string
+    {
+        return "empresa_{$this->id}_impresion_config";
+    }
+
+    public function cachedConfigImpresion(): array
+    {
+        return Cache::remember($this->configImpresionCacheKey(), now()->addDay(), function () {
+            $plan = $this->suscripcion?->plan;
+            return [
+                'tiene_impresion_directa'      => (bool) ($plan?->tiene_impresion_directa ?? false),
+                'impresion_comprobante_directo' => (bool) $this->impresion_comprobante_directo,
+                'api_token_impresion'           => $this->api_token_impresion ?? Str::uuid(),
+            ];
+        });
+    }
+
+    public function invalidarCacheImpresion(): void
+    {
+        Cache::forget($this->configImpresionCacheKey());
+    }
+
+    public function tieneImpresionDirecta(): bool
+    {
+        return (bool) ($this->suscripcion?->plan?->tiene_impresion_directa ?? false);
     }
 }

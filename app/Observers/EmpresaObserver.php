@@ -36,7 +36,13 @@ class EmpresaObserver
         }
     }
 
-    public function updated(Empresa $empresa): void {}
+    public function updated(Empresa $empresa): void
+    {
+        // Invalida la cache de config de impresión si cambiaron campos relevantes
+        if ($empresa->isDirty(['impresion_comprobante_directo', 'api_token_impresion'])) {
+            $empresa->invalidarCacheImpresion();
+        }
+    }
 
     public function deleted(Empresa $empresa): void {}
 

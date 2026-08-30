@@ -3,7 +3,9 @@
 namespace App\Filament\Pdv\Resources\Cajas\Schemas;
 
 use App\Models\Caja;
+use App\Models\Impresora;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -53,6 +55,21 @@ class CajaForm
                                 ->label('Estado')
                                 ->default(true)
                                 ->helperText('Si se desactiva, no aparecerá en el punto de venta.'),
+
+                            Select::make('impresora_id')
+                                ->label('Impresora de tickets')
+                                ->placeholder('Sin impresora asignada')
+                                ->helperText('Impresora que recibirá el comprobante al usar impresión directa.')
+                                ->options(function (): array {
+                                    return Impresora::where('empresa_id', Filament::getTenant()->id)
+                                        ->where('estado', true)
+                                        ->orderBy('nombre')
+                                        ->pluck('nombre', 'id')
+                                        ->toArray();
+                                })
+                                ->searchable()
+                                ->nullable()
+                                ->hidden(fn (): bool => ! Filament::getTenant()->tieneImpresionDirecta()),
                         ])
                     ])->columnSpanFull(),
             ]);

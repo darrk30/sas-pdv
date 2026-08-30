@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pdv\Resources\Produccions\Schemas;
 
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -29,7 +30,8 @@ class ProduccionForm
                             ->relationship('impresora', 'nombre')
                             ->placeholder('Seleccione una impresora')
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->hidden(fn (): bool => ! Filament::getTenant()->tieneImpresionDirecta()),
 
                         Toggle::make('estado')
                             ->label('Área Activa')

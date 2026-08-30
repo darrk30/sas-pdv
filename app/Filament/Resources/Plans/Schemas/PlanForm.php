@@ -122,6 +122,13 @@ class PlanForm
                             ->onColor('success')
                             ->default(false)
                             ->columnSpan(1),
+
+                        Toggle::make('tiene_impresion_directa')
+                            ->label('Impresión Directa')
+                            ->helperText('Permite enviar tickets automáticamente a la impresora sin diálogo del navegador')
+                            ->onColor('success')
+                            ->default(false)
+                            ->columnSpan(1),
                     ])->columnSpanFull(),
             ]);
     }
