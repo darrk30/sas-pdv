@@ -68,7 +68,7 @@ class MiEmpresaPage extends Page implements HasForms
             'produccion'            => $facturacion?->produccion ?? false,
 
             // Datos del Monitor — leídos del .env, nunca de la BD
-            '_monitor_link' => env('APP_DOMAIN', ''),
+            '_monitor_link' => $empresa->slug . '.' . env('APP_DOMAIN', ''),
             '_monitor_key'  => config('broadcasting.connections.reverb.key'),
         ]);
     }
