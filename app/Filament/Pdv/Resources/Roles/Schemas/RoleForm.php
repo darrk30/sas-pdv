@@ -81,8 +81,10 @@ class RoleForm
                             ->columns(2)
                             ->gridDirection('row')
                             ->dehydrated(false)
-                            ->afterStateHydrated(function ($component, $state, ?Role $record) use ($permisos, $empresaId) {
+                            ->afterStateHydrated(function ($component, $state, ?Role $record) use ($permisos) {
                                 if (! $record?->exists) return;
+                                $empresaId = Filament::getTenant()?->id;
+                                if (! $empresaId) return;
                                 app(\Spatie\Permission\PermissionRegistrar::class)
                                     ->setPermissionsTeamId($empresaId);
                                 $component->state(

@@ -20,7 +20,6 @@ class UserForm
 {
     public static function configure(Schema $schema): Schema
     {
-        $miSucursalId = Filament::getTenant()?->id;
         return $schema
             ->components([
                 // Contenedor principal responsive
@@ -80,7 +79,6 @@ class UserForm
                             ->columnSpan(['default' => 1, 'lg' => 2]),
 
                         // --- COLUMNA DERECHA (Ocupa 1 de 3 espacios) ---
-                        // Usamos Group aquí también
                         Group::make()
                             ->schema([
                                 Section::make('Accesos y Permisos')
@@ -94,18 +92,24 @@ class UserForm
                                             ->searchable()
                                             ->preload()
                                             ->required()
-                                            ->options(function () use ($miSucursalId) {
-                                                return Role::where('empresa_id', $miSucursalId)->pluck('name', 'name');
+                                            ->options(function () {
+                                                $empresaId = Filament::getTenant()?->id;
+                                                return Role::where('empresa_id', $empresaId)->pluck('name', 'name');
                                             })
-                                            ->loadStateFromRelationshipsUsing(function ($component, $state, User $record) use ($miSucursalId) {
-                                                if ($record->exists) {
-                                                    app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($miSucursalId);
-                                                    $component->state($record->roles()->pluck('name')->toArray());
-                                                }
+                                            ->loadStateFromRelationshipsUsing(function ($component, $state, User $record) {
+                                                if (! $record->exists) return;
+                                                $empresaId = Filament::getTenant()?->id;
+                                                if (! $empresaId) return;
+                                                app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($empresaId);
+                                                $component->state($record->roles()->pluck('name')->toArray());
                                             })
-                                            ->saveRelationshipsUsing(function (User $record, $state) use ($miSucursalId) {
-                                                app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($miSucursalId);
+                                            ->saveRelationshipsUsing(function (User $record, $state) {
+                                                $empresaId = Filament::getTenant()?->id;
+                                                if (! $empresaId) return;
+                                                $registrar = app(\Spatie\Permission\PermissionRegistrar::class);
+                                                $registrar->setPermissionsTeamId($empresaId);
                                                 $record->syncRoles($state ?? []);
+                                                $registrar->forgetCachedPermissions();
                                             })
                                             ->dehydrated(false),
 

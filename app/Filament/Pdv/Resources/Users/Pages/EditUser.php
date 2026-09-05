@@ -40,5 +40,6 @@ class EditUser extends EditRecord
                 $empresaId => ['estado' => $state['pivot_estado']]
             ]);
         }
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }
