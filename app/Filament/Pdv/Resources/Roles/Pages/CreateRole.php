@@ -27,6 +27,7 @@ class CreateRole extends CreateRecord
     private function sincronizarPermisos($role): void
     {
         $empresaId = Filament::getTenant()?->id;
+        if (! $empresaId) return;
         $registrar = app(\Spatie\Permission\PermissionRegistrar::class);
         $registrar->setPermissionsTeamId($empresaId);
 

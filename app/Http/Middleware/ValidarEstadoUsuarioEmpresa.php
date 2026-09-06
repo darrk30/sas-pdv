@@ -25,8 +25,8 @@ class ValidarEstadoUsuarioEmpresa
                 ->where('user_id', $user->id)
                 ->where('empresa_id', $empresa->id)
                 ->first();
-            // Si el registro existe pero su estado NO es activo, lo bloqueamos
-            if ($pivot && $pivot->estado != 'activo') { // O el valor queuses en tu Enum
+            // Si el registro existe y su estado es explícitamente inactivo, lo bloqueamos
+            if ($pivot && $pivot->estado !== null && $pivot->estado !== 'activo') {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
