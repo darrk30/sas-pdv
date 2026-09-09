@@ -26,6 +26,8 @@ class OrdenDetalle extends Model
         'igv',
         'total',
         'costo_total',
+        'enviado_cocina',
+        'notas_item',
     ];
 
     protected $casts = [
@@ -39,6 +41,7 @@ class OrdenDetalle extends Model
         'igv'             => 'decimal:2',
         'total'           => 'decimal:2',
         'costo_total'     => 'decimal:2',
+        'enviado_cocina'  => 'boolean',
     ];
 
     // ── Relaciones ───────────────────────────────────────────────────────

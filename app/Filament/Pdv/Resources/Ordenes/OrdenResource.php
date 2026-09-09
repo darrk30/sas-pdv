@@ -9,6 +9,7 @@ use App\Filament\Pdv\Resources\Ordenes\Pages\ViewOrden;
 use App\Filament\Pdv\Resources\Ordenes\Schemas\OrdenForm;
 use App\Filament\Pdv\Resources\Ordenes\Tables\OrdenesTable;
 use App\Enums\EstadoOrden;
+use App\Enums\TipoOrigenOrden;
 use App\Models\Orden;
 use BackedEnum;
 use UnitEnum;
@@ -54,6 +55,7 @@ class OrdenResource extends Resource
 
         $count = cache()->remember("badge_ordenes_{$empresaId}", 30, fn() =>
             Orden::where('empresa_id', $empresaId)
+                ->where('tipo_origen', TipoOrigenOrden::Web)
                 ->where('estado', EstadoOrden::PendientePago)
                 ->count()
         );
@@ -79,6 +81,11 @@ class OrdenResource extends Resource
                     ? static::getUrl('view', ['record' => $record])
                     : static::getUrl('edit', ['record' => $record])
             );
+    }
+
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery()->where('tipo_origen', TipoOrigenOrden::Web);
     }
 
     public static function getRelations(): array

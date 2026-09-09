@@ -102,6 +102,7 @@ class PdvPanelProvider extends PanelProvider
                 NavigationGroup::make('Punto de Venta'),
                 NavigationGroup::make('Facturación Electrónica'),
                 NavigationGroup::make('Inventario'),
+                NavigationGroup::make('Restaurante'),
                 NavigationGroup::make('Pedidos Web'),
                 NavigationGroup::make('Compras'),
                 NavigationGroup::make('Catálogo'),

@@ -138,6 +138,15 @@ class SuperAdminSeeder extends Seeder
         ['module' => 'config', 'module_label' => 'Configuración', 'name' => 'roles.eliminar',         'description' => 'Eliminar roles'],
         ['module' => 'config', 'module_label' => 'Configuración', 'name' => 'config.suscripcion',     'description' => 'Ver suscripción y registrar comprobantes de pago'],
 
+        // ── Restaurante ────────────────────────────────────────────────────────
+        ['module' => 'restaurante', 'module_label' => 'Restaurante', 'name' => 'mesas.ver',           'description' => 'Ver pisos y mesas (mapa de mesas)'],
+        ['module' => 'restaurante', 'module_label' => 'Restaurante', 'name' => 'mesas.crear',         'description' => 'Crear pisos y mesas'],
+        ['module' => 'restaurante', 'module_label' => 'Restaurante', 'name' => 'mesas.editar',        'description' => 'Editar pisos y mesas'],
+        ['module' => 'restaurante', 'module_label' => 'Restaurante', 'name' => 'mesas.eliminar',      'description' => 'Eliminar pisos y mesas'],
+        ['module' => 'restaurante', 'module_label' => 'Restaurante', 'name' => 'comandas.ver',        'description' => 'Ver mapa de mesas y comandas activas'],
+        ['module' => 'restaurante', 'module_label' => 'Restaurante', 'name' => 'comandas.gestionar',  'description' => 'Abrir, editar y actualizar comandas'],
+        ['module' => 'restaurante', 'module_label' => 'Restaurante', 'name' => 'comandas.cobrar',     'description' => 'Cobrar una comanda (generar venta)'],
+
         // ── Reportes ───────────────────────────────────────────────────────────
         ['module' => 'reportes', 'module_label' => 'Reportes', 'name' => 'reportes.ventas_periodo', 'description' => 'Reporte de ventas por período'],
         ['module' => 'reportes', 'module_label' => 'Reportes', 'name' => 'reportes.productos',      'description' => 'Reporte de productos más vendidos'],

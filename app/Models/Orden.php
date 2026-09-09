@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\EstadoOrden;
+use App\Enums\TipoOrigenOrden;
 use App\Observers\OrdenObserver;
 use App\Services\EtiquetaStockService;
 use App\Traits\BelongsToEmpresa;
@@ -23,6 +24,8 @@ class Orden extends Model
 
     protected $fillable = [
         'empresa_id',
+        'tipo_origen',
+        'mesa_id',
         'vendedor_id',
         'cliente_id',
         'numero',
@@ -50,6 +53,7 @@ class Orden extends Model
     protected $casts = [
         'fecha_orden'     => 'datetime',
         'estado'          => EstadoOrden::class,
+        'tipo_origen'     => TipoOrigenOrden::class,
         'costo_envio'     => 'decimal:2',
         'descuento_total' => 'decimal:2',
         'igv'             => 'decimal:2',
@@ -109,6 +113,11 @@ class Orden extends Model
         return $this->hasMany(OrdenDetalle::class);
     }
 
+    public function mesa(): BelongsTo
+    {
+        return $this->belongsTo(Mesa::class);
+    }
+
     public function venta(): BelongsTo
     {
         return $this->belongsTo(Venta::class);
@@ -124,6 +133,11 @@ class Orden extends Model
     public function esEnvio(): bool
     {
         return $this->tipo_entrega === 'envio';
+    }
+
+    public function esDeMesa(): bool
+    {
+        return $this->tipo_origen === TipoOrigenOrden::Restaurante;
     }
 
     public function estaPagoConfirmado(): bool

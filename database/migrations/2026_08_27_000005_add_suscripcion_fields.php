@@ -9,11 +9,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('empresas', function (Blueprint $table) {
-            $table->boolean('suscripcion_proxima_a_vencer')->default(false)->after('estado');
+            if (! Schema::hasColumn('empresas', 'suscripcion_proxima_a_vencer')) {
+                $table->boolean('suscripcion_proxima_a_vencer')->default(false)->after('estado');
+            }
         });
 
         Schema::table('pagos_clientes', function (Blueprint $table) {
-            $table->enum('estado', ['pendiente', 'aprobado', 'rechazado'])->default('pendiente')->after('monto')->nullable(false);
+            if (! Schema::hasColumn('pagos_clientes', 'estado')) {
+                $table->enum('estado', ['pendiente', 'aprobado', 'rechazado'])->default('pendiente')->after('monto')->nullable(false);
+            }
         });
     }
 

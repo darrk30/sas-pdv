@@ -61,6 +61,7 @@ class MiEmpresaPage extends Page implements HasForms
                 'api_token_impresion',
                 'igv_porcentaje',
             ]),
+            'modulo_restaurante' => $empresa->tieneModulo('restaurante'),
             'sol_user'              => $facturacion?->sol_user,
             'sol_pass'              => $facturacion?->sol_pass,
             'facturador_url'        => $facturacion?->facturador_url,
@@ -184,6 +185,17 @@ class MiEmpresaPage extends Page implements HasForms
                         Tab::make('Configuración')
                             ->icon('heroicon-o-cog-6-tooth')
                             ->schema([
+
+                                // Sección restaurante
+                                Section::make('Módulo Restaurante')
+                                    ->icon('heroicon-o-building-storefront')
+                                    ->description('Activa el módulo para gestionar pisos, mesas, comandas y envío de pedidos a cocina.')
+                                    ->schema([
+                                        Toggle::make('modulo_restaurante')
+                                            ->label('Activar módulo restaurante')
+                                            ->helperText('Al activarlo aparecerá el menú "Restaurante" con la gestión de pisos y mesas.')
+                                            ->onColor('success'),
+                                    ]),
 
                                 // Sección catálogo — solo si el plan lo incluye
                                 Section::make('Catálogo web')
@@ -443,6 +455,20 @@ class MiEmpresaPage extends Page implements HasForms
         // api_token_impresion está desactivado en el form (dehydrated:false)
         // → nunca viene en $data, así que no puede sobreescribirse desde el form
         unset($empresaData['api_token_impresion']);
+
+        // Módulo restaurante — extrae el toggle y actualiza modulos_activos por separado
+        if (array_key_exists('modulo_restaurante', $empresaData)) {
+            $moduloRestaurante = (bool) $empresaData['modulo_restaurante'];
+            unset($empresaData['modulo_restaurante']);
+            $modulosActuales = $empresa->modulos_activos ?? [];
+            $empresa->update([
+                'modulos_activos' => array_merge($modulosActuales, [
+                    'restaurante' => $moduloRestaurante,
+                    'mesas'       => $moduloRestaurante,
+                    'comandas'    => $moduloRestaurante,
+                ]),
+            ]);
+        }
 
         $empresa->update($empresaData);
 

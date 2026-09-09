@@ -49,6 +49,40 @@ Route::middleware(['auth'])->group(function () {
         ->name('pdv.ticket.despacho')
         ->where('id', '[0-9]+');
 
+    Route::get('/ticket/comanda/{ordenId}', function (int $ordenId) {
+        $user  = auth()->user();
+        $orden = \App\Models\Orden::with(['detalles', 'mesa.piso'])->find($ordenId);
+        abort_unless($orden && $user && $user->empresas()->where('empresas.id', $orden->empresa_id)->exists(), 403);
+
+        $areaNombre     = request('area_nombre', 'COCINA');
+        $nuevosJson     = request('nuevos');
+        $canceladosJson = request('cancelados');
+        $esParcial      = (bool) request('parcial', false);
+        $mesa           = request('mesa') ?? ($orden->mesa?->nombre ?? '—');
+        $cajero         = request('cajero') ?? $user->name;
+
+        if ($nuevosJson !== null || $canceladosJson !== null) {
+            $nuevos    = $nuevosJson     ? json_decode($nuevosJson,     true) ?? [] : [];
+            $cancelados = $canceladosJson ? json_decode($canceladosJson, true) ?? [] : [];
+        } else {
+            $nuevos = $orden->detalles->map(fn ($d) => [
+                'cant'   => (int) $d->cantidad,
+                'nombre' => $d->descripcion ?? '—',
+                'nota'   => $d->notas_item ?? '',
+            ])->toArray();
+            $cancelados = [];
+        }
+
+        return view('pdv.ticket-comanda-pdf', [
+            'itemsParaImprimir' => ['nuevos' => $nuevos, 'cancelados' => $cancelados],
+            'esParcial'         => $esParcial,
+            'areaNombre'        => $areaNombre,
+            'cajeroNombre'      => $cajero,
+            'mesaNombre'        => $mesa,
+            'pisoNombre'        => $orden->mesa?->piso?->nombre ?? '',
+        ]);
+    })->name('pdv.ticket.comanda')->where('ordenId', '[0-9]+');
+
     Route::get('/arqueo-caja/{id}', [ArqueoCajaController::class, 'pdf'])
         ->name('pdv.arqueo-caja.pdf')
         ->where('id', '[0-9]+');

@@ -151,6 +151,10 @@ class Empresa extends Model
             'cuentas_por_cobrar'  => true,
             // Gastos
             'gastos'              => true,
+            // Restaurante
+            'restaurante'         => false,
+            'mesas'               => false,
+            'comandas'            => false,
             // Configuración
             'configuracion'       => true,
             'cajas_registradoras' => true,
@@ -198,6 +202,9 @@ class Empresa extends Model
         'reporte_ajustes'     => 'reportes',
         'reporte_clientes'    => 'reportes',
         'cuentas_por_cobrar'  => 'reportes',
+        // Restaurante
+        'mesas'               => 'restaurante',
+        'comandas'            => 'restaurante',
         // Configuración
         'cajas_registradoras' => 'configuracion',
         'metodos_pago'        => 'configuracion',

@@ -102,6 +102,16 @@
     min-width: 0;
 }
 
+/* Raíz del componente Livewire ProductCatalog */
+.pc-root {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    min-width: 0;
+}
+
 /* ═══════════════════════════════════════════════════════════
    BUSCADOR
    ═══════════════════════════════════════════════════════════ */
@@ -951,6 +961,79 @@
 .pdv-item__del:hover { color: #fff; background: #ef4444; }
 .dark .pdv-item__del { background: rgba(239,68,68,.15); color: #f87171; }
 .dark .pdv-item__del:hover { color: #fff; background: #ef4444; }
+
+/* ── Item card — variante columna (restaurante carrito) ──── */
+.pdv-item--card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.2rem;
+    padding: 0.55rem 0.65rem 0.6rem;
+    min-height: 5.25rem;
+}
+
+.pdv-item__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.25rem;
+}
+
+.pdv-item--card .pdv-item__nombre {
+    flex: 1;
+    margin: 0;
+    font-size: 0.82rem;
+}
+
+.pdv-item--card .pdv-item__del {
+    margin-top: 0.05rem;
+    flex-shrink: 0;
+}
+
+.pdv-item__subtotal--big {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--pdv-text-faint);
+    line-height: 1.2;
+}
+
+.pdv-item__bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.15rem;
+}
+
+.pdv-item__precio-unit--total {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--pdv-primary-text);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+}
+
+.pdv-qty__input {
+    width: 3.75rem;
+    height: 1.6rem;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: none;
+    border-bottom: 2px solid var(--pdv-gray-300);
+    border-radius: 0;
+    background: transparent;
+    color: var(--pdv-text);
+    padding: 0 0.25rem;
+    -moz-appearance: textfield;
+    transition: border-color .2s;
+}
+.pdv-qty__input:focus {
+    outline: none;
+    border-bottom-color: var(--pdv-primary);
+}
+.pdv-qty__input::-webkit-inner-spin-button,
+.pdv-qty__input::-webkit-outer-spin-button { opacity: 1; }
 
 /* Badge "en carrito" en tarjeta del catálogo */
 .pdv-card__badge--carrito {
@@ -3037,3 +3120,74 @@
     background: #713f12;
     color: #fde047;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   MODAL COMANDA — pestañas, iframes, chips (impresión browser)
+   ═══════════════════════════════════════════════════════════ */
+.pdv-comanda-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--pdv-border, #e2e8f0);
+    padding: 0 1.25rem;
+    overflow-x: auto;
+}
+.pdv-comanda-tab {
+    padding: .55rem 1rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--pdv-text-muted, #64748b);
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color .12s, border-color .12s;
+    letter-spacing: .03em;
+}
+.pdv-comanda-tab:hover { color: var(--pdv-text, #1e293b); }
+.pdv-comanda-tab--activo {
+    color: var(--pdv-primary, #6366f1);
+    border-bottom-color: var(--pdv-primary, #6366f1);
+}
+.pdv-comanda-chips {
+    display: flex;
+    gap: .4rem;
+    margin-bottom: .5rem;
+}
+.pdv-comanda-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: .15rem .55rem;
+    border-radius: 99px;
+    font-size: .72rem;
+    font-weight: 700;
+}
+.pdv-comanda-chip--nuevo  { background: #dcfce7; color: #166534; }
+.pdv-comanda-chip--quitar { background: #fee2e2; color: #991b1b; }
+.pdv-comanda-iframe-wrap {
+    display: flex;
+    justify-content: center;
+    border: 1px solid var(--pdv-border, #e2e8f0);
+    border-radius: .5rem;
+    overflow: hidden;
+    background: #fff;
+}
+.pdv-comanda-iframe {
+    width: 226px;
+    height: 320px;
+    max-height: 58vh;
+    border: 0;
+    display: block;
+    flex-shrink: 0;
+}
+.pdv-comanda-print-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    margin-top: .6rem;
+}
+.dark .pdv-comanda-chip--nuevo  { background: rgba(34,197,94,.15); color: #4ade80; }
+.dark .pdv-comanda-chip--quitar { background: rgba(239,68,68,.15); color: #f87171; }
+.dark .pdv-comanda-iframe-wrap  { border-color: var(--pdv-border); }
+
