@@ -15,7 +15,7 @@ class RolesEmpresaSeeder extends Seeder
 
         'Cajero' => [
             'caja.punto_de_venta',
-            'caja.sesiones',
+            'sesiones.ver',
             'caja.ventas_turno',
             'caja.ingresos_egresos',
             'caja.cierres',
