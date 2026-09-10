@@ -409,20 +409,25 @@ class ProductoImportService
 
     private function resolverUnidad(?string $valor): ?int
     {
-        $simbolo = trim($valor ?? '');
+        $raw = trim($valor ?? '');
 
-        // Si no se especificó unidad → usar la unidad por defecto de la empresa
-        if ($simbolo === '') return $this->unidadDefault();
+        // Celda vacía → usar unidad por defecto
+        if ($raw === '') return $this->unidadDefault();
 
-        $key = mb_strtolower($simbolo);
+        // Clave normalizada para el caché (todo minúscula, sin espacios extras)
+        $key = mb_strtolower($raw);
+
         if (! isset($this->unidadesCache[$key])) {
+            // Buscar por nombre O símbolo, sin distinguir mayúsculas/minúsculas
             $unidad = UnidadesMedida::where('empresa_id', $this->empresaId)
-                ->where('simbolo', $simbolo)
+                ->where(fn($q) => $q
+                    ->whereRaw('LOWER(nombre)  = ?', [$key])
+                    ->orWhereRaw('LOWER(simbolo) = ?', [$key])
+                )
                 ->first();
 
-            // Símbolo no encontrado → fallback a unidad por defecto + advertencia
             if (! $unidad) {
-                $this->errores[] = "Advertencia: unidad '{$simbolo}' no existe. Se usó la unidad por defecto.";
+                $this->errores[] = "Advertencia: unidad '{$raw}' no encontrada. Se usó la unidad por defecto.";
                 $this->unidadesCache[$key] = $this->unidadDefault();
             } else {
                 $this->unidadesCache[$key] = $unidad->id;

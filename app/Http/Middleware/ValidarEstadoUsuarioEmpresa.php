@@ -39,7 +39,11 @@ class ValidarEstadoUsuarioEmpresa
         }
 
         if ($empresa) {
-            app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($empresa->id);
+            $registrar = app(\Spatie\Permission\PermissionRegistrar::class);
+            // Clave de caché única por empresa — evita que distintos tenants
+            // compartan la misma entrada de caché de Spatie.
+            $registrar->cacheKey = config('permission.cache.key') . '.empresa.' . $empresa->id;
+            $registrar->setPermissionsTeamId($empresa->id);
         }
 
         return $next($request);
