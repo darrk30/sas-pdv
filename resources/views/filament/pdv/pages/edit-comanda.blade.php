@@ -426,7 +426,7 @@
 .ec-search-clear-icon { width: .85rem; height: .85rem; }
 
 /* Categorías */
-.ec-cats { display: flex; gap: .35rem; flex-wrap: nowrap; overflow-x: auto; padding-bottom: .1rem; scrollbar-width: none; }
+.ec-cats { display: flex; gap: .35rem; flex-wrap: nowrap; overflow-x: auto; padding-bottom: .1rem; scrollbar-width: none; margin-top: .5rem; margin-bottom: .5rem; }
 .ec-cats::-webkit-scrollbar { display: none; }
 .ec-cat { flex-shrink: 0; padding: .3rem .75rem; border-radius: 999px; border: 1.5px solid var(--ec-border, #d1d5db); background: transparent; font-size: .78rem; font-weight: 500; cursor: pointer; color: var(--ec-muted, #6b7280); transition: all .12s; white-space: nowrap; }
 .ec-cat:hover { border-color: #46449e; color: #46449e; }

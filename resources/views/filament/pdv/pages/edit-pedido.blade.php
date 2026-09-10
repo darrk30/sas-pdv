@@ -85,10 +85,10 @@
                             <div class="pdv-comanda-chips" x-show="(area.nuevos && area.nuevos.length) || (area.cancelados && area.cancelados.length)" style="display:flex">
                                 <span class="pdv-comanda-chip pdv-comanda-chip--nuevo"
                                     x-show="area.nuevos && area.nuevos.length"
-                                    x-text="'+' + (area.nuevos ? area.nuevos.length : 0) + ' agregar'"></span>
+                                    x-text="'+' + (area.nuevos ? area.nuevos.reduce((s,i)=>s+i.cant,0) : 0) + ' agregar'"></span>
                                 <span class="pdv-comanda-chip pdv-comanda-chip--quitar"
                                     x-show="area.cancelados && area.cancelados.length"
-                                    x-text="'-' + (area.cancelados ? area.cancelados.length : 0) + ' quitar'"></span>
+                                    x-text="'-' + (area.cancelados ? area.cancelados.reduce((s,i)=>s+i.cant,0) : 0) + ' quitar'"></span>
                             </div>
 
                             {{-- Iframe de la comanda --}}

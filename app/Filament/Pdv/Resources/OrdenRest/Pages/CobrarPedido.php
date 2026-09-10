@@ -229,14 +229,12 @@ class CobrarPedido extends Page
         $totalAcumulado = collect($this->pagosAgregados)->sum('monto');
         $pendiente      = max(0, $this->getTotalConDescuento() - $totalAcumulado);
 
-        if ($monto > $pendiente + 0.01) {
-            $monto = $pendiente;
-        }
-
-        if ($monto <= 0) return;
+        // Si la cuenta ya está cubierta no se agrega más
+        if ($pendiente <= 0) return;
 
         $metodo = MetodoPago::find($this->metodoPagoId);
 
+        // Se guarda el monto real entregado (puede ser mayor al pendiente → genera vuelto)
         $this->pagosAgregados[] = [
             'metodo_pago_id' => $this->metodoPagoId,
             'nombre'         => $metodo?->nombre ?? 'Pago',
@@ -244,7 +242,8 @@ class CobrarPedido extends Page
             'referencia'     => $this->pagoReferencia,
         ];
 
-        $this->montoPagoInput = number_format(max(0, $pendiente - $monto), 2, '.', '');
+        // Input queda en lo que aún falta (0 si ya se cubrió o hubo vuelto)
+        $this->montoPagoInput = number_format(max(0, $this->getTotalConDescuento() - ($totalAcumulado + $monto)), 2, '.', '');
         $this->pagoReferencia = '';
     }
 
@@ -289,37 +288,23 @@ class CobrarPedido extends Page
         $totalDescuento = $this->getTotalConDescuento();
         $pagosLista     = $this->pagosAgregados;
 
-        // Si no hay pagos agregados, usar el input actual como único pago
         if (empty($pagosLista)) {
-            $montoPago = (float) $this->montoPagoInput;
-            if (! $this->metodoPagoId) {
-                Notification::make()->title('Selecciona un método de pago')->warning()->send();
-                return;
-            }
-            if ($montoPago < $totalDescuento - 0.01) {
-                Notification::make()
-                    ->title('Monto insuficiente')
-                    ->body('Total: S/ ' . number_format($totalDescuento, 2))
-                    ->warning()
-                    ->send();
-                return;
-            }
-            $pagosLista = [[
-                'metodo_pago_id' => $this->metodoPagoId,
-                'monto'          => min($montoPago, $totalDescuento),
-                'referencia'     => $this->pagoReferencia,
-                'condicion_pago' => 'contado',
-            ]];
-        } else {
-            $totalPagado = collect($pagosLista)->sum('monto');
-            if ($totalPagado < $totalDescuento - 0.01) {
-                Notification::make()
-                    ->title('Monto insuficiente')
-                    ->body('Total: S/ ' . number_format($totalDescuento, 2) . ' — Pagado: S/ ' . number_format($totalPagado, 2))
-                    ->warning()
-                    ->send();
-                return;
-            }
+            Notification::make()
+                ->title('Agrega el pago primero')
+                ->body('Ingresa el monto y haz clic en "Agregar" antes de confirmar el cobro.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $totalPagado = collect($pagosLista)->sum('monto');
+        if ($totalPagado < $totalDescuento - 0.01) {
+            Notification::make()
+                ->title('Monto insuficiente')
+                ->body('Total: S/ ' . number_format($totalDescuento, 2) . ' — Pagado: S/ ' . number_format($totalPagado, 2))
+                ->warning()
+                ->send();
+            return;
         }
 
         $sesionActiva = SesionCaja::where('empresa_id', $empresaId)

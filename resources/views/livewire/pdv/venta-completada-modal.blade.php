@@ -52,7 +52,7 @@
                 id="pdv-ticket-frame"
                 src="{{ route('pdv.ticket.venta', $ventaId) }}"
                 style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;border:0;"
-                @load="iframeLoaded = true; if (autoImprimir) $nextTick(() => imprimir())"
+                @load="iframeLoaded = true"
             ></iframe>
 
             {{-- Botón imprimir --}}

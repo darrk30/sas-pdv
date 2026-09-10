@@ -114,11 +114,22 @@ class ImpresionDirectaService
             $itemsPorArea[$areaKey]['mesa_nombre']  = $mesaNombre;
             $itemsPorArea[$areaKey]['piso_nombre']  = $pisoNombre;
             $itemsPorArea[$areaKey]['cancelados']   = $itemsPorArea[$areaKey]['cancelados'] ?? [];
-            $itemsPorArea[$areaKey]['nuevos'][]     = [
-                'cant'   => (int) $detalle->cantidad,
-                'nombre' => $detalle->descripcion ?? $detalle->producto?->nombre ?? '—',
-                'nota'   => $detalle->notas_item ?? null,
-            ];
+            $delta   = (float) $detalle->cantidad - (float) $detalle->cantidad_enviada_cocina;
+            $nombre  = $detalle->descripcion ?? $detalle->producto?->nombre ?? '—';
+            $nota    = $detalle->notas_item ?? null;
+            if ($delta > 0) {
+                $itemsPorArea[$areaKey]['nuevos'][] = [
+                    'cant'   => (int) $delta,
+                    'nombre' => $nombre,
+                    'nota'   => $nota,
+                ];
+            } elseif ($delta < 0) {
+                $itemsPorArea[$areaKey]['cancelados'][] = [
+                    'cant'   => (int) abs($delta),
+                    'nombre' => $nombre,
+                    'nota'   => $nota,
+                ];
+            }
         }
 
         foreach ($itemsPorArea as $areaData) {

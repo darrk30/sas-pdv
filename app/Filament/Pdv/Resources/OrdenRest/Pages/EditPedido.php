@@ -13,6 +13,7 @@ use App\Services\ImpresionDirectaService;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\DB;
 use Filament\Schemas\Schema;
 use Livewire\Attributes\On;
 
@@ -181,6 +182,7 @@ class EditPedido extends EditRecord
             'igv'            => $calc['igv'],
             'total'          => $calc['total'],
             'costo_total'    => $calc['costoTotal'],
+            'enviado_cocina' => false, // requiere envío explícito a cocina
         ]);
 
         $this->record->recalcularTotales();
@@ -208,6 +210,7 @@ class EditPedido extends EditRecord
             'igv'            => $calc['igv'],
             'total'          => $calc['total'],
             'costo_total'    => $calc['costoTotal'],
+            'enviado_cocina' => false, // requiere envío explícito a cocina
         ]);
 
         $this->record->recalcularTotales();
@@ -251,6 +254,7 @@ class EditPedido extends EditRecord
             'igv'            => $calc['igv'],
             'total'          => $calc['total'],
             'costo_total'    => $calc['costoTotal'],
+            'enviado_cocina' => false, // requiere envío explícito a cocina
         ]);
 
         $this->record->recalcularTotales();
@@ -274,84 +278,91 @@ class EditPedido extends EditRecord
 
         $config = $empresa->cachedConfigImpresion();
 
+        // Impresión directa (si está habilitada) — no excluye el modal browser
         if ($config['tiene_impresion_directa']) {
-            // Enviar productos nuevos
             if ($tieneNuevos) {
                 app(ImpresionDirectaService::class)->imprimirComandaOrden($orden, $empresa);
-                $orden->detalles()->where('enviado_cocina', false)->update(['enviado_cocina' => true]);
             }
-
-            // Enviar productos eliminados
             if ($tieneEliminados) {
                 app(ImpresionDirectaService::class)->imprimirEliminados($orden, $empresa, $this->eliminadosEnSesion);
-                $this->eliminadosEnSesion = [];
             }
+        }
 
-            Notification::make()->title('Actualización enviada a cocina ✓')->success()->send();
-        } else {
-            // Agrupar por área ANTES de marcar/limpiar para la comanda browser
-            $itemsPorArea = [];
+        // Agrupar por área para el modal browser
+        $itemsPorArea = [];
 
-            if ($tieneNuevos) {
-                $nuevosDets = $orden->detalles()
-                    ->where('enviado_cocina', false)
-                    ->with('producto.produccion')
-                    ->get();
+        if ($tieneNuevos) {
+            $nuevosDets = $orden->detalles()
+                ->where('enviado_cocina', false)
+                ->with('producto.produccion')
+                ->get();
 
-                foreach ($nuevosDets as $d) {
-                    $produccion = $d->producto?->produccion;
-                    if (! $produccion) continue;
-                    $key    = 'a' . $produccion->id;
-                    $nombre = $produccion->nombre;
-                    if (! isset($itemsPorArea[$key])) {
-                        $itemsPorArea[$key] = ['nombre' => $nombre, 'nuevos' => [], 'cancelados' => []];
-                    }
+            foreach ($nuevosDets as $d) {
+                $produccion = $d->producto?->produccion;
+                if (! $produccion) continue;
+                $key    = 'a' . $produccion->id;
+                $nombre = $produccion->nombre;
+                if (! isset($itemsPorArea[$key])) {
+                    $itemsPorArea[$key] = ['nombre' => $nombre, 'nuevos' => [], 'cancelados' => []];
+                }
+                $delta = (float) $d->cantidad - (float) $d->cantidad_enviada_cocina;
+                if ($delta > 0) {
                     $itemsPorArea[$key]['nuevos'][] = [
-                        'cant'   => (int) $d->cantidad,
+                        'cant'   => (int) $delta,
+                        'nombre' => $d->descripcion ?? '—',
+                        'nota'   => $d->notas_item ?? '',
+                    ];
+                } elseif ($delta < 0) {
+                    $itemsPorArea[$key]['cancelados'][] = [
+                        'cant'   => (int) abs($delta),
                         'nombre' => $d->descripcion ?? '—',
                         'nota'   => $d->notas_item ?? '',
                     ];
                 }
-                $orden->detalles()->where('enviado_cocina', false)->update(['enviado_cocina' => true]);
             }
-
-            foreach ($this->eliminadosEnSesion as $item) {
-                $pid = $item['produccion_id'] ?? null;
-                if (! $pid) continue;
-                $key    = 'a' . $pid;
-                $nombre = $item['produccion_nombre'] ?: 'Área';
-                if (! isset($itemsPorArea[$key])) {
-                    $itemsPorArea[$key] = ['nombre' => $nombre, 'nuevos' => [], 'cancelados' => []];
-                }
-                $itemsPorArea[$key]['cancelados'][] = [
-                    'cant'   => $item['cantidad'],
-                    'nombre' => $item['nombre'],
-                    'nota'   => '',
-                ];
-            }
-            $this->eliminadosEnSesion = [];
-
-            $areas = array_values($itemsPorArea);
-            if (! empty($areas)) {
-                $this->lastComandaData = [
-                    'ordenId'   => $orden->id,
-                    'areasJson' => json_encode($areas),
-                    'mesa'      => $orden->mesa?->nombre ?? '',
-                    'cajero'    => auth()->user()->name,
-                    'parcial'   => true,
-                ];
-                $this->dispatch('cerrar-carrito');
-                $this->dispatch('imprimir-comanda-browser',
-                    ordenId:   $orden->id,
-                    areasJson: json_encode($areas),
-                    mesa:      $orden->mesa?->nombre ?? '',
-                    cajero:    auth()->user()->name,
-                    parcial:   true,
-                );
-            }
-
-            Notification::make()->title('Pedido actualizado')->success()->send();
+            // Marcar como enviados y guardar la cantidad enviada para futuros deltas
+            $orden->detalles()->where('enviado_cocina', false)->update([
+                'enviado_cocina'          => true,
+                'cantidad_enviada_cocina' => \Illuminate\Support\Facades\DB::raw('cantidad'),
+            ]);
         }
+
+        foreach ($this->eliminadosEnSesion as $item) {
+            $pid = $item['produccion_id'] ?? null;
+            if (! $pid) continue;
+            $key    = 'a' . $pid;
+            $nombre = $item['produccion_nombre'] ?: 'Área';
+            if (! isset($itemsPorArea[$key])) {
+                $itemsPorArea[$key] = ['nombre' => $nombre, 'nuevos' => [], 'cancelados' => []];
+            }
+            $itemsPorArea[$key]['cancelados'][] = [
+                'cant'   => $item['cantidad'],
+                'nombre' => $item['nombre'],
+                'nota'   => '',
+            ];
+        }
+        $this->eliminadosEnSesion = [];
+
+        $areas = array_values($itemsPorArea);
+        if (! empty($areas)) {
+            $this->lastComandaData = [
+                'ordenId'   => $orden->id,
+                'areasJson' => json_encode($areas),
+                'mesa'      => $orden->mesa?->nombre ?? '',
+                'cajero'    => auth()->user()->name,
+                'parcial'   => true,
+            ];
+            $this->dispatch('cerrar-carrito');
+            $this->dispatch('imprimir-comanda-browser',
+                ordenId:   $orden->id,
+                areasJson: json_encode($areas),
+                mesa:      $orden->mesa?->nombre ?? '',
+                cajero:    auth()->user()->name,
+                parcial:   true,
+            );
+        }
+
+        Notification::make()->title('Pedido actualizado')->success()->send();
 
         $this->record->refresh();
     }
@@ -387,8 +398,7 @@ class EditPedido extends EditRecord
 
         Notification::make()->title('Pedido anulado')->success()->send();
 
-        $config = $empresa->cachedConfigImpresion();
-        if (! $config['tiene_impresion_directa'] && ! empty($areas)) {
+        if (! empty($areas)) {
             $this->pendingRedirectAfterComanda = true;
             $this->lastComandaData = [
                 'ordenId'   => $orden->id,

@@ -262,67 +262,62 @@ class NuevoPedido extends Page
         // Enviar a cocina
         $config = $empresa->cachedConfigImpresion();
 
+        // Impresión directa (si está habilitada en el plan) — no excluye el modal browser
         if ($config['tiene_impresion_directa']) {
             app(ImpresionDirectaService::class)->imprimirComandaOrden($orden, $empresa);
-            $orden->detalles()->update(['enviado_cocina' => true]);
+        }
 
+        $orden->detalles()->update([
+            'enviado_cocina'          => true,
+            'cantidad_enviada_cocina' => \Illuminate\Support\Facades\DB::raw('cantidad'),
+        ]);
+
+        // Agrupar por área de producción para el modal browser
+        $orden->loadMissing(['detalles.producto.produccion']);
+        $itemsPorArea = [];
+        foreach ($orden->detalles as $det) {
+            $produccion = $det->producto?->produccion;
+            if (! $produccion) continue;
+            $key    = 'a' . $produccion->id;
+            $nombre = $produccion->nombre;
+            if (! isset($itemsPorArea[$key])) {
+                $itemsPorArea[$key] = ['nombre' => $nombre, 'nuevos' => [], 'cancelados' => []];
+            }
+            $itemsPorArea[$key]['nuevos'][] = [
+                'cant'   => (int) $det->cantidad,
+                'nombre' => $det->descripcion ?? '—',
+                'nota'   => $det->notas_item ?? '',
+            ];
+        }
+        $areas = array_values($itemsPorArea);
+
+        // Sin áreas de producción → redirigir directo al mapa
+        if (empty($areas)) {
             Notification::make()
                 ->title('Pedido enviado ✓')
                 ->body("Mesa {$mesa->nombre} — pedido registrado.")
                 ->success()
                 ->send();
-
             $this->redirect(MapaMesasPage::getUrl(tenant: $empresa));
-        } else {
-            $orden->detalles()->update(['enviado_cocina' => true]);
-
-            // Agrupar por área de producción para el modal browser
-            $orden->loadMissing(['detalles.producto.produccion']);
-            $itemsPorArea = [];
-            foreach ($orden->detalles as $det) {
-                $produccion = $det->producto?->produccion;
-                if (! $produccion) continue;
-                $key    = 'a' . $produccion->id;
-                $nombre = $produccion->nombre;
-                if (! isset($itemsPorArea[$key])) {
-                    $itemsPorArea[$key] = ['nombre' => $nombre, 'nuevos' => [], 'cancelados' => []];
-                }
-                $itemsPorArea[$key]['nuevos'][] = [
-                    'cant'   => (int) $det->cantidad,
-                    'nombre' => $det->descripcion ?? '—',
-                    'nota'   => $det->notas_item ?? '',
-                ];
-            }
-            $areas = array_values($itemsPorArea);
-
-            // Si ningún producto tiene área asignada, redirigir directo al mapa
-            if (empty($areas)) {
-                Notification::make()
-                    ->title('Pedido enviado ✓')
-                    ->body("Mesa {$mesa->nombre} — pedido registrado.")
-                    ->success()
-                    ->send();
-                $this->redirect(MapaMesasPage::getUrl(tenant: $empresa));
-                return;
-            }
-
-            $this->lastComandaData = [
-                'ordenId'   => $orden->id,
-                'areasJson' => json_encode($areas),
-                'mesa'      => $mesa->nombre,
-                'cajero'    => auth()->user()->name,
-                'parcial'   => false,
-            ];
-            $this->dispatch('cerrar-carrito');
-            $this->dispatch('imprimir-comanda-browser',
-                ordenId:   $orden->id,
-                areasJson: json_encode($areas),
-                mesa:      $mesa->nombre,
-                cajero:    auth()->user()->name,
-                parcial:   false,
-            );
-            // onComandaModalCerrada() hará el redirect al mapa
+            return;
         }
+
+        $this->lastComandaData = [
+            'ordenId'   => $orden->id,
+            'areasJson' => json_encode($areas),
+            'mesa'      => $mesa->nombre,
+            'cajero'    => auth()->user()->name,
+            'parcial'   => false,
+        ];
+        $this->dispatch('cerrar-carrito');
+        $this->dispatch('imprimir-comanda-browser',
+            ordenId:   $orden->id,
+            areasJson: json_encode($areas),
+            mesa:      $mesa->nombre,
+            cajero:    auth()->user()->name,
+            parcial:   false,
+        );
+        // onComandaModalCerrada() hará el redirect al mapa
     }
 
     public function reenviarComanda(): void

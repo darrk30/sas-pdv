@@ -8,8 +8,8 @@
     $series   = $this->getSeries();
     $metodos  = $this->getMetodosPago();
     $totalDesc = $this->getTotalConDescuento();
-    $totalPag  = collect($pagosAgregados)->sum('monto') + (float) $montoPagoInput;
-    $vuelto    = max(0, $totalPag - $totalDesc);
+    $totalPagado = collect($pagosAgregados)->sum('monto');
+    $vuelto      = max(0, $totalPagado - $totalDesc);
     $metodoActual = $metodos->firstWhere('id', $metodoPagoId);
     $requiereRef  = (bool) ($metodoActual?->requiere_referencia ?? false);
     $empresa  = \Filament\Facades\Filament::getTenant();
@@ -203,6 +203,13 @@
                     </button>
                 </div>
 
+                @if(empty($pagosAgregados))
+                <p class="cobrar-pago-hint">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:.8rem;height:.8rem;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+                    Haz clic en <strong>Agregar</strong> para registrar el pago antes de confirmar
+                </p>
+                @endif
+
                 @if($requiereRef)
                 <div style="margin-top:.5rem;">
                     <input type="text" wire:model="pagoReferencia" class="pdv-form-input" placeholder="Referencia / N° operación" />
@@ -226,20 +233,23 @@
                 <div class="cobrar-resumen">
                     @if(! empty($pagosAgregados))
                     <div class="cobrar-resumen__fila">
-                        <span>Pagado hasta ahora</span>
-                        <span>S/ {{ number_format(collect($pagosAgregados)->sum('monto'), 2) }}</span>
+                        <span>Pagado</span>
+                        <span>S/ {{ number_format($totalPagado, 2) }}</span>
                     </div>
                     @endif
-                    <div class="cobrar-resumen__fila cobrar-resumen__fila--total">
-                        <span>Total a cobrar</span>
-                        <span>S/ {{ number_format($totalDesc, 2) }}</span>
+
+                    <div class="cobrar-totales-row">
+                        @if($vuelto > 0.005)
+                        <div class="cobrar-vuelto-box">
+                            <div class="cobrar-vuelto-box__label">Vuelto</div>
+                            <div class="cobrar-vuelto-box__valor">S/ {{ number_format($vuelto, 2) }}</div>
+                        </div>
+                        @endif
+                        <div class="cobrar-total-box {{ $vuelto <= 0.005 ? 'cobrar-total-box--solo' : '' }}">
+                            <div class="cobrar-total-box__label">Total a cobrar</div>
+                            <div class="cobrar-total-box__valor">S/ {{ number_format($totalDesc, 2) }}</div>
+                        </div>
                     </div>
-                    @if($vuelto > 0.005)
-                    <div class="cobrar-resumen__fila cobrar-resumen__fila--vuelto">
-                        <span>Vuelto</span>
-                        <span>S/ {{ number_format($vuelto, 2) }}</span>
-                    </div>
-                    @endif
                 </div>
 
             </div>{{-- /cobrar-card --}}
@@ -391,10 +401,69 @@
     color: var(--pdv-text-muted, #64748b);
 }
 .cobrar-resumen__fila span:last-child { font-weight: 600; color: var(--pdv-text, #1e293b); }
-.cobrar-resumen__fila--total { font-weight: 600; color: var(--pdv-text, #0f172a); }
-.cobrar-resumen__fila--total span { color: var(--pdv-text, #0f172a) !important; font-weight: 700; }
-.cobrar-resumen__fila--vuelto { color: #16a34a; font-weight: 700; font-size: .9rem; }
-.cobrar-resumen__fila--vuelto span { color: #16a34a !important; }
+
+/* ── Fila total + vuelto ─────────────────────────────────────────────── */
+.cobrar-totales-row {
+    display: flex; gap: .5rem; align-items: stretch;
+    margin-top: .5rem;
+}
+
+/* ── Total a cobrar (verde, derecha) ─────────────────────────────────── */
+.cobrar-total-box {
+    flex: 1;
+    background: #f0fdf4;
+    border: 2px solid #16a34a;
+    border-radius: .5rem;
+    padding: .65rem .75rem;
+    text-align: center;
+}
+.cobrar-total-box--solo { flex: 1; }
+.dark .cobrar-total-box { background: #14532d40; border-color: #22c55e; }
+.cobrar-total-box__label {
+    font-size: .65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: #16a34a; margin-bottom: .1rem;
+}
+.dark .cobrar-total-box__label { color: #4ade80; }
+.cobrar-total-box__valor {
+    font-size: 1.75rem; font-weight: 800; line-height: 1.15;
+    color: #15803d;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+}
+.dark .cobrar-total-box__valor { color: #4ade80; }
+
+/* ── Vuelto (naranja, izquierda) ─────────────────────────────────────── */
+.cobrar-vuelto-box {
+    flex: 1;
+    background: #fff7ed;
+    border: 2px solid #f97316;
+    border-radius: .5rem;
+    padding: .65rem .75rem;
+    text-align: center;
+}
+.dark .cobrar-vuelto-box { background: #7c2d1240; border-color: #fb923c; }
+.cobrar-vuelto-box__label {
+    font-size: .65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: #f97316; margin-bottom: .1rem;
+}
+.dark .cobrar-vuelto-box__label { color: #fb923c; }
+.cobrar-vuelto-box__valor {
+    font-size: 1.75rem; font-weight: 800; line-height: 1.15;
+    color: #c2410c;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+}
+.dark .cobrar-vuelto-box__valor { color: #fb923c; }
+
+/* ── Hint agregar pago ───────────────────────────────────────────────── */
+.cobrar-pago-hint {
+    display: flex; align-items: center; gap: .3rem;
+    font-size: .75rem; color: #92400e;
+    background: #fef3c7; border: 1px solid #fcd34d;
+    border-radius: .35rem; padding: .35rem .6rem;
+    margin-top: .4rem;
+}
+.dark .cobrar-pago-hint { color: #fde68a; background: #78350f40; border-color: #92400e; }
 
 /* ── Botón volver ────────────────────────────────────────────────────── */
 .mm-btn {
