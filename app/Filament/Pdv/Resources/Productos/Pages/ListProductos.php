@@ -3,21 +3,22 @@
 namespace App\Filament\Pdv\Resources\Productos\Pages;
 
 use App\Filament\Pdv\Resources\Productos\ProductoResource;
+use App\Services\ProductoExcelTemplateService;
 use App\Services\ProductoExportService;
 use App\Services\ProductoImportService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
-use Illuminate\Support\HtmlString;
+use Filament\Schemas\Components\Actions as FormActions;
+use Filament\Schemas\Components\Utilities\Get;
 use Livewire\Attributes\On;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ListProductos extends ListRecords
 {
@@ -98,33 +99,35 @@ class ListProductos extends ListRecords
                             ->live()
                             ->required(),
 
-                        Placeholder::make('link_plantilla_nuevos')
-                            ->label('')
-                            ->content(fn () => new HtmlString(
-                                '<a href="' . route('productos.plantilla', ['tipo' => 'nuevos']) . '" target="_blank"
-                                    style="display:inline-flex;align-items:center;gap:6px;font-size:0.875rem;color:#2563eb;font-weight:500;text-decoration:none;"
-                                    onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                                    </svg>
-                                    Descargar plantilla para nuevos productos
-                                </a>'
-                            ))
-                            ->visible(fn (Get $get) => $get('tipo') === 'nuevos'),
+                        FormActions::make([
+                            Action::make('descargar_plantilla_nuevos')
+                                ->label('Descargar plantilla — nuevos productos')
+                                ->icon('heroicon-o-arrow-down-tray')
+                                ->color('info')
+                                ->action(function (): StreamedResponse {
+                                    $s = app(ProductoExcelTemplateService::class)->generarPlantillaNuevos();
+                                    $n = 'plantilla-productos-nuevos.xlsx';
+                                    return response()->streamDownload(fn () => (new Xlsx($s))->save('php://output'), $n, [
+                                        'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                        'Content-Disposition' => "attachment; filename=\"{$n}\"",
+                                    ]);
+                                })
+                                ->visible(fn (Get $get) => $get('tipo') === 'nuevos'),
 
-                        Placeholder::make('link_plantilla_actualizar')
-                            ->label('')
-                            ->content(fn () => new HtmlString(
-                                '<a href="' . route('productos.plantilla', ['tipo' => 'actualizar']) . '" target="_blank"
-                                    style="display:inline-flex;align-items:center;gap:6px;font-size:0.875rem;color:#2563eb;font-weight:500;text-decoration:none;"
-                                    onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                                    </svg>
-                                    Descargar plantilla para actualizar productos
-                                </a>'
-                            ))
-                            ->visible(fn (Get $get) => $get('tipo') === 'actualizar'),
+                            Action::make('descargar_plantilla_actualizar')
+                                ->label('Descargar plantilla — actualizar productos')
+                                ->icon('heroicon-o-arrow-down-tray')
+                                ->color('info')
+                                ->action(function (): StreamedResponse {
+                                    $s = app(ProductoExcelTemplateService::class)->generarPlantillaActualizar();
+                                    $n = 'plantilla-productos-actualizar.xlsx';
+                                    return response()->streamDownload(fn () => (new Xlsx($s))->save('php://output'), $n, [
+                                        'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                        'Content-Disposition' => "attachment; filename=\"{$n}\"",
+                                    ]);
+                                })
+                                ->visible(fn (Get $get) => $get('tipo') === 'actualizar'),
+                        ]),
 
                         FileUpload::make('archivo')
                             ->label('Archivo Excel (.xlsx)')
@@ -167,18 +170,20 @@ class ListProductos extends ListRecords
                     ->label('Actualizar Precios')
                     ->icon('heroicon-o-currency-dollar')
                     ->form([
-                        Placeholder::make('link_plantilla_precios')
-                            ->label('')
-                            ->content(fn () => new HtmlString(
-                                '<a href="' . route('productos.plantilla', ['tipo' => 'precios']) . '" target="_blank"
-                                    style="display:inline-flex;align-items:center;gap:6px;font-size:0.875rem;color:#2563eb;font-weight:500;text-decoration:none;"
-                                    onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                                    </svg>
-                                    Descargar plantilla de actualización de precios
-                                </a>'
-                            )),
+                        FormActions::make([
+                            Action::make('descargar_plantilla_precios')
+                                ->label('Descargar plantilla de precios')
+                                ->icon('heroicon-o-arrow-down-tray')
+                                ->color('info')
+                                ->action(function (): StreamedResponse {
+                                    $s = app(ProductoExcelTemplateService::class)->generarPlantillaPrecios();
+                                    $n = 'plantilla-productos-precios.xlsx';
+                                    return response()->streamDownload(fn () => (new Xlsx($s))->save('php://output'), $n, [
+                                        'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                        'Content-Disposition' => "attachment; filename=\"{$n}\"",
+                                    ]);
+                                }),
+                        ]),
 
                         FileUpload::make('archivo')
                             ->label('Archivo Excel (.xlsx)')
