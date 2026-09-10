@@ -43,7 +43,7 @@ class UserForm
                     ->schema([
                         Select::make('roles')
                             ->label('Roles')
-                            ->relationship('roles', 'name', fn ($query) => $query->whereNull('empresa_id'))
+                            ->relationship('roles', 'name', fn ($query) => $query->whereNull('roles.empresa_id'))
                             ->multiple()
                             ->preload()
                             ->required(),
