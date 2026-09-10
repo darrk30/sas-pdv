@@ -3,11 +3,13 @@
 namespace App\Filament\Pdv\Resources\Productos\Pages;
 
 use App\Filament\Pdv\Resources\Productos\ProductoResource;
+use App\Services\ProductoExportService;
 use App\Services\ProductoImportService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
@@ -70,6 +72,14 @@ class ListProductos extends ListRecords
     {
         return [
             CreateAction::make(),
+
+            Action::make('exportar_productos')
+                ->label('Exportar Excel')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success')
+                ->action(function (): StreamedResponse {
+                    return app(ProductoExportService::class)->exportar(Filament::getTenant());
+                }),
 
             ActionGroup::make([
 

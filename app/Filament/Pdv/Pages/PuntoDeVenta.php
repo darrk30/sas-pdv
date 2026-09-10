@@ -152,9 +152,11 @@ class PuntoDeVenta extends Page
 
     // ── Series ────────────────────────────────────────────────────────────────
 
+    private ?Collection $seriesCache = null;
+
     public function getSeries(): Collection
     {
-        return Serie::where('empresa_id', Filament::getTenant()->id)
+        return $this->seriesCache ??= Serie::where('empresa_id', Filament::getTenant()->id)
             ->where('estado', true)
             ->whereIn('tipo', [
                 TipoComprobante::Factura->value,
@@ -1393,15 +1395,26 @@ class PuntoDeVenta extends Page
                     'despacho_direccion'  => $despachoRequerido && $despachoDireccion !== '' ? $despachoDireccion : null,
                 ]);
 
+                // Pre-cargar productos y variantes en batch para evitar N+1 dentro del loop
+                $productoIds = collect($carrito)->where('tipo', 'producto')->pluck('id')->unique()->all();
+                $varianteIds = collect($carrito)->where('tipo', 'variante')->pluck('id')->unique()->all();
+
+                $productosMap = $productoIds
+                    ? Producto::with('unidadMedida')->whereIn('id', $productoIds)->get()->keyBy('id')
+                    : collect();
+                $variantesMap = $varianteIds
+                    ? Variante::with('producto.unidadMedida')->whereIn('id', $varianteIds)->get()->keyBy('id')
+                    : collect();
+
                 $costoTotalVenta = 0.0;
 
                 foreach ($carrito as $item) {
                     $variante = $item['tipo'] === 'variante'
-                        ? Variante::with('producto')->find($item['id'])
+                        ? $variantesMap->get($item['id'])
                         : null;
 
                     $costoUnitario = match ($item['tipo']) {
-                        'producto' => (float) (Producto::find($item['id'])?->precio_costo ?? 0),
+                        'producto' => (float) ($productosMap->get($item['id'])?->precio_costo ?? 0),
                         'variante' => (float) ($variante?->precio_costo ?? $variante?->producto?->precio_costo ?? 0),
                         default    => 0.0,
                     };
@@ -1505,17 +1518,31 @@ class PuntoDeVenta extends Page
                 $kardex  = app(KardexService::class);
                 $concepto = $serie->serie . '-' . $correlativo;
 
+                // Batch-cargar inventarios con lockForUpdate antes del loop para evitar N+1
+                // Los locks se adquieren aquí, dentro de la transacción, de forma segura
+                $inventariosProducto = $productoIds
+                    ? Inventario::where('empresa_id', $empresaId)
+                        ->whereIn('producto_id', $productoIds)
+                        ->whereNull('variante_id')
+                        ->lockForUpdate()
+                        ->get()
+                        ->keyBy('producto_id')
+                    : collect();
+                $inventariosVariante = $varianteIds
+                    ? Inventario::where('empresa_id', $empresaId)
+                        ->whereIn('variante_id', $varianteIds)
+                        ->lockForUpdate()
+                        ->get()
+                        ->keyBy('variante_id')
+                    : collect();
+
                 foreach ($carrito as $item) {
                     $cantidad = (float) $item['cantidad'];
 
                     if ($item['tipo'] === 'producto') {
-                        $producto = Producto::with('unidadMedida')->find($item['id']);
+                        $producto = $productosMap->get($item['id']);
                         if ($producto?->control_de_stock) {
-                            $inv = Inventario::where('empresa_id', $empresaId)
-                                ->where('producto_id', $item['id'])
-                                ->whereNull('variante_id')
-                                ->lockForUpdate()
-                                ->first();
+                            $inv = $inventariosProducto->get($item['id']);
                             if ($inv) {
                                 $stockAntes = (float) $inv->stock_real;
                                 if (! $producto->venta_sin_stock && $stockAntes < $cantidad) {
@@ -1551,15 +1578,11 @@ class PuntoDeVenta extends Page
                             }
                         }
                     } elseif ($item['tipo'] === 'variante') {
-                        $variante = Variante::find($item['id']);
+                        $variante = $variantesMap->get($item['id']);
                         if ($variante) {
-                            $prodVariante = Producto::with('unidadMedida')->find($variante->producto_id);
+                            $prodVariante = $variante->producto;
                             if ($prodVariante?->control_de_stock) {
-                                $inv = Inventario::where('empresa_id', $empresaId)
-                                    ->where('producto_id', $variante->producto_id)
-                                    ->where('variante_id', $item['id'])
-                                    ->lockForUpdate()
-                                    ->first();
+                                $inv = $inventariosVariante->get($item['id']);
                                 if ($inv) {
                                     $stockAntes = (float) $inv->stock_real;
                                     if (! $prodVariante->venta_sin_stock && $stockAntes < $cantidad) {

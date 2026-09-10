@@ -732,6 +732,12 @@ class Carrito extends Component
                 'notas_internas'   => $geoPartes ? implode(' / ', $geoPartes) : null,
             ]);
 
+            // Pre-cargar en batch para evitar N+1 dentro del loop de detalles
+            $rawPIds = collect($rawItems)->pluck('producto_id')->filter()->unique()->all();
+            $rawVIds = collect($rawItems)->pluck('variante_id')->filter()->unique()->all();
+            $rawProductosMap = $rawPIds ? Producto::whereIn('id', $rawPIds)->get()->keyBy('id') : collect();
+            $rawVariantesMap = $rawVIds ? Variante::whereIn('id', $rawVIds)->get()->keyBy('id') : collect();
+
             foreach ($rawItems as $raw) {
                 $esPromo = !empty($raw['promocion_id']);
                 $esVar   = !$esPromo && !empty($raw['variante_id']);
@@ -744,9 +750,9 @@ class Carrito extends Component
                         (float) ($pd->variante?->precio_costo ?? $pd->producto?->precio_costo ?? 0) * (float) $pd->cantidad
                     ) ?? 0);
                 } elseif ($esVar) {
-                    $costoUnitario = (float) (Variante::find($raw['variante_id'])?->precio_costo ?? 0);
+                    $costoUnitario = (float) ($rawVariantesMap->get($raw['variante_id'])?->precio_costo ?? 0);
                 } else {
-                    $costoUnitario = (float) (Producto::find($raw['producto_id'])?->precio_costo ?? 0);
+                    $costoUnitario = (float) ($rawProductosMap->get($raw['producto_id'])?->precio_costo ?? 0);
                 }
 
                 $calc = OrdenDetalle::calcular((float) $raw['cantidad'], (float) $raw['precio_unitario'], $costoUnitario);
@@ -966,6 +972,28 @@ class Carrito extends Component
     {
         $empresaId = $this->empresaId;
 
+        // Batch-cargar variantes, productos e inventarios para evitar N+1
+        $detVarIds  = $detalles->pluck('variante_id')->filter()->unique()->all();
+        $detProdIds = $detalles->pluck('producto_id')->filter()->unique()->all();
+
+        $detVariantesMap = $detVarIds
+            ? Variante::with('producto')->whereIn('id', $detVarIds)->get()->keyBy('id')
+            : collect();
+        $detProductosMap = $detProdIds
+            ? Producto::whereIn('id', $detProdIds)->get()->keyBy('id')
+            : collect();
+        $detInvVariante = $detVarIds
+            ? Inventario::where('empresa_id', $empresaId)
+                ->whereIn('variante_id', $detVarIds)
+                ->lockForUpdate()->get()->keyBy('variante_id')
+            : collect();
+        $detInvProducto = $detProdIds
+            ? Inventario::where('empresa_id', $empresaId)
+                ->whereIn('producto_id', $detProdIds)
+                ->whereNull('variante_id')
+                ->lockForUpdate()->get()->keyBy('producto_id')
+            : collect();
+
         foreach ($detalles as $det) {
             $cantidad = (float) ($det['cantidad'] ?? 1);
 
@@ -1014,13 +1042,10 @@ class Carrito extends Component
 
             // ── Variante ───────────────────────────────────────────
             } elseif (! empty($det['variante_id'])) {
-                $variante = Variante::with('producto')->find($det['variante_id']);
+                $variante = $detVariantesMap->get($det['variante_id']);
                 $prod = $variante?->producto;
                 if (! $prod?->control_de_stock) continue;
-                $inv = Inventario::where('empresa_id', $empresaId)
-                    ->where('producto_id', $variante->producto_id)
-                    ->where('variante_id', $det['variante_id'])
-                    ->lockForUpdate()->first();
+                $inv = $detInvVariante->get($det['variante_id']);
                 if (! $prod->venta_sin_stock) {
                     if (! $inv || (float) $inv->stock_reserva < $cantidad) {
                         throw new \RuntimeException("Sin stock disponible para \"{$det['nombre']}\".");
@@ -1030,12 +1055,9 @@ class Carrito extends Component
 
             // ── Producto simple ────────────────────────────────────
             } elseif (! empty($det['producto_id'])) {
-                $producto = Producto::find($det['producto_id']);
+                $producto = $detProductosMap->get($det['producto_id']);
                 if (! $producto?->control_de_stock) continue;
-                $inv = Inventario::where('empresa_id', $empresaId)
-                    ->where('producto_id', $det['producto_id'])
-                    ->whereNull('variante_id')
-                    ->lockForUpdate()->first();
+                $inv = $detInvProducto->get($det['producto_id']);
                 if (! $producto->venta_sin_stock) {
                     if (! $inv || (float) $inv->stock_reserva < $cantidad) {
                         throw new \RuntimeException("Sin stock disponible para \"{$det['nombre']}\".");
