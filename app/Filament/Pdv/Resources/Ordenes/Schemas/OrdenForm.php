@@ -39,7 +39,7 @@ class OrdenForm
 
                 // ── Cliente ───────────────────────────────────────────────
                 Section::make('Cliente')
-                    ->columns(2)
+                    ->columns(['default' => 1, 'md' => 2])
                     ->columnSpanFull()
                     ->schema([
 
@@ -192,7 +192,7 @@ class OrdenForm
 
                 // ── Entrega ───────────────────────────────────────────────
                 Section::make('Entrega')
-                    ->columns(2)
+                    ->columns(['default' => 1, 'md' => 2])
                     ->columnSpanFull()
                     ->schema([
 
@@ -281,11 +281,11 @@ class OrdenForm
                             ->mutateRelationshipDataBeforeCreateUsing(fn(array $data) => self::prepararDetalle($data))
                             ->mutateRelationshipDataBeforeSaveUsing(fn(array $data) => self::prepararDetalle($data))
                             ->table([
-                                TableColumn::make('Producto')->width('40%'),
-                                TableColumn::make('Cant.'),
-                                TableColumn::make('Precio unit.'),
-                                TableColumn::make('Descuento'),
-                                TableColumn::make('Total'),
+                                TableColumn::make('Producto / Variante'),
+                                TableColumn::make('Cant.')->width('15%'),
+                                TableColumn::make('Precio unit.')->width('15%'),
+                                TableColumn::make('Descuento')->width('15%'),
+                                TableColumn::make('Subtotal')->width('15%'),
                             ])
                             ->schema([
 
@@ -407,7 +407,6 @@ class OrdenForm
                                 TextInput::make('precio_unitario')
                                     ->label('Precio unit.')
                                     ->numeric()
-                                    ->prefix('S/')
                                     ->minValue(0)
                                     ->required()
                                     ->live(onBlur: true)
@@ -419,7 +418,6 @@ class OrdenForm
                                 TextInput::make('descuento')
                                     ->label('Descuento')
                                     ->numeric()
-                                    ->prefix('S/')
                                     ->default(0)
                                     ->minValue(0)
                                     ->live(onBlur: true)
@@ -430,7 +428,6 @@ class OrdenForm
 
                                 TextInput::make('total')
                                     ->label('Total')
-                                    ->prefix('S/')
                                     ->readOnly()
                                     ->numeric()
                                     ->default(0),
@@ -452,7 +449,7 @@ class OrdenForm
                 Section::make('Totales')
                     ->columnSpanFull()
                     ->schema([
-                        Grid::make(4)->schema([
+                        Grid::make(['default' => 1, 'md' => 2, 'lg' => 4])->schema([
                             TextInput::make('igv')
                                 ->label('IGV (18%)')
                                 ->prefix('S/')

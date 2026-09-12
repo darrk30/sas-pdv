@@ -18,7 +18,8 @@ class ProveedorForm
             ->components([
 
                 Section::make('Datos del proveedor')
-                    ->columns(2)
+                    ->columnSpanFull()
+                    ->columns(['default' => 1, 'md' => 6])
                     ->schema([
 
                         TextInput::make('nombre')
@@ -31,41 +32,48 @@ class ProveedorForm
                             ->label('Tipo de documento')
                             ->options(TipoDocumento::class)
                             ->required()
-                            ->native(false),
+                            ->native(false)
+                            ->columnSpan(['default' => 1, 'md' => 3]),
 
                         TextInput::make('numero_documento')
                             ->label('Número de documento')
                             ->required()
-                            ->maxLength(20),
+                            ->maxLength(20)
+                            ->columnSpan(['default' => 1, 'md' => 3]),
 
                         TextInput::make('correo')
                             ->label('Correo electrónico')
                             ->email()
                             ->nullable()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->columnSpan(['default' => 1, 'md' => 3]),
 
                         TextInput::make('telefono')
                             ->label('Teléfono')
                             ->tel()
                             ->nullable()
-                            ->maxLength(20),
+                            ->maxLength(20)
+                            ->columnSpan(['default' => 1, 'md' => 3]),
 
                         TextInput::make('direccion')
                             ->label('Dirección')
                             ->nullable()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->columnSpan(['default' => 1, 'md' => 2]),
 
                         TextInput::make('departamento')
                             ->label('Departamento')
                             ->nullable()
-                            ->maxLength(100),
+                            ->maxLength(100)
+                            ->columnSpan(['default' => 1, 'md' => 2]),
 
                         Select::make('estado')
                             ->label('Estado')
                             ->options(EstadoGeneral::class)
                             ->required()
                             ->native(false)
-                            ->default(EstadoGeneral::Activo->value),
+                            ->default(EstadoGeneral::Activo->value)
+                            ->columnSpan(['default' => 1, 'md' => 2]),
 
                     ]),
 

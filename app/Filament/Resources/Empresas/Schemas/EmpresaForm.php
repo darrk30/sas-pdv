@@ -315,6 +315,27 @@ class EmpresaForm
                                                 ->columnSpanFull(),
                                         ]),
 
+                                    // ── RESTAURANTE ──────────────────────────────────
+                                    Section::make('Restaurante')
+                                        ->icon('heroicon-o-building-storefront')
+                                        ->description('Pisos, mesas, comandas y envío de pedidos a cocina')
+                                        ->compact()->columnSpan(1)
+                                        ->schema([
+                                            Toggle::make('modulos_activos.restaurante')
+                                                ->label('Activar módulo completo')->onColor('success')->live()->default(false)->columnSpanFull()
+                                                ->afterStateUpdated(function (bool $state, Set $set) {
+                                                    foreach (['mesas','comandas'] as $s) {
+                                                        $set("modulos_activos.$s", $state);
+                                                    }
+                                                }),
+                                            Grid::make(2)->schema([
+                                                Toggle::make('modulos_activos.mesas')->label('Pisos y Mesas')->default(false)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('restaurante', ['mesas','comandas'], $get, $set)),
+                                                Toggle::make('modulos_activos.comandas')->label('Comandas')->default(false)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('restaurante', ['mesas','comandas'], $get, $set)),
+                                            ])->columnSpanFull(),
+                                        ]),
+
                                     // ── CONFIGURACIÓN ────────────────────────────────
                                     Section::make('Configuración')
                                         ->icon('heroicon-o-cog-6-tooth')

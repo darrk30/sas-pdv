@@ -95,6 +95,53 @@ class Promocion extends Model
     }
 
     /**
+     * Stock predictivo ajustado por carrito pendiente.
+     * Igual que stockPredictivo() pero descuenta las unidades ya en el carrito
+     * (tanto de la promo misma como de sus productos componentes).
+     *
+     * @param  array<string,float>  $pendienteResumen  p.e. ['producto_3'=>2, 'promocion_7'=>1]
+     */
+    public function stockPredictivoVisual(array $pendienteResumen): ?int
+    {
+        if (! $this->estaVigente()) {
+            return 0;
+        }
+
+        $max = PHP_INT_MAX;
+
+        // Límite por usos restantes, descontando promos pendientes en carrito
+        if ($this->limite_usos !== null) {
+            $pendientePromo = (int) ($pendienteResumen["promocion_{$this->id}"] ?? 0);
+            $max = min($max, max(0, $this->limite_usos - (int) $this->usos_actuales - $pendientePromo));
+        }
+
+        // Límite por inventario de cada ítem del combo, ajustado por pendiente
+        foreach ($this->detalles as $detalle) {
+            if ($detalle->variante_id) {
+                $producto   = $detalle->variante?->producto;
+                $inventario = $detalle->variante?->inventario;
+                $pendKey    = "variante_{$detalle->variante_id}";
+            } else {
+                $producto   = $detalle->producto;
+                $inventario = $detalle->producto?->inventario;
+                $pendKey    = "producto_{$detalle->producto_id}";
+            }
+
+            if (! $producto || ! $producto->control_de_stock || $producto->venta_sin_stock) {
+                continue;
+            }
+
+            $stockDB   = max(0.0, (float) ($inventario?->stock_reserva ?? 0));
+            $pendiente = (float) ($pendienteResumen[$pendKey] ?? 0);
+            $stockDisp = max(0.0, $stockDB - $pendiente);
+            $necesario = max(0.001, (float) $detalle->cantidad);
+            $max       = min($max, (int) floor($stockDisp / $necesario));
+        }
+
+        return $max === PHP_INT_MAX ? null : max(0, $max);
+    }
+
+    /**
      * Stock predictivo: cuántas unidades de esta promo se pueden vender.
      * Devuelve null si es ilimitado, 0 si no hay disponibilidad, N si hay N unidades.
      */

@@ -1,0 +1,68 @@
+/* ═══════════════════════════════════════════════════════════
+   EDIT PEDIDO — estilos propios
+   ═══════════════════════════════════════════════════════════ */
+
+html, body.fi-body { overflow: hidden; }
+
+/* ── Badges de estado ────────────────────────────────── */
+.ep-badge {
+    font-size: .7rem;
+    padding: .15rem .45rem;
+    border-radius: .3rem;
+    font-weight: 700;
+    vertical-align: middle;
+}
+.ep-badge--cobrado { background: #dcfce7; color: #166534; }
+.ep-badge--anulado { background: #fee2e2; color: #991b1b; }
+
+/* ── Aviso cambios pendientes ────────────────────────── */
+.ep-aviso {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .5rem 1rem;
+    background: #fef9c3;
+    border-bottom: 1px solid #fde047;
+    font-size: .78rem;
+    color: #713f12;
+}
+.ep-aviso svg { width: .85rem; height: .85rem; flex-shrink: 0; }
+
+/* ── Ítem nuevo ──────────────────────────────────────── */
+.ep-item--nuevo { border-left: 3px solid #16a34a; }
+
+/* ── Tag NUEVO ───────────────────────────────────────── */
+.ep-tag {
+    font-size: .62rem;
+    padding: .1rem .3rem;
+    border-radius: .25rem;
+    font-weight: 700;
+    vertical-align: middle;
+    margin-left: .25rem;
+}
+.ep-tag--nuevo { background: #bbf7d0; color: #166534; }
+
+/* ── Nota de ítem ────────────────────────────────────── */
+.ep-nota { font-size: .7rem; color: #64748b; font-style: italic; margin-top: .1rem; }
+
+/* ── Fila pendiente en totales ───────────────────────── */
+.ep-fila--pendiente {
+    font-size: .78rem;
+    color: #ca8a04;
+    padding-top: .15rem;
+}
+.dark .ep-fila--pendiente { color: #fbbf24; }
+
+/* ── Carrito ocupa todo el ancho cuando está solo ────── */
+.ep-carrito--full {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    border-left: none !important;
+}
+
+/* ── Dark mode ───────────────────────────────────────── */
+.dark .ep-badge--cobrado { background: rgba(34,197,94,.15);  color: #4ade80; }
+.dark .ep-badge--anulado { background: rgba(239,68,68,.15);  color: #f87171; }
+.dark .ep-aviso          { background: rgba(253,224,71,.07); border-color: rgba(253,224,71,.25); color: #fde047; }
+.dark .ep-tag--nuevo     { background: rgba(34,197,94,.15);  color: #4ade80; }
+.dark .ep-nota           { color: var(--pdv-text-muted, #9ca3af); }

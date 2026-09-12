@@ -6,6 +6,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Facades\Filament;
@@ -74,12 +75,14 @@ class RoleForm
                 $permisosSchema[] = Section::make($moduloLabel ?: 'General')
                     ->icon('heroicon-o-key')
                     ->collapsible()
+                    ->collapsed()
                     ->schema([
                         CheckboxList::make("permisos_modulo_{$permisos->first()->module}")
                             ->label('')
                             ->options($opciones)
                             ->columns(2)
                             ->gridDirection('row')
+                            ->bulkToggleable()
                             ->dehydrated(false)
                             ->afterStateHydrated(function ($component, $state, ?Role $record) use ($permisos) {
                                 if (! $record?->exists) return;
@@ -101,6 +104,7 @@ class RoleForm
 
         return $schema->components([
             Section::make('Información del Rol')
+                ->columnSpanFull()
                 ->description('Define el nombre con el que se identificará este rol en el sistema')
                 ->icon('heroicon-o-shield-check')
                 ->schema([
@@ -118,11 +122,9 @@ class RoleForm
                         ->columnSpanFull(),
                 ]),
 
-            Section::make('Permisos asignados')
-                ->description('Selecciona qué acciones puede realizar este rol dentro del sistema')
-                ->icon('heroicon-o-lock-open')
-                ->schema($permisosSchema)
-                ->collapsible(false),
+            Grid::make(2)
+                ->columnSpanFull()
+                ->schema($permisosSchema),
         ]);
     }
 }

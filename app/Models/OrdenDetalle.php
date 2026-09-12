@@ -26,11 +26,15 @@ class OrdenDetalle extends Model
         'igv',
         'total',
         'costo_total',
+        'enviado_cocina',
+        'cantidad_enviada_cocina',
+        'notas_item',
     ];
 
     protected $casts = [
-        'tipo_item'       => TipoItem::class,
-        'cantidad'        => 'decimal:3',
+        'tipo_item'                => TipoItem::class,
+        'cantidad'                 => 'decimal:3',
+        'cantidad_enviada_cocina'  => 'decimal:3',
         'precio_unitario' => 'decimal:4',
         'valor_unitario'  => 'decimal:4',
         'costo_unitario'  => 'decimal:4',
@@ -39,6 +43,7 @@ class OrdenDetalle extends Model
         'igv'             => 'decimal:2',
         'total'           => 'decimal:2',
         'costo_total'     => 'decimal:2',
+        'enviado_cocina'  => 'boolean',
     ];
 
     // ── Relaciones ───────────────────────────────────────────────────────

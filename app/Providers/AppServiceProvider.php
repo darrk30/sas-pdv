@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\Empresa;
+use App\Models\Mesa;
+use App\Observers\MesaObserver;
 use App\Policies\EmpresaPolicy;
 use App\Events\VentaCompletada;
 use App\Listeners\EmitirComprobanteElectronico;
@@ -17,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Mesa::observe(MesaObserver::class);
+
         Table::configureUsing(function (Table $table): void {
             $table->defaultPaginationPageOption(50);
         });

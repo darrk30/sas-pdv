@@ -138,6 +138,22 @@ class SuperAdminSeeder extends Seeder
         ['module' => 'config', 'module_label' => 'Configuración', 'name' => 'roles.eliminar',         'description' => 'Eliminar roles'],
         ['module' => 'config', 'module_label' => 'Configuración', 'name' => 'config.suscripcion',     'description' => 'Ver suscripción y registrar comprobantes de pago'],
 
+        // ── Pisos y Mesas ──────────────────────────────────────────────────────
+        ['module' => 'pisos_mesas', 'module_label' => 'Pisos y Mesas', 'name' => 'pisos.ver',           'description' => 'Ver pisos y mesas (requiere módulo restaurante)'],
+        ['module' => 'pisos_mesas', 'module_label' => 'Pisos y Mesas', 'name' => 'pisos.crear',         'description' => 'Crear pisos'],
+        ['module' => 'pisos_mesas', 'module_label' => 'Pisos y Mesas', 'name' => 'pisos.editar',        'description' => 'Editar pisos'],
+        ['module' => 'pisos_mesas', 'module_label' => 'Pisos y Mesas', 'name' => 'pisos.eliminar',      'description' => 'Eliminar pisos'],
+        ['module' => 'pisos_mesas', 'module_label' => 'Pisos y Mesas', 'name' => 'mesas.crear',         'description' => 'Crear mesas dentro de un piso'],
+        ['module' => 'pisos_mesas', 'module_label' => 'Pisos y Mesas', 'name' => 'mesas.editar',        'description' => 'Editar mesas (nombre, capacidad, estado)'],
+        ['module' => 'pisos_mesas', 'module_label' => 'Pisos y Mesas', 'name' => 'mesas.eliminar',      'description' => 'Eliminar mesas'],
+
+        // ── Restaurante ────────────────────────────────────────────────────────
+        ['module' => 'restaurante', 'module_label' => 'Restaurante', 'name' => 'restaurante.ver',             'description' => 'Ver restaurante: mapa de mesas y pedidos activos'],
+        ['module' => 'restaurante', 'module_label' => 'Restaurante', 'name' => 'restaurante.pedido.crear',    'description' => 'Crear pedidos de mesa'],
+        ['module' => 'restaurante', 'module_label' => 'Restaurante', 'name' => 'restaurante.pedido.editar',   'description' => 'Editar pedidos de mesa en curso'],
+        ['module' => 'restaurante', 'module_label' => 'Restaurante', 'name' => 'restaurante.pedido.cobrar',   'description' => 'Cobrar pedidos de mesa (genera venta)'],
+        ['module' => 'restaurante', 'module_label' => 'Restaurante', 'name' => 'restaurante.pedido.eliminar', 'description' => 'Eliminar / anular pedidos de mesa'],
+
         // ── Reportes ───────────────────────────────────────────────────────────
         ['module' => 'reportes', 'module_label' => 'Reportes', 'name' => 'reportes.ventas_periodo', 'description' => 'Reporte de ventas por período'],
         ['module' => 'reportes', 'module_label' => 'Reportes', 'name' => 'reportes.productos',      'description' => 'Reporte de productos más vendidos'],
@@ -150,6 +166,12 @@ class SuperAdminSeeder extends Seeder
     {
         $registrar = app(PermissionRegistrar::class);
         $registrar->setPermissionsTeamId(null);
+
+        // ── Limpiar permisos obsoletos renombrados ────────────────────────────
+        Permission::whereIn('name', ['mesas.ver', 'comandas.ver', 'comandas.gestionar', 'comandas.cobrar'])
+            ->where('guard_name', 'web')
+            ->delete();
+        $registrar->forgetCachedPermissions();
 
         // ── Crear todos los permisos (admin + pdv) ────────────────────────────
 

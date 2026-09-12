@@ -40,7 +40,8 @@ class CompraForm
 
                 // ── Información de la compra ──────────────────────────────
                 Section::make('Información de la compra')
-                    ->columns(2)
+                    ->columnSpanFull()
+                    ->columns(['default' => 1, 'md' => 2, 'lg' => 4])
                     ->schema([
 
                         Select::make('proveedor_id')
@@ -215,14 +216,14 @@ class CompraForm
                             ->label('Observaciones')
                             ->nullable()
                             ->rows(2)
-                            ->columnSpanFull(),
+                            ->columnSpan(['default' => 1, 'md' => 1, 'lg' => 2]),
 
                         FileUpload::make('archivo_compra')
                             ->label('Archivo de compra')
                             ->nullable()
                             ->directory('compras')
                             ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])
-                            ->columnSpanFull(),
+                            ->columnSpan(['default' => 1, 'md' => 1, 'lg' => 2]),
                     ]),
 
                 // ── Productos a comprar ───────────────────────────────────
@@ -246,11 +247,11 @@ class CompraForm
                                 return $data;
                             })
                             ->table([
-                                TableColumn::make('Producto / Variante')->width('40%'),
-                                TableColumn::make('Unidad')->width('15%'),
-                                TableColumn::make('Cantidad')->width('10%'),
-                                TableColumn::make('Costo Unit.')->width('15%'),
-                                TableColumn::make('Subtotal')->width('15%'),
+                                TableColumn::make('Producto / Variante')->width('32%'),
+                                TableColumn::make('Unidad')->width('20%'),
+                                TableColumn::make('Cantidad')->width('13%'),
+                                TableColumn::make('Costo Unit. (S/)')->width('13%'),
+                                TableColumn::make('Subtotal (S/)')->width('13%'),
                             ])
                             ->schema([
 
@@ -305,24 +306,28 @@ class CompraForm
 
                                         [$tipo, $id] = explode('_', $state, 2);
 
+                                        $costoUnitario = null;
+
                                         if ($tipo === 'producto') {
                                             $producto = Producto::with('unidadMedida')->find($id);
+                                            $costoUnitario = $producto?->precio_costo ?? null;
                                             $set('producto_id', $producto?->id);
                                             $set('variante_id', null);
                                             $set('nombre_producto', $producto?->nombre);
                                             $set('unidad_id', $producto?->unidad_medida_id);
-                                            $set('costo_unitario', $producto?->precio_costo ?? null);
+                                            $set('costo_unitario', $costoUnitario);
                                         } else {
                                             $variante = Variante::with(['producto.unidadMedida', 'valores.valor'])->find($id);
+                                            $costoUnitario = $variante?->precio_costo ?? $variante?->producto?->precio_costo ?? null;
                                             $set('producto_id', null);
                                             $set('variante_id', $variante?->id);
                                             $set('nombre_producto', AjusteDetalle::generarNombre(null, $variante));
                                             $set('unidad_id', $variante?->producto?->unidad_medida_id);
-                                            $set('costo_unitario', $variante?->precio_costo ?? $variante?->producto?->precio_costo ?? null);
+                                            $set('costo_unitario', $costoUnitario);
                                         }
 
                                         $set('cantidad', 1);
-                                        $set('costo_total', null);
+                                        $set('costo_total', $costoUnitario !== null ? round((float) $costoUnitario, 2) : null);
                                     }),
 
                                 // ── Unidad de medida ──
@@ -370,7 +375,6 @@ class CompraForm
                                     ->label('Costo unitario')
                                     ->numeric()
                                     ->minValue(0)
-                                    ->prefix('S/')
                                     ->required()
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (?float $state, Get $get, Set $set): void {
@@ -381,7 +385,6 @@ class CompraForm
                                 // ── Costo total (guardado en BD) ──
                                 TextInput::make('costo_total')
                                     ->label('Subtotal')
-                                    ->prefix('S/')
                                     ->readOnly()
                                     ->numeric(),
 
@@ -392,8 +395,7 @@ class CompraForm
                             ])
                             ->addActionLabel('Agregar producto')
                             ->reorderable(false)
-                            ->defaultItems(1)
-                            ->cloneable(),
+                            ->defaultItems(1),
                     ])->columnSpanFull(),
 
                 // ── Pagos ─────────────────────────────────────────────────
@@ -453,8 +455,9 @@ class CompraForm
 
                 // ── Totales ───────────────────────────────────────────────
                 Section::make('Totales')
+                    ->columnSpanFull()
                     ->schema([
-                        Grid::make(2)
+                        Grid::make(['default' => 1, 'md' => 3, 'lg' => 3])
                             ->schema([
                                 TextInput::make('costo_envio')
                                     ->label('Costo de envío')

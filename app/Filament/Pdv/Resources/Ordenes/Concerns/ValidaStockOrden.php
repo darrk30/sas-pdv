@@ -168,6 +168,69 @@ trait ValidaStockOrden
     }
 
     /**
+     * Restaura stock_reserva al cancelar/eliminar ítems reservados.
+     */
+    protected function liberarStockDetalles(array $detalles, int $empresaId): void
+    {
+        $productosAfectados = [];
+
+        foreach ($detalles as $item) {
+            $qty        = (float) ($item['cantidad'] ?? 0);
+            $promoId    = !empty($item['promocion_id']) ? (int) $item['promocion_id'] : null;
+            $varianteId = !empty($item['variante_id'])  ? (int) $item['variante_id']  : null;
+            $productoId = !empty($item['producto_id'])  ? (int) $item['producto_id']  : null;
+
+            if ($qty <= 0) continue;
+
+            if ($promoId) {
+                $promo = Promocion::with(['detalles.producto', 'detalles.variante.producto'])->find($promoId);
+                if (!$promo) continue;
+                foreach ($promo->detalles as $pd) {
+                    $cantDet = $qty * (float) $pd->cantidad;
+                    if ($pd->variante_id && $pd->variante?->producto?->control_de_stock) {
+                        DB::table('inventarios')
+                            ->where('empresa_id', $empresaId)
+                            ->where('variante_id', $pd->variante_id)
+                            ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantDet})")]);
+                        if ($pd->variante->producto_id) $productosAfectados[] = $pd->variante->producto_id;
+                    } elseif ($pd->producto_id && $pd->producto?->control_de_stock) {
+                        DB::table('inventarios')
+                            ->where('empresa_id', $empresaId)
+                            ->where('producto_id', $pd->producto_id)
+                            ->whereNull('variante_id')
+                            ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantDet})")]);
+                        $productosAfectados[] = $pd->producto_id;
+                    }
+                }
+            } elseif ($varianteId) {
+                $variante = Variante::with('producto')->find($varianteId);
+                if (!$variante?->producto?->control_de_stock) continue;
+                DB::table('inventarios')
+                    ->where('empresa_id', $empresaId)
+                    ->where('variante_id', $varianteId)
+                    ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$qty})")]);
+                $productosAfectados[] = $variante->producto_id;
+            } elseif ($productoId) {
+                $producto = Producto::find($productoId);
+                if (!$producto?->control_de_stock) continue;
+                DB::table('inventarios')
+                    ->where('empresa_id', $empresaId)
+                    ->where('producto_id', $productoId)
+                    ->whereNull('variante_id')
+                    ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$qty})")]);
+                $productosAfectados[] = $productoId;
+            }
+        }
+
+        if ($productosAfectados) {
+            $service = app(EtiquetaStockService::class);
+            foreach (array_unique($productosAfectados) as $pid) {
+                $service->sincronizar($pid, $empresaId);
+            }
+        }
+    }
+
+    /**
      * Expande los productos internos de una promo en el mapa de demanda.
      * Solo incluye productos con control_de_stock habilitado.
      */

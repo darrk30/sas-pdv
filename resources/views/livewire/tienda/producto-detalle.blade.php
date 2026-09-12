@@ -1,7 +1,7 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('tienda/css/tarjeta.css') }}?v=3">
 <link rel="stylesheet" href="{{ asset('tienda/css/carrusel.css') }}">
-<link rel="stylesheet" href="{{ asset('tienda/css/producto-detalle.css') }}?v=3">
+<link rel="stylesheet" href="{{ asset('tienda/css/producto-detalle.css') }}?v=4">
 @endpush
 
 <div class="pd-page"

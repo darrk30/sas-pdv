@@ -4,7 +4,11 @@
 <meta charset="UTF-8">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: Courier, monospace; font-size:11px; width:226px; color:#000; }
+body { font-family: Courier, monospace; font-size:11px; width:226px; color:#000; background:#fff; }
+@media print {
+    @page { size: 58mm auto; margin: 2mm; }
+    body  { width: auto; }
+}
 .center { text-align:center; }
 .bold   { font-weight:bold; }
 .line   { border-top:1px dashed #000; margin:4px 0; }
@@ -27,13 +31,31 @@ td.nota { padding-left:10px; font-size:10px; color:#444; font-style:italic; }
 <div class="area-badge">{{ strtoupper($areaNombre) }}</div>
 
 <div class="titulo">
-    {{ $esParcial ? 'ORDEN ACTUALIZADA' : 'NUEVA ORDEN' }}
+    @if(! empty($descripcion))
+        {{ strtoupper($descripcion) }}
+    @elseif(! empty($itemsParaImprimir['cancelados']) && empty($itemsParaImprimir['nuevos']) && empty($itemsParaImprimir['notas']))
+        PRODUCTOS ELIMINADOS
+    @elseif($esParcial)
+        ACTUALIZACIÓN DE PEDIDO
+    @else
+        NUEVO PEDIDO
+    @endif
 </div>
+
+@if(!empty($numeroPedido ?? ''))
+<div class="meta center bold">Pedido: {{ $numeroPedido }}</div>
+@endif
+
+@if(!empty($mesaNombre))
+<div class="meta center bold">
+    Mesa: {{ $mesaNombre }}{{ !empty($pisoNombre) ? '  ·  ' . $pisoNombre : '' }}
+</div>
+@endif
 
 <div class="meta center">
     Hora: {{ now()->format('H:i') }}
     &nbsp;|&nbsp;
-    Usuario: {{ $cajeroNombre }}
+    {{ !empty($rolCajero ?? '') ? $rolCajero : 'Usuario' }}: {{ $cajeroNombre }}
 </div>
 
 <div class="line"></div>
@@ -43,7 +65,7 @@ td.nota { padding-left:10px; font-size:10px; color:#444; font-style:italic; }
 <table>
 @foreach($itemsParaImprimir['nuevos'] as $item)
 <tr>
-    <td class="cant">{{ $item['cant'] }}x</td>
+    <td class="cant">{{ $item['cant'] ?? $item['cantidad'] ?? 0 }}x</td>
     <td>{{ $item['nombre'] }}</td>
 </tr>
 @if(! empty($item['nota']))
@@ -62,9 +84,28 @@ td.nota { padding-left:10px; font-size:10px; color:#444; font-style:italic; }
 <table>
 @foreach($itemsParaImprimir['cancelados'] as $item)
 <tr class="cancelado">
-    <td class="cant">{{ $item['cant'] }}x</td>
+    <td class="cant">{{ $item['cant'] ?? $item['cantidad'] ?? 0 }}x</td>
     <td>{{ $item['nombre'] }}</td>
 </tr>
+@endforeach
+</table>
+@endif
+
+@if(! empty($itemsParaImprimir['notas']))
+<div class="line"></div>
+<div class="bold" style="margin-bottom:2px;">NOTA ACTUALIZADA:</div>
+<table>
+@foreach($itemsParaImprimir['notas'] as $item)
+<tr>
+    <td class="cant">{{ $item['cant'] ?? 0 }}x</td>
+    <td>{{ $item['nombre'] }}</td>
+</tr>
+@if(! empty($item['nota']))
+<tr>
+    <td></td>
+    <td class="nota">↳ {{ $item['nota'] }}</td>
+</tr>
+@endif
 @endforeach
 </table>
 @endif
@@ -72,5 +113,8 @@ td.nota { padding-left:10px; font-size:10px; color:#444; font-style:italic; }
 <div class="line"></div>
 <div class="center" style="font-size:10px;">{{ now()->format('d/m/Y H:i:s') }}</div>
 
+@if(request('autoprint'))
+<script>window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 400); });</script>
+@endif
 </body>
 </html>
