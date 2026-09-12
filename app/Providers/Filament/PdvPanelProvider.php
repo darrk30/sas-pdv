@@ -66,16 +66,15 @@ class PdvPanelProvider extends PanelProvider
             fn () => view('filament.pdv.components.barcode-scanner'),
         );
 
+        // Inicializa window.Echo con Reverb para que Livewire #[On('echo-private:...')] funcione
         FilamentView::registerRenderHook(
             PanelsRenderHook::BODY_END,
-            fn () => view('filament.pdv.components.web-push'),
+            fn () => view('filament.echo-init'),
         );
 
         FilamentView::registerRenderHook(
-            PanelsRenderHook::HEAD_END,
-            fn () => new HtmlString(
-                '<style>.fi-no{z-index:10000!important}</style>'
-            ),
+            PanelsRenderHook::BODY_END,
+            fn () => view('filament.pdv.components.web-push'),
         );
     }
 
@@ -100,13 +99,14 @@ class PdvPanelProvider extends PanelProvider
             })
             ->navigationGroups([
                 NavigationGroup::make('Punto de Venta'),
-                NavigationGroup::make('Facturación Electrónica'),
-                NavigationGroup::make('Inventario'),
                 NavigationGroup::make('Restaurante'),
+                NavigationGroup::make('Inventario'),
                 NavigationGroup::make('Pedidos Web'),
                 NavigationGroup::make('Compras'),
-                NavigationGroup::make('Catálogo'),
+                NavigationGroup::make('Gastos'),
+                NavigationGroup::make('Facturación Electrónica'),
                 NavigationGroup::make('Reportes')->collapsed(),
+                NavigationGroup::make('Catálogo'),
                 NavigationGroup::make('Configuración')->collapsed(),
             ])
             ->discoverResources(in: app_path('Filament/Pdv/Resources'), for: 'App\Filament\Pdv\Resources')

@@ -39,12 +39,12 @@ class OrdenRestResource extends Resource
     public static function canAccess(): bool
     {
         return Filament::getTenant()->tieneModulo('restaurante')
-            && (auth()->user()?->can('comandas.ver') ?? false);
+            && (auth()->user()?->can('restaurante.ver') ?? false);
     }
 
-    public static function canCreate(): bool             { return false; }
-    public static function canEdit(Model $record): bool  { return auth()->user()?->can('comandas.gestionar') ?? false; }
-    public static function canDelete(Model $record): bool{ return false; }
+    public static function canCreate(): bool             { return auth()->user()?->can('restaurante.pedido.crear') ?? false; }
+    public static function canEdit(Model $record): bool  { return auth()->user()?->can('restaurante.pedido.editar') ?? false; }
+    public static function canDelete(Model $record): bool{ return auth()->user()?->can('restaurante.pedido.eliminar') ?? false; }
 
     public static function getEloquentQuery(): Builder
     {

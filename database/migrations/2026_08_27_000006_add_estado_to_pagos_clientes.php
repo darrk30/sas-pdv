@@ -9,7 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('pagos_clientes', function (Blueprint $table) {
-            $table->enum('estado', ['pendiente', 'aprobado', 'rechazado'])->default('pendiente')->after('monto');
+            if (! Schema::hasColumn('pagos_clientes', 'estado')) {
+                $table->enum('estado', ['pendiente', 'aprobado', 'rechazado'])->default('pendiente')->after('monto');
+            }
         });
     }
 

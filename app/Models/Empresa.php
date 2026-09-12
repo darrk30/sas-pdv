@@ -234,9 +234,10 @@ class Empresa extends Model
     public function cachedConfigImpresion(): array
     {
         return Cache::remember($this->configImpresionCacheKey(), now()->addDay(), function () {
-            $plan = $this->suscripcion?->plan;
+            $planHabilita = (bool) ($this->suscripcion?->plan?->tiene_impresion_directa ?? false);
             return [
-                'tiene_impresion_directa'      => (bool) ($plan?->tiene_impresion_directa ?? false),
+                // El plan habilita la funcionalidad Y la empresa la tiene activa
+                'tiene_impresion_directa'      => $planHabilita && (bool) $this->impresion_comprobante_directo,
                 'impresion_comprobante_directo' => (bool) $this->impresion_comprobante_directo,
                 'api_token_impresion'           => $this->api_token_impresion ?? Str::uuid(),
             ];

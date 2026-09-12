@@ -37,11 +37,12 @@ class PisosTable
 
                 ToggleColumn::make('estado')
                     ->label('Activo')
-                    ->disabled(fn () => ! auth()->user()?->can('mesas.editar')),
+                    ->disabled(fn () => ! auth()->user()?->can('pisos.editar')),
             ])
             ->defaultSort('orden')
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(fn () => auth()->user()?->can('pisos.editar')),
             ]);
     }
 }

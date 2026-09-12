@@ -57,6 +57,7 @@
         {{-- ══ ÁREA DE PRODUCTOS (izquierda) ══ --}}
         <livewire:pdv.product-catalog
             :carritoResumen="$this->getCarritoResumen()"
+            :pendienteResumen="$this->getPendienteResumen()"
             :showPromociones="true"
             wire:key="pdv-catalog"
         />
@@ -117,9 +118,16 @@
                             </button>
                         @endif
                     </div>
-                    <button class="pdv-cliente__nuevo-btn" wire:click="abrirModalNuevoCliente" title="Nuevo cliente">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <button class="pdv-cliente__nuevo-btn" wire:click="abrirModalNuevoCliente"
+                            wire:loading.attr="disabled" wire:target="abrirModalNuevoCliente"
+                            title="Nuevo cliente">
+                        <svg wire:loading.remove wire:target="abrirModalNuevoCliente"
+                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                        </svg>
+                        <svg wire:loading wire:target="abrirModalNuevoCliente"
+                             class="pdv-spinner" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-dasharray="28 56" stroke-linecap="round"/>
                         </svg>
                     </button>
                 </div>

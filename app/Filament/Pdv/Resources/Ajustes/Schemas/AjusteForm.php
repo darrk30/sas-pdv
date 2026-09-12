@@ -77,9 +77,9 @@ class AjusteForm
                                 return $data;
                             })
                             ->table([
-                                TableColumn::make('Producto / Variante')->width('40%'),
+                                TableColumn::make('Producto / Variante'),
                                 TableColumn::make('Unidad')->width('15%'),
-                                TableColumn::make('Cantidad')->width('10%'),
+                                TableColumn::make('Cantidad')->width('15%'),
                                 TableColumn::make('Costo Unit.')->width('15%'),
                                 TableColumn::make('Subtotal')->width('15%'),
                             ])
@@ -199,7 +199,6 @@ class AjusteForm
                                     ->label('Costo unitario')
                                     ->numeric()
                                     ->minValue(0)
-                                    ->prefix('S/')
                                     ->required()
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (?float $state, Get $get, Set $set): void {
@@ -210,7 +209,6 @@ class AjusteForm
                                 // ── Costo total (Guardado en BD) ──
                                 TextInput::make('costo_total')
                                     ->label('Subtotal')
-                                    ->prefix('S/')
                                     ->readOnly()
                                     ->numeric(),
 
@@ -221,8 +219,7 @@ class AjusteForm
                             ])
                             ->addActionLabel('Agregar producto')
                             ->reorderable(false)
-                            ->defaultItems(1)
-                            ->cloneable(),
+                            ->defaultItems(1),
                     ])->columnSpanFull(),
 
                 // ── Resumen ───────────────────────────────────────────────

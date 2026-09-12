@@ -81,11 +81,12 @@ class MesasRelationManager extends RelationManager
 
                 ToggleColumn::make('estado')
                     ->label('Activa')
-                    ->disabled(fn () => ! auth()->user()?->can('mesas.editar')),
+                    ->disabled(fn () => ! auth()->user()?->can('pisos.editar')),
             ])
             ->defaultSort('orden')
             ->headerActions([
                 CreateAction::make()
+                    ->visible(fn () => auth()->user()?->can('mesas.crear'))
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['empresa_id'] = $this->getOwnerRecord()->empresa_id;
                         $data['estado_ocupacion'] = EstadoMesa::Libre->value;
@@ -93,9 +94,11 @@ class MesasRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(fn () => auth()->user()?->can('mesas.editar')),
                 DeleteAction::make()
-                    ->hidden(fn ($record) => $record->estado_ocupacion !== EstadoMesa::Libre),
+                    ->visible(fn ($record) => $record->estado_ocupacion === EstadoMesa::Libre
+                        && auth()->user()?->can('mesas.eliminar')),
             ]);
     }
 }

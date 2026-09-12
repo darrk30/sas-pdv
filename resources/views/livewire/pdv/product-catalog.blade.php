@@ -29,20 +29,91 @@
     </div>
 
     {{-- ── Categorías ───────────────────────────────────────────────── --}}
-    <div class="pdv-categorias">
-        <button class="pdv-cat-btn {{ $categoriaId === null ? 'pdv-cat-btn--activo' : '' }}" wire:click="seleccionarCategoria(null)">
-            Todos
+    <div
+        class="pdv-categorias-wrap"
+        x-data="{
+            canLeft:  false,
+            canRight: false,
+            dragging: false,
+            startX:   0,
+            startLeft: 0,
+            update() {
+                const el = this.$refs.scroll;
+                this.canLeft  = el.scrollLeft > 2;
+                this.canRight = el.scrollLeft < el.scrollWidth - el.clientWidth - 2;
+            },
+            slide(dir) {
+                this.$refs.scroll.scrollBy({ left: dir * 140, behavior: 'smooth' });
+            },
+            dragStart(e) {
+                if (e.button !== 0) return;
+                this.dragging  = true;
+                this.startX    = e.pageX;
+                this.startLeft = this.$refs.scroll.scrollLeft;
+                e.preventDefault();
+            },
+            dragMove(e) {
+                if (!this.dragging) return;
+                this.$refs.scroll.scrollLeft = this.startLeft - (e.pageX - this.startX);
+            },
+            dragEnd() { this.dragging = false; }
+        }"
+        x-init="update()"
+        @mousemove.window="dragMove($event)"
+        @mouseup.window="dragEnd()"
+        @mouseleave.window="dragEnd()"
+    >
+        {{-- Flecha izquierda (solo escritorio) --}}
+        <button
+            type="button"
+            class="pdv-cat-arrow pdv-cat-arrow--left"
+            x-show="canLeft"
+            @click="slide(-1)"
+            tabindex="-1"
+            aria-hidden="true"
+            style="display:none"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
+            </svg>
         </button>
-        @if($hayPromociones)
-            <button class="pdv-cat-btn pdv-cat-btn--promo {{ $categoriaId === -1 ? 'pdv-cat-btn--activo' : '' }}" wire:click="seleccionarCategoria(-1)">
-                Promos
+
+        <div
+            class="pdv-categorias"
+            x-ref="scroll"
+            @scroll="update()"
+            @mousedown="dragStart($event)"
+            :class="dragging ? 'pdv-categorias--drag' : ''"
+        >
+            <button class="pdv-cat-btn {{ $categoriaId === null ? 'pdv-cat-btn--activo' : '' }}" wire:click="seleccionarCategoria(null)">
+                Todos
             </button>
-        @endif
-        @foreach($categorias as $cat)
-            <button class="pdv-cat-btn {{ $categoriaId === $cat->id ? 'pdv-cat-btn--activo' : '' }}" wire:click="seleccionarCategoria({{ $cat->id }})">
-                {{ $cat->nombre }}
-            </button>
-        @endforeach
+            @if($hayPromociones)
+                <button class="pdv-cat-btn pdv-cat-btn--promo {{ $categoriaId === -1 ? 'pdv-cat-btn--activo' : '' }}" wire:click="seleccionarCategoria(-1)">
+                    Promos
+                </button>
+            @endif
+            @foreach($categorias as $cat)
+                <button class="pdv-cat-btn {{ $categoriaId === $cat->id ? 'pdv-cat-btn--activo' : '' }}" wire:click="seleccionarCategoria({{ $cat->id }})">
+                    {{ $cat->nombre }}
+                </button>
+            @endforeach
+        </div>
+
+        {{-- Flecha derecha (solo escritorio) --}}
+        <button
+            type="button"
+            class="pdv-cat-arrow pdv-cat-arrow--right"
+            x-show="canRight"
+            @click="slide(1)"
+            tabindex="-1"
+            aria-hidden="true"
+            style="display:none"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
+            </svg>
+        </button>
     </div>
 
     {{-- ── Grid de productos / promociones ───────────────────────────── --}}
@@ -52,7 +123,13 @@
         @if($promociones->isNotEmpty())
             <div class="pdv-items-grid">
                 @foreach($promociones as $promo)
-                    @php $stockPromo = $promo->stockPredictivo(); @endphp
+                    @php
+                        $stockPromo = $promo->stockPredictivoVisual($pendienteResumen);
+                        $detallesVista = $promo->detalles->map(fn($d) => [
+                            'nombre'   => $d->variante?->nombre ?? $d->producto?->nombre ?? '—',
+                            'cantidad' => $d->cantidad ?? 1,
+                        ])->values()->all();
+                    @endphp
                     <button
                         class="pdv-card pdv-card--promo {{ $stockPromo === 0 ? 'pdv-card--agotada' : '' }}"
                         wire:click="seleccionarPromocion({{ $promo->id }})"
@@ -76,7 +153,10 @@
                         <div class="pdv-card__body">
                             <p class="pdv-card__nombre">{{ $promo->nombre }}</p>
                             <p class="pdv-card__meta">{{ $promo->detalles_count }} productos</p>
-                            <p class="pdv-card__precio">S/ {{ number_format($promo->precio, 2) }}</p>
+                            <div class="pdv-card__precio-fila">
+                                <p class="pdv-card__precio">S/ {{ number_format($promo->precio, 2) }}</p>
+                                <x-pdv.promo-vista :detalles="$detallesVista" clase="promo-vista--catalog" />
+                            </div>
                         </div>
                     </button>
                 @endforeach
@@ -91,12 +171,12 @@
                         $simbolo        = $producto->unidadMedida?->simbolo;
 
                         $stockSimple    = ! $tieneVariantes && $producto->control_de_stock
-                            ? (float)($producto->inventario?->stock_real ?? 0) : null;
+                            ? (float)($producto->inventario?->stock_reserva ?? 0) : null;
                         $stockVariantes = $tieneVariantes && $producto->control_de_stock
-                            ? $producto->variantesActivas->sum(fn($v) => (float)($v->inventario?->stock_real ?? 0)) : null;
+                            ? $producto->variantesActivas->sum(fn($v) => (float)($v->inventario?->stock_reserva ?? 0)) : null;
                         $stock          = $stockSimple ?? $stockVariantes;
 
-                        // Badges desde carritoResumen prop
+                        // Badge de carrito (incluye ítems guardados y pendientes)
                         if (! $tieneVariantes) {
                             $enCarrito = (float) ($carritoResumen["producto_{$producto->id}"] ?? 0);
                         } else {
@@ -106,8 +186,18 @@
                             }
                         }
 
+                        // Solo ítems pendientes (no persistidos) para descontar de stock_reserva
+                        if (! $tieneVariantes) {
+                            $pendiente = (float) ($pendienteResumen["producto_{$producto->id}"] ?? 0);
+                        } else {
+                            $pendiente = 0.0;
+                            foreach ($producto->variantesActivas as $v) {
+                                $pendiente += (float) ($pendienteResumen["variante_{$v->id}"] ?? 0);
+                            }
+                        }
+
                         $stockVisible = $stock !== null
-                            ? ($producto->venta_sin_stock ? $stock - $enCarrito : max(0, $stock - $enCarrito))
+                            ? ($producto->venta_sin_stock ? $stock - $pendiente : max(0, $stock - $pendiente))
                             : null;
 
                         $agotado    = $producto->control_de_stock

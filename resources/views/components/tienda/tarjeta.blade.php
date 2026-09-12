@@ -310,6 +310,10 @@
 
         <h3 class="tarjeta__nombre">{{ $producto->nombre }}</h3>
 
+        @if (!empty($producto->descripcion))
+            <p class="tarjeta__desc">{{ strip_tags($producto->descripcion) }}</p>
+        @endif
+
         @if ($colores->isNotEmpty())
             <div class="tarjeta__colores">
                 @foreach ($colores->take(7) as $color)

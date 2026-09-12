@@ -31,14 +31,20 @@ td.nota { padding-left:10px; font-size:10px; color:#444; font-style:italic; }
 <div class="area-badge">{{ strtoupper($areaNombre) }}</div>
 
 <div class="titulo">
-    @if(! empty($itemsParaImprimir['cancelados']) && empty($itemsParaImprimir['nuevos']))
+    @if(! empty($descripcion))
+        {{ strtoupper($descripcion) }}
+    @elseif(! empty($itemsParaImprimir['cancelados']) && empty($itemsParaImprimir['nuevos']) && empty($itemsParaImprimir['notas']))
         PRODUCTOS ELIMINADOS
     @elseif($esParcial)
-        PRODUCTOS AGREGADOS
+        ACTUALIZACIÓN DE PEDIDO
     @else
         NUEVO PEDIDO
     @endif
 </div>
+
+@if(!empty($numeroPedido ?? ''))
+<div class="meta center bold">Pedido: {{ $numeroPedido }}</div>
+@endif
 
 @if(!empty($mesaNombre))
 <div class="meta center bold">
@@ -49,7 +55,7 @@ td.nota { padding-left:10px; font-size:10px; color:#444; font-style:italic; }
 <div class="meta center">
     Hora: {{ now()->format('H:i') }}
     &nbsp;|&nbsp;
-    Usuario: {{ $cajeroNombre }}
+    {{ !empty($rolCajero ?? '') ? $rolCajero : 'Usuario' }}: {{ $cajeroNombre }}
 </div>
 
 <div class="line"></div>
@@ -81,6 +87,25 @@ td.nota { padding-left:10px; font-size:10px; color:#444; font-style:italic; }
     <td class="cant">{{ $item['cant'] ?? $item['cantidad'] ?? 0 }}x</td>
     <td>{{ $item['nombre'] }}</td>
 </tr>
+@endforeach
+</table>
+@endif
+
+@if(! empty($itemsParaImprimir['notas']))
+<div class="line"></div>
+<div class="bold" style="margin-bottom:2px;">NOTA ACTUALIZADA:</div>
+<table>
+@foreach($itemsParaImprimir['notas'] as $item)
+<tr>
+    <td class="cant">{{ $item['cant'] ?? 0 }}x</td>
+    <td>{{ $item['nombre'] }}</td>
+</tr>
+@if(! empty($item['nota']))
+<tr>
+    <td></td>
+    <td class="nota">↳ {{ $item['nota'] }}</td>
+</tr>
+@endif
 @endforeach
 </table>
 @endif

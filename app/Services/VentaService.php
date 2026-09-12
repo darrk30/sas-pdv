@@ -49,18 +49,19 @@ class VentaService
         ?string $clienteTipoDoc,
         array   $items,
         array   $pagos,
-        float   $descuento         = 0.0,
-        bool    $despachoRequerido = false,
-        string  $despachoDireccion = '',
-        string  $conceptoPrefix    = '',
-        float   $igvPct            = 18.0,
+        float   $descuento          = 0.0,
+        bool    $despachoRequerido  = false,
+        string  $despachoDireccion  = '',
+        string  $conceptoPrefix     = '',
+        float   $igvPct             = 18.0,
+        bool    $stockYaReservado   = false,
     ): Venta {
         $venta = null;
 
         DB::transaction(function () use (
             $empresaId, $serieId, $clienteId, $clienteNombre, $clienteTipoDoc,
             $items, $pagos, $descuento, $despachoRequerido, $despachoDireccion,
-            $conceptoPrefix, $igvPct, &$venta
+            $conceptoPrefix, $igvPct, $stockYaReservado, &$venta
         ) {
             // ── Serie / correlativo ───────────────────────────────────────────
 
@@ -266,17 +267,17 @@ class VentaService
                 if ($tipo === 'producto') {
                     $this->reducirStockProducto(
                         $empresaId, $item['id'], $item['nombre'],
-                        $cantidad, (float) $item['precio'], $venta, $comprobante
+                        $cantidad, (float) $item['precio'], $venta, $comprobante, $stockYaReservado
                     );
                 } elseif ($tipo === 'variante') {
                     $this->reducirStockVariante(
                         $empresaId, $item['id'], $item['nombre'],
-                        $cantidad, (float) $item['precio'], $venta, $comprobante
+                        $cantidad, (float) $item['precio'], $venta, $comprobante, $stockYaReservado
                     );
                 } elseif ($tipo === 'promocion') {
                     $this->procesarPromocion(
                         $empresaId, $item['id'], $item['nombre'],
-                        $cantidad, $venta, $comprobante
+                        $cantidad, $venta, $comprobante, $stockYaReservado
                     );
                 }
             }
@@ -289,7 +290,8 @@ class VentaService
 
     private function reducirStockProducto(
         int $empresaId, int $productoId, string $nombre,
-        float $cantidad, float $precio, Venta $venta, string $comprobante
+        float $cantidad, float $precio, Venta $venta, string $comprobante,
+        bool $stockYaReservado = false
     ): void {
         $producto = Producto::with('unidadMedida')->find($productoId);
         if (! $producto?->control_de_stock) return;
@@ -313,10 +315,11 @@ class VentaService
             ? $stockAntes - $cantidad
             : max(0, $stockAntes - $cantidad);
 
-        $inv->update([
-            'stock_real'    => $stockDespues,
-            'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
-        ]);
+        $update = ['stock_real' => $stockDespues];
+        if (! $stockYaReservado) {
+            $update['stock_reserva'] = max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues));
+        }
+        $inv->update($update);
 
         $this->kardex->registrar([
             'empresa_id'        => $empresaId,
@@ -340,7 +343,8 @@ class VentaService
 
     private function reducirStockVariante(
         int $empresaId, int $varianteId, string $nombre,
-        float $cantidad, float $precio, Venta $venta, string $comprobante
+        float $cantidad, float $precio, Venta $venta, string $comprobante,
+        bool $stockYaReservado = false
     ): void {
         $variante = Variante::find($varianteId);
         if (! $variante) return;
@@ -367,10 +371,11 @@ class VentaService
             ? $stockAntes - $cantidad
             : max(0, $stockAntes - $cantidad);
 
-        $inv->update([
-            'stock_real'    => $stockDespues,
-            'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
-        ]);
+        $update = ['stock_real' => $stockDespues];
+        if (! $stockYaReservado) {
+            $update['stock_reserva'] = max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues));
+        }
+        $inv->update($update);
 
         $this->kardex->registrar([
             'empresa_id'        => $empresaId,
@@ -394,7 +399,8 @@ class VentaService
 
     private function procesarPromocion(
         int $empresaId, int $promocionId, string $nombre,
-        float $cantidad, Venta $venta, string $comprobante
+        float $cantidad, Venta $venta, string $comprobante,
+        bool $stockYaReservado = false
     ): void {
         Promocion::where('id', $promocionId)->increment('usos_actuales', (int) $cantidad);
 
@@ -427,10 +433,11 @@ class VentaService
                         $stockDespues = ($prodDetalle->venta_sin_stock ?? false)
                             ? $stockAntes - $cantidadDetalle
                             : max(0, $stockAntes - $cantidadDetalle);
-                        $inv->update([
-                            'stock_real'    => $stockDespues,
-                            'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
-                        ]);
+                        $invUpdate = ['stock_real' => $stockDespues];
+                        if (! $stockYaReservado) {
+                            $invUpdate['stock_reserva'] = max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues));
+                        }
+                        $inv->update($invUpdate);
                         $this->kardex->registrar([
                             'empresa_id'        => $empresaId,
                             'user_id'           => auth()->id(),
@@ -468,10 +475,11 @@ class VentaService
                         $stockDespues = ($prodDetalle->venta_sin_stock ?? false)
                             ? $stockAntes - $cantidadDetalle
                             : max(0, $stockAntes - $cantidadDetalle);
-                        $inv->update([
-                            'stock_real'    => $stockDespues,
-                            'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
-                        ]);
+                        $invUpdate = ['stock_real' => $stockDespues];
+                        if (! $stockYaReservado) {
+                            $invUpdate['stock_reserva'] = max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues));
+                        }
+                        $inv->update($invUpdate);
                         $this->kardex->registrar([
                             'empresa_id'        => $empresaId,
                             'user_id'           => auth()->id(),

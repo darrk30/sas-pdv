@@ -6,7 +6,8 @@
     $mesa    = $mesaId ? \App\Models\Mesa::with('piso')->find($mesaId) : null;
     $total   = $this->getTotal();
     $count   = $this->getItemCount();
-    $resumen = $this->getCarritoResumen();
+    $resumen   = $this->getCarritoResumen();
+    $pendiente = $this->getPendienteResumen();
 @endphp
 
 {{-- ═══════════════════════════════════════════════════════
@@ -21,27 +22,33 @@
         ordenId: 0,
         mesa: '',
         cajero: '',
+        rol: '',
+        numero: '',
         parcial: false,
+        redirectUrl: '',
         ticketBase: '{{ url('/ticket/comanda') }}'
     }"
     @imprimir-comanda-browser.window="
         const raw = $event.detail;
         const d   = (Array.isArray(raw) ? raw[0] : raw) || {};
-        ordenId   = d.ordenId  || 0;
-        mesa      = d.mesa     || '';
-        cajero    = d.cajero   || '';
-        parcial   = !!d.parcial;
+        ordenId     = d.ordenId  || 0;
+        mesa        = d.mesa     || '';
+        cajero      = d.cajero   || '';
+        rol         = d.rol      || '';
+        numero      = d.numero   || '';
+        parcial     = !!d.parcial;
+        redirectUrl = $wire.comandaRedirectUrl || '';
         try { areas = JSON.parse(d.areasJson || '[]'); } catch(e) { areas = []; }
         if (areas.length > 0) {
-            activeTab   = 0;
-            open        = true;
+            activeTab = 0;
+            open      = true;
         }
     "
     style="display:contents"
 >
     <template x-if="open">
         <div class="pdv-overlay" style="z-index:10000">
-            <div class="pdv-overlay__backdrop" @click="open = false; $wire.cerrarComanda()"></div>
+            <div class="pdv-overlay__backdrop" @click="open = false; redirectUrl ? Livewire.navigate(redirectUrl) : $wire.cerrarComanda()"></div>
             <div class="pdv-modal" style="max-width:300px;width:100%;max-height:90vh;">
 
                 {{-- Header --}}
@@ -50,7 +57,7 @@
                         <h3 class="pdv-modal__titulo" x-text="'Comanda — ' + mesa"></h3>
                         <p class="pdv-modal__subtitulo" x-text="areas.length + (areas.length === 1 ? ' área de producción' : ' áreas de producción')"></p>
                     </div>
-                    <button type="button" class="pdv-modal__cerrar" @click="open = false; $wire.cerrarComanda()">
+                    <button type="button" class="pdv-modal__cerrar" @click="open = false; redirectUrl ? Livewire.navigate(redirectUrl) : $wire.cerrarComanda()">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -95,7 +102,9 @@
                                         cancelados:  JSON.stringify(area.cancelados || []),
                                         parcial:     parcial ? '1' : '0',
                                         mesa:        mesa,
-                                        cajero:      cajero
+                                        cajero:      cajero,
+                                        rol:         rol,
+                                        numero:      numero
                                     }).toString()"
                                     class="pdv-comanda-iframe"
                                     @load="
@@ -183,8 +192,12 @@
     <div class="pdv-wrap" x-data="{ carritoOpen: false }" @cerrar-carrito.window="carritoOpen = false">
 
         {{-- ── Catálogo ── --}}
-        <div class="pdv-productos">
-            <livewire:pdv.product-catalog :carritoResumen="$resumen" :showPromociones="true" wire:key="catalog-{{ $mesaId }}" />
+        <div class="pdv-productos"
+             wire:loading.class="pdv-productos--sending"
+             wire:target="enviarPedido">
+            @if($mesaId)
+                <livewire:pdv.product-catalog :carritoResumen="$resumen" :pendienteResumen="$pendiente" :showPromociones="true" wire:key="catalog-{{ $mesaId }}" />
+            @endif
         </div>
 
         {{-- ── Panel del pedido ── --}}
@@ -214,7 +227,12 @@
                 @forelse($carrito as $key => $item)
                     <div class="pdv-item pdv-item--card" wire:key="item-{{ $key }}">
                         <div class="pdv-item__top">
-                            <p class="pdv-item__nombre">{{ $item['nombre'] }}</p>
+                            <p class="pdv-item__nombre">
+                                {{ $item['nombre'] }}
+                                @if($item['tipo'] === 'promocion' && ! empty($item['detalles_resumen']))
+                                    <x-pdv.promo-vista :detalles="$item['detalles_resumen']" clase="promo-vista--cart" />
+                                @endif
+                            </p>
                             <button class="pdv-item__del" wire:click="eliminarItem('{{ $key }}')">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
                             </button>
@@ -236,6 +254,27 @@
                             </div>
                             <span class="pdv-item__precio-unit pdv-item__precio-unit--total">S/ {{ number_format($item['precio'] * $item['cantidad'], 2) }}</span>
                         </div>
+
+                        {{-- Nota para cocina --}}
+                        <div class="pdv-item__nota-wrap"
+                            x-data="{ open: {{ !empty($item['nota']) ? 'true' : 'false' }}, nota: @js($item['nota'] ?? '') }">
+                            <button type="button"
+                                class="pdv-nota-toggle"
+                                :class="{ 'pdv-nota-toggle--active': open || nota }"
+                                @click="open = !open">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="pdv-nota-icon"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z"/></svg>
+                                <span x-text="nota ? nota : 'Añadir nota para cocina'"></span>
+                            </button>
+                            <div x-show="open" x-transition.duration.150ms class="pdv-nota-input-wrap">
+                                <input
+                                    type="text"
+                                    class="pdv-nota-input"
+                                    placeholder="Ej: sin cebolla, término medio, extra salsa…"
+                                    x-model="nota"
+                                    @blur="$wire.setNota('{{ $key }}', nota)"
+                                    maxlength="120">
+                            </div>
+                        </div>
                     </div>
                 @empty
                     <div class="pdv-carrito__empty">
@@ -255,6 +294,7 @@
                     </div>
                 </div>
 
+                @can('restaurante.pedido.crear')
                 <button
                     class="pdv-btn-venta"
                     wire:click="enviarPedido"
@@ -265,6 +305,7 @@
                     <span wire:loading.remove wire:target="enviarPedido">Enviar pedido</span>
                     <span wire:loading wire:target="enviarPedido">Enviando…</span>
                 </button>
+                @endcan
             </div>
 
         </div>{{-- /pdv-carrito --}}
@@ -281,35 +322,6 @@
 
 </div>
 
-<style>
-html, body.fi-body { overflow: hidden; }
-
-.ep-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    padding: .4rem .75rem;
-    border-radius: .375rem;
-    border: 1px solid var(--pdv-border, #e2e8f0);
-    background: var(--pdv-surface, #fff);
-    color: var(--pdv-text, #1e293b);
-    font-size: .78rem;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: opacity .15s;
-}
-.ep-btn svg { width: .85rem; height: .85rem; flex-shrink: 0; }
-.ep-btn:hover { opacity: .85; }
-
-.pdv-btn-venta { display: flex; align-items: center; justify-content: center; gap: .4rem; }
-
-/* Scroll del panel de pedido — limitar la lista directamente */
-@media (min-width: 1024px) {
-    .pdv-carrito__lista {
-        max-height: calc(100dvh - 17rem);
-    }
-}
-</style>
+<link rel="stylesheet" href="{{ asset('css/nuevo-pedido.css') }}?v={{ filemtime(public_path('css/nuevo-pedido.css')) }}">
 
 </x-filament-panels::page>

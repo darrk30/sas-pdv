@@ -14,32 +14,45 @@ use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\On;
 use UnitEnum;
 
 class MapaMesasPage extends Page
 {
-    protected static string|BackedEnum|null $navigationIcon  = 'heroicon-o-table-cells';
-    protected static ?string                $navigationLabel = 'Mapa de Mesas';
+    protected static string|BackedEnum|null $navigationIcon  = 'heroicon-o-building-storefront';
+    protected static ?string                $navigationLabel = 'Restaurante';
     protected static string|UnitEnum|null   $navigationGroup = 'Restaurante';
     protected static ?int                   $navigationSort  = 2;
-    protected static ?string                $title           = 'Mapa de Mesas';
+    protected static ?string                $title           = '';
     protected string                        $view            = 'filament.pdv.pages.mapa-mesas';
 
     // Piso activo en el tab (se persiste en la URL para que el SPA no lo pierda)
     public ?int $pisoActivoId = null;
 
+    // ID de empresa para el canal privado de Reverb (aislado por tenant)
+    public int $empresaId = 0;
+
     public static function canAccess(): bool
     {
         return Filament::getTenant()->tieneModulo('restaurante')
-            && (auth()->user()?->can('comandas.ver') ?? false);
+            && (auth()->user()?->can('restaurante.ver') ?? false);
     }
 
     public function mount(): void
     {
+        $this->empresaId = (int) Filament::getTenant()->id;
+
         $primerPiso = $this->getPisos()->first();
         if ($this->pisoActivoId === null && $primerPiso) {
             $this->pisoActivoId = $primerPiso->id;
         }
+    }
+
+    /** Recibe el broadcast de Reverb cuando cambia el estado de alguna mesa del tenant */
+    #[On('echo-private:mesas.{empresaId},.MesaActualizada')]
+    public function refrescarMesas(): void
+    {
+        // Livewire re-renderiza el componente automáticamente al ejecutar este método
     }
 
     // ── Queries ──────────────────────────────────────────────────────────────
@@ -64,6 +77,8 @@ class MapaMesasPage extends Page
 
     public function iniciarPedido(int $mesaId): void
     {
+        abort_unless(auth()->user()?->can('restaurante.pedido.crear'), 403);
+
         $empresa = Filament::getTenant();
         $mesa    = Mesa::where('empresa_id', $empresa->id)->findOrFail($mesaId);
 

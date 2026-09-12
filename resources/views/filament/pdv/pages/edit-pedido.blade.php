@@ -6,15 +6,82 @@
     $orden        = $this->getOrden();
     $mesa         = $orden->mesa;
     $resumen      = $this->getCarritoResumen();
+    $pendiente    = $this->getPendienteResumen();
     $detalles     = $orden->detalles;
     $total        = (float) $orden->total;
-    $count        = $detalles->count();
-    $hayNuevos    = $this->hayItemsNuevos();
-    $hayEliminados = $this->hayItemsEliminados();
+    $carritoNuevos       = $this->carritoNuevos;
+    $count        = $detalles->count() + count($carritoNuevos);
+    $totalPendiente      = array_sum(array_map(fn($i) => $i['precio'] * $i['cantidad'], $carritoNuevos));
+    $hayNuevos           = $this->hayItemsNuevos();
+    $hayEliminados       = $this->hayItemsEliminados();
+    $hayNotasModificadas = $this->hayNotasModificadas();
     $yaFueCobrada = $orden->estado === \App\Enums\EstadoOrden::PagoConfirmado;
     $estaAnulada  = $orden->estado === \App\Enums\EstadoOrden::Cancelada;
     $soloLectura  = $yaFueCobrada || $estaAnulada;
 @endphp
+
+{{-- ═══════════════════════════════════════════════════════
+     MODAL PRE-CUENTA (Alpine.js puro — sin round-trip Livewire)
+     ═══════════════════════════════════════════════════════ --}}
+<div
+    x-data="{
+        open: false,
+        ordenId: 0,
+        ticketBase: '{{ url('/ticket/precuenta') }}'
+    }"
+    @imprimir-precuenta-browser.window="
+        const raw = $event.detail;
+        const d   = (Array.isArray(raw) ? raw[0] : raw) || {};
+        ordenId = d.ordenId || 0;
+        if (ordenId) open = true;
+    "
+    style="display:contents"
+>
+    <template x-if="open">
+        <div class="pdv-overlay" style="z-index:10000">
+            <div class="pdv-overlay__backdrop" @click="open = false"></div>
+            <div class="pdv-modal" style="max-width:300px;width:100%;max-height:90vh;">
+
+                <div class="pdv-modal__header">
+                    <div>
+                        <h3 class="pdv-modal__titulo">Pre-cuenta</h3>
+                        <p class="pdv-modal__subtitulo">Vista previa para el cliente</p>
+                    </div>
+                    <button type="button" class="pdv-modal__cerrar" @click="open = false">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <div class="pdv-modal__body" style="padding:1rem;gap:.75rem;overflow-y:auto;flex:1;min-height:0;">
+                    <div class="pdv-comanda-iframe-wrap">
+                        <iframe
+                            id="ep-frame-precuenta"
+                            :src="ticketBase + '/' + ordenId"
+                            class="pdv-comanda-iframe"
+                            @load="
+                                try {
+                                    const doc = $el.contentDocument || $el.contentWindow.document;
+                                    const h = doc.documentElement.scrollHeight || doc.body.scrollHeight;
+                                    if (h > 10) $el.style.height = h + 'px';
+                                } catch(e) {}
+                            "
+                        ></iframe>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="pdv-btn-confirmar pdv-comanda-print-btn"
+                        @click="document.getElementById('ep-frame-precuenta').contentWindow.print()"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:1rem;height:1rem;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z"/></svg>
+                        <span>Imprimir pre-cuenta</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </template>
+</div>
 
 {{-- ═══════════════════════════════════════════════════════
      MODAL COMANDA (Alpine.js puro — sin round-trip Livewire)
@@ -27,27 +94,36 @@
         ordenId: 0,
         mesa: '',
         cajero: '',
+        rol: '',
+        numero: '',
         parcial: false,
+        descripcion: '',
+        redirectUrl: '',
         ticketBase: '{{ url('/ticket/comanda') }}'
     }"
     @imprimir-comanda-browser.window="
         const raw = $event.detail;
         const d   = (Array.isArray(raw) ? raw[0] : raw) || {};
-        ordenId   = d.ordenId  || 0;
-        mesa      = d.mesa     || '';
-        cajero    = d.cajero   || '';
-        parcial   = !!d.parcial;
+        ordenId     = d.ordenId     || 0;
+        mesa        = d.mesa        || '';
+        cajero      = d.cajero      || '';
+        rol         = d.rol         || '';
+        numero      = d.numero      || '';
+        parcial     = !!d.parcial;
+        descripcion = d.descripcion || '';
+        redirectUrl = $wire.comandaRedirectUrl || '';
         try { areas = JSON.parse(d.areasJson || '[]'); } catch(e) { areas = []; }
         if (areas.length > 0) {
-            activeTab   = 0;
-            open        = true;
+            activeTab = 0;
+            open      = true;
+            if (redirectUrl) $dispatch('pdv-anulado');
         }
     "
     style="display:contents"
 >
     <template x-if="open">
         <div class="pdv-overlay" style="z-index:10000">
-            <div class="pdv-overlay__backdrop" @click="open = false; $wire.cerrarComanda()"></div>
+            <div class="pdv-overlay__backdrop" @click="open = false; redirectUrl ? Livewire.navigate(redirectUrl) : $wire.cerrarComanda()"></div>
             <div class="pdv-modal" style="max-width:300px;width:100%;max-height:90vh;">
 
                 {{-- Header --}}
@@ -56,7 +132,7 @@
                         <h3 class="pdv-modal__titulo" x-text="'Comanda — ' + mesa"></h3>
                         <p class="pdv-modal__subtitulo" x-text="areas.length + (areas.length === 1 ? ' área de producción' : ' áreas de producción')"></p>
                     </div>
-                    <button type="button" class="pdv-modal__cerrar" @click="open = false; $wire.cerrarComanda()">
+                    <button type="button" class="pdv-modal__cerrar" @click="open = false; redirectUrl ? Livewire.navigate(redirectUrl) : $wire.cerrarComanda()">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -99,9 +175,13 @@
                                         area_nombre: area.nombre || 'COCINA',
                                         nuevos:      JSON.stringify(area.nuevos     || []),
                                         cancelados:  JSON.stringify(area.cancelados || []),
+                                        notas:       JSON.stringify(area.notas      || []),
+                                        descripcion: descripcion,
                                         parcial:     parcial ? '1' : '0',
                                         mesa:        mesa,
-                                        cajero:      cajero
+                                        cajero:      cajero,
+                                        rol:         rol,
+                                        numero:      numero
                                     }).toString()"
                                     class="pdv-comanda-iframe"
                                     @load="
@@ -134,7 +214,7 @@
 
 </div>
 
-<div class="pdv-root">
+<div class="pdv-root" x-data="{ anulado: false }" @pdv-anulado.window="anulado = true" x-show="! anulado" x-cloak>
 
     {{-- ══ HEADER ══ --}}
     <div class="pdv-header">
@@ -167,14 +247,65 @@
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.875 1.5C6.839 1.5 6 2.34 6 3.375v2.99c-.426.053-.851.11-1.274.174-1.454.218-2.476 1.483-2.476 2.917v6.294a3 3 0 0 0 3 3h.27l-.155 1.705A1.875 1.875 0 0 0 7.232 22.5h9.536a1.875 1.875 0 0 0 1.867-2.045l-.155-1.705h.27a3 3 0 0 0 3-3V9.456c0-1.434-1.022-2.7-2.476-2.917A48.716 48.716 0 0 0 18 6.366V3.375c0-1.036-.84-1.875-1.875-1.875h-8.25ZM16.5 6.205v-2.83A.375.375 0 0 0 16.125 3h-8.25a.375.375 0 0 0-.375.375v2.83a49.353 49.353 0 0 1 9 0Zm-.217 8.265c.178.018.317.16.333.337l.526 5.784a.375.375 0 0 1-.374.409H7.232a.375.375 0 0 1-.374-.409l.526-5.784a.337.337 0 0 1 .333-.337 41.741 41.741 0 0 1 8.566 0Zm.967-3.97a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H18a.75.75 0 0 1-.75-.75V10.5ZM15 9.75a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75V10.5a.75.75 0 0 0-.75-.75H15Z" clip-rule="evenodd"/></svg>
                     </button>
                 @endif
-                <button
-                    class="ep-btn ep-btn--anular ep-btn--icon"
-                    wire:click="anularPedido"
-                    wire:confirm="¿Anular todo el pedido? Esta acción no se puede deshacer."
-                    title="Anular pedido"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd"/></svg>
-                </button>
+                @if($count > 0)
+                    <button
+                        class="ep-btn ep-btn--icon"
+                        wire:click="solicitarPreCuenta"
+                        wire:loading.attr="disabled"
+                        wire:target="solicitarPreCuenta"
+                        title="Pre-cuenta"
+                    >
+                        <x-heroicon-o-banknotes
+                            wire:loading.remove wire:target="solicitarPreCuenta"
+                            style="width:1.1rem;height:1.1rem;flex-shrink:0;"
+                        />
+                        <svg wire:loading wire:target="solicitarPreCuenta" style="width:1.1rem;height:1.1rem;flex-shrink:0;animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="40 20" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                @endif
+                @can('restaurante.pedido.eliminar')
+                <x-filament::modal width="sm" id="confirmar-anular" :close-by-clicking-away="false">
+                    <x-slot name="trigger">
+                        <button
+                            class="ep-btn ep-btn--anular ep-btn--icon"
+                            wire:loading.attr="disabled"
+                            wire:target="anularPedido"
+                            title="Anular pedido"
+                        >
+                            <x-heroicon-o-trash
+                                wire:loading.remove wire:target="anularPedido"
+                                style="width:1.1rem;height:1.1rem;flex-shrink:0;"
+                            />
+                            <svg wire:loading wire:target="anularPedido" style="width:1.1rem;height:1.1rem;flex-shrink:0;animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="40 20" stroke-linecap="round"/></svg>
+                        </button>
+                    </x-slot>
+
+                    <x-slot name="heading">Anular pedido</x-slot>
+                    <x-slot name="description">¿Anular todo el pedido? Esta acción no se puede deshacer.</x-slot>
+
+                    <x-slot name="footer">
+                        <div class="fi-modal-footer-actions">
+                            <x-filament::button
+                                color="danger"
+                                wire:click="anularPedido"
+                                wire:loading.attr="disabled"
+                                wire:target="anularPedido"
+                                icon="heroicon-o-trash"
+                            >
+                                <span wire:loading.remove wire:target="anularPedido">Sí, anular</span>
+                                <span wire:loading wire:target="anularPedido">Anulando…</span>
+                            </x-filament::button>
+                            <x-filament::button
+                                color="gray"
+                                x-on:click="$dispatch('close-modal', { id: 'confirmar-anular' })"
+                            >
+                                Cancelar
+                            </x-filament::button>
+                        </div>
+                    </x-slot>
+                </x-filament::modal>
+                @endcan
             @endif
         </div>
     </div>
@@ -186,6 +317,7 @@
         <div class="pdv-productos">
             <livewire:pdv.product-catalog
                 :carritoResumen="$resumen"
+                :pendienteResumen="$pendiente"
                 :showPromociones="true"
                 wire:key="catalog-edit-{{ $orden->id }}"
             />
@@ -228,6 +360,56 @@
 
             {{-- Lista de ítems --}}
             <div class="pdv-carrito__lista">
+
+                {{-- ── Ítems locales (pendientes de enviar) ── --}}
+                @foreach($carritoNuevos as $key => $item)
+                @php $itemTotal = $item['precio'] * $item['cantidad']; @endphp
+                <div class="pdv-item pdv-item--card ep-item--nuevo" wire:key="nuevo-{{ $key }}">
+                    <div class="pdv-item__top">
+                        <p class="pdv-item__nombre">
+                            {{ $item['nombre'] }}
+                            @if(($item['tipo'] ?? '') === 'promocion' && ! empty($item['detalles_resumen']))
+                                <x-pdv.promo-vista :detalles="$item['detalles_resumen']" clase="promo-vista--cart" />
+                            @endif
+                            <span class="ep-tag ep-tag--nuevo">POR ENVIAR</span>
+                        </p>
+                        <button class="pdv-item__del" wire:click="eliminarNuevo('{{ $key }}')">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <div class="pdv-item__subtotal pdv-item__subtotal--big">
+                        S/ {{ number_format($item['precio'], 2) }} c/u
+                    </div>
+                    <div class="pdv-item__bottom">
+                        <div class="pdv-qty">
+                            <button class="pdv-qty__btn pdv-qty__btn--menos" wire:click="decrementarNuevo('{{ $key }}')">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
+                            </button>
+                            <input class="pdv-qty__input" type="number" min="1" step="1"
+                                value="{{ (int) $item['cantidad'] }}"
+                                @change="$wire.setCantidadNuevo('{{ $key }}', parseInt($event.target.value) || 1)">
+                            <button class="pdv-qty__btn pdv-qty__btn--mas" wire:click="incrementarNuevo('{{ $key }}')">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                            </button>
+                        </div>
+                        <span class="pdv-item__precio-unit pdv-item__precio-unit--total">S/ {{ number_format($itemTotal, 2) }}</span>
+                    </div>
+                    <div class="pdv-item__nota-wrap"
+                        x-data="{ open: false, nota: @js($item['nota'] ?? '') }">
+                        <button type="button" class="pdv-nota-toggle" :class="{ 'pdv-nota-toggle--active': nota }" @click="open = !open">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="pdv-nota-icon"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z"/></svg>
+                            <span x-text="nota ? nota : 'Añadir nota para cocina'"></span>
+                        </button>
+                        <div x-show="open" x-transition.duration.150ms class="pdv-nota-input-wrap">
+                            <input type="text" class="pdv-nota-input" placeholder="Ej: sin cebolla, término medio…"
+                                x-model="nota"
+                                @blur="$wire.setNotaNuevo('{{ $key }}', nota); open = false"
+                                maxlength="120">
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+
                 @forelse($detalles as $det)
                     @php $esNuevo = ! $det->enviado_cocina; @endphp
                     <div class="pdv-item pdv-item--card {{ $esNuevo ? 'ep-item--nuevo' : '' }}" wire:key="det-{{ $det->id }}">
@@ -265,8 +447,31 @@
                             @endif
                             <span class="pdv-item__precio-unit pdv-item__precio-unit--total">S/ {{ number_format($det->total, 2) }}</span>
                         </div>
-                        @if($det->notas_item)
-                            <p class="ep-nota" style="margin:0.1rem 0 0;">{{ $det->notas_item }}</p>
+                        @if(! $soloLectura)
+                            <div class="pdv-item__nota-wrap"
+                                x-data="{ open: false, nota: @js($det->notas_item ?? ''), orig: @js($det->notas_item ?? '') }">
+                                <button type="button"
+                                    class="pdv-nota-toggle"
+                                    :class="{ 'pdv-nota-toggle--active': nota }"
+                                    @click="open = !open">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="pdv-nota-icon"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z"/></svg>
+                                    <span x-text="nota ? nota : 'Añadir nota para cocina'"></span>
+                                </button>
+                                <div x-show="open" x-transition.duration.150ms class="pdv-nota-input-wrap">
+                                    <input
+                                        type="text"
+                                        class="pdv-nota-input"
+                                        placeholder="Ej: sin cebolla, término medio…"
+                                        x-model="nota"
+                                        @input="nota.trim() !== orig.trim()
+                                            ? $dispatch('nota-sucia',  { id: '{{ $det->id }}' })
+                                            : $dispatch('nota-limpia', { id: '{{ $det->id }}' })"
+                                        @blur="$wire.setNotaDetalle({{ $det->id }}, nota); open = false"
+                                        maxlength="120">
+                                </div>
+                            </div>
+                        @elseif($det->notas_item)
+                            <p class="ep-nota">{{ $det->notas_item }}</p>
                         @endif
                     </div>
                 @empty
@@ -284,11 +489,26 @@
                         <span class="pdv-carrito__total-label">Total</span>
                         <span class="pdv-carrito__total-monto">S/ {{ number_format($total, 2) }}</span>
                     </div>
+                    @if($totalPendiente > 0)
+                    <div class="pdv-carrito__fila ep-fila--pendiente">
+                        <span>Por enviar</span>
+                        <span>+ S/ {{ number_format($totalPendiente, 2) }}</span>
+                    </div>
+                    @endif
                 </div>
 
                 @if(! $soloLectura)
-                    @if($hayNuevos || $hayEliminados)
+                    <div
+                        x-data="{ dirtyNoteIds: {} }"
+                        @nota-sucia.window="dirtyNoteIds[$event.detail.id] = true"
+                        @nota-limpia.window="delete dirtyNoteIds[$event.detail.id]"
+                        @ep-cambios-enviados.window="dirtyNoteIds = {}"
+                        style="display:contents"
+                    >
+                        @can('restaurante.pedido.editar')
                         <button
+                            x-show="Object.keys(dirtyNoteIds).length > 0 || $wire.hayCambiosPendientes"
+                            style="display:none"
                             class="pdv-btn-venta"
                             style="background:#2563eb;"
                             wire:click="enviarActualizacion"
@@ -298,8 +518,10 @@
                             <span wire:loading.remove wire:target="enviarActualizacion">Enviar actualización</span>
                             <span wire:loading wire:target="enviarActualizacion">Enviando…</span>
                         </button>
-                    @endif
+                        @endcan
+                    </div>
 
+                    @can('restaurante.pedido.cobrar')
                     <button
                         class="pdv-btn-venta"
                         @if($count === 0) disabled style="opacity:.5;cursor:not-allowed;" @endif
@@ -308,6 +530,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1rem;height:1rem;flex-shrink:0;" aria-hidden="true"><path d="M12 7.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z"/><path fill-rule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v9.75c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 14.625v-9.75ZM8.25 9.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM18.75 9a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75V9.75a.75.75 0 0 0-.75-.75h-.008ZM4.5 9.75A.75.75 0 0 1 5.25 9h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V9.75Z" clip-rule="evenodd"/><path d="M2.25 18a.75.75 0 0 0 0 1.5c5.4 0 10.63.722 15.6 2.075 1.19.324 2.4-.558 2.4-1.82V18.75a.75.75 0 0 0-.75-.75H2.25Z"/></svg>
                         Cobrar mesa
                     </button>
+                    @endcan
                 @endif
             </div>
 
@@ -327,108 +550,6 @@
 
 </div>{{-- /pdv-root --}}
 
-<style>
-html, body.fi-body { overflow: hidden; }
-
-/* ── Botones de cabecera ─────────────────────────────── */
-.ep-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    padding: .4rem .75rem;
-    border-radius: .375rem;
-    border: 1px solid var(--pdv-border, #e2e8f0);
-    background: var(--pdv-surface, #fff);
-    color: var(--pdv-text, #1e293b);
-    font-size: .78rem;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: opacity .15s;
-}
-.ep-btn svg { width: .85rem; height: .85rem; flex-shrink: 0; }
-.ep-btn:hover { opacity: .85; }
-.ep-btn:disabled { opacity: .45; cursor: not-allowed; }
-
-.ep-btn--cobrar {
-    background: #16a34a;
-    color: #fff;
-    border-color: #16a34a;
-}
-.ep-btn--anular {
-    background: #dc2626;
-    color: #fff;
-    border-color: #dc2626;
-}
-.ep-btn--icon {
-    padding: .4rem .5rem;
-}
-.ep-btn--icon svg { width: 1rem; height: 1rem; }
-
-/* ── Badges de estado ────────────────────────────────── */
-.ep-badge {
-    font-size: .7rem;
-    padding: .15rem .45rem;
-    border-radius: .3rem;
-    font-weight: 700;
-    vertical-align: middle;
-}
-.ep-badge--cobrado { background: #dcfce7; color: #166534; }
-.ep-badge--anulado { background: #fee2e2; color: #991b1b; }
-
-/* ── Aviso cambios pendientes ────────────────────────── */
-.ep-aviso {
-    display: flex;
-    align-items: center;
-    gap: .4rem;
-    padding: .5rem 1rem;
-    background: #fef9c3;
-    border-bottom: 1px solid #fde047;
-    font-size: .78rem;
-    color: #713f12;
-}
-.ep-aviso svg { width: .85rem; height: .85rem; flex-shrink: 0; }
-
-/* ── Ítem nuevo ──────────────────────────────────────── */
-.ep-item--nuevo { border-left: 3px solid #16a34a; }
-
-/* ── Tag NUEVO ───────────────────────────────────────── */
-.ep-tag {
-    font-size: .62rem;
-    padding: .1rem .3rem;
-    border-radius: .25rem;
-    font-weight: 700;
-    vertical-align: middle;
-    margin-left: .25rem;
-}
-.ep-tag--nuevo { background: #bbf7d0; color: #166534; }
-
-/* ── Nota de ítem ────────────────────────────────────── */
-.ep-nota { font-size: .7rem; color: #64748b; font-style: italic; margin-top: .1rem; }
-
-/* ── Carrito ocupa todo el ancho cuando está solo ────── */
-.ep-carrito--full {
-    flex: 1 1 100% !important;
-    max-width: 100% !important;
-    border-left: none !important;
-}
-
-/* ── pdv-btn-venta con icono en flex ─────────────────── */
-.pdv-btn-venta { display: flex; align-items: center; justify-content: center; gap: .4rem; }
-
-/* ── Dark mode ───────────────────────────────────────────── */
-.dark .ep-badge--cobrado { background: rgba(34,197,94,.15);  color: #4ade80; }
-.dark .ep-badge--anulado { background: rgba(239,68,68,.15);  color: #f87171; }
-.dark .ep-aviso          { background: rgba(253,224,71,.07); border-color: rgba(253,224,71,.25); color: #fde047; }
-.dark .ep-tag--nuevo     { background: rgba(34,197,94,.15);  color: #4ade80; }
-.dark .ep-nota           { color: var(--pdv-text-muted, #9ca3af); }
-
-/* ── Scroll del panel de pedido — limitar la lista directamente ── */
-@media (min-width: 1024px) {
-    .pdv-carrito__lista {
-        max-height: calc(100dvh - 17rem);
-    }
-}
-</style>
+<link rel="stylesheet" href="{{ asset('css/edit-pedido.css') }}?v={{ filemtime(public_path('css/edit-pedido.css')) }}">
 
 </x-filament-panels::page>

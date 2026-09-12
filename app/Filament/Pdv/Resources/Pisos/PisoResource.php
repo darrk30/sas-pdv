@@ -22,7 +22,7 @@ class PisoResource extends Resource
 {
     protected static ?string $model = Piso::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingStorefront;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMap;
 
     protected static ?string $navigationLabel = 'Pisos y Mesas';
 
@@ -37,13 +37,13 @@ class PisoResource extends Resource
 
     public static function canAccess(): bool
     {
-        return Filament::getTenant()->tieneModulo('mesas')
-            && (auth()->user()?->can('mesas.ver') ?? false);
+        return Filament::getTenant()->tieneModulo('restaurante')
+            && (auth()->user()?->can('pisos.ver') ?? false);
     }
 
-    public static function canCreate(): bool              { return auth()->user()?->can('mesas.crear') ?? false; }
-    public static function canEdit(Model $record): bool   { return auth()->user()?->can('mesas.editar') ?? false; }
-    public static function canDelete(Model $record): bool { return auth()->user()?->can('mesas.eliminar') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('pisos.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('pisos.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('pisos.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

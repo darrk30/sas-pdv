@@ -11,6 +11,9 @@
                 <h3 class="pdv-modal__titulo">Comanda — {{ $mesa }}</h3>
                 <p class="pdv-modal__subtitulo">
                     {{ count($areas) }} {{ count($areas) === 1 ? 'área de producción' : 'áreas de producción' }}
+                    @if($descripcion)
+                        &nbsp;·&nbsp;<span class="pdv-comanda-desc">{{ $descripcion }}</span>
+                    @endif
                 </p>
             </div>
             <button class="pdv-modal__cerrar" wire:click="cerrar">
@@ -44,6 +47,8 @@
                     'area_nombre' => $area['nombre'],
                     'nuevos'      => json_encode($area['nuevos']),
                     'cancelados'  => json_encode($area['cancelados']),
+                    'notas'       => json_encode($area['notas'] ?? []),
+                    'descripcion' => $descripcion,
                     'parcial'     => $parcial ? '1' : '0',
                     'mesa'        => $mesa,
                     'cajero'      => $cajero,
@@ -177,6 +182,7 @@
 .dark .pdv-comanda-chip--nuevo { background: rgba(34,197,94,.15); color: #4ade80; }
 .dark .pdv-comanda-chip--quitar { background: rgba(239,68,68,.15); color: #f87171; }
 .dark .pdv-comanda-iframe-wrap { border-color: var(--pdv-border); }
+.pdv-comanda-desc { font-style: italic; color: var(--pdv-primary, #6366f1); font-weight: 600; }
 </style>
 @endif
 </div>

@@ -153,6 +153,13 @@
 
 .cr-img--no-disp { opacity: .45; filter: grayscale(1); }
 
+/* ── Alineación vertical: cuando el info tiene varias líneas ─── */
+.cr-item { align-items: start; }
+.cr-img-wrap    { margin-top: 0.15rem; }
+.cr-cantidad    { margin-top: 0.1rem; }
+.cr-precio-wrap { margin-top: 0.1rem; }
+.cr-btn-eliminar { margin-top: 0.05rem; }
+
 .cr-no-disp-badge {
     display: inline-block;
     margin-top: 0.2rem;
@@ -204,21 +211,20 @@
     font-size: 0.875rem;
     font-weight: 600;
     color: var(--color-texto);
-    display: block;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 1.3;
+    line-height: 1.35;
 }
 
 .cr-variante {
     font-size: 0.73rem;
     color: #6b7280;
     display: block;
-    margin-top: 0.15rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    margin-top: 0.2rem;
+    line-height: 1.4;
+    word-break: break-word;
 }
 
 .cr-badge-promo {
@@ -496,48 +502,61 @@
     color: #9ca3af;
 }
 
-/* ── Móvil ───────────────────────────────────────────────────── */
-@media (max-width: 780px) {
+/* ── Layout: breakpoint para dos columnas ────────────────────── */
+@media (max-width: 920px) {
     .cr-layout {
         grid-template-columns: 1fr;
         gap: 1.5rem;
     }
     .cr-resumen {
         position: static;
-        order: -1; /* resumen arriba en móvil */
+        order: -1; /* resumen arriba */
     }
 }
 
-@media (max-width: 640px) {
+/* ── Pantalla mediana: items más compactos ───────────────────── */
+@media (max-width: 680px) {
     .cr { padding: 1.25rem 0.75rem 3rem; }
 
+    /* Imagen y nombre más pequeños */
+    .cr-img-wrap { width: 3.5rem; height: 3.5rem; }
+
+    /* Item: imagen | info+precio-mob | cantidad | eliminar */
     .cr-item {
-        grid-template-columns: 3.25rem 1fr auto auto;
-        gap: 0.6rem;
+        grid-template-columns: 3.5rem 1fr auto auto;
+        gap: 0.65rem;
     }
 
-    /* Precio de la línea va debajo del nombre en móvil */
+    /* El precio de línea se oculta de la columna separada
+       y aparece en la info, debajo del nombre */
     .cr-precio-wrap { display: none; }
     .cr-precio-unit-mob {
         display: block;
-        font-size: 0.75rem;
-        color: #374151;
-        font-weight: 600;
-        margin-top: 0.2rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #111827;
+        margin-top: 0.3rem;
     }
 
-    .cr-img-wrap { width: 3.25rem; height: 3.25rem; }
-    .cr-nombre  { font-size: 0.8125rem; }
-    .cr-cant-btn { width: 1.8rem; height: 1.9rem; }
-    .cr-cant-num { min-width: 1.75rem; font-size: 0.75rem; }
+    .cr-nombre    { font-size: 0.8125rem; }
+    .cr-variante  { font-size: 0.7rem; }
+    .cr-cant-btn  { width: 1.85rem; height: 1.95rem; }
+    .cr-cant-num  { min-width: 1.9rem; font-size: 0.75rem; }
+
+    /* Alineación vertical ajustada */
+    .cr-cantidad    { margin-top: 0.35rem; }
+    .cr-btn-eliminar { margin-top: 0.25rem; }
 }
 
 @media (max-width: 400px) {
+    .cr { padding: 1rem 0.5rem 3rem; }
     .cr-item {
-        grid-template-columns: 2.75rem 1fr auto auto;
-        gap: 0.45rem;
+        grid-template-columns: 3rem 1fr auto auto;
+        gap: 0.5rem;
     }
-    .cr-img-wrap { width: 2.75rem; height: 2.75rem; }
+    .cr-img-wrap { width: 3rem; height: 3rem; }
+    .cr-cant-btn { width: 1.7rem; height: 1.8rem; }
+    .cr-cant-num { min-width: 1.6rem; }
 }
 
 /* ── Modal orden completada ──────────────────────────────────── */

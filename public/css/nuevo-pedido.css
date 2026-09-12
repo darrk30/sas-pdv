@@ -1,0 +1,12 @@
+/* ═══════════════════════════════════════════════════════════
+   NUEVO PEDIDO — estilos propios
+   ═══════════════════════════════════════════════════════════ */
+
+html, body.fi-body { overflow: hidden; }
+
+/* Atenúa el catálogo mientras se procesa el envío del pedido */
+.pdv-productos--sending {
+    opacity: .4;
+    pointer-events: none;
+    transition: opacity .15s ease;
+}

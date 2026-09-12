@@ -34,6 +34,11 @@ class CobrarPedido extends Page
 
     protected string $view = 'filament.pdv.pages.cobrar-pedido';
 
+    public static function canAccess(array $parameters = []): bool
+    {
+        return parent::canAccess($parameters) && (auth()->user()?->can('restaurante.pedido.cobrar') ?? false);
+    }
+
     // ── Record ────────────────────────────────────────────────────────────────
 
     public ?Orden $orden = null;
@@ -268,6 +273,8 @@ class CobrarPedido extends Page
 
     public function procesarCobro(): void
     {
+        abort_unless(auth()->user()?->can('restaurante.pedido.cobrar'), 403);
+
         $this->validate([
             'serieId' => 'required|integer',
         ], ['serieId.required' => 'Selecciona un comprobante.']);
@@ -363,18 +370,19 @@ class CobrarPedido extends Page
                 }
 
                 $venta = app(VentaService::class)->procesar(
-                    empresaId:         $empresaId,
-                    serieId:           $this->serieId,
-                    clienteId:         $this->clienteId,
-                    clienteNombre:     $this->clienteNombre ?? ($orden->cliente_nombre ?? 'Cliente General'),
-                    clienteTipoDoc:    $this->clienteTipoDoc,
-                    items:             $items,
-                    pagos:             $pagosLista,
-                    descuento:         $this->getDescuento(),
+                    empresaId:        $empresaId,
+                    serieId:          $this->serieId,
+                    clienteId:        $this->clienteId,
+                    clienteNombre:    $this->clienteNombre ?? ($orden->cliente_nombre ?? 'Cliente General'),
+                    clienteTipoDoc:   $this->clienteTipoDoc,
+                    items:            $items,
+                    pagos:            $pagosLista,
+                    descuento:        $this->getDescuento(),
                     despachoRequerido: false,
                     despachoDireccion: '',
-                    conceptoPrefix:    'Mesa ' . ($orden->mesa?->nombre ?? '—'),
-                    igvPct:            (float) ($empresa->igv_porcentaje ?? 18),
+                    conceptoPrefix:   'Mesa ' . ($orden->mesa?->nombre ?? '—'),
+                    igvPct:           (float) ($empresa->igv_porcentaje ?? 18),
+                    stockYaReservado: true,
                 );
 
                 // Post-procesado propio del módulo restaurante

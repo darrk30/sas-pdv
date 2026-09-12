@@ -146,8 +146,15 @@
                                 </button>
                             @endif
                         </div>
-                        <button class="pdv-cliente__nuevo-btn" wire:click="abrirModalNuevoCliente" title="Nuevo cliente">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                        <button class="pdv-cliente__nuevo-btn" wire:click="abrirModalNuevoCliente"
+                                wire:loading.attr="disabled" wire:target="abrirModalNuevoCliente"
+                                title="Nuevo cliente">
+                            <svg wire:loading.remove wire:target="abrirModalNuevoCliente"
+                                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                            <svg wire:loading wire:target="abrirModalNuevoCliente"
+                                 class="pdv-spinner" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-dasharray="28 56" stroke-linecap="round"/>
+                            </svg>
                         </button>
                     </div>
 
@@ -255,6 +262,7 @@
             </div>{{-- /cobrar-card --}}
 
             {{-- Botón confirmar --}}
+            @can('restaurante.pedido.cobrar')
             <button
                 class="pdv-btn-cobrar"
                 wire:click="procesarCobro"
@@ -264,265 +272,13 @@
                 <span wire:loading.remove wire:target="procesarCobro">Confirmar cobro — S/ {{ number_format($totalDesc, 2) }}</span>
                 <span wire:loading wire:target="procesarCobro">Procesando…</span>
             </button>
+            @endcan
 
         </div>{{-- /cobrar-right --}}
     </div>{{-- /cobrar-wrap --}}
 </div>{{-- /cobrar-root --}}
 
-<style>
-/* ── Quitar espacio que agrega Filament al contenedor de página ─────── */
-.fi-page-header-main-ctn { padding-block: 1rem !important; gap: 0 !important; }
-.fi-page-content { gap: 0 !important; }
-
-/* ── Layout ──────────────────────────────────────────────────────────── */
-.cobrar-root { display: flex; flex-direction: column; gap: .75rem; }
-.cobrar-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; align-items: start; }
-@media (max-width: 900px) { .cobrar-wrap { grid-template-columns: 1fr; } }
-.cobrar-left, .cobrar-right { display: flex; flex-direction: column; gap: .5rem; }
-
-/* ── Tarjeta ─────────────────────────────────────────────────────────── */
-.cobrar-card {
-    background: var(--pdv-surface, #fff);
-    border: 1px solid var(--pdv-border, #e2e8f0);
-    border-radius: .625rem;
-    padding: .875rem;
-}
-
-/* ── Título de sección (dentro de tarjeta) ───────────────────────────── */
-.cobrar-sec-title {
-    font-size: .75rem;
-    font-weight: 700;
-    color: var(--pdv-text-muted, #64748b);
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    margin-bottom: .5rem;
-}
-
-/* ── Separador interno ───────────────────────────────────────────────── */
-.cobrar-divider {
-    height: 1px;
-    background: var(--pdv-border, #e2e8f0);
-    margin: .5rem -.875rem;
-}
-
-/* ── Detalle del pedido ──────────────────────────────────────────────── */
-.cobrar-items { display: flex; flex-direction: column; gap: .2rem; margin-bottom: .5rem; }
-.cobrar-item { display: flex; align-items: center; gap: .4rem; font-size: .83rem; color: var(--pdv-text, #1e293b); }
-.cobrar-item__cant { color: var(--pdv-text-muted, #64748b); min-width: 1.5rem; }
-.cobrar-item__nombre { flex: 1; }
-.cobrar-item__total { font-weight: 600; }
-
-.cobrar-total-row {
-    display: flex; justify-content: space-between;
-    font-size: .83rem; padding: .28rem 0;
-    border-top: 1px solid var(--pdv-border, #e2e8f0);
-    color: var(--pdv-text-muted, #64748b);
-}
-.cobrar-total-row--descuento { color: #dc2626; }
-.dark .cobrar-total-row--descuento { color: #f87171; }
-.cobrar-total-row--final {
-    font-weight: 700; font-size: .95rem;
-    color: var(--pdv-text, #0f172a);
-    border-top: 2px solid var(--pdv-border, #cbd5e1);
-}
-
-/* ── Descuento inline ────────────────────────────────────────────────── */
-.cobrar-desc-row {
-    display: flex; align-items: center; gap: .5rem;
-    padding: .4rem 0;
-    border-top: 1px solid var(--pdv-border, #e2e8f0);
-}
-.cobrar-desc-label {
-    font-size: .78rem; color: var(--pdv-text-muted, #64748b); white-space: nowrap; flex-shrink: 0;
-}
-.cobrar-desc-input {
-    flex: 1; min-width: 0;
-    padding: .3rem .5rem;
-    border: 1px solid var(--pdv-border, #e2e8f0);
-    border-radius: .375rem;
-    font-size: .83rem;
-    background: var(--pdv-bg, #fff);
-    color: var(--pdv-text, #0f172a);
-    box-sizing: border-box;
-    max-width: 110px;
-}
-.cobrar-desc-input:focus { outline: none; border-color: var(--pdv-primary, #6366f1); }
-
-/* ── Fila de pago: método | monto | agregar ──────────────────────────── */
-.cobrar-pago-row {
-    display: flex; gap: .4rem; align-items: center;
-    margin-bottom: 0;
-}
-.cobrar-pago-metodo { flex: 2; min-width: 0; }
-.cobrar-pago-monto  { flex: 1; min-width: 0; width: 80px; }
-.cobrar-pago-agregar {
-    display: inline-flex; align-items: center; gap: .3rem;
-    flex-shrink: 0;
-    padding: .45rem .7rem;
-    background: #2563eb; color: #fff;
-    border: none; border-radius: .4rem;
-    font-size: .8rem; font-weight: 600; cursor: pointer;
-    white-space: nowrap; transition: background .15s;
-}
-.cobrar-pago-agregar:hover { background: #1d4ed8; }
-
-/* ── Lista de pagos agregados ────────────────────────────────────────── */
-.cobrar-pagos-lista {
-    margin-top: .5rem;
-    border: 1px solid var(--pdv-border, #e2e8f0);
-    border-radius: .4rem;
-    overflow: hidden;
-}
-.cobrar-pago-item {
-    display: flex; align-items: center; gap: .5rem;
-    padding: .3rem .6rem;
-    border-bottom: 1px solid var(--pdv-border, #e2e8f0);
-    font-size: .83rem;
-}
-.cobrar-pago-item:last-child { border-bottom: none; }
-.cobrar-pago-item__nombre { flex: 1; color: var(--pdv-text, #1e293b); }
-.cobrar-pago-item__monto  { font-weight: 600; color: var(--pdv-text, #1e293b); }
-.cobrar-pago-del {
-    background: none; border: none; cursor: pointer;
-    color: #ef4444; font-size: 1.1rem; padding: 0 .2rem; line-height: 1;
-}
-.cobrar-pago-del:hover { color: #dc2626; }
-
-/* ── Resumen de pago ─────────────────────────────────────────────────── */
-.cobrar-resumen {
-    background: var(--pdv-bg, #f8fafc);
-    border-radius: .4rem;
-    padding: .6rem .75rem;
-    margin-top: .5rem;
-}
-.cobrar-resumen__fila {
-    display: flex; justify-content: space-between;
-    font-size: .83rem; padding: .15rem 0;
-    color: var(--pdv-text-muted, #64748b);
-}
-.cobrar-resumen__fila span:last-child { font-weight: 600; color: var(--pdv-text, #1e293b); }
-
-/* ── Fila total + vuelto ─────────────────────────────────────────────── */
-.cobrar-totales-row {
-    display: flex; gap: .5rem; align-items: stretch;
-    margin-top: .5rem;
-}
-
-/* ── Total a cobrar (verde, derecha) ─────────────────────────────────── */
-.cobrar-total-box {
-    flex: 1;
-    background: #f0fdf4;
-    border: 2px solid #16a34a;
-    border-radius: .5rem;
-    padding: .65rem .75rem;
-    text-align: center;
-}
-.cobrar-total-box--solo { flex: 1; }
-.dark .cobrar-total-box { background: #14532d40; border-color: #22c55e; }
-.cobrar-total-box__label {
-    font-size: .65rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .07em; color: #16a34a; margin-bottom: .1rem;
-}
-.dark .cobrar-total-box__label { color: #4ade80; }
-.cobrar-total-box__valor {
-    font-size: 1.75rem; font-weight: 800; line-height: 1.15;
-    color: #15803d;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -.02em;
-}
-.dark .cobrar-total-box__valor { color: #4ade80; }
-
-/* ── Vuelto (naranja, izquierda) ─────────────────────────────────────── */
-.cobrar-vuelto-box {
-    flex: 1;
-    background: #fff7ed;
-    border: 2px solid #f97316;
-    border-radius: .5rem;
-    padding: .65rem .75rem;
-    text-align: center;
-}
-.dark .cobrar-vuelto-box { background: #7c2d1240; border-color: #fb923c; }
-.cobrar-vuelto-box__label {
-    font-size: .65rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .07em; color: #f97316; margin-bottom: .1rem;
-}
-.dark .cobrar-vuelto-box__label { color: #fb923c; }
-.cobrar-vuelto-box__valor {
-    font-size: 1.75rem; font-weight: 800; line-height: 1.15;
-    color: #c2410c;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -.02em;
-}
-.dark .cobrar-vuelto-box__valor { color: #fb923c; }
-
-/* ── Hint agregar pago ───────────────────────────────────────────────── */
-.cobrar-pago-hint {
-    display: flex; align-items: center; gap: .3rem;
-    font-size: .75rem; color: #92400e;
-    background: #fef3c7; border: 1px solid #fcd34d;
-    border-radius: .35rem; padding: .35rem .6rem;
-    margin-top: .4rem;
-}
-.dark .cobrar-pago-hint { color: #fde68a; background: #78350f40; border-color: #92400e; }
-
-/* ── Botón volver ────────────────────────────────────────────────────── */
-.mm-btn {
-    display: inline-flex; align-items: center; gap: .35rem;
-    padding: .4rem .75rem; border-radius: .375rem;
-    border: 1px solid var(--pdv-border, #e2e8f0);
-    background: var(--pdv-surface, #fff);
-    color: var(--pdv-text, #334155);
-    font-size: .78rem; font-weight: 600; cursor: pointer;
-    white-space: nowrap; transition: opacity .15s;
-}
-.mm-btn:hover { opacity: .85; }
-
-/* ── Botón confirmar cobro ───────────────────────────────────────────── */
-.pdv-btn-cobrar {
-    width: 100%; display: flex; align-items: center; justify-content: center; gap: .5rem;
-    background: #16a34a; color: #fff; border: none;
-    padding: .8rem 1rem; border-radius: .5rem;
-    font-size: 1rem; font-weight: 700; cursor: pointer;
-    transition: background .15s;
-}
-.pdv-btn-cobrar:hover { background: #15803d; }
-.pdv-btn-cobrar:disabled { opacity: .55; cursor: not-allowed; }
-
-/* ── Botones modal cliente ───────────────────────────────────────────── */
-.pdv-btn-primario {
-    background: #2563eb; color: #fff; border: none;
-    padding: .5rem 1rem; border-radius: .5rem;
-    font-weight: 600; cursor: pointer; font-size: .875rem;
-}
-.pdv-btn-primario:hover { opacity: .88; }
-.pdv-btn-secundario {
-    background: var(--pdv-surface, #f1f5f9);
-    color: var(--pdv-text, #334155);
-    border: 1px solid var(--pdv-border, #e2e8f0);
-    padding: .5rem 1rem; border-radius: .5rem;
-    font-weight: 600; cursor: pointer; font-size: .875rem;
-}
-.pdv-btn-secundario:hover { opacity: .85; }
-
-/* ── Formulario ──────────────────────────────────────────────────────── */
-.pdv-form-group { margin-bottom: .6rem; }
-.pdv-form-label { display: block; font-size: .78rem; font-weight: 600; color: var(--pdv-text-muted, #64748b); margin-bottom: .25rem; }
-.pdv-form-input {
-    width: 100%; padding: .4rem .65rem;
-    border: 1px solid var(--pdv-border, #e2e8f0);
-    border-radius: .4rem; font-size: .85rem;
-    background: var(--pdv-bg, #fff);
-    color: var(--pdv-text, #0f172a);
-    box-sizing: border-box;
-}
-.pdv-form-input:focus { outline: none; border-color: var(--pdv-primary, #6366f1); }
-.pdv-form-error { font-size: .75rem; color: #dc2626; margin-top: .2rem; }
-.dark .pdv-form-error { color: #f87171; }
-
-/* ── Cliente seleccionado ────────────────────────────────────────────── */
-.pdv-cliente__seleccionado { font-size: .8rem; color: #166534; display:flex; align-items:center; gap:.35rem; margin-top:.35rem; }
-.dark .pdv-cliente__seleccionado { color: #4ade80; }
-</style>
+<link rel="stylesheet" href="{{ asset('css/cobrar-pedido.css') }}?v={{ filemtime(public_path('css/cobrar-pedido.css')) }}">
 
 {{-- Navegar al mapa en el mismo round-trip que cierra el modal (sin segundo viaje al servidor) --}}
 <script>

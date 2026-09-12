@@ -156,9 +156,14 @@
                                 @if (! $disponible)
                                     <span class="cr-no-disp-badge">No disponible</span>
                                 @endif
-                                <span class="cr-precio-unit-mob">
-                                    S/ {{ number_format($item->precio_unitario, 2) }} c/u
-                                </span>
+                                @if ($disponible)
+                                    <span class="cr-precio-unit-mob">
+                                        S/ {{ number_format($totalLinea, 2) }}
+                                        @if ($item->cantidad > 1)
+                                            <small style="font-weight:400;color:#6b7280;font-size:.7em"> · c/u S/ {{ number_format($item->precio_unitario, 2) }}</small>
+                                        @endif
+                                    </span>
+                                @endif
                             </div>
 
                             <div class="cr-cantidad">
@@ -327,7 +332,10 @@
                                     <span class="cr-no-disp-badge">No disponible</span>
                                 @else
                                     <span class="cr-precio-unit-mob">
-                                        S/ {{ number_format($item->precio_unitario, 2) }} c/u
+                                        S/ {{ number_format($totalLinea, 2) }}
+                                        @if ($item->cantidad > 1)
+                                            <small style="font-weight:400;color:#6b7280;font-size:.7em"> · c/u S/ {{ number_format($item->precio_unitario, 2) }}</small>
+                                        @endif
                                     </span>
                                 @endif
                             </div>

@@ -9,6 +9,7 @@ use App\Enums\TipoOrigenOrden;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use App\Filament\Pdv\Pages\MapaMesasPage;
 use App\Filament\Pdv\Resources\OrdenRest\OrdenRestResource;
+use App\Filament\Pdv\Resources\Ordenes\Concerns\ValidaStockOrden;
 use App\Models\Mesa;
 use App\Models\Orden;
 use App\Models\OrdenDetalle;
@@ -22,18 +23,25 @@ use Livewire\Attributes\On;
 
 class NuevoPedido extends Page
 {
-    use HasFullWidthPage;
+    use HasFullWidthPage, ValidaStockOrden;
 
     protected static string $resource = OrdenRestResource::class;
 
     protected string $view = 'filament.pdv.pages.nuevo-pedido';
 
+    public static function canAccess(array $parameters = []): bool
+    {
+        return parent::canAccess($parameters) && (auth()->user()?->can('restaurante.pedido.crear') ?? false);
+    }
+
     // ── Props ─────────────────────────────────────────────────────────────────
 
-    public ?int  $mesaId          = null;
-    public array $carrito         = [];
-    public bool  $enviando        = false;
-    public array $lastComandaData = [];
+    public ?int  $mesaId             = null;
+    public array $carrito            = [];
+    public bool  $enviando           = false;
+    public array $lastComandaData    = [];
+    /** URL a la que Alpine navega al cerrar el modal de comanda (evita re-render Livewire) */
+    public string $comandaRedirectUrl = '';
 
     public function mount(): void
     {
@@ -81,9 +89,10 @@ class NuevoPedido extends Page
         $cantidad   = (float) ($payload['cantidad'] ?? 1);
         $productoId = (int) ($payload['producto_id'] ?? $id);
 
-        $baseKey     = "{$tipo}_{$id}";
-        $cortesiaSfx = $cortesia ? '_cortesia' : '';
-        $key         = $baseKey . $cortesiaSfx;
+        $baseKey         = "{$tipo}_{$id}";
+        $cortesiaSfx     = $cortesia ? '_cortesia' : '';
+        $key             = $baseKey . $cortesiaSfx;
+        $detallesResumen = $payload['detalles_resumen'] ?? [];
 
         $carrito = $this->carrito;
 
@@ -91,14 +100,16 @@ class NuevoPedido extends Page
             $carrito[$key]['cantidad'] += $cantidad;
         } else {
             $carrito[$key] = [
-                'tipo'          => $tipo,
-                'id'            => $id,
-                'nombre'        => $nombre,
-                'precio'        => $precio,
-                'precio_normal' => $precioNorm,
-                'es_cortesia'   => $cortesia,
-                'cantidad'      => $cantidad,
-                'producto_id'   => $productoId,
+                'tipo'             => $tipo,
+                'id'               => $id,
+                'nombre'           => $nombre,
+                'precio'           => $precio,
+                'precio_normal'    => $precioNorm,
+                'es_cortesia'      => $cortesia,
+                'cantidad'         => $cantidad,
+                'producto_id'      => $productoId,
+                'nota'             => '',
+                'detalles_resumen' => $detallesResumen,
             ];
         }
 
@@ -137,6 +148,12 @@ class NuevoPedido extends Page
         $this->carrito[$key]['cantidad'] = max(0.01, $qty);
     }
 
+    public function setNota(string $key, string $nota): void
+    {
+        if (! isset($this->carrito[$key])) return;
+        $this->carrito[$key]['nota'] = trim($nota);
+    }
+
     public function vaciarCarrito(): void
     {
         $this->carrito = [];
@@ -164,10 +181,36 @@ class NuevoPedido extends Page
         return (int) collect($this->carrito)->sum('cantidad');
     }
 
+    public function getPendienteResumen(): array
+    {
+        $resumen = [];
+        foreach ($this->carrito as $item) {
+            $rKey = "{$item['tipo']}_{$item['id']}";
+            $resumen[$rKey] = ($resumen[$rKey] ?? 0) + $item['cantidad'];
+
+            // Expandir componentes de promo para que las tarjetas de producto
+            // también reflejen el stock consumido por promos pendientes
+            if ($item['tipo'] === 'promocion' && ! empty($item['detalles_resumen'])) {
+                foreach ($item['detalles_resumen'] as $d) {
+                    if (! empty($d['variante_id'])) {
+                        $k = "variante_{$d['variante_id']}";
+                        $resumen[$k] = ($resumen[$k] ?? 0) + ($d['cantidad'] * $item['cantidad']);
+                    } elseif (! empty($d['producto_id'])) {
+                        $k = "producto_{$d['producto_id']}";
+                        $resumen[$k] = ($resumen[$k] ?? 0) + ($d['cantidad'] * $item['cantidad']);
+                    }
+                }
+            }
+        }
+        return $resumen;
+    }
+
     // ── Enviar pedido ─────────────────────────────────────────────────────────
 
     public function enviarPedido(): void
     {
+        abort_unless(auth()->user()?->can('restaurante.pedido.crear'), 403);
+
         if (empty($this->carrito)) {
             Notification::make()->title('El pedido está vacío')->warning()->send();
             return;
@@ -239,6 +282,7 @@ class NuevoPedido extends Page
                         'total'           => $calc['total'],
                         'costo_total'     => $calc['costoTotal'],
                         'enviado_cocina'  => false,
+                        'notas_item'      => $item['nota'] !== '' ? $item['nota'] : null,
                     ]);
                 }
 
@@ -256,8 +300,19 @@ class NuevoPedido extends Page
             return;
         }
 
-        // Vaciar carrito inmediatamente para evitar re-envíos accidentales
+        // Capturar datos antes de vaciar el carrito
+        $detallesParaStock = collect($this->carrito)->map(fn ($item) => [
+            'producto_id'  => $item['tipo'] === 'producto'  ? $item['id'] : ($item['tipo'] === 'variante' ? ($item['producto_id'] ?? null) : null),
+            'variante_id'  => $item['tipo'] === 'variante'  ? $item['id'] : null,
+            'promocion_id' => $item['tipo'] === 'promocion' ? $item['id'] : null,
+            'cantidad'     => $item['cantidad'],
+        ])->values()->all();
+
+        // Vaciar carrito ANTES de reservar stock para que pendienteResumen=0
+        // cuando Livewire re-renderice tras el cambio en BD
         $this->carrito = [];
+
+        $this->reservarStockDetalles($detallesParaStock, $empresa->id);
 
         // Enviar a cocina
         $config = $empresa->cachedConfigImpresion();
@@ -273,21 +328,44 @@ class NuevoPedido extends Page
         ]);
 
         // Agrupar por área de producción para el modal browser
-        $orden->loadMissing(['detalles.producto.produccion']);
+        $orden->loadMissing([
+            'detalles.producto.produccion',
+            'detalles.promocion.detalles.producto.produccion',
+            'detalles.promocion.detalles.variante.producto.produccion',
+        ]);
         $itemsPorArea = [];
         foreach ($orden->detalles as $det) {
-            $produccion = $det->producto?->produccion;
-            if (! $produccion) continue;
-            $key    = 'a' . $produccion->id;
-            $nombre = $produccion->nombre;
-            if (! isset($itemsPorArea[$key])) {
-                $itemsPorArea[$key] = ['nombre' => $nombre, 'nuevos' => [], 'cancelados' => []];
+            if ($det->promocion_id && $det->promocion) {
+                // Expandir sub-productos de la promo por área de producción
+                foreach ($det->promocion->detalles as $pd) {
+                    $produccion = $pd->variante_id
+                        ? $pd->variante?->producto?->produccion
+                        : $pd->producto?->produccion;
+                    if (! $produccion) continue;
+                    $key = 'a' . $produccion->id;
+                    if (! isset($itemsPorArea[$key])) {
+                        $itemsPorArea[$key] = ['nombre' => $produccion->nombre, 'nuevos' => [], 'cancelados' => []];
+                    }
+                    $subNombre = $pd->variante?->nombre ?? $pd->producto?->nombre ?? $det->descripcion;
+                    $itemsPorArea[$key]['nuevos'][] = [
+                        'cant'   => (int) $det->cantidad,
+                        'nombre' => $subNombre,
+                        'nota'   => trim(($det->notas_item ?? '') . ' [' . $det->descripcion . ']'),
+                    ];
+                }
+            } else {
+                $produccion = $det->producto?->produccion;
+                if (! $produccion) continue;
+                $key = 'a' . $produccion->id;
+                if (! isset($itemsPorArea[$key])) {
+                    $itemsPorArea[$key] = ['nombre' => $produccion->nombre, 'nuevos' => [], 'cancelados' => []];
+                }
+                $itemsPorArea[$key]['nuevos'][] = [
+                    'cant'   => (int) $det->cantidad,
+                    'nombre' => $det->descripcion ?? '—',
+                    'nota'   => $det->notas_item ?? '',
+                ];
             }
-            $itemsPorArea[$key]['nuevos'][] = [
-                'cant'   => (int) $det->cantidad,
-                'nombre' => $det->descripcion ?? '—',
-                'nota'   => $det->notas_item ?? '',
-            ];
         }
         $areas = array_values($itemsPorArea);
 
@@ -302,22 +380,33 @@ class NuevoPedido extends Page
             return;
         }
 
+        $user      = auth()->user();
+        $rolNombre = $user->roles()->where('roles.empresa_id', $empresa->id)->value('name') ?? '';
+        $areasJson = json_encode($areas);
+
+        // URL expuesta como propiedad reactiva — Alpine navega directo sin round-trip Livewire
+        $this->comandaRedirectUrl = MapaMesasPage::getUrl(tenant: $empresa);
+
         $this->lastComandaData = [
             'ordenId'   => $orden->id,
-            'areasJson' => json_encode($areas),
+            'areasJson' => $areasJson,
             'mesa'      => $mesa->nombre,
-            'cajero'    => auth()->user()->name,
+            'cajero'    => $user->name,
+            'rol'       => $rolNombre,
+            'numero'    => $orden->codigo,
             'parcial'   => false,
         ];
         $this->dispatch('cerrar-carrito');
         $this->dispatch('imprimir-comanda-browser',
             ordenId:   $orden->id,
-            areasJson: json_encode($areas),
+            areasJson: $areasJson,
             mesa:      $mesa->nombre,
-            cajero:    auth()->user()->name,
+            cajero:    $user->name,
+            rol:       $rolNombre,
+            numero:    $orden->codigo,
             parcial:   false,
         );
-        // onComandaModalCerrada() hará el redirect al mapa
+        // Alpine navigará directo al mapa via Livewire.navigate($wire.comandaRedirectUrl)
     }
 
     public function reenviarComanda(): void

@@ -7,22 +7,24 @@ use Livewire\Component;
 
 class ComandaModal extends Component
 {
-    public bool   $abierto  = false;
-    public int    $ordenId  = 0;
-    public string $mesa     = '';
-    public string $cajero   = '';
-    public bool   $parcial  = false;
+    public bool   $abierto     = false;
+    public int    $ordenId    = 0;
+    public string $mesa       = '';
+    public string $cajero     = '';
+    public bool   $parcial    = false;
+    public string $descripcion = '';
 
-    /** [ ['nombre'=>'Cocina','nuevos'=>[...],'cancelados'=>[...]], ... ] */
+    /** [ ['nombre'=>'Cocina','nuevos'=>[...],'cancelados'=>[...],'notas'=>[...]], ... ] */
     public array $areas = [];
 
     #[On('imprimir-comanda-browser')]
     public function abrir(
         int    $ordenId,
-        string $areasJson = '[]',
-        string $mesa      = '',
-        string $cajero    = '',
-        bool   $parcial   = false,
+        string $areasJson    = '[]',
+        string $mesa         = '',
+        string $cajero       = '',
+        bool   $parcial      = false,
+        string $descripcion  = '',
     ): void {
         $areas = json_decode($areasJson, true) ?? [];
 
@@ -30,12 +32,13 @@ class ComandaModal extends Component
             return;
         }
 
-        $this->ordenId = $ordenId;
-        $this->areas   = $areas;
-        $this->mesa    = $mesa;
-        $this->cajero  = $cajero;
-        $this->parcial = $parcial;
-        $this->abierto = true;
+        $this->ordenId     = $ordenId;
+        $this->areas       = $areas;
+        $this->mesa        = $mesa;
+        $this->cajero      = $cajero;
+        $this->parcial     = $parcial;
+        $this->descripcion = $descripcion;
+        $this->abierto     = true;
     }
 
     public function cerrar(): void

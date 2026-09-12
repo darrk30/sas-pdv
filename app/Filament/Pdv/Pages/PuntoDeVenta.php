@@ -261,6 +261,11 @@ class PuntoDeVenta extends Page
         return $resumen;
     }
 
+    public function getPendienteResumen(): array
+    {
+        return $this->getCarritoResumen();
+    }
+
     // ── Carrito: agregar desde ProductCatalog ─────────────────────────────────
 
     #[On('product-selected')]

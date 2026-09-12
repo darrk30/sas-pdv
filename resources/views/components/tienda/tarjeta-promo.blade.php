@@ -131,6 +131,10 @@
 
         <h3 class="tarjeta__nombre">{{ $promo->nombre }}</h3>
 
+        @if (!empty($promo->descripcion))
+            <p class="tarjeta__desc">{{ strip_tags($promo->descripcion) }}</p>
+        @endif
+
         {{-- Stock reactivo (solo si hay límite, igual que productos simples) --}}
         <p class="tarjeta__stock"
            x-show="stockRestante !== null"

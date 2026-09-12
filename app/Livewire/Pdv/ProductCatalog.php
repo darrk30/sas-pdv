@@ -22,6 +22,10 @@ class ProductCatalog extends Component
     #[Reactive]
     public array $carritoResumen = []; // ['producto_123' => 2, 'variante_456' => 1]
 
+    /** Solo ítems aún no persistidos en BD (para descontar de stock_reserva sin doble conteo) */
+    #[Reactive]
+    public array $pendienteResumen = [];
+
     #[Reactive]
     public ?bool $showPromociones = false; // true in PDV, false in restaurant pages
 
@@ -148,20 +152,28 @@ class ProductCatalog extends Component
 
     public function seleccionarPromocion(int $promocionId): void
     {
-        $promo = Promocion::find($promocionId);
+        $promo = Promocion::with(['detalles.producto', 'detalles.variante'])->find($promocionId);
         if (! $promo) return;
 
+        $detallesResumen = $promo->detalles->map(fn ($d) => [
+            'nombre'      => $d->variante?->nombre ?? $d->producto?->nombre ?? '—',
+            'cantidad'    => (float) ($d->cantidad ?? 1),
+            'producto_id' => $d->producto_id,
+            'variante_id' => $d->variante_id,
+        ])->values()->all();
+
         $this->dispatch('product-selected', [
-            'tipo'          => 'promocion',
-            'id'            => $promo->id,
-            'nombre'        => $promo->nombre,
-            'precio'        => (float) $promo->precio,
-            'precio_normal' => (float) $promo->precio,
-            'es_cortesia'   => false,
-            'cantidad'      => 1,
-            'producto_id'   => $promo->id,
-            'puede_cortesia'=> false,
-            'es_decimal'    => false,
+            'tipo'             => 'promocion',
+            'id'               => $promo->id,
+            'nombre'           => $promo->nombre,
+            'precio'           => (float) $promo->precio,
+            'precio_normal'    => (float) $promo->precio,
+            'es_cortesia'      => false,
+            'cantidad'         => 1,
+            'producto_id'      => $promo->id,
+            'puede_cortesia'   => false,
+            'es_decimal'       => false,
+            'detalles_resumen' => $detallesResumen,
         ]);
     }
 
@@ -216,7 +228,7 @@ class ProductCatalog extends Component
                         WHERE v.producto_id = productos.id AND v.estado = ?
                     ) THEN
                         CASE WHEN (
-                            SELECT COALESCE(SUM(i.stock_real), 0)
+                            SELECT COALESCE(SUM(i.stock_reserva), 0)
                             FROM inventarios i
                             INNER JOIN variantes v ON i.variante_id = v.id
                             WHERE v.producto_id = productos.id
@@ -225,7 +237,7 @@ class ProductCatalog extends Component
                         ) > 0 THEN 0 ELSE 1 END
                     ELSE
                         CASE WHEN (
-                            SELECT COALESCE(SUM(i.stock_real), 0)
+                            SELECT COALESCE(SUM(i.stock_reserva), 0)
                             FROM inventarios i
                             WHERE i.producto_id = productos.id
                               AND i.variante_id IS NULL
@@ -283,7 +295,7 @@ class ProductCatalog extends Component
         $this->variantesInfo = $producto->variantesActivas
             ->map(fn ($v) => [
                 'pav_ids' => $v->valores->pluck('id')->toArray(),
-                'stock'   => (float) ($v->inventario?->stock_real ?? 0),
+                'stock'   => (float) ($v->inventario?->stock_reserva ?? 0),
             ])
             ->values()->toArray();
 
@@ -462,7 +474,7 @@ class ProductCatalog extends Component
 
         if ($this->productoControlStock && ! $this->productoVentaSinStock) {
             $inv   = Inventario::where('variante_id', $variante->id)->first();
-            $stock = (float) ($inv?->stock_real ?? 0);
+            $stock = (float) ($inv?->stock_reserva ?? 0);
             if ($this->modalCantidad > $stock) {
                 Notification::make()
                     ->title('Stock insuficiente')

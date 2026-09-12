@@ -62,14 +62,6 @@ tfoot td { border-top:1px solid #000; padding-top:2px; }
 @endforeach
 </tbody>
 <tfoot>
-<tr>
-    <td colspan="2" style="text-align:right;padding-right:4px;">Subtotal</td>
-    <td class="prec">S/ {{ number_format($orden->subtotal, 2) }}</td>
-</tr>
-<tr>
-    <td colspan="2" style="text-align:right;padding-right:4px;">IGV</td>
-    <td class="prec">S/ {{ number_format($orden->igv, 2) }}</td>
-</tr>
 <tr class="total-row">
     <td colspan="2" style="text-align:right;padding-right:4px;">TOTAL</td>
     <td class="prec">S/ {{ number_format($orden->total, 2) }}</td>
