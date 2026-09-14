@@ -94,9 +94,21 @@ trait ValidaStockOrden
     /**
      * Decrementa stock_reserva al crear una orden desde el admin.
      * Para venta_sin_stock=true permite stock_reserva negativo.
+     * $actualizarEtiquetas=false omite EtiquetaStockService (útil en restaurante).
      */
-    protected function reservarStockDetalles(array $detalles, int $empresaId): void
+    protected function reservarStockDetalles(array $detalles, int $empresaId, bool $actualizarEtiquetas = true): void
     {
+        // Pre-cargar variantes y productos en bulk (evita N+1)
+        $varianteIds = collect($detalles)->filter(fn($i) => !empty($i['variante_id']))->pluck('variante_id')->unique()->values()->all();
+        $productoIds = collect($detalles)->filter(fn($i) => empty($i['variante_id']) && empty($i['promocion_id']) && !empty($i['producto_id']))->pluck('producto_id')->unique()->values()->all();
+
+        $variantesMap = $varianteIds
+            ? Variante::with('producto:id,control_de_stock,venta_sin_stock,nombre')->whereIn('id', $varianteIds)->get()->keyBy('id')
+            : collect();
+        $productosMap = $productoIds
+            ? Producto::whereIn('id', $productoIds)->get()->keyBy('id')
+            : collect();
+
         $productosAfectados = [];
 
         foreach ($detalles as $item) {
@@ -134,7 +146,7 @@ trait ValidaStockOrden
                     }
                 }
             } elseif ($varianteId) {
-                $variante = Variante::with('producto')->find($varianteId);
+                $variante = $variantesMap[$varianteId] ?? null;
                 if (!$variante?->producto?->control_de_stock) continue;
                 $expr = $variante->producto->venta_sin_stock
                     ? "stock_reserva - {$qty}"
@@ -145,7 +157,7 @@ trait ValidaStockOrden
                     ->update(['stock_reserva' => DB::raw($expr)]);
                 $productosAfectados[] = $variante->producto_id;
             } elseif ($productoId) {
-                $producto = Producto::find($productoId);
+                $producto = $productosMap[$productoId] ?? null;
                 if (!$producto?->control_de_stock) continue;
                 $expr = $producto->venta_sin_stock
                     ? "stock_reserva - {$qty}"
@@ -159,7 +171,7 @@ trait ValidaStockOrden
             }
         }
 
-        if ($productosAfectados) {
+        if ($actualizarEtiquetas && $productosAfectados) {
             $service = app(EtiquetaStockService::class);
             foreach (array_unique($productosAfectados) as $pid) {
                 $service->sincronizar($pid, $empresaId);

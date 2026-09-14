@@ -75,89 +75,8 @@ class NuevoPedido extends Page
         $this->mesaId = $mesaId;
     }
 
-    // ── Carrito (escucha el evento del ProductCatalog) ────────────────────────
-
-    #[On('product-selected')]
-    public function agregarAlCarrito(array $payload): void
-    {
-        $tipo       = $payload['tipo'];
-        $id         = (int) $payload['id'];
-        $nombre     = $payload['nombre'];
-        $precio     = (float) $payload['precio'];
-        $precioNorm = (float) ($payload['precio_normal'] ?? $precio);
-        $cortesia   = (bool) ($payload['es_cortesia'] ?? false);
-        $cantidad   = (float) ($payload['cantidad'] ?? 1);
-        $productoId = (int) ($payload['producto_id'] ?? $id);
-
-        $baseKey         = "{$tipo}_{$id}";
-        $cortesiaSfx     = $cortesia ? '_cortesia' : '';
-        $key             = $baseKey . $cortesiaSfx;
-        $detallesResumen = $payload['detalles_resumen'] ?? [];
-
-        $carrito = $this->carrito;
-
-        if (isset($carrito[$key])) {
-            $carrito[$key]['cantidad'] += $cantidad;
-        } else {
-            $carrito[$key] = [
-                'tipo'             => $tipo,
-                'id'               => $id,
-                'nombre'           => $nombre,
-                'precio'           => $precio,
-                'precio_normal'    => $precioNorm,
-                'es_cortesia'      => $cortesia,
-                'cantidad'         => $cantidad,
-                'producto_id'      => $productoId,
-                'nota'             => '',
-                'detalles_resumen' => $detallesResumen,
-            ];
-        }
-
-        $this->carrito = $carrito;
-    }
-
-    public function incrementar(string $key): void
-    {
-        if (isset($this->carrito[$key])) {
-            $this->carrito[$key]['cantidad'] += 1;
-        }
-    }
-
-    public function decrementar(string $key): void
-    {
-        if (! isset($this->carrito[$key])) return;
-
-        if ($this->carrito[$key]['cantidad'] <= 1) {
-            $this->eliminarItem($key);
-            return;
-        }
-
-        $this->carrito[$key]['cantidad'] -= 1;
-    }
-
-    public function eliminarItem(string $key): void
-    {
-        $carrito = $this->carrito;
-        unset($carrito[$key]);
-        $this->carrito = $carrito;
-    }
-
-    public function setCantidad(string $key, float $qty): void
-    {
-        if (! isset($this->carrito[$key])) return;
-        $this->carrito[$key]['cantidad'] = max(0.01, $qty);
-    }
-
-    public function setNota(string $key, string $nota): void
-    {
-        if (! isset($this->carrito[$key])) return;
-        $this->carrito[$key]['nota'] = trim($nota);
-    }
-
-    public function vaciarCarrito(): void
-    {
-        $this->carrito = [];
-    }
+    // Carrito gestionado 100 % en Alpine.js (sin round-trips al server)
+    // enviarPedido() recibe $this->carrito sincronizado por Alpine antes de llamar.
 
     // ── Totales ───────────────────────────────────────────────────────────────
 
@@ -243,17 +162,28 @@ class NuevoPedido extends Page
                     'total'        => 0,
                 ]);
 
+                // Pre-cargar costos en bulk (evita N+1 dentro de la transacción)
+                $productoIdsBulk = collect($this->carrito)->where('tipo', 'producto')->pluck('id')->unique()->values()->all();
+                $varianteIdsBulk = collect($this->carrito)->where('tipo', 'variante')->pluck('id')->unique()->values()->all();
+                $costosProd = $productoIdsBulk
+                    ? Producto::whereIn('id', $productoIdsBulk)->pluck('precio_costo', 'id')
+                    : collect();
+                $variantesMap = $varianteIdsBulk
+                    ? \App\Models\Variante::with('producto:id,precio_costo')->whereIn('id', $varianteIdsBulk)->get()->keyBy('id')
+                    : collect();
+
                 // Crear OrdenDetalles
+                $now = now();
+                $detallesRows = [];
                 foreach ($this->carrito as $item) {
                     $tipo   = $item['tipo'];
                     $precio = (float) $item['precio'];
                     $costo  = 0.0;
 
                     if ($tipo === 'producto') {
-                        $prod  = Producto::find($item['id']);
-                        $costo = (float) ($prod?->precio_costo ?? 0);
+                        $costo = (float) ($costosProd[$item['id']] ?? 0);
                     } elseif ($tipo === 'variante') {
-                        $var   = \App\Models\Variante::find($item['id']);
+                        $var   = $variantesMap[$item['id']] ?? null;
                         $costo = (float) ($var?->costo ?? $var?->producto?->precio_costo ?? 0);
                     }
 
@@ -266,8 +196,8 @@ class NuevoPedido extends Page
                     $cantidad = (float) $item['cantidad'];
                     $calc     = OrdenDetalle::calcular($cantidad, $precio, $costo, 0, $igvRate);
 
-                    $orden->detalles()->create([
-                        'tipo_item'       => $tipoItem,
+                    $detallesRows[] = [
+                        'tipo_item'       => $tipoItem->value,
                         'producto_id'     => $tipo === 'producto' ? $item['id'] : ($tipo === 'variante' ? ($item['producto_id'] ?? null) : null),
                         'variante_id'     => $tipo === 'variante'  ? $item['id'] : null,
                         'promocion_id'    => $tipo === 'promocion' ? $item['id'] : null,
@@ -283,8 +213,15 @@ class NuevoPedido extends Page
                         'costo_total'     => $calc['costoTotal'],
                         'enviado_cocina'  => false,
                         'notas_item'      => $item['nota'] !== '' ? $item['nota'] : null,
-                    ]);
+                        'created_at'      => $now,
+                        'updated_at'      => $now,
+                    ];
                 }
+
+                // Un solo INSERT con todos los detalles
+                \Illuminate\Support\Facades\DB::table('orden_detalles')->insert(
+                    array_map(fn($r) => array_merge($r, ['orden_id' => $orden->id]), $detallesRows)
+                );
 
                 $orden->recalcularTotales();
 
@@ -312,7 +249,7 @@ class NuevoPedido extends Page
         // cuando Livewire re-renderice tras el cambio en BD
         $this->carrito = [];
 
-        $this->reservarStockDetalles($detallesParaStock, $empresa->id);
+        $this->reservarStockDetalles($detallesParaStock, $empresa->id, false);
 
         // Enviar a cocina
         $config = $empresa->cachedConfigImpresion();

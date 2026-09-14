@@ -14,7 +14,7 @@ use Livewire\Attributes\On;
 
 class ResumenDashboardWidget extends BaseWidget
 {
-    protected static ?int $sort = 4;
+    protected static ?int $sort = 5;
 
     public string $desde = '';
     public string $hasta = '';

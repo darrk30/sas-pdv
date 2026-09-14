@@ -200,14 +200,16 @@
                                             </a>
                                         @endif
                                         @endcan
-                                        <button
-                                            wire:click="liberarMesa({{ $mesa->id }})"
-                                            wire:confirm="¿Liberar la mesa sin cobrar? Esto cancelará el pedido si está vacío."
-                                            class="mm-btn mm-btn--liberar"
+                                        @can('restaurante.pedido.cobrar')
+                                        <a
+                                            href="{{ $orden ? \App\Filament\Pdv\Resources\OrdenRest\OrdenRestResource::getUrl('cobrar', ['record' => $orden->id], tenant: filament()->getTenant()) : '#' }}"
+                                            class="mm-btn mm-btn--pagar"
+                                            wire:navigate
                                         >
-                                            <x-heroicon-m-x-circle class="mm-btn-icon" />
-                                            Liberar mesa
-                                        </button>
+                                            <x-heroicon-m-banknotes class="mm-btn-icon" />
+                                            Cobrar
+                                        </a>
+                                        @endcan
                                     @endif
                                 </div>
 

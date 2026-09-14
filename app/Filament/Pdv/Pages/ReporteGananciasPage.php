@@ -33,10 +33,10 @@ class ReporteGananciasPage extends Page implements HasForms, HasTable
 
     protected string $view = 'filament.pdv.pages.reporte-ganancias';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrow-trending-up';
-    protected static ?string $navigationLabel = 'Reporte de Ganancias';
+    protected static ?string $navigationLabel = 'Ganancias por Venta';
     protected static string|UnitEnum|null $navigationGroup = 'Reportes';
     protected static ?int $navigationSort = 3;
-    protected static ?string $title = 'Reporte de Ganancias';
+    protected static ?string $title = 'Ganancias por Venta';
 
     public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('reporte_ganancias') && (auth()->user()?->can('caja.reporte_ganancias') ?? false); }
 

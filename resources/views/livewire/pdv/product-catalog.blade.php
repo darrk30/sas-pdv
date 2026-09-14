@@ -176,39 +176,18 @@
                             ? $producto->variantesActivas->sum(fn($v) => (float)($v->inventario?->stock_reserva ?? 0)) : null;
                         $stock          = $stockSimple ?? $stockVariantes;
 
-                        // Badge de carrito (incluye ítems guardados y pendientes)
-                        if (! $tieneVariantes) {
-                            $enCarrito = (float) ($carritoResumen["producto_{$producto->id}"] ?? 0);
-                        } else {
-                            $enCarrito = 0.0;
-                            foreach ($producto->variantesActivas as $v) {
-                                $enCarrito += (float) ($carritoResumen["variante_{$v->id}"] ?? 0);
-                            }
-                        }
+                        // Claves del carrito para el badge Alpine
+                        $cartKeys = $tieneVariantes
+                            ? $producto->variantesActivas->map(fn($v) => "variante_{$v->id}")->values()->toArray()
+                            : ["producto_{$producto->id}"];
 
-                        // Solo ítems pendientes (no persistidos) para descontar de stock_reserva
-                        if (! $tieneVariantes) {
-                            $pendiente = (float) ($pendienteResumen["producto_{$producto->id}"] ?? 0);
-                        } else {
-                            $pendiente = 0.0;
-                            foreach ($producto->variantesActivas as $v) {
-                                $pendiente += (float) ($pendienteResumen["variante_{$v->id}"] ?? 0);
-                            }
-                        }
-
-                        $stockVisible = $stock !== null
-                            ? ($producto->venta_sin_stock ? $stock - $pendiente : max(0, $stock - $pendiente))
-                            : null;
+                        $stockVisible = $stock;
 
                         $agotado    = $producto->control_de_stock
                             && ! $producto->venta_sin_stock
                             && $stockVisible !== null
                             && $stockVisible <= 0;
                         $stockNivel = $stockVisible === null ? null : ($stockVisible <= 0 ? 'agotado' : ($stockVisible <= 5 ? 'bajo' : 'ok'));
-
-                        $enCarritoFmt = $enCarrito > 0
-                            ? ($enCarrito == floor($enCarrito) ? number_format($enCarrito, 0) : number_format($enCarrito, 2))
-                            : null;
                     @endphp
                     <button
                         class="pdv-card {{ $agotado ? 'pdv-card--agotado' : '' }}"
@@ -224,14 +203,20 @@
                             @if($agotado)
                                 <div class="pdv-card__agotado-overlay"><span>AGOTADO</span></div>
                             @endif
-                            @if($enCarritoFmt !== null)
-                                <span class="pdv-card__badge pdv-card__badge--carrito">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width:.6rem;height:.6rem;display:inline;vertical-align:-.05em;">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
-                                    </svg>
-                                    {{ $enCarritoFmt }}
-                                </span>
-                            @endif
+                            <span class="pdv-card__badge pdv-card__badge--carrito"
+                                x-data="{
+                                    keys: @js($cartKeys),
+                                    get qty() {
+                                        const r = Alpine.store('carritoResumen') || {};
+                                        return this.keys.reduce((s, k) => s + (r[k] || 0), 0);
+                                    }
+                                }"
+                                x-show="qty > 0">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width:.6rem;height:.6rem;display:inline;vertical-align:-.05em;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
+                                </svg>
+                                <span x-text="qty % 1 === 0 ? Math.round(qty) : qty.toFixed(2)"></span>
+                            </span>
                             @if($producto->es_cortesia)
                                 <span class="pdv-card__badge pdv-card__badge--cortesia">CORTESÍA</span>
                             @endif

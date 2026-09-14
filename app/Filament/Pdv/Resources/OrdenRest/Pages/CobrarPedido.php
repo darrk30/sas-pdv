@@ -234,20 +234,30 @@ class CobrarPedido extends Page
         $totalAcumulado = collect($this->pagosAgregados)->sum('monto');
         $pendiente      = max(0, $this->getTotalConDescuento() - $totalAcumulado);
 
-        // Si la cuenta ya está cubierta no se agrega más
         if ($pendiente <= 0) return;
 
         $metodo = MetodoPago::find($this->metodoPagoId);
 
-        // Se guarda el monto real entregado (puede ser mayor al pendiente → genera vuelto)
-        $this->pagosAgregados[] = [
-            'metodo_pago_id' => $this->metodoPagoId,
-            'nombre'         => $metodo?->nombre ?? 'Pago',
-            'monto'          => $monto,
-            'referencia'     => $this->pagoReferencia,
-        ];
+        // Si ya existe un pago con el mismo método, fusionar montos en lugar de duplicar
+        $idx = null;
+        foreach ($this->pagosAgregados as $i => $p) {
+            if ($p['metodo_pago_id'] === $this->metodoPagoId) {
+                $idx = $i;
+                break;
+            }
+        }
 
-        // Input queda en lo que aún falta (0 si ya se cubrió o hubo vuelto)
+        if ($idx !== null) {
+            $this->pagosAgregados[$idx]['monto'] += $monto;
+        } else {
+            $this->pagosAgregados[] = [
+                'metodo_pago_id' => $this->metodoPagoId,
+                'nombre'         => $metodo?->nombre ?? 'Pago',
+                'monto'          => $monto,
+                'referencia'     => $this->pagoReferencia,
+            ];
+        }
+
         $this->montoPagoInput = number_format(max(0, $this->getTotalConDescuento() - ($totalAcumulado + $monto)), 2, '.', '');
         $this->pagoReferencia = '';
     }

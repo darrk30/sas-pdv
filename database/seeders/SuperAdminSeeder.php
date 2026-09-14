@@ -85,6 +85,15 @@ class SuperAdminSeeder extends Seeder
         ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos.crear',  'description' => 'Registrar y editar gastos'],
         ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos.anular', 'description' => 'Anular gastos registrados'],
 
+        // ── Gastos Fijos ──────────────────────────────────────────────────────
+        ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos_fijos.ver',      'description' => 'Ver listado de gastos fijos'],
+        ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos_fijos.crear',    'description' => 'Crear nuevos gastos fijos'],
+        ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos_fijos.editar',   'description' => 'Editar gastos fijos existentes'],
+        ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos_fijos.eliminar', 'description' => 'Eliminar gastos fijos'],
+
+        // ── Resumen / Dashboard ───────────────────────────────────────────────
+        ['module' => 'resumen', 'module_label' => 'Resumen', 'name' => 'resumen.camino_ganancias', 'description' => 'Ver sección Camino a tus ganancias en el Resumen'],
+
         // ── Catálogo ───────────────────────────────────────────────────────────
         ['module' => 'catalogo', 'module_label' => 'Catálogo', 'name' => 'categorias.ver',       'description' => 'Ver categorías'],
         ['module' => 'catalogo', 'module_label' => 'Catálogo', 'name' => 'categorias.crear',     'description' => 'Crear categorías'],

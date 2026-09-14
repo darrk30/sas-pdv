@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Enums\TipoOrigenOrden;
 use App\Models\Orden;
 use App\Notifications\OrdenNuevaNotification;
 use App\Services\WebPushService;
@@ -11,6 +12,10 @@ class OrdenObserver
 {
     public function created(Orden $orden): void
     {
+        if ($orden->tipo_origen === TipoOrigenOrden::Restaurante) {
+            return;
+        }
+
         $orden->loadMissing('empresa');
 
         $usuarios = $orden->empresa

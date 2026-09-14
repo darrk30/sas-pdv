@@ -693,14 +693,32 @@ class PuntoDeVenta extends Page
             return;
         }
 
-        $this->pagosAgregados[] = [
-            'metodo_pago_id'  => $this->metodoPagoId,
-            'nombre'          => $metodo['nombre'] ?? '',
-            'imagen'          => $metodo['imagen'] ?? null,
-            'monto'           => $monto,
-            'referencia'      => $this->pagoReferencia,
-            'condicion_pago'  => $metodo['condicion_pago'] ?? 'contado',
-        ];
+        $condicion = $metodo['condicion_pago'] ?? 'contado';
+
+        // Fusionar si ya existe un pago con el mismo método y condición de pago
+        $idx = null;
+        foreach ($this->pagosAgregados as $i => $p) {
+            if ($p['metodo_pago_id'] === $this->metodoPagoId && ($p['condicion_pago'] ?? 'contado') === $condicion) {
+                $idx = $i;
+                break;
+            }
+        }
+
+        if ($idx !== null) {
+            $this->pagosAgregados[$idx]['monto'] += $monto;
+            if ($this->pagoReferencia !== '') {
+                $this->pagosAgregados[$idx]['referencia'] = $this->pagoReferencia;
+            }
+        } else {
+            $this->pagosAgregados[] = [
+                'metodo_pago_id'  => $this->metodoPagoId,
+                'nombre'          => $metodo['nombre'] ?? '',
+                'imagen'          => $metodo['imagen'] ?? null,
+                'monto'           => $monto,
+                'referencia'      => $this->pagoReferencia,
+                'condicion_pago'  => $condicion,
+            ];
+        }
 
         $saldo = $this->getSaldoRestante();
         $this->montoPagoInput = $saldo > 0 ? number_format($saldo, 2, '.', '') : '0.00';
