@@ -146,6 +146,7 @@ class SuperAdminSeeder extends Seeder
         ['module' => 'config', 'module_label' => 'Configuración', 'name' => 'roles.editar',           'description' => 'Editar roles y sus permisos'],
         ['module' => 'config', 'module_label' => 'Configuración', 'name' => 'roles.eliminar',         'description' => 'Eliminar roles'],
         ['module' => 'config', 'module_label' => 'Configuración', 'name' => 'config.suscripcion',     'description' => 'Ver suscripción y registrar comprobantes de pago'],
+        ['module' => 'config', 'module_label' => 'Configuración', 'name' => 'empresa.configurar',    'description' => 'Configurar datos de Mi Empresa (RUC, certificado, facturación)'],
 
         // ── Pisos y Mesas ──────────────────────────────────────────────────────
         ['module' => 'pisos_mesas', 'module_label' => 'Pisos y Mesas', 'name' => 'pisos.ver',           'description' => 'Ver pisos y mesas (requiere módulo restaurante)'],
