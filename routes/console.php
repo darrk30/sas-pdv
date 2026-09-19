@@ -12,6 +12,6 @@ Artisan::command('inspire', function () {
 // Cargar tareas programadas desde la base de datos
 if (Schema::hasTable('tareas_programadas')) {
     \App\Models\TareaProgramada::where('activo', true)->get()->each(function ($tarea) {
-        Schedule::command($tarea->comando)->dailyAt($tarea->hora);
+        Schedule::call(fn () => $tarea->ejecutar())->dailyAt($tarea->hora);
     });
 }

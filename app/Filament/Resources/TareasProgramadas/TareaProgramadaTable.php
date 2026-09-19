@@ -2,9 +2,12 @@
 
 namespace App\Filament\Resources\TareasProgramadas;
 
+use App\Models\TareaProgramada;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Columns\IconColumn;
+use Filament\Notifications\Notification;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
@@ -40,10 +43,37 @@ class TareaProgramadaTable
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('Nunca')
                     ->sortable(),
+
+                TextColumn::make('ultimo_resultado')
+                    ->label('Último resultado')
+                    ->placeholder('—')
+                    ->limit(80)
+                    ->tooltip(fn ($record) => $record->ultimo_resultado)
+                    ->wrap(),
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    Action::make('ejecutar')
+                        ->label('Ejecutar ahora')
+                        ->icon('heroicon-o-play')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->modalHeading('Ejecutar tarea')
+                        ->modalDescription(fn (TareaProgramada $record) => "¿Ejecutar «{$record->nombre}» ahora?")
+                        ->modalSubmitActionLabel('Ejecutar')
+                        ->action(function (TareaProgramada $record) {
+                            $record->ejecutar();
+
+                            Notification::make()
+                                ->title('Tarea ejecutada')
+                                ->body($record->ultimo_resultado)
+                                ->success()
+                                ->send();
+                        }),
+
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ]),
             ])
             ->defaultSort('hora');
     }
