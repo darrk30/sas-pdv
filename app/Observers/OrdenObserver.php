@@ -12,7 +12,7 @@ class OrdenObserver
 {
     public function created(Orden $orden): void
     {
-        if ($orden->tipo_origen === TipoOrigenOrden::Restaurante) {
+        if ($orden->tipo_origen !== TipoOrigenOrden::Web) {
             return;
         }
 

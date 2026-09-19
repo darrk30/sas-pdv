@@ -12,6 +12,7 @@ use App\Models\Variante;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
 use Livewire\Component;
@@ -52,6 +53,17 @@ class ProductCatalog extends Component
     public array  $valoresDeshabilitados = [];
     public float  $modalCantidad         = 1.0;
     public bool   $modalCortesia         = false;
+    public string $productoUnidadSimbolo = '';
+
+    // ── Plan feature: lista de precios ───────────────────────────────────────
+
+    #[Computed]
+    public function featureListaPrecios(): bool
+    {
+        $empresa = Filament::getTenant();
+        return ($empresa?->tienePlanListaPrecios() ?? true)
+            && (auth()->user()?->can('listas_precios.ver') ?? false);
+    }
 
     // ── Filtros ───────────────────────────────────────────────────────────────
 
@@ -141,6 +153,7 @@ class ProductCatalog extends Component
                 'detalles.producto.inventario',
                 'detalles.variante.producto',
                 'detalles.variante.inventario',
+                'detalles.variante.valores.valor',
             ]);
 
         if ($this->busqueda !== '') {
@@ -152,15 +165,28 @@ class ProductCatalog extends Component
 
     public function seleccionarPromocion(int $promocionId): void
     {
-        $promo = Promocion::with(['detalles.producto', 'detalles.variante'])->find($promocionId);
+        $promo = Promocion::with([
+            'detalles.producto',
+            'detalles.variante.producto',
+            'detalles.variante.valores.valor',
+        ])->find($promocionId);
         if (! $promo) return;
 
-        $detallesResumen = $promo->detalles->map(fn ($d) => [
-            'nombre'      => $d->variante?->nombre ?? $d->producto?->nombre ?? '—',
-            'cantidad'    => (float) ($d->cantidad ?? 1),
-            'producto_id' => $d->producto_id,
-            'variante_id' => $d->variante_id,
-        ])->values()->all();
+        $detallesResumen = $promo->detalles->map(function ($d) {
+            $nombre = $d->variante?->producto?->nombre ?? $d->producto?->nombre ?? '—';
+            if ($d->variante_id && $d->variante) {
+                $vals = $d->variante->valores->map(fn ($pav) => $pav->valor?->nombre)->filter()->join(' / ');
+                if ($vals) $nombre .= " ({$vals})";
+            }
+            return [
+                'nombre'      => $nombre,
+                'cantidad'    => (float) ($d->cantidad ?? 1),
+                'producto_id' => $d->producto_id,
+                'variante_id' => $d->variante_id,
+            ];
+        })->values()->all();
+
+        $stockPromo = $promo->stockPredictivo();
 
         $this->dispatch('product-selected', [
             'tipo'             => 'promocion',
@@ -174,6 +200,8 @@ class ProductCatalog extends Component
             'puede_cortesia'   => false,
             'es_decimal'       => false,
             'detalles_resumen' => $detallesResumen,
+            'stock_max'        => $stockPromo,
+            'venta_sin_stock'  => false,
         ]);
     }
 
@@ -200,6 +228,7 @@ class ProductCatalog extends Component
             ->where('visible_en_carta', true)
             ->where('vendible', true)
             ->with([
+                'preciosLista.lista',
                 'variantesActivas' => fn ($q) => $q->with('inventario'),
                 'inventario',
                 'unidadMedida',
@@ -253,7 +282,7 @@ class ProductCatalog extends Component
 
     // ── Modal variantes ───────────────────────────────────────────────────────
 
-    public function abrirModalProducto(int $productoId): void
+    public function abrirModalProducto(int $productoId, ?float $precioLista = null): void
     {
         $producto = Producto::with([
             'variantesActivas' => fn ($q) => $q->with(['inventario', 'valores']),
@@ -267,6 +296,7 @@ class ProductCatalog extends Component
         $this->productoVentaSinStock = (bool) $producto->venta_sin_stock;
         $this->productoEsCortesia    = (bool) $producto->es_cortesia;
         $this->productoEsDecimal     = $producto->unidadMedida?->esContinua() ?? false;
+        $this->productoUnidadSimbolo = $producto->unidadMedida?->simbolo ?? '';
 
         if ($producto->variantesActivas->isEmpty()) {
             $puedeCortesia = (bool) $producto->es_cortesia;
@@ -282,9 +312,11 @@ class ProductCatalog extends Component
         $this->productoModalId     = $productoId;
         $this->productoModalNombre = $producto->nombre;
         $this->precioBaseOriginal  = (float) $producto->precio_venta;
-        $this->precioBase          = ($producto->porcentaje_descuento > 0 && $producto->precio_con_descuento)
-            ? (float) $producto->precio_con_descuento
-            : (float) $producto->precio_venta;
+        $this->precioBase          = $precioLista ?? (
+            ($producto->porcentaje_descuento > 0 && $producto->precio_con_descuento)
+                ? (float) $producto->precio_con_descuento
+                : (float) $producto->precio_venta
+        );
         $this->seleccionados       = [];
         $this->precioAdicionalTotal = 0;
 
@@ -484,6 +516,9 @@ class ProductCatalog extends Component
             }
         }
 
+        $invVariante  = Inventario::where('variante_id', $variante->id)->first();
+        $stockMax     = $this->productoControlStock ? (float) ($invVariante?->stock_reserva ?? 0) : null;
+
         $this->emitirProductoSeleccionado(
             'variante',
             $variante->id,
@@ -495,6 +530,8 @@ class ProductCatalog extends Component
             $this->productoModalId,
             $this->productoEsCortesia,
             $this->productoEsDecimal,
+            $stockMax,
+            $this->productoVentaSinStock,
         );
 
         $this->cerrarModal();
@@ -517,33 +554,38 @@ class ProductCatalog extends Component
         $this->valoresDeshabilitados = [];
         $this->modalCantidad         = 1.0;
         $this->modalCortesia         = false;
+        $this->productoUnidadSimbolo = '';
     }
 
     // ── Emitir evento al padre ────────────────────────────────────────────────
 
     private function emitirProductoSeleccionado(
-        string $tipo,
-        int    $id,
-        string $nombre,
-        float  $precio,
-        float  $precioNormal,
-        bool   $esCortesia,
-        float  $cantidad,
-        int    $productoId,
-        bool   $puedeCortesia = false,
-        bool   $esDecimal = false,
+        string  $tipo,
+        int     $id,
+        string  $nombre,
+        float   $precio,
+        float   $precioNormal,
+        bool    $esCortesia,
+        float   $cantidad,
+        int     $productoId,
+        bool    $puedeCortesia   = false,
+        bool    $esDecimal       = false,
+        ?float  $stockMax        = null,
+        bool    $ventaSinStock   = false,
     ): void {
         $this->dispatch('product-selected', [
-            'tipo'          => $tipo,
-            'id'            => $id,
-            'nombre'        => $nombre,
-            'precio'        => $precio,
-            'precio_normal' => $precioNormal,
-            'es_cortesia'   => $esCortesia,
-            'cantidad'      => $cantidad,
-            'producto_id'   => $productoId,
-            'puede_cortesia'=> $puedeCortesia,
-            'es_decimal'    => $esDecimal,
+            'tipo'            => $tipo,
+            'id'              => $id,
+            'nombre'          => $nombre,
+            'precio'          => $precio,
+            'precio_normal'   => $precioNormal,
+            'es_cortesia'     => $esCortesia,
+            'cantidad'        => $cantidad,
+            'producto_id'     => $productoId,
+            'puede_cortesia'  => $puedeCortesia,
+            'es_decimal'      => $esDecimal,
+            'stock_max'       => $stockMax,
+            'venta_sin_stock' => $ventaSinStock,
         ]);
     }
 

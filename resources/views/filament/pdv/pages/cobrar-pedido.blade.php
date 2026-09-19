@@ -12,7 +12,8 @@
     $vuelto      = max(0, $totalPagado - $totalDesc);
     $metodoActual   = $metodos->firstWhere('id', $metodoPagoId);
     $requiereRef    = (bool) ($metodoActual?->requiere_referencia ?? false);
-    $puedeConfirmar = ! empty($pagosAgregados) && $metodos->isNotEmpty();
+    $esCortesiaTotal = $totalDesc <= 0;
+    $puedeConfirmar  = $esCortesiaTotal || (! empty($pagosAgregados) && $metodos->isNotEmpty());
     $empresa  = \Filament\Facades\Filament::getTenant();
     $tieneFE  = $empresa->tieneFacturacionElectronica();
 @endphp

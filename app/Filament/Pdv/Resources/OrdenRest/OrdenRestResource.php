@@ -48,7 +48,11 @@ class OrdenRestResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('tipo_origen', TipoOrigenOrden::Restaurante);
+        return parent::getEloquentQuery()->whereIn('tipo_origen', [
+            TipoOrigenOrden::Restaurante->value,
+            TipoOrigenOrden::Llevar->value,
+            TipoOrigenOrden::Delivery->value,
+        ]);
     }
 
     public static function form(Schema $schema): Schema

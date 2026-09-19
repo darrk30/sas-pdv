@@ -76,6 +76,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
     public ?string $filtroCorrelativo = null;
     public ?string $filtroMetodo      = null;
     public ?string $filtroEstado      = null;
+    public ?string $filtroOrigen      = null;
     public ?string $filtroFechaDesde  = null;
     public ?string $filtroFechaHasta  = null;
 
@@ -95,8 +96,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->label('Cliente')
                     ->placeholder('Nombre o documento…')
                     ->prefixIcon('heroicon-o-magnifying-glass')
-                    ->live(debounce: 300)
-                    ->columnSpan(['default' => 1, 'sm' => 2, 'md' => 2]),
+                    ->live(debounce: 300),
 
                 Select::make('filtroSerie')
                     ->label('Serie')
@@ -142,6 +142,14 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->native(false)
                     ->live(),
 
+                Select::make('filtroOrigen')
+                    ->label('Origen')
+                    ->placeholder('Todos los orígenes')
+                    ->options(fn() => $this->getOrigenOptions())
+                    ->native(false)
+                    ->live()
+                    ->hidden(fn() => count($this->getOrigenOptions()) < 2),
+
             ]),
         ]);
     }
@@ -153,6 +161,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
             || ! empty($this->filtroCorrelativo)
             || ! empty($this->filtroMetodo)
             || ! empty($this->filtroEstado)
+            || ! empty($this->filtroOrigen)
             || ! empty($this->filtroFechaDesde)
             || ! empty($this->filtroFechaHasta);
     }
@@ -164,12 +173,33 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
         $this->filtroCorrelativo = null;
         $this->filtroMetodo      = null;
         $this->filtroEstado      = null;
+        $this->filtroOrigen      = null;
         $this->filtroFechaDesde  = null;
         $this->filtroFechaHasta  = null;
         $this->form->fill();
     }
 
     // ── Opciones de filtros ───────────────────────────────────────────────────
+
+    public function getOrigenOptions(): array
+    {
+        $empresa = Filament::getTenant();
+        $opts    = [];
+
+        if ($empresa->tieneModulo('punto_de_venta')) {
+            $opts['pdv'] = 'PDV';
+        }
+        if ($empresa->tieneModulo('restaurante')) {
+            $opts['restaurante'] = 'Mesa';
+            $opts['llevar']      = 'Llevar';
+            $opts['delivery']    = 'Delivery';
+        }
+        if ($empresa->tieneModulo('ordenes_web')) {
+            $opts['web'] = 'Web';
+        }
+
+        return $opts;
+    }
 
     // ── Query base con filtros ────────────────────────────────────────────────
 
@@ -199,6 +229,10 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
 
         if (! empty($this->filtroEstado)) {
             $q->where('estado', $this->filtroEstado);
+        }
+
+        if (! empty($this->filtroOrigen)) {
+            $q->where('tipo', $this->filtroOrigen);
         }
 
         if (! empty($this->filtroFechaDesde)) {
@@ -253,12 +287,6 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->label('Cliente')
                     ->description(fn (Venta $r): string => strtoupper($r->cliente_tipo_doc) . ' ' . $r->cliente_num_doc)
                     ->searchable(false)
-                    ->toggleable(isToggledHiddenByDefault: false),
-
-                TextColumn::make('detalles_count')
-                    ->label('Ítems')
-                    ->alignCenter()
-                    ->sortable(false)
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('cortesias_count')
@@ -328,13 +356,39 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->badge()
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('notas_count')
-                    ->label('NC')
+                TextColumn::make('tipo')
+                    ->label('Origen')
                     ->badge()
-                    ->color('success')
-                    ->formatStateUsing(fn (int $state): string => $state > 0 ? $state . ' NC' : '—')
-                    ->tooltip('Notas de Crédito emitidas sobre esta venta')
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'pdv'         => 'PDV',
+                        'restaurante' => 'Mesa',
+                        'delivery'    => 'Delivery',
+                        'llevar'      => 'Llevar',
+                        'web'         => 'Web',
+                        default       => strtoupper($state ?? '—'),
+                    })
+                    ->color(fn (?string $state): string => match ($state) {
+                        'pdv'         => 'info',
+                        'restaurante' => 'success',
+                        'delivery'    => 'warning',
+                        'llevar'      => 'primary',
+                        default       => 'gray',
+                    })
                     ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('notas')
+                    ->label('Notas')
+                    ->html()
+                    ->formatStateUsing(fn (?string $state): string =>
+                        $state
+                            ? implode('<br>', array_map(
+                                fn (string $s): string => '<span>' . e(trim($s)) . '</span>',
+                                preg_split('/\s*\|\s*|\n/', trim($state))
+                              ))
+                            : '—'
+                    )
+                    ->color('gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('sunat_descripcion')
                     ->label('Desc. SUNAT')

@@ -5,6 +5,7 @@ namespace App\Filament\Pdv\Resources\Productos\Schemas;
 use App\Enums\EstadoGeneral;
 use App\Enums\ProductoEtiqueta;
 use App\Models\Atributo;
+use App\Models\ListaPrecio;
 use App\Models\ProductoAtributo;
 use App\Models\ProductoAtributoValor;
 use App\Models\Inventario;
@@ -950,6 +951,92 @@ class ProductoForm
                                             ->helperText('Número de posición en el listado. Menor número = aparece primero.'),
                                     ]),
                             ]),
+
+                        // --- PESTAÑA: LISTA DE PRECIOS ---
+                        Tab::make('Lista de Precios')
+                            ->icon('heroicon-m-tag')
+                            ->visible(function () {
+                                $empresa = Filament::getTenant();
+                                return ($empresa?->tienePlanListaPrecios() ?? true)
+                                    && (auth()->user()?->can('listas_precios.ver') ?? false);
+                            })
+                            ->schema([
+                                Repeater::make('precios_lista')
+                                    ->label(false)
+                                    ->table([
+                                        TableColumn::make('Lista de precios'),
+                                        TableColumn::make('Precio (S/)'),
+                                    ])
+                                    ->schema([
+                                        Select::make('lista_precio_id')
+                                            ->label('Lista de precios')
+                                            ->options(function () {
+                                                // Sin permiso de editar: opciones vacías (no bypasseable desde devtools)
+                                                if (! (auth()->user()?->can('listas_precios.editar') ?? false)) {
+                                                    return [];
+                                                }
+                                                return ListaPrecio::where('empresa_id', Filament::getTenant()->id)
+                                                    ->orderBy('nombre')
+                                                    ->pluck('nombre', 'id');
+                                            })
+                                            ->getOptionLabelUsing(fn ($value) => ListaPrecio::find($value)?->nombre ?? $value)
+                                            ->disabled(! (auth()->user()?->can('listas_precios.editar') ?? false))
+                                            ->dehydratedWhenHidden()
+                                            ->required()
+                                            ->native(false)
+                                            ->searchable()
+                                            ->createOptionForm(auth()->user()?->can('listas_precios.crear') ? [
+                                                TextInput::make('nombre')
+                                                    ->label('Nombre')
+                                                    ->placeholder('Ej: Mayorista, Distribuidor…')
+                                                    ->required()
+                                                    ->maxLength(80),
+                                                Toggle::make('activa')
+                                                    ->label('Activa')
+                                                    ->default(true),
+                                            ] : null)
+                                            ->createOptionUsing(fn (array $data) => ListaPrecio::create([
+                                                'nombre'     => $data['nombre'],
+                                                'activa'     => $data['activa'] ?? true,
+                                                'empresa_id' => Filament::getTenant()->id,
+                                            ])->id)
+                                            ->editOptionForm(auth()->user()?->can('listas_precios.editar') ? [
+                                                TextInput::make('nombre')
+                                                    ->label('Nombre')
+                                                    ->required()
+                                                    ->maxLength(80),
+                                                Toggle::make('activa')
+                                                    ->label('Activa')
+                                                    ->default(true),
+                                            ] : null)
+                                            ->fillEditOptionActionFormUsing(function (Select $component) {
+                                                return ListaPrecio::find($component->getState())?->only(['nombre', 'activa']);
+                                            })
+                                            ->updateOptionUsing(function (array $data, Select $component) {
+                                                ListaPrecio::find($component->getState())?->update([
+                                                    'nombre' => $data['nombre'],
+                                                    'activa' => $data['activa'] ?? true,
+                                                ]);
+                                            }),
+
+                                        TextInput::make('precio')
+                                            ->label('Precio (S/)')
+                                            ->numeric()
+                                            ->prefix('S/')
+                                            ->required()
+                                            ->minValue(0)
+                                            ->step(0.01)
+                                            ->disabled(! (auth()->user()?->can('listas_precios.editar') ?? false))
+                                            ->dehydratedWhenHidden(),
+                                    ])
+                                    ->defaultItems(0)
+                                    ->addActionLabel('Agregar lista')
+                                    ->addable(auth()->user()?->can('listas_precios.crear') ?? false)
+                                    ->deletable(auth()->user()?->can('listas_precios.editar') ?? false)
+                                    ->reorderable(false)
+                                    ->columnSpanFull(),
+                            ]),
+
                     ])->columnSpanFull(),
             ]);
     }

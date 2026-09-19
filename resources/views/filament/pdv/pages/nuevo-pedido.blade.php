@@ -3,7 +3,8 @@
 <link rel="stylesheet" href="{{ asset('css/punto-de-venta.css') }}?v={{ filemtime(public_path('css/punto-de-venta.css')) }}">
 
 @php
-    $mesa = $mesaId ? \App\Models\Mesa::with('piso')->find($mesaId) : null;
+    $mesa              = $mesaId ? \App\Models\Mesa::with('piso')->find($mesaId) : null;
+    $usuariosRepartidor = $esDelivery ? $this->getUsuariosRepartidor() : [];
 @endphp
 
 {{-- ═══════════════════════════════════════════════════════
@@ -159,9 +160,28 @@
     {{-- ══ HEADER ══ --}}
     <div class="pdv-header">
         <div class="pdv-header__left">
-            <p class="pdv-header__titulo">Nuevo Pedido</p>
+            <p class="pdv-header__titulo">
+                @if($esDelivery)
+                    <x-heroicon-o-truck style="width:1.1rem;height:1.1rem;display:inline;vertical-align:middle;margin-right:.3rem;" />
+                    Delivery
+                @elseif($esLlevar)
+                    <x-heroicon-o-shopping-bag style="width:1.1rem;height:1.1rem;display:inline;vertical-align:middle;margin-right:.3rem;" />
+                    Para llevar
+                @else
+                    Nuevo Pedido
+                @endif
+            </p>
             <p class="pdv-header__sub">
-                @if($mesa)
+                @if($esDelivery)
+                    Nueva orden a domicilio
+                @elseif($esLlevar)
+                    <input
+                        wire:model.live="clienteConcepto"
+                        type="text"
+                        placeholder="Nombre / referencia (opcional)"
+                        style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:.45rem;padding:.25rem .55rem;font-size:.82rem;color:inherit;outline:none;width:100%;max-width:220px;"
+                    />
+                @elseif($mesa)
                     Mesa: <strong>{{ $mesa->nombre }}</strong>
                     @if($mesa->piso) · {{ $mesa->piso->nombre }} @endif
                 @endif
@@ -206,57 +226,136 @@
                 Alpine.store('carritoResumen', r);
             },
 
+            // Convierte un item del carrito (posiblemente proxy reactivo) a objeto plano con valores primitivos.
+            _rawItem(e, overrides) {
+                return Object.assign({
+                    tipo:             e.tipo,
+                    id:               e.id,
+                    nombre:           e.nombre,
+                    precio:           parseFloat(e.precio) || 0,
+                    precio_normal:    parseFloat(e.precio_normal) || 0,
+                    es_cortesia:      !!e.es_cortesia,
+                    puede_cortesia:   !!e.puede_cortesia,
+                    cantidad:         parseFloat(e.cantidad) || 0,
+                    producto_id:      e.producto_id,
+                    nota:             e.nota || '',
+                    detalles_resumen: e.detalles_resumen || [],
+                    stock_max:        e.stock_max ?? null,
+                    venta_sin_stock:  !!e.venta_sin_stock
+                }, overrides || {});
+            },
+
+            // Crea una copia plana del carrito actual (sin proxies reactivos como valores).
+            _cloneCarrito() {
+                const c = {};
+                for (const k in this.carrito) c[k] = this._rawItem(this.carrito[k]);
+                return c;
+            },
+
             addToCart(p) {
-                const cortesia = !!p.es_cortesia;
-                const key = p.tipo + '_' + p.id + (cortesia ? '_cortesia' : '');
-                if (this.carrito[key]) {
-                    this.carrito[key].cantidad += (parseFloat(p.cantidad) || 1);
+                const cortesia      = !!p.es_cortesia;
+                const puedeCortesia = !!p.puede_cortesia;
+                const newPrecio     = cortesia ? 0.0 : (parseFloat(p.precio) || 0);
+                const addQty        = parseFloat(p.cantidad) || 1;
+
+                // Buscar entrada existente: mismo tipo + id + estado cortesía + mismo precio
+                let matchKey = null;
+                for (const k in this.carrito) {
+                    const e = this.carrito[k];
+                    if (e.tipo !== p.tipo || e.id !== p.id) continue;
+                    if (!!e.es_cortesia !== cortesia) continue;
+                    if (!cortesia && Math.abs((parseFloat(e.precio) || 0) - newPrecio) >= 0.005) continue;
+                    matchKey = k; break;
+                }
+
+                const c = this._cloneCarrito();
+                if (matchKey !== null) {
+                    c[matchKey].cantidad += addQty;
                 } else {
-                    this.carrito[key] = {
+                    const baseKey = p.tipo + '_' + p.id + (cortesia ? '_cortesia' : '');
+                    let key = baseKey; let suffix = 2;
+                    while (c[key]) { key = baseKey + '_' + suffix; suffix++; }
+                    c[key] = {
                         tipo: p.tipo, id: p.id, nombre: p.nombre,
-                        precio: parseFloat(p.precio) || 0,
+                        precio: newPrecio,
                         precio_normal: parseFloat(p.precio_normal || p.precio) || 0,
                         es_cortesia: cortesia,
-                        cantidad: parseFloat(p.cantidad) || 1,
+                        puede_cortesia: puedeCortesia,
+                        cantidad: addQty,
                         producto_id: p.producto_id || p.id,
                         nota: '',
-                        detalles_resumen: p.detalles_resumen || []
+                        detalles_resumen: p.detalles_resumen || [],
+                        stock_max: p.stock_max ?? null,
+                        venta_sin_stock: !!p.venta_sin_stock
                     };
                 }
-                this.carrito = { ...this.carrito };
+                this.carrito = c;
+                this._syncResumen();
+            },
+
+            toggleCortesia(key) {
+                if (!this.carrito[key]) return;
+                if (!this.carrito[key].puede_cortesia) return;
+                const item      = this.carrito[key];
+                const turningOn = !item.es_cortesia;
+                const newPrecio = turningOn ? 0.0 : (parseFloat(item.precio_normal) || 0);
+
+                // Buscar hermano con el estado destino y fusionar
+                let siblingKey = null;
+                for (const k in this.carrito) {
+                    if (k === key) continue;
+                    const other = this.carrito[k];
+                    if (other.tipo !== item.tipo || other.id !== item.id) continue;
+                    if (!!other.es_cortesia !== turningOn) continue;
+                    if (!turningOn && Math.abs((parseFloat(other.precio) || 0) - newPrecio) >= 0.005) continue;
+                    siblingKey = k; break;
+                }
+
+                const c = this._cloneCarrito();
+                if (siblingKey !== null) {
+                    c[siblingKey].cantidad += parseFloat(item.cantidad) || 0;
+                    delete c[key];
+                } else {
+                    c[key].es_cortesia = turningOn;
+                    c[key].precio      = newPrecio;
+                }
+                this.carrito = c;
                 this._syncResumen();
             },
 
             removeItem(key) {
-                const c = { ...this.carrito };
+                const c = this._cloneCarrito();
                 delete c[key];
                 this.carrito = c;
                 this._syncResumen();
             },
 
             increment(key) {
-                if (this.carrito[key]) {
-                    this.carrito[key].cantidad++;
-                    this.carrito = { ...this.carrito };
-                    this._syncResumen();
-                }
+                if (!this.carrito[key]) return;
+                const item = this.carrito[key];
+                if (item.stock_max !== null && item.stock_max !== undefined && !item.venta_sin_stock && item.cantidad >= item.stock_max) return;
+                const c = this._cloneCarrito();
+                c[key].cantidad++;
+                this.carrito = c;
+                this._syncResumen();
             },
 
             decrement(key) {
                 if (!this.carrito[key]) return;
                 if (this.carrito[key].cantidad <= 1) { this.removeItem(key); return; }
-                this.carrito[key].cantidad--;
-                this.carrito = { ...this.carrito };
+                const c = this._cloneCarrito();
+                c[key].cantidad--;
+                this.carrito = c;
                 this._syncResumen();
             },
 
             setCantidad(key, qty) {
                 const q = Math.max(0.01, parseFloat(qty) || 1);
-                if (this.carrito[key]) {
-                    this.carrito[key].cantidad = q;
-                    this.carrito = { ...this.carrito };
-                    this._syncResumen();
-                }
+                if (!this.carrito[key]) return;
+                const c = this._cloneCarrito();
+                c[key].cantidad = q;
+                this.carrito = c;
+                this._syncResumen();
             },
 
             vaciar() {
@@ -265,20 +364,34 @@
             },
 
             get total() {
-                return Object.values(this.carrito).reduce((s, i) => s + i.precio * i.cantidad, 0);
+                let t = 0;
+                for (const k in this.carrito) {
+                    const i = this.carrito[k];
+                    t += (parseFloat(i.precio) || 0) * (parseFloat(i.cantidad) || 0);
+                }
+                return t;
             },
 
             get count() {
-                return Object.values(this.carrito).reduce((s, i) => s + i.cantidad, 0);
+                let t = 0;
+                for (const k in this.carrito) t += parseFloat(this.carrito[k].cantidad) || 0;
+                return t;
             },
 
             get isEmpty() {
                 return Object.keys(this.carrito).length === 0;
-            }
+            },
+
+            // Delivery fields — Alpine-only, sincronizados a $wire justo antes de enviar
+            deliveryNombre:    '{{ addslashes($deliveryNombre) }}',
+            deliveryTelefono:  '{{ addslashes($deliveryTelefono) }}',
+            deliveryDireccion: '{{ addslashes($deliveryDireccion) }}',
+            repartidorId:      {{ $repartidorId ? (int) $repartidorId : 'null' }},
+            repartidorTexto:   '{{ addslashes($repartidorTexto) }}'
         }"
         @product-selected.window="addToCart($event.detail[0] ?? $event.detail)"
         @cerrar-carrito.window="carritoOpen = false"
-        x-init="Alpine.store('carritoResumen', {})"
+        x-init="Alpine.store('carritoResumen', @js($this->getCarritoResumen()))"
     >
 
         {{-- ── Catálogo ── --}}
@@ -287,6 +400,10 @@
              wire:target="enviarPedido">
             @if($mesaId)
                 <livewire:pdv.product-catalog :carritoResumen="[]" :pendienteResumen="[]" :showPromociones="true" wire:key="catalog-{{ $mesaId }}" />
+            @elseif($esLlevar)
+                <livewire:pdv.product-catalog :carritoResumen="[]" :pendienteResumen="[]" :showPromociones="true" wire:key="catalog-llevar" />
+            @elseif($esDelivery)
+                <livewire:pdv.product-catalog :carritoResumen="[]" :pendienteResumen="[]" :showPromociones="true" wire:key="catalog-delivery" />
             @endif
         </div>
 
@@ -319,9 +436,21 @@
                 </div>
 
                 <template x-for="[key, item] in Object.entries(carrito)" :key="key">
-                    <div class="pdv-item pdv-item--card">
+                    <div class="pdv-item pdv-item--card" :class="item.es_cortesia ? 'pdv-item--cortesia' : ''">
                         <div class="pdv-item__top">
                             <p class="pdv-item__nombre">
+                                <template x-if="item.puede_cortesia">
+                                    <button
+                                        type="button"
+                                        class="pdv-item__badge-cortesia"
+                                        :class="item.es_cortesia ? 'pdv-item__badge-cortesia--on' : 'pdv-item__badge-cortesia--off'"
+                                        @click="toggleCortesia(key)"
+                                        :title="item.es_cortesia ? 'Quitar cortesía' : 'Aplicar como cortesía (gratis)'"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
+                                        <span x-text="item.es_cortesia ? 'GRATIS' : 'Cortesía'"></span>
+                                    </button>
+                                </template>
                                 <span x-text="item.nombre"></span>
                                 {{-- Promo inline (reemplaza x-pdv.promo-vista) --}}
                                 <template x-if="item.tipo === 'promocion' && item.detalles_resumen && item.detalles_resumen.length > 0">
@@ -371,7 +500,8 @@
                             </button>
                         </div>
                         <div class="pdv-item__subtotal pdv-item__subtotal--big"
-                             x-text="'S/ ' + item.precio.toFixed(2) + ' c/u'"></div>
+                             :class="item.es_cortesia ? 'pdv-item__subtotal--gratis' : ''"
+                             x-text="item.es_cortesia ? 'Gratis' : 'S/ ' + item.precio.toFixed(2) + ' c/u'"></div>
                         <div class="pdv-item__bottom">
                             <div class="pdv-qty">
                                 <button class="pdv-qty__btn pdv-qty__btn--menos" type="button" @click="decrement(key)">
@@ -379,13 +509,17 @@
                                 </button>
                                 <input class="pdv-qty__input" type="number" min="0.01" step="1"
                                     :value="item.cantidad % 1 === 0 ? Math.round(item.cantidad) : item.cantidad.toFixed(2)"
-                                    @change="setCantidad(key, $event.target.value)">
-                                <button class="pdv-qty__btn pdv-qty__btn--mas" type="button" @click="increment(key)">
+                                    @change="setCantidad(key, $event.target.value)"
+                                    @keydown="if($event.key==='-'||$event.key==='e'||$event.key==='E')$event.preventDefault()"
+                                    @input="if(parseFloat($event.target.value)<0.01)$event.target.value=0.01">
+                                <button class="pdv-qty__btn pdv-qty__btn--mas" type="button" @click="increment(key)"
+                                    :disabled="item.stock_max !== null && item.stock_max !== undefined && !item.venta_sin_stock && item.cantidad >= item.stock_max"
+                                    :class="{'pdv-qty__btn--disabled': item.stock_max !== null && item.stock_max !== undefined && !item.venta_sin_stock && item.cantidad >= item.stock_max}">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                                 </button>
                             </div>
                             <span class="pdv-item__precio-unit pdv-item__precio-unit--total"
-                                  x-text="'S/ ' + (item.precio * item.cantidad).toFixed(2)"></span>
+                                  x-text="item.es_cortesia ? 'S/ 0.00' : 'S/ ' + (item.precio * item.cantidad).toFixed(2)"></span>
                         </div>
 
                         {{-- Nota para cocina --}}
@@ -411,6 +545,72 @@
                 </template>
             </div>
 
+            {{-- Formulario Delivery (acordeón) --}}
+            @if($esDelivery)
+            <div class="pdv-delivery-accordion"
+                 x-data="{ open: false }"
+            >
+                {{-- Cabecera acordeón --}}
+                <button
+                    type="button"
+                    class="pdv-delivery-accordion__header"
+                    @click="open = !open"
+                >
+                    <span class="pdv-delivery-accordion__header-left">
+                        <span class="pdv-delivery-accordion__icon-wrap">
+                            <x-heroicon-m-truck style="width:.9rem;height:.9rem;" />
+                        </span>
+                        Datos del pedido
+                        <span
+                            class="pdv-delivery-accordion__summary"
+                            x-show="!open"
+                            x-text="deliveryNombre || '—'"
+                        ></span>
+                    </span>
+                    <span class="pdv-delivery-accordion__chevron" :class="{ 'pdv-delivery-accordion__chevron--open': open }">
+                        <svg viewBox="0 0 20 20" fill="currentColor" style="width:.9rem;height:.9rem;"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd"/></svg>
+                    </span>
+                </button>
+
+                {{-- Cuerpo acordeón — animado con max-height CSS --}}
+                <div
+                    class="pdv-delivery-accordion__body"
+                    :class="{ 'pdv-delivery-accordion__body--open': open }"
+                >
+                    <div class="pdv-delivery-form__fields">
+                        <div class="pdv-delivery-field">
+                            <label class="pdv-delivery-label">Nombre <span class="pdv-delivery-required">*</span></label>
+                            <input x-model="deliveryNombre" type="text" placeholder="Nombre del cliente" class="pdv-delivery-input" />
+                        </div>
+                        <div class="pdv-delivery-field">
+                            <label class="pdv-delivery-label">Teléfono</label>
+                            <input x-model="deliveryTelefono" type="tel" placeholder="987 654 321" class="pdv-delivery-input" />
+                        </div>
+                        <div class="pdv-delivery-field pdv-delivery-field--full">
+                            <label class="pdv-delivery-label">Dirección de entrega</label>
+                            <input x-model="deliveryDireccion" type="text" placeholder="Av. Ejemplo 123, piso 2" class="pdv-delivery-input" />
+                        </div>
+                        <div class="pdv-delivery-field pdv-delivery-field--full">
+                            <label class="pdv-delivery-label">Repartidor</label>
+                            @if(count($usuariosRepartidor) > 0)
+                                <select x-model="repartidorId" class="pdv-delivery-input">
+                                    <option value="">— Sin asignar / texto libre —</option>
+                                    @foreach($usuariosRepartidor as $u)
+                                        <option value="{{ $u['id'] }}">{{ $u['nombre'] }}</option>
+                                    @endforeach
+                                </select>
+                                <div x-show="!repartidorId">
+                                    <input x-model="repartidorTexto" type="text" placeholder="Nombre del repartidor (opcional)" class="pdv-delivery-input pdv-delivery-input--sub" />
+                                </div>
+                            @else
+                                <input x-model="repartidorTexto" type="text" placeholder="Nombre del repartidor (opcional)" class="pdv-delivery-input" />
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- Footer --}}
             <div class="pdv-carrito__footer">
                 <div class="pdv-carrito__totales">
@@ -429,6 +629,13 @@
                     @click="
                         if (isEmpty) return;
                         $wire.carrito = carrito;
+                        @if($esDelivery)
+                        $wire.deliveryNombre    = deliveryNombre;
+                        $wire.deliveryTelefono  = deliveryTelefono;
+                        $wire.deliveryDireccion = deliveryDireccion;
+                        $wire.repartidorId      = parseInt(repartidorId) || null;
+                        $wire.repartidorTexto   = repartidorTexto;
+                        @endif
                         $wire.enviarPedido();
                     "
                 >

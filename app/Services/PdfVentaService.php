@@ -33,7 +33,8 @@ class PdfVentaService
             ->setPaper([0, 0, 226.77, 1133.86], 'portrait')
             ->setOption('defaultFont', 'Courier')
             ->setOption('isRemoteEnabled', false)
-            ->setOption('dpi', 150);
+            ->setOption('dpi', 150)
+;
     }
 
     public function nombreArchivo(Venta $venta): string

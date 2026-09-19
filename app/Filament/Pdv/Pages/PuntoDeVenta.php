@@ -63,6 +63,7 @@ class PuntoDeVenta extends Page
     public ?int $clienteId = null;
     public ?string $clienteNombre = null;
     public ?string $clienteTipoDoc = null;
+    public ?string $clienteTelefono = null;
     public string $clienteBusqueda = '';
     public bool $mostrarSugerencias = false;
 
@@ -76,8 +77,12 @@ class PuntoDeVenta extends Page
     public string $pagoReferencia = '';
     public array $pagosAgregados = [];
     public string $descuentoInput = '0';
-    public bool $despachoRequerido = false;
-    public string $despachoDireccion = '';
+    public bool $deliveryActivo       = false;
+    public bool $despachoRequerido    = false;
+    public string $despachoDireccion  = '';
+    public string $deliveryNombre     = '';
+    public string $deliveryTelefono   = '';
+    public string $deliveryRepartidor = '';
 
     // ── Reimpresión del último ticket (para el botón de reimprimir) ───────────
 
@@ -173,9 +178,10 @@ class PuntoDeVenta extends Page
     {
         $this->mostrarSugerencias = strlen($this->clienteBusqueda) >= 2;
         if ($this->clienteId && $this->clienteBusqueda !== $this->clienteNombre) {
-            $this->clienteId      = null;
-            $this->clienteNombre  = null;
-            $this->clienteTipoDoc = null;
+            $this->clienteId       = null;
+            $this->clienteNombre   = null;
+            $this->clienteTipoDoc  = null;
+            $this->clienteTelefono = null;
         }
     }
 
@@ -198,9 +204,10 @@ class PuntoDeVenta extends Page
         $cliente = Cliente::find($id);
         if (! $cliente) return;
 
-        $this->clienteId      = $id;
-        $this->clienteNombre  = $cliente->nombre_completo;
-        $this->clienteTipoDoc = $cliente->tipo_documento->value;
+        $this->clienteId       = $id;
+        $this->clienteNombre   = $cliente->nombre_completo;
+        $this->clienteTipoDoc  = $cliente->tipo_documento->value;
+        $this->clienteTelefono = $cliente->telefono;
         $this->clienteBusqueda = $cliente->nombre_completo;
         $this->mostrarSugerencias = false;
 
@@ -214,6 +221,7 @@ class PuntoDeVenta extends Page
         $this->clienteId        = null;
         $this->clienteNombre    = null;
         $this->clienteTipoDoc   = null;
+        $this->clienteTelefono  = null;
         $this->clienteBusqueda  = '';
         $this->mostrarSugerencias = false;
     }
@@ -254,7 +262,22 @@ class PuntoDeVenta extends Page
     {
         $resumen = [];
         foreach ($this->carrito as $item) {
-            if ($item['tipo'] === 'promocion') continue;
+            if ($item['tipo'] === 'promocion') {
+                // Track the promotion itself (for usage-limit checks in stockPredictivoVisual)
+                $pKey = "promocion_{$item['id']}";
+                $resumen[$pKey] = ($resumen[$pKey] ?? 0) + (float) $item['cantidad'];
+                // Expand sub-products so their stock badges reflect promo consumption
+                foreach ($item['detalles_resumen'] ?? [] as $d) {
+                    if (! empty($d['variante_id'])) {
+                        $k = "variante_{$d['variante_id']}";
+                        $resumen[$k] = ($resumen[$k] ?? 0) + ((float) $d['cantidad'] * (float) $item['cantidad']);
+                    } elseif (! empty($d['producto_id'])) {
+                        $k = "producto_{$d['producto_id']}";
+                        $resumen[$k] = ($resumen[$k] ?? 0) + ((float) $d['cantidad'] * (float) $item['cantidad']);
+                    }
+                }
+                continue;
+            }
             $rKey = "{$item['tipo']}_{$item['id']}";
             $resumen[$rKey] = ($resumen[$rKey] ?? 0) + (float) $item['cantidad'];
         }
@@ -264,6 +287,12 @@ class PuntoDeVenta extends Page
     public function getPendienteResumen(): array
     {
         return $this->getCarritoResumen();
+    }
+
+    private function syncAlpineStore(): void
+    {
+        $this->js('Alpine.store("carritoResumen",' . json_encode($this->getCarritoResumen()) . ')');
+        $this->js('window.dispatchEvent(new CustomEvent("pdv-total-recalc",{detail:{total:' . $this->getTotal() . '}}))');
     }
 
     // ── Carrito: agregar desde ProductCatalog ─────────────────────────────────
@@ -286,36 +315,51 @@ class PuntoDeVenta extends Page
             return;
         }
 
-        $baseKey = "{$tipo}_{$id}";
+        $baseKey    = "{$tipo}_{$id}";
+        $stockExtra = [];
 
         if ($tipo === 'producto') {
             $prod = Producto::with('inventario')->find($id);
             if (! $prod) return;
+            $stockReal    = (float) ($prod->inventario?->stock_real    ?? 0);
+            $stockReserva = (float) ($prod->inventario?->stock_reserva ?? 0);
+            $stockExtra = [
+                'control_stock'   => (bool) $prod->control_de_stock,
+                'venta_sin_stock' => (bool) $prod->venta_sin_stock,
+                'stock_real'      => $stockReal,
+                'stock_max'       => $prod->control_de_stock ? $stockReserva : null,
+            ];
             if ($prod->control_de_stock && ! $prod->venta_sin_stock) {
-                $stock     = (float) ($prod->inventario?->stock_real ?? 0);
                 $enCarrito = $this->cantidadEnCarritoPorBase($baseKey);
-                if ($enCarrito + $cantidad > $stock) {
-                    Notification::make()->title('Stock insuficiente')->body("Disponible: {$stock}.")->warning()->send();
+                if ($enCarrito + $cantidad > $stockReal) {
+                    Notification::make()->title('Stock insuficiente')->body("Disponible: {$stockReal}.")->warning()->send();
                     return;
                 }
             }
         } elseif ($tipo === 'variante') {
             $var = Variante::with('producto')->find($id);
             if (! $var) return;
-            $prod = $var->producto;
+            $prod         = $var->producto;
+            $inv          = Inventario::where('variante_id', $id)->first();
+            $stockReal    = (float) ($inv?->stock_real    ?? 0);
+            $stockReserva = (float) ($inv?->stock_reserva ?? 0);
+            $stockExtra = [
+                'control_stock'   => (bool) ($prod?->control_de_stock ?? false),
+                'venta_sin_stock' => (bool) ($prod?->venta_sin_stock  ?? false),
+                'stock_real'      => $stockReal,
+                'stock_max'       => ($prod?->control_de_stock) ? $stockReserva : null,
+            ];
             if ($prod?->control_de_stock && ! $prod?->venta_sin_stock) {
-                $inv   = Inventario::where('variante_id', $id)->first();
-                $stock = (float) ($inv?->stock_real ?? 0);
                 $enCarrito = $this->cantidadEnCarritoPorBase($baseKey);
-                if ($enCarrito + $cantidad > $stock) {
-                    Notification::make()->title('Stock insuficiente')->body("Disponible: {$stock}.")->warning()->send();
+                if ($enCarrito + $cantidad > $stockReal) {
+                    Notification::make()->title('Stock insuficiente')->body("Disponible: {$stockReal}.")->warning()->send();
                     return;
                 }
             }
         }
 
-        $resolvedKey = $this->resolveCarritoKey($baseKey, $esCortesia);
-        $this->pushCarrito($resolvedKey, $tipo, $id, $nombre, $precio, $esCortesia, $esDecimal, $precioNorm, $puedeCortesia, $cantidad);
+        $resolvedKey = $this->resolveCarritoKey($baseKey, $esCortesia, $precio);
+        $this->pushCarrito($resolvedKey, $tipo, $id, $nombre, $precio, $esCortesia, $esDecimal, $precioNorm, $puedeCortesia, $cantidad, $stockExtra);
     }
 
     // ── Carrito: agregar promoción ────────────────────────────────────────────
@@ -341,7 +385,25 @@ class PuntoDeVenta extends Page
             return;
         }
 
-        $this->pushCarrito("promocion_{$promocionId}", 'promocion', $promocionId, $promocion->nombre, (float) $promocion->precio);
+        $detallesResumen = [];
+        foreach ($promocion->detalles as $det) {
+            $detallesResumen[] = [
+                'variante_id' => $det->variante_id,
+                'producto_id' => $det->producto_id,
+                'cantidad'    => (float) $det->cantidad,
+            ];
+        }
+
+        $this->pushCarrito(
+            "promocion_{$promocionId}", 'promocion', $promocionId, $promocion->nombre, (float) $promocion->precio,
+            false, false, 0, false, 1.0,
+            [
+                'detalles_resumen' => $detallesResumen,
+                'control_stock'    => $stock !== null,
+                'venta_sin_stock'  => false,
+                'stock_max'        => $stock,
+            ]
+        );
     }
 
     // ── Carrito: gestión ──────────────────────────────────────────────────────
@@ -388,32 +450,11 @@ class PuntoDeVenta extends Page
 
         $item = $carrito[$key];
 
-        if (! ($item['cortesia'] ?? false)) {
-            if ($item['tipo'] === 'producto') {
-                $prod = Producto::with('inventario')->find($item['id']);
-                if ($prod && $prod->control_de_stock && ! $prod->venta_sin_stock) {
-                    $stock = (float) ($prod->inventario?->stock_real ?? 0);
-                    if ($item['cantidad'] + 1 > $stock) {
-                        Notification::make()
-                            ->title('Stock insuficiente')
-                            ->body("Disponible: {$stock} unidad(es).")
-                            ->warning()->send();
-                        return;
-                    }
-                }
-            } elseif ($item['tipo'] === 'variante') {
-                $inv  = Inventario::where('variante_id', $item['id'])->first();
-                $var  = Variante::with('producto')->find($item['id']);
-                if ($var && $var->producto?->control_de_stock && ! $var->producto?->venta_sin_stock) {
-                    $stock = (float) ($inv?->stock_real ?? 0);
-                    if ($item['cantidad'] + 1 > $stock) {
-                        Notification::make()
-                            ->title('Stock insuficiente')
-                            ->body("Disponible: {$stock} unidad(es).")
-                            ->warning()->send();
-                        return;
-                    }
-                }
+        if (! ($item['cortesia'] ?? false) && ($item['control_stock'] ?? false) && ! ($item['venta_sin_stock'] ?? false)) {
+            $stock = (float) ($item['stock_real'] ?? PHP_INT_MAX);
+            if ($item['cantidad'] + 1 > $stock) {
+                Notification::make()->title('Stock insuficiente')->body("Disponible: {$stock} unidad(es).")->warning()->send();
+                return;
             }
         }
 
@@ -439,46 +480,34 @@ class PuntoDeVenta extends Page
         $carrito = $this->carrito;
         $carrito[$key]['precio'] = round(max(0, $precio), 2);
         $this->carrito = $carrito;
+        $nuevoPrecio = $carrito[$key]['precio'];
+        $this->js('window.dispatchEvent(new CustomEvent("pdv-price-fix",{detail:{key:' . json_encode($key) . ',precio:' . $nuevoPrecio . '}}))');
     }
 
     public function actualizarCantidad(string $key, float $cant): void
     {
         if (! isset($this->carrito[$key])) return;
-        $cant  = max(0.001, round($cant, 3));
-        $item  = $this->carrito[$key];
+        $cant     = max(0.001, round($cant, 3));
+        $original = $cant;
+        $item     = $this->carrito[$key];
 
-        if (! ($item['cortesia'] ?? false)) {
-            if ($item['tipo'] === 'producto') {
-                $prod = Producto::with('inventario')->find($item['id']);
-                if ($prod && $prod->control_de_stock && ! $prod->venta_sin_stock) {
-                    $stock = (float) ($prod->inventario?->stock_real ?? 0);
-                    if ($cant > $stock) {
-                        Notification::make()
-                            ->title('Stock insuficiente')
-                            ->body("Disponible: {$stock}.")
-                            ->warning()->send();
-                        $cant = $stock;
-                    }
-                }
-            } elseif ($item['tipo'] === 'variante') {
-                $inv = Inventario::where('variante_id', $item['id'])->first();
-                $var = Variante::with('producto')->find($item['id']);
-                if ($var && $var->producto?->control_de_stock && ! $var->producto?->venta_sin_stock) {
-                    $stock = (float) ($inv?->stock_real ?? 0);
-                    if ($cant > $stock) {
-                        Notification::make()
-                            ->title('Stock insuficiente')
-                            ->body("Disponible: {$stock}.")
-                            ->warning()->send();
-                        $cant = $stock;
-                    }
-                }
+        if (! ($item['cortesia'] ?? false) && ($item['control_stock'] ?? false) && ! ($item['venta_sin_stock'] ?? false)) {
+            $stock = (float) ($item['stock_real'] ?? PHP_INT_MAX);
+            if ($cant > $stock) {
+                Notification::make()->title('Stock insuficiente')->body("Disponible: {$stock}.")->warning()->send();
+                $cant = $stock;
             }
         }
 
-        $carrito         = $this->carrito;
+        $carrito               = $this->carrito;
         $carrito[$key]['cantidad'] = $cant;
-        $this->carrito   = $carrito;
+        $this->carrito         = $carrito;
+
+        // Solo si el stock clampeo la cantidad, notificar a Alpine para corregir el display
+        if (abs($cant - $original) > 0.0005) {
+            $this->js('window.dispatchEvent(new CustomEvent("pdv-qty-fix",{detail:{key:' . json_encode($key) . ',qty:' . $cant . '}}))');
+        }
+        $this->syncAlpineStore();
     }
 
     public function eliminarItem(string $key): void
@@ -486,11 +515,13 @@ class PuntoDeVenta extends Page
         $carrito = $this->carrito;
         unset($carrito[$key]);
         $this->carrito = $carrito;
+        $this->syncAlpineStore();
     }
 
     public function vaciarCarrito(): void
     {
         $this->carrito = [];
+        $this->syncAlpineStore();
     }
 
     public function getTotal(): float
@@ -505,12 +536,16 @@ class PuntoDeVenta extends Page
 
     // ── Helpers de carrito ────────────────────────────────────────────────────
 
-    private function resolveCarritoKey(string $baseKey, bool $esCortesia = false): string
+    private function resolveCarritoKey(string $baseKey, bool $esCortesia = false, float $precio = 0.0): string
     {
+        $matches = fn (array $item) =>
+            (bool) ($item['cortesia'] ?? false) === $esCortesia
+            && ($esCortesia || abs((float) ($item['precio'] ?? 0) - $precio) < 0.005);
+
         if (! isset($this->carrito[$baseKey])) {
             return $baseKey;
         }
-        if ((bool) $this->carrito[$baseKey]['cortesia'] === $esCortesia) {
+        if ($matches($this->carrito[$baseKey])) {
             return $baseKey;
         }
         $i = 2;
@@ -519,7 +554,7 @@ class PuntoDeVenta extends Page
             if (! isset($this->carrito[$k])) {
                 return $k;
             }
-            if ((bool) $this->carrito[$k]['cortesia'] === $esCortesia) {
+            if ($matches($this->carrito[$k])) {
                 return $k;
             }
             $i++;
@@ -537,13 +572,19 @@ class PuntoDeVenta extends Page
         return $total;
     }
 
-    private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio, bool $esCortesia = false, bool $esDecimal = false, float $precioNormal = 0, bool $puedeCortesia = false, float $cantidadAgregar = 1.0): void
+    private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio, bool $esCortesia = false, bool $esDecimal = false, float $precioNormal = 0, bool $puedeCortesia = false, float $cantidadAgregar = 1.0, array $extra = []): void
     {
         $carrito = $this->carrito;
         if (isset($carrito[$key])) {
             $carrito[$key]['cantidad'] += $cantidadAgregar;
+            $this->carrito = $carrito;
+            // wire:ignore on the controls block prevents Livewire from updating Alpine's qty
+            $newQty = $carrito[$key]['cantidad'];
+            $this->js('window.dispatchEvent(new CustomEvent("pdv-qty-fix",{detail:{key:' . json_encode($key) . ',qty:' . $newQty . '}}))');
+            $this->syncAlpineStore();
+            return;
         } else {
-            $carrito[$key] = [
+            $carrito[$key] = array_merge([
                 'key'           => $key,
                 'tipo'          => $tipo,
                 'id'            => $id,
@@ -554,9 +595,10 @@ class PuntoDeVenta extends Page
                 'puede_cortesia'=> $puedeCortesia,
                 'decimal'       => $esDecimal,
                 'cantidad'      => $cantidadAgregar,
-            ];
+            ], $extra);
         }
         $this->carrito = $carrito;
+        $this->syncAlpineStore();
     }
 
     // ── Modal pago ────────────────────────────────────────────────────────────
@@ -607,8 +649,12 @@ class PuntoDeVenta extends Page
         $this->pagoReferencia     = '';
         $this->pagosAgregados     = [];
         $this->descuentoInput     = '0';
+        $this->deliveryActivo     = false;
         $this->despachoRequerido  = false;
         $this->despachoDireccion  = '';
+        $this->deliveryNombre     = '';
+        $this->deliveryTelefono   = '';
+        $this->deliveryRepartidor = '';
         $this->modalPago          = true;
 
         $this->autoSeleccionarEfectivo();
@@ -631,8 +677,12 @@ class PuntoDeVenta extends Page
         $this->pagoReferencia         = '';
         $this->pagosAgregados         = [];
         $this->descuentoInput         = '0';
+        $this->deliveryActivo         = false;
         $this->despachoRequerido      = false;
         $this->despachoDireccion      = '';
+        $this->deliveryNombre         = '';
+        $this->deliveryTelefono       = '';
+        $this->deliveryRepartidor     = '';
     }
 
     public function seleccionarMetodoPago(int $id): void
@@ -818,8 +868,12 @@ class PuntoDeVenta extends Page
         $clienteNombre     = $this->clienteNombre;
         $clienteTipoDoc    = $this->clienteTipoDoc;
         $serieId           = $this->serieId;
-        $despachoRequerido = $this->despachoRequerido;
-        $despachoDireccion = trim($this->despachoDireccion);
+        $deliveryActivo     = $this->deliveryActivo;
+        $despachoRequerido  = $this->despachoRequerido;
+        $despachoDireccion  = trim($this->despachoDireccion);
+        $deliveryNombre     = trim($this->deliveryNombre);
+        $deliveryTelefono   = trim($this->deliveryTelefono);
+        $deliveryRepartidor = trim($this->deliveryRepartidor);
 
         $esTicket    = $this->esTicket();
         $tasaIgv     = $esTicket ? 0.0 : 0.18;
@@ -843,7 +897,9 @@ class PuntoDeVenta extends Page
                 $opGravadas, $opInafectas, $igv, $tasaIgv,
                 $montoPagado, $saldoPendiente, $tipoPagoVenta, $estadoPago,
                 $pagosContado, $pagosCredito, $carrito,
-                $clienteId, $clienteNombre, $clienteTipoDoc, $serieId, $despachoRequerido, $despachoDireccion,
+                $clienteId, $clienteNombre, $clienteTipoDoc, $serieId,
+                $deliveryActivo, $despachoRequerido, $despachoDireccion,
+                $deliveryNombre, $deliveryTelefono, $deliveryRepartidor,
                 &$venta
             ) {
                 $serie = Serie::lockForUpdate()->findOrFail($serieId);
@@ -890,6 +946,13 @@ class PuntoDeVenta extends Page
                     'estado'              => EstadoVenta::Completada,
                     'estado_despacho'     => $despachoRequerido ? 'pendiente_envio' : null,
                     'despacho_direccion'  => $despachoRequerido && $despachoDireccion !== '' ? $despachoDireccion : null,
+                    'notas'               => $deliveryActivo ? implode(' | ', array_filter([
+                        'Delivery',
+                        $deliveryNombre     !== '' ? 'Cliente: '    . $deliveryNombre     : null,
+                        $deliveryTelefono   !== '' ? 'Tel: '        . $deliveryTelefono   : null,
+                        $despachoDireccion  !== '' ? 'Dir: '        . $despachoDireccion  : null,
+                        $deliveryRepartidor !== '' ? 'Repartidor: ' . $deliveryRepartidor : null,
+                    ])) ?: null : null,
                 ]);
 
                 // Pre-cargar productos y variantes en batch para evitar N+1 dentro del loop

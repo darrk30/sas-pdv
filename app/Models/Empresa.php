@@ -103,6 +103,12 @@ class Empresa extends Model
         return (bool) ($this->planActual()?->tiene_variantes ?? false);
     }
 
+    public function tienePlanListaPrecios(): bool
+    {
+        $plan = $this->planActual();
+        return $plan === null || (bool) ($plan->tiene_lista_precios ?? false);
+    }
+
     // ── Módulos ───────────────────────────────────────────────────────────────
 
     public static function defaultModulos(): array

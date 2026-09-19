@@ -18,9 +18,10 @@ class RoleForm
         $empresa        = Filament::getTenant();
         $empresaId      = $empresa?->id;
         $plan           = $empresa?->planActual();
-        $tieneTienda    = ($plan === null || $plan->tiene_catalogo_web) && ($empresa?->tieneModulo('pedidos_web') ?? true);
-        $tieneVariantes = $plan === null || $plan->tiene_variantes;
-        $tieneFE        = $empresa?->tieneFacturacionElectronica() ?? false;
+        $tieneTienda        = ($plan === null || $plan->tiene_catalogo_web) && ($empresa?->tieneModulo('pedidos_web') ?? true);
+        $tieneVariantes     = $plan === null || $plan->tiene_variantes;
+        $tieneFE            = $empresa?->tieneFacturacionElectronica() ?? false;
+        $tieneListaPrecios  = $plan === null || ($plan->tiene_lista_precios ?? false);
 
         // Módulos completos a excluir según modulos_activos de la empresa
         $excludeModulos = [];
@@ -53,6 +54,9 @@ class RoleForm
             ->when(! empty($excludePermisos), fn ($q) => $q->whereNotIn('name', $excludePermisos))
             ->when(! $tieneVariantes, fn ($q) => $q->whereNotIn('name', [
                 'atributos.ver', 'atributos.crear', 'atributos.editar', 'atributos.eliminar',
+            ]))
+            ->when(! $tieneListaPrecios, fn ($q) => $q->whereNotIn('name', [
+                'listas_precios.ver', 'listas_precios.crear', 'listas_precios.editar', 'listas_precios.eliminar',
             ]))
             ->orderBy('module_label')
             ->orderBy('description')

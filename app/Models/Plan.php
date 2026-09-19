@@ -21,18 +21,20 @@ class Plan extends Model
         'tiene_catalogo_web',
         'facturacion_electronica',
         'tiene_impresion_directa',
+        'tiene_lista_precios',
         'estado',
     ];
 
     protected function casts(): array
     {
         return [
-            'precio'            => 'decimal:2',
-            'tiene_variantes'          => 'boolean',
-            'tiene_catalogo_web'       => 'boolean',
-            'facturacion_electronica'  => 'boolean',
-            'tiene_impresion_directa'  => 'boolean',
-            'estado'            => EstadoGeneral::class,
+            'precio'                  => 'decimal:2',
+            'tiene_variantes'         => 'boolean',
+            'tiene_catalogo_web'      => 'boolean',
+            'facturacion_electronica' => 'boolean',
+            'tiene_impresion_directa' => 'boolean',
+            'tiene_lista_precios'     => 'boolean',
+            'estado'                  => EstadoGeneral::class,
         ];
     }
 

@@ -7,6 +7,7 @@ use App\Enums\ProductoEtiqueta;
 use App\Traits\BelongsToEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Producto extends Model
 {
@@ -53,6 +54,11 @@ class Producto extends Model
     ];
 
     // --- Relaciones ---
+
+    public function preciosLista(): HasMany
+    {
+        return $this->hasMany(ListaPrecioProducto::class, 'producto_id');
+    }
 
     public function categoria(): BelongsTo
     {
