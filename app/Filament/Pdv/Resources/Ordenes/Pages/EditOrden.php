@@ -24,6 +24,7 @@ use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -217,7 +218,7 @@ class EditOrden extends EditRecord
                     ],
                     'listo_para_despachar' => true,
                 ])
-                ->form([
+                ->schema([
                     Select::make('serie_id')
                         ->label('Serie del comprobante')
                         ->options(function (): array {
@@ -235,6 +236,11 @@ class EditOrden extends EditRecord
                     Repeater::make('pagos')
                         ->label('Pagos recibidos')
                         ->minItems(1)
+                        ->table([
+                            TableColumn::make('Método de pago')->width('45%'),
+                            TableColumn::make('Monto')->width('30%'),
+                            TableColumn::make('N° operación / referencia')->width('30%'),
+                        ])
                         ->schema([
                             Select::make('metodo_pago_id')
                                 ->label('Método de pago')
@@ -254,7 +260,6 @@ class EditOrden extends EditRecord
                             TextInput::make('monto')
                                 ->label('Monto')
                                 ->numeric()
-                                ->prefix('S/')
                                 ->required()
                                 ->minValue(0.01),
 
@@ -282,8 +287,8 @@ class EditOrden extends EditRecord
 
                         // Ticket y Sin Comprobante no llevan IGV
                         $esTicket  = in_array($serie->tipo, [
-                            TipoComprobante::Ticket->value,
-                            TipoComprobante::SinComprobante->value,
+                            TipoComprobante::Ticket,
+                            TipoComprobante::SinComprobante,
                         ]);
                         $tasaIgv   = $esTicket ? 0.0 : 0.18;
                         $total     = (float) $orden->total;

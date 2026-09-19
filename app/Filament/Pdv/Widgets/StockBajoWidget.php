@@ -12,7 +12,7 @@ use Filament\Widgets\TableWidget as BaseWidget;
 class StockBajoWidget extends BaseWidget
 {
     protected static ?string $heading = 'Productos por agotarse / agotados';
-    protected static ?int $sort = 8;
+    protected static ?int $sort = 10;
 
     public static function canView(): bool
     {

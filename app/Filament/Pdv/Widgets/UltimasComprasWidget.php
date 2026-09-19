@@ -11,7 +11,7 @@ use Filament\Widgets\TableWidget as BaseWidget;
 class UltimasComprasWidget extends BaseWidget
 {
     protected static ?string $heading = 'Últimas compras';
-    protected static ?int $sort = 7;
+    protected static ?int $sort = 8;
 
     public static function canView(): bool
     {
