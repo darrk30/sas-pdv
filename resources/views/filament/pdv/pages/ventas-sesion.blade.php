@@ -163,7 +163,17 @@
             <option value="anulada">Anuladas</option>
         </select>
 
-        @if($busqueda || $filtroEstado)
+        @php $origenOpts = $this->getOrigenOptions(); @endphp
+        @if(count($origenOpts) >= 2)
+        <select wire:model.live="filtroOrigen" class="vs-filter-select">
+            <option value="">Todos los orígenes</option>
+            @foreach($origenOpts as $val => $label)
+                <option value="{{ $val }}">{{ $label }}</option>
+            @endforeach
+        </select>
+        @endif
+
+        @if($busqueda || $filtroEstado || $filtroOrigen)
             <button wire:click="limpiarFiltros" class="vs-filter-reset">Limpiar</button>
         @endif
     </div>

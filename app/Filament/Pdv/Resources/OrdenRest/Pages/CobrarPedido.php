@@ -6,6 +6,7 @@ use App\Enums\EstadoOrden;
 use App\Enums\EstadoSesion;
 use App\Enums\TipoComprobante;
 use App\Enums\TipoDocumento;
+use App\Enums\TipoOrigenOrden;
 use App\Events\VentaCompletada;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use App\Filament\Pdv\Pages\MapaMesasPage;
@@ -69,10 +70,15 @@ class CobrarPedido extends Page
     public function mount(int|string $record): void
     {
         $this->orden = Orden::where('empresa_id', \Filament\Facades\Filament::getTenant()->id)
-            ->with(['detalles', 'mesa.piso'])
+            ->with(['detalles', 'mesa.piso', 'repartidor:id,name'])
             ->findOrFail($record);
 
-        if ($this->orden->estado === EstadoOrden::PagoConfirmado) {
+        $esLlevarDelivery = in_array($this->orden->tipo_origen, [TipoOrigenOrden::Llevar, TipoOrigenOrden::Delivery]);
+        $yaCobrado = $esLlevarDelivery
+            ? $this->orden->venta_id !== null
+            : $this->orden->estado === EstadoOrden::PagoConfirmado;
+
+        if ($yaCobrado) {
             Notification::make()->title('Pedido ya cobrado')->warning()->send();
             $this->redirect(MapaMesasPage::getUrl(tenant: Filament::getTenant()));
             return;
@@ -234,20 +240,30 @@ class CobrarPedido extends Page
         $totalAcumulado = collect($this->pagosAgregados)->sum('monto');
         $pendiente      = max(0, $this->getTotalConDescuento() - $totalAcumulado);
 
-        // Si la cuenta ya está cubierta no se agrega más
         if ($pendiente <= 0) return;
 
         $metodo = MetodoPago::find($this->metodoPagoId);
 
-        // Se guarda el monto real entregado (puede ser mayor al pendiente → genera vuelto)
-        $this->pagosAgregados[] = [
-            'metodo_pago_id' => $this->metodoPagoId,
-            'nombre'         => $metodo?->nombre ?? 'Pago',
-            'monto'          => $monto,
-            'referencia'     => $this->pagoReferencia,
-        ];
+        // Si ya existe un pago con el mismo método, fusionar montos en lugar de duplicar
+        $idx = null;
+        foreach ($this->pagosAgregados as $i => $p) {
+            if ($p['metodo_pago_id'] === $this->metodoPagoId) {
+                $idx = $i;
+                break;
+            }
+        }
 
-        // Input queda en lo que aún falta (0 si ya se cubrió o hubo vuelto)
+        if ($idx !== null) {
+            $this->pagosAgregados[$idx]['monto'] += $monto;
+        } else {
+            $this->pagosAgregados[] = [
+                'metodo_pago_id' => $this->metodoPagoId,
+                'nombre'         => $metodo?->nombre ?? 'Pago',
+                'monto'          => $monto,
+                'referencia'     => $this->pagoReferencia,
+            ];
+        }
+
         $this->montoPagoInput = number_format(max(0, $this->getTotalConDescuento() - ($totalAcumulado + $monto)), 2, '.', '');
         $this->pagoReferencia = '';
     }
@@ -292,43 +308,70 @@ class CobrarPedido extends Page
         $empresa   = Filament::getTenant();
         $empresaId = $empresa->id;
 
-        $totalDescuento = $this->getTotalConDescuento();
-        $pagosLista     = $this->pagosAgregados;
+        $totalDescuento  = $this->getTotalConDescuento();
+        $pagosLista      = $this->pagosAgregados;
+        $esCortesiaTotal = $totalDescuento <= 0;
 
-        if (empty($pagosLista)) {
-            Notification::make()
-                ->title('Agrega el pago primero')
-                ->body('Ingresa el monto y haz clic en "Agregar" antes de confirmar el cobro.')
-                ->warning()
-                ->send();
-            return;
-        }
+        if (! $esCortesiaTotal) {
+            if (empty($pagosLista)) {
+                Notification::make()
+                    ->title('Agrega el pago primero')
+                    ->body('Ingresa el monto y haz clic en "Agregar" antes de confirmar el cobro.')
+                    ->warning()
+                    ->send();
+                return;
+            }
 
-        $totalPagado = collect($pagosLista)->sum('monto');
-        if ($totalPagado < $totalDescuento - 0.01) {
-            Notification::make()
-                ->title('Monto insuficiente')
-                ->body('Total: S/ ' . number_format($totalDescuento, 2) . ' — Pagado: S/ ' . number_format($totalPagado, 2))
-                ->warning()
-                ->send();
-            return;
-        }
+            $totalPagado = collect($pagosLista)->sum('monto');
+            if ($totalPagado < $totalDescuento - 0.01) {
+                Notification::make()
+                    ->title('Monto insuficiente')
+                    ->body('Total: S/ ' . number_format($totalDescuento, 2) . ' — Pagado: S/ ' . number_format($totalPagado, 2))
+                    ->warning()
+                    ->send();
+                return;
+            }
 
-        $sesionActiva = SesionCaja::where('empresa_id', $empresaId)
-            ->where('user_id', auth()->user()?->getAuthIdentifier())
-            ->where('estado', EstadoSesion::Abierta->value)
-            ->exists();
+            $sesionActiva = SesionCaja::where('empresa_id', $empresaId)
+                ->where('user_id', auth()->user()?->getAuthIdentifier())
+                ->where('estado', EstadoSesion::Abierta->value)
+                ->exists();
 
-        if (! $sesionActiva) {
-            Notification::make()->title('Sin sesión de caja activa')->warning()->send();
-            return;
+            if (! $sesionActiva) {
+                Notification::make()->title('Sin sesión de caja activa')->warning()->send();
+                return;
+            }
         }
 
         $venta      = null;
-        $mesaNombre = $orden->mesa?->nombre ?? '—';
+        $esDelivery = $orden->tipo_origen === TipoOrigenOrden::Delivery;
+        $esLlevar   = $orden->tipo_origen === TipoOrigenOrden::Llevar;
+        $mesaNombre = match (true) {
+            $esDelivery => 'Delivery · ' . ($orden->cliente_nombre ?? '—'),
+            $esLlevar   => 'Para llevar · ' . ($orden->cliente_nombre ?? '—'),
+            default     => $orden->mesa?->nombre ?? '—',
+        };
+
+        // Build notes for delivery/llevar orders
+        $notasVenta = null;
+        if ($esDelivery) {
+            $partes = ['Delivery'];
+            if ($orden->cliente_nombre)    $partes[] = 'Cliente: ' . $orden->cliente_nombre;
+            if ($orden->cliente_telefono)  $partes[] = 'Tel: ' . $orden->cliente_telefono;
+            if ($orden->cliente_direccion) $partes[] = 'Dir: ' . $orden->cliente_direccion;
+            if ($orden->repartidor?->name) {
+                $partes[] = 'Repartidor: ' . $orden->repartidor->name;
+            } elseif ($orden->notas_internas) {
+                $ni = json_decode($orden->notas_internas, true);
+                if (! empty($ni['repartidor'])) $partes[] = 'Repartidor: ' . $ni['repartidor'];
+            }
+            $notasVenta = implode(' | ', $partes);
+        } elseif ($esLlevar && $orden->cliente_nombre) {
+            $notasVenta = 'Para llevar | Cliente: ' . $orden->cliente_nombre;
+        }
 
         try {
-            DB::transaction(function () use ($orden, $empresa, $empresaId, $pagosLista, &$venta) {
+            DB::transaction(function () use ($orden, $empresa, $empresaId, $pagosLista, $esDelivery, $esLlevar, $mesaNombre, $notasVenta, &$venta) {
                 $orden->loadMissing(['detalles.producto.unidadMedida', 'detalles.variante.producto.unidadMedida', 'mesa']);
 
                 // Normalizar ítems del pedido al formato que acepta VentaService
@@ -380,15 +423,32 @@ class CobrarPedido extends Page
                     descuento:        $this->getDescuento(),
                     despachoRequerido: false,
                     despachoDireccion: '',
-                    conceptoPrefix:   'Mesa ' . ($orden->mesa?->nombre ?? '—'),
+                    conceptoPrefix:   $mesaNombre,
                     igvPct:           (float) ($empresa->igv_porcentaje ?? 18),
                     stockYaReservado: true,
                 );
 
-                // Post-procesado propio del módulo restaurante
+                // Marcar el tipo de origen y añadir datos de delivery/llevar si aplica
+                $tipoVenta = match ($orden->tipo_origen) {
+                    TipoOrigenOrden::Delivery => 'delivery',
+                    TipoOrigenOrden::Llevar   => 'llevar',
+                    default                   => 'restaurante',
+                };
+                $ventaUpdate = ['tipo' => $tipoVenta];
+                if ($notasVenta !== null) {
+                    $ventaUpdate['notas'] = $notasVenta;
+                }
+                $venta->update($ventaUpdate);
+
+                // Para llevar/delivery: guardar venta_id pero mantener el estado de preparación
+                // Para mesa: marcar pago confirmado y liberar la mesa
+                $estadoPost = ($esDelivery || $esLlevar)
+                    ? $orden->estado->value
+                    : EstadoOrden::PagoConfirmado->value;
+
                 $orden->update([
                     'venta_id' => $venta->id,
-                    'estado'   => EstadoOrden::PagoConfirmado,
+                    'estado'   => $estadoPost,
                 ]);
                 $orden->mesa?->marcarLibre();
             });
@@ -426,7 +486,7 @@ class CobrarPedido extends Page
 
             Notification::make()
                 ->title('Cobro realizado ✓')
-                ->body("Mesa {$mesaNombre} liberada.")
+                ->body($esDelivery || $esLlevar ? "{$mesaNombre} — cobro confirmado." : "Mesa {$mesaNombre} liberada.")
                 ->success()
                 ->send();
 

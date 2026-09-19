@@ -12,12 +12,20 @@ enum EstadoOrden: string implements HasLabel, HasColor, HasIcon
     case PagoConfirmado  = 'pago_confirmado';
     case Cancelada       = 'cancelada';
 
+    // Estados para llevar / delivery
+    case EnPreparacion   = 'en_preparacion';
+    case EnCamino        = 'en_camino';
+    case Entregado       = 'entregado';
+
     public function getLabel(): string
     {
         return match ($this) {
             self::PendientePago  => 'Pendiente de pago',
             self::PagoConfirmado => 'Pago confirmado',
             self::Cancelada      => 'Cancelada',
+            self::EnPreparacion  => 'En preparación',
+            self::EnCamino       => 'En camino',
+            self::Entregado      => 'Entregado',
         };
     }
 
@@ -27,6 +35,9 @@ enum EstadoOrden: string implements HasLabel, HasColor, HasIcon
             self::PendientePago  => 'warning',
             self::PagoConfirmado => 'success',
             self::Cancelada      => 'danger',
+            self::EnPreparacion  => 'warning',
+            self::EnCamino       => 'info',
+            self::Entregado      => 'success',
         };
     }
 
@@ -36,11 +47,14 @@ enum EstadoOrden: string implements HasLabel, HasColor, HasIcon
             self::PendientePago  => 'heroicon-o-banknotes',
             self::PagoConfirmado => 'heroicon-o-check-badge',
             self::Cancelada      => 'heroicon-o-x-circle',
+            self::EnPreparacion  => 'heroicon-o-fire',
+            self::EnCamino       => 'heroicon-o-truck',
+            self::Entregado      => 'heroicon-o-check-circle',
         };
     }
 
     public function esFinal(): bool
     {
-        return in_array($this, [self::PagoConfirmado, self::Cancelada]);
+        return in_array($this, [self::PagoConfirmado, self::Cancelada, self::Entregado]);
     }
 }

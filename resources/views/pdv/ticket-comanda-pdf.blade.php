@@ -68,10 +68,16 @@ td.nota { padding-left:10px; font-size:10px; color:#444; font-style:italic; }
     <td class="cant">{{ $item['cant'] ?? $item['cantidad'] ?? 0 }}x</td>
     <td>{{ $item['nombre'] }}</td>
 </tr>
+@foreach($item['sub'] ?? [] as $sub)
+<tr>
+    <td></td>
+    <td class="nota">↳ {{ $sub }}</td>
+</tr>
+@endforeach
 @if(! empty($item['nota']))
 <tr>
     <td></td>
-    <td class="nota">↳ {{ $item['nota'] }}</td>
+    <td class="nota">* {{ $item['nota'] }}</td>
 </tr>
 @endif
 @endforeach
@@ -87,6 +93,12 @@ td.nota { padding-left:10px; font-size:10px; color:#444; font-style:italic; }
     <td class="cant">{{ $item['cant'] ?? $item['cantidad'] ?? 0 }}x</td>
     <td>{{ $item['nombre'] }}</td>
 </tr>
+@foreach($item['sub'] ?? [] as $sub)
+<tr class="cancelado">
+    <td></td>
+    <td class="nota">↳ {{ $sub }}</td>
+</tr>
+@endforeach
 @endforeach
 </table>
 @endif

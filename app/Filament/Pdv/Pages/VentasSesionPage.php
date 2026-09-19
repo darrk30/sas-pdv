@@ -60,8 +60,9 @@ class VentasSesionPage extends Page implements HasTable
 
 
     // ── Filtros ───────────────────────────────────────────────────────────────
-    public string $busqueda     = '';
-    public string $filtroEstado = '';
+    public string $busqueda      = '';
+    public string $filtroEstado  = '';
+    public string $filtroOrigen  = '';
 
     // ── Modal detalle ─────────────────────────────────────────────────────────
     public ?int $ventaModalId = null;
@@ -75,11 +76,33 @@ class VentasSesionPage extends Page implements HasTable
 
     public function updatedBusqueda(): void     { }
     public function updatedFiltroEstado(): void { }
+    public function updatedFiltroOrigen(): void { }
+
+    public function getOrigenOptions(): array
+    {
+        $empresa = Filament::getTenant();
+        $opts    = [];
+
+        if ($empresa->tieneModulo('punto_de_venta')) {
+            $opts['pdv'] = 'PDV';
+        }
+        if ($empresa->tieneModulo('restaurante')) {
+            $opts['restaurante'] = 'Mesa';
+            $opts['llevar']      = 'Llevar';
+            $opts['delivery']    = 'Delivery';
+        }
+        if ($empresa->tieneModulo('ordenes_web')) {
+            $opts['web'] = 'Web';
+        }
+
+        return $opts;
+    }
 
     public function limpiarFiltros(): void
     {
         $this->busqueda     = '';
         $this->filtroEstado = '';
+        $this->filtroOrigen = '';
     }
 
     // ── Sesión activa ─────────────────────────────────────────────────────────
@@ -129,6 +152,10 @@ class VentasSesionPage extends Page implements HasTable
                     $q->where('estado', $this->filtroEstado);
                 }
 
+                if ($this->filtroOrigen !== '') {
+                    $q->where('tipo', $this->filtroOrigen);
+                }
+
                 return $q;
             })
             ->defaultSort('created_at', 'desc')
@@ -147,11 +174,6 @@ class VentasSesionPage extends Page implements HasTable
                     ->label('Cliente')
                     ->description(fn (Venta $r): string => strtoupper($r->cliente_tipo_doc) . ' ' . $r->cliente_num_doc)
                     ->searchable(false),
-
-                TextColumn::make('detalles_count')
-                    ->label('Ítems')
-                    ->alignCenter()
-                    ->sortable(false),
 
                 TextColumn::make('cortesias_count')
                     ->label('Cortesía')
@@ -216,12 +238,38 @@ class VentasSesionPage extends Page implements HasTable
                     ->badge()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('notas_count')
-                    ->label('NC')
+                TextColumn::make('tipo')
+                    ->label('Origen')
                     ->badge()
-                    ->color('success')
-                    ->formatStateUsing(fn (int $state): string => $state > 0 ? $state . ' NC' : '—')
-                    ->tooltip('Notas de Crédito emitidas sobre esta venta')
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'pdv'         => 'PDV',
+                        'restaurante' => 'Mesa',
+                        'delivery'    => 'Delivery',
+                        'llevar'      => 'Llevar',
+                        'web'         => 'Web',
+                        default       => strtoupper($state ?? '—'),
+                    })
+                    ->color(fn (?string $state): string => match ($state) {
+                        'pdv'         => 'info',
+                        'restaurante' => 'success',
+                        'delivery'    => 'warning',
+                        'llevar'      => 'primary',
+                        default       => 'gray',
+                    })
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('notas')
+                    ->label('Notas')
+                    ->html()
+                    ->formatStateUsing(fn (?string $state): string =>
+                        $state
+                            ? implode('<br>', array_map(
+                                fn (string $s): string => '<span>' . e(trim($s)) . '</span>',
+                                preg_split('/\s*\|\s*|\n/', trim($state))
+                              ))
+                            : '—'
+                    )
+                    ->color('gray')
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('sunat_descripcion')

@@ -129,6 +129,13 @@ class PlanForm
                             ->onColor('success')
                             ->default(false)
                             ->columnSpan(1),
+
+                        Toggle::make('tiene_lista_precios')
+                            ->label('Listas de Precios')
+                            ->helperText('Permite crear listas de precios diferenciadas por cliente o canal')
+                            ->onColor('success')
+                            ->default(false)
+                            ->columnSpan(1),
                     ])->columnSpanFull(),
             ]);
     }

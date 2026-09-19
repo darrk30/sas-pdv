@@ -51,7 +51,7 @@ html, body {
 
 /* ── Tabla ítems ──────────────────────────────────── */
 .tk-tabla { width: 100%; border-collapse: collapse; font-size: 9.5px; margin: 1mm 0; }
-.tk-tabla thead tr { border-bottom: 1px solid #000; }
+.tk-tabla thead tr { border-bottom: 0.5px solid #000; }
 .tk-tabla th {
     font-weight: 700;
     font-size: 9px;
@@ -72,7 +72,7 @@ html, body {
 .tk-tot-fila--total {
     font-size: 13px;
     font-weight: 700;
-    border-top: 1px solid #000;
+    border-top: 0.5px solid #000;
     padding-top: 1.5mm;
     margin-top: .5mm;
 }
@@ -222,7 +222,6 @@ html, body {
         @if((float)$venta->descuento_total > 0)
         <div class="tk-tot-fila"><span>DESCUENTO</span><span>- S/ {{ number_format($venta->descuento_total,2) }}</span></div>
         @endif
-        <div class="sep"></div>
         @if($tieneIgv)
         <div class="tk-tot-fila"><span>OP. GRAVADA</span><span>S/ {{ number_format($venta->op_gravadas,2) }}</span></div>
         <div class="tk-tot-fila"><span>IGV (18%)</span><span>S/ {{ number_format($venta->igv,2) }}</span></div>

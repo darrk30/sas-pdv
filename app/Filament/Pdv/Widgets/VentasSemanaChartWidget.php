@@ -14,7 +14,7 @@ class VentasSemanaChartWidget extends ChartWidget
 {
     protected ?string $heading    = 'Ventas del período';
     protected ?string $maxHeight  = '300px';
-    protected static ?int $sort   = 5;
+    protected static ?int $sort   = 6;
     protected int|string|array $columnSpan = 'full';
 
     public string $desde = '';

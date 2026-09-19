@@ -7,17 +7,31 @@
     $mesa         = $orden->mesa;
     $resumen      = $this->getCarritoResumen();
     $pendiente    = $this->getPendienteResumen();
-    $detalles     = $orden->detalles;
+    $eliminadosPendientes = $this->eliminadosPendientes;
+    $detalles     = $orden->detalles->reject(fn($d) => isset($eliminadosPendientes[$d->id]));
     $total        = (float) $orden->total;
     $carritoNuevos       = $this->carritoNuevos;
     $count        = $detalles->count() + count($carritoNuevos);
     $totalPendiente      = array_sum(array_map(fn($i) => $i['precio'] * $i['cantidad'], $carritoNuevos));
+    $cantidadesPendientes = $this->cantidadesPendientes;
+    $deltaExistentes     = $detalles->sum(fn($d) => (isset($cantidadesPendientes[$d->id]) ? (float)$cantidadesPendientes[$d->id] - (float)$d->cantidad : 0) * (float)$d->precio_unitario);
+    $totalCompleto       = round($total + $deltaExistentes + $totalPendiente, 2);
     $hayNuevos           = $this->hayItemsNuevos();
     $hayEliminados       = $this->hayItemsEliminados();
     $hayNotasModificadas = $this->hayNotasModificadas();
-    $yaFueCobrada = $orden->estado === \App\Enums\EstadoOrden::PagoConfirmado;
+    $esLlevarODelivery = in_array($orden->tipo_origen, [\App\Enums\TipoOrigenOrden::Llevar, \App\Enums\TipoOrigenOrden::Delivery]);
+    $yaFueCobrada = $orden->estado === \App\Enums\EstadoOrden::PagoConfirmado
+        || ($esLlevarODelivery && $orden->venta_id !== null);
     $estaAnulada  = $orden->estado === \App\Enums\EstadoOrden::Cancelada;
     $soloLectura  = $yaFueCobrada || $estaAnulada;
+
+    $esDelivery        = $orden->tipo_origen === \App\Enums\TipoOrigenOrden::Delivery;
+    $usuariosRepartidor = $esDelivery ? $this->getUsuariosRepartidor() : [];
+    $repTextoEdit = '';
+    if ($esDelivery && ! $orden->repartidor_id && $orden->notas_internas) {
+        $ni = json_decode($orden->notas_internas, true);
+        $repTextoEdit = $ni['repartidor'] ?? '';
+    }
 @endphp
 
 {{-- ═══════════════════════════════════════════════════════
@@ -228,7 +242,24 @@
                 @endif
             </p>
             <p class="pdv-header__sub">
-                @if($mesa)
+                @if($orden->tipo_origen === \App\Enums\TipoOrigenOrden::Delivery)
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:0.9rem;height:0.9rem;display:inline;vertical-align:middle;color:#6366f1"><path d="M3.375 4.5C2.339 4.5 1.5 5.34 1.5 6.375V13.5h12V6.375c0-1.036-.84-1.875-1.875-1.875h-8.25ZM13.5 15h-12v2.625c0 1.035.84 1.875 1.875 1.875h.375a3 3 0 1 1 6 0h3a.75.75 0 0 0 .75-.75V15Z"/><path d="M8.25 19.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0ZM15.75 6.75a.75.75 0 0 0-.75.75v11.25c0 .087.015.17.042.248a3 3 0 0 1 5.958.464c.853-.175 1.522-.935 1.464-1.883a18.659 18.659 0 0 0-3.732-10.104 1.837 1.837 0 0 0-1.47-.725H15.75Z"/><path d="M19.5 19.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0Z"/></svg>
+                    <strong>Delivery</strong>
+                    @if($orden->cliente_nombre) · {{ $orden->cliente_nombre }} @endif
+                    @if($orden->cliente_telefono) · <span>📞 {{ $orden->cliente_telefono }}</span> @endif
+                    @if($orden->cliente_direccion) · <span>📍 {{ $orden->cliente_direccion }}</span> @endif
+                    @php
+                        $repNombre = $orden->repartidor?->name;
+                        if (! $repNombre && $orden->notas_internas) {
+                            $ni = json_decode($orden->notas_internas, true);
+                            $repNombre = $ni['repartidor'] ?? null;
+                        }
+                    @endphp
+                    @if($repNombre) · Repartidor: <strong>{{ $repNombre }}</strong> @endif
+                @elseif($orden->tipo_origen === \App\Enums\TipoOrigenOrden::Llevar)
+                    Para llevar
+                    @if($orden->cliente_nombre) · <strong>{{ $orden->cliente_nombre }}</strong> @endif
+                @elseif($mesa)
                     Mesa: <strong>{{ $mesa->nombre }}</strong>
                     @if($mesa->piso) · {{ $mesa->piso->nombre }} @endif
                 @endif
@@ -317,7 +348,7 @@
         <div class="pdv-productos">
             <livewire:pdv.product-catalog
                 :carritoResumen="$resumen"
-                :pendienteResumen="$pendiente"
+                :pendienteResumen="$this->getPendienteResumen()"
                 :showPromociones="true"
                 wire:key="catalog-edit-{{ $orden->id }}"
             />
@@ -363,10 +394,25 @@
 
                 {{-- ── Ítems locales (pendientes de enviar) ── --}}
                 @foreach($carritoNuevos as $key => $item)
-                @php $itemTotal = $item['precio'] * $item['cantidad']; @endphp
-                <div class="pdv-item pdv-item--card ep-item--nuevo" wire:key="nuevo-{{ $key }}">
+                @php
+                    $itemEsCortesia  = (bool) ($item['es_cortesia'] ?? false);
+                    $itemPuedeCort   = (bool) ($item['puede_cortesia'] ?? false);
+                    $itemTotal       = $item['precio'] * $item['cantidad'];
+                @endphp
+                <div class="pdv-item pdv-item--card ep-item--nuevo {{ $itemEsCortesia ? 'pdv-item--cortesia' : '' }}" wire:key="nuevo-{{ $key }}">
                     <div class="pdv-item__top">
                         <p class="pdv-item__nombre">
+                            @if($itemPuedeCort)
+                            <button
+                                type="button"
+                                wire:click="toggleCortesiaCarritoNuevo('{{ $key }}')"
+                                class="pdv-item__badge-cortesia {{ $itemEsCortesia ? 'pdv-item__badge-cortesia--on' : 'pdv-item__badge-cortesia--off' }}"
+                                title="{{ $itemEsCortesia ? 'Quitar cortesía' : 'Aplicar como cortesía (gratis)' }}"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
+                                {{ $itemEsCortesia ? 'GRATIS' : 'Cortesía' }}
+                            </button>
+                            @endif
                             {{ $item['nombre'] }}
                             @if(($item['tipo'] ?? '') === 'promocion' && ! empty($item['detalles_resumen']))
                                 <x-pdv.promo-vista :detalles="$item['detalles_resumen']" clase="promo-vista--cart" />
@@ -377,8 +423,8 @@
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
-                    <div class="pdv-item__subtotal pdv-item__subtotal--big">
-                        S/ {{ number_format($item['precio'], 2) }} c/u
+                    <div class="pdv-item__subtotal pdv-item__subtotal--big {{ $itemEsCortesia ? 'pdv-item__subtotal--gratis' : '' }}">
+                        {{ $itemEsCortesia ? 'Gratis' : 'S/ ' . number_format($item['precio'], 2) . ' c/u' }}
                     </div>
                     <div class="pdv-item__bottom">
                         <div class="pdv-qty">
@@ -387,12 +433,15 @@
                             </button>
                             <input class="pdv-qty__input" type="number" min="1" step="1"
                                 value="{{ (int) $item['cantidad'] }}"
-                                @change="$wire.setCantidadNuevo('{{ $key }}', parseInt($event.target.value) || 1)">
-                            <button class="pdv-qty__btn pdv-qty__btn--mas" wire:click="incrementarNuevo('{{ $key }}')">
+                                @change="$wire.setCantidadNuevo('{{ $key }}', parseInt($event.target.value) || 1)"
+                                @keydown="if($event.key==='-'||$event.key==='e'||$event.key==='E')$event.preventDefault()"
+                                @input="if(parseInt($event.target.value)<1)$event.target.value=1">
+                            @php $bloqueadoNuevo = isset($item['stock_max']) && $item['stock_max'] !== null && ! ($item['venta_sin_stock'] ?? false) && $item['cantidad'] >= (float)$item['stock_max']; @endphp
+                            <button class="pdv-qty__btn pdv-qty__btn--mas {{ $bloqueadoNuevo ? 'pdv-qty__btn--disabled' : '' }}" wire:click="incrementarNuevo('{{ $key }}')" {{ $bloqueadoNuevo ? 'disabled' : '' }}>
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                             </button>
                         </div>
-                        <span class="pdv-item__precio-unit pdv-item__precio-unit--total">S/ {{ number_format($itemTotal, 2) }}</span>
+                        <span class="pdv-item__precio-unit pdv-item__precio-unit--total">{{ $itemEsCortesia ? 'S/ 0.00' : 'S/ ' . number_format($itemTotal, 2) }}</span>
                     </div>
                     <div class="pdv-item__nota-wrap"
                         x-data="{ open: false, nota: @js($item['nota'] ?? '') }">
@@ -411,8 +460,11 @@
                 @endforeach
 
                 @forelse($detalles as $det)
-                    @php $esNuevo = ! $det->enviado_cocina; @endphp
-                    <div class="pdv-item pdv-item--card {{ $esNuevo ? 'ep-item--nuevo' : '' }}" wire:key="det-{{ $det->id }}">
+                    @php
+                        $esNuevo       = ! $det->enviado_cocina || isset($cantidadesPendientes[$det->id]);
+                        $cantMostrar   = (int) ($cantidadesPendientes[$det->id] ?? $det->cantidad);
+                    @endphp
+                    <div class="pdv-item pdv-item--card {{ $esNuevo ? 'ep-item--nuevo' : '' }}" wire:key="det-{{ $det->id }}-{{ $cantMostrar }}">
                         <div class="pdv-item__top">
                             <p class="pdv-item__nombre">
                                 {{ $det->descripcion }}
@@ -436,8 +488,10 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
                                     </button>
                                     <input class="pdv-qty__input" type="number" min="1" step="1"
-                                        value="{{ (int) $det->cantidad }}"
-                                        @change="$wire.setCantidadDetalle({{ $det->id }}, parseInt($event.target.value) || 1)">
+                                        value="{{ $cantMostrar }}"
+                                        @change="$wire.setCantidadDetalle({{ $det->id }}, parseInt($event.target.value) || 1)"
+                                        @keydown="if($event.key==='-'||$event.key==='e'||$event.key==='E')$event.preventDefault()"
+                                        @input="if(parseInt($event.target.value)<1)$event.target.value=1">
                                     <button class="pdv-qty__btn pdv-qty__btn--mas" wire:click="incrementar({{ $det->id }})">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                                     </button>
@@ -445,7 +499,7 @@
                             @else
                                 <span class="pdv-qty__num">{{ (int) $det->cantidad }} unid.</span>
                             @endif
-                            <span class="pdv-item__precio-unit pdv-item__precio-unit--total">S/ {{ number_format($det->total, 2) }}</span>
+                            <span class="pdv-item__precio-unit pdv-item__precio-unit--total">S/ {{ number_format($cantMostrar * $det->precio_unitario, 2) }}</span>
                         </div>
                         @if(! $soloLectura)
                             <div class="pdv-item__nota-wrap"
@@ -482,12 +536,90 @@
                 @endforelse
             </div>
 
+            {{-- Formulario Delivery (editable) --}}
+            @if($esDelivery && ! $soloLectura)
+            <div class="pdv-delivery-accordion"
+                 x-data="{
+                     open: false,
+                     dirty: false,
+                     nombre:         '{{ addslashes($orden->cliente_nombre ?? '') }}',
+                     telefono:       '{{ addslashes($orden->cliente_telefono ?? '') }}',
+                     direccion:      '{{ addslashes($orden->cliente_direccion ?? '') }}',
+                     repartidorId:   {{ $orden->repartidor_id ? (int) $orden->repartidor_id : 'null' }},
+                     repartidorTexto:'{{ addslashes($repTextoEdit) }}'
+                 }"
+            >
+                <button type="button" class="pdv-delivery-accordion__header" @click="open = !open">
+                    <span class="pdv-delivery-accordion__header-left">
+                        <span class="pdv-delivery-accordion__icon-wrap">
+                            <x-heroicon-m-truck style="width:.9rem;height:.9rem;" />
+                        </span>
+                        Datos del pedido
+                        <span class="pdv-delivery-accordion__summary" x-show="!open" x-text="nombre || '—'"></span>
+                    </span>
+                    <span class="pdv-delivery-accordion__chevron" :class="{ 'pdv-delivery-accordion__chevron--open': open }">
+                        <svg viewBox="0 0 20 20" fill="currentColor" style="width:.9rem;height:.9rem;"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd"/></svg>
+                    </span>
+                </button>
+
+                <div class="pdv-delivery-accordion__body" :class="{ 'pdv-delivery-accordion__body--open': open }">
+                    <div class="pdv-delivery-form__fields">
+                        <div class="pdv-delivery-field">
+                            <label class="pdv-delivery-label">Nombre <span class="pdv-delivery-required">*</span></label>
+                            <input x-model="nombre" @input="dirty = true" type="text" placeholder="Nombre del cliente" class="pdv-delivery-input" />
+                        </div>
+                        <div class="pdv-delivery-field">
+                            <label class="pdv-delivery-label">Teléfono</label>
+                            <input x-model="telefono" @input="dirty = true" type="tel" placeholder="987 654 321" class="pdv-delivery-input" />
+                        </div>
+                        <div class="pdv-delivery-field pdv-delivery-field--full">
+                            <label class="pdv-delivery-label">Dirección de entrega</label>
+                            <input x-model="direccion" @input="dirty = true" type="text" placeholder="Av. Ejemplo 123, piso 2" class="pdv-delivery-input" />
+                        </div>
+                        <div class="pdv-delivery-field pdv-delivery-field--full">
+                            <label class="pdv-delivery-label">Repartidor</label>
+                            @if(count($usuariosRepartidor) > 0)
+                                <select x-model="repartidorId" @change="dirty = true" class="pdv-delivery-input">
+                                    <option value="">— Sin asignar / texto libre —</option>
+                                    @foreach($usuariosRepartidor as $u)
+                                        <option value="{{ $u['id'] }}">{{ $u['nombre'] }}</option>
+                                    @endforeach
+                                </select>
+                                <div x-show="!repartidorId">
+                                    <input x-model="repartidorTexto" @input="dirty = true" type="text" placeholder="Nombre del repartidor (opcional)" class="pdv-delivery-input pdv-delivery-input--sub" />
+                                </div>
+                            @else
+                                <input x-model="repartidorTexto" @input="dirty = true" type="text" placeholder="Nombre del repartidor (opcional)" class="pdv-delivery-input" />
+                            @endif
+                        </div>
+                    </div>
+
+                    <div x-show="dirty" style="padding:.5rem 1rem 0;" x-cloak>
+                        @can('restaurante.pedido.editar')
+                        <button
+                            type="button"
+                            class="pdv-btn-venta"
+                            style="background:#2563eb;"
+                            wire:loading.attr="disabled"
+                            wire:target="actualizarDatosDelivery"
+                            @click="$wire.actualizarDatosDelivery(nombre, telefono, direccion, parseInt(repartidorId) || null, repartidorTexto); dirty = false"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1rem;height:1rem;flex-shrink:0;" aria-hidden="true"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 0 1 1.04-.208Z" clip-rule="evenodd"/></svg>
+                            <span wire:loading.remove wire:target="actualizarDatosDelivery">Guardar datos</span>
+                            <span wire:loading wire:target="actualizarDatosDelivery">Guardando…</span>
+                        </button>
+                        @endcan
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- Footer --}}
             <div class="pdv-carrito__footer">
                 <div class="pdv-carrito__totales">
                     <div class="pdv-carrito__fila">
-                        <span class="pdv-carrito__total-label">Total</span>
-                        <span class="pdv-carrito__total-monto">S/ {{ number_format($total, 2) }}</span>
+                        <span class="pdv-carrito__total-label">Total{{ ($deltaExistentes != 0 || $totalPendiente > 0) ? ' estimado' : '' }}</span>
+                        <span class="pdv-carrito__total-monto">S/ {{ number_format($totalCompleto, 2) }}</span>
                     </div>
                     @if($totalPendiente > 0)
                     <div class="pdv-carrito__fila ep-fila--pendiente">
@@ -528,7 +660,7 @@
                         wire:click="irACobrar"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1rem;height:1rem;flex-shrink:0;" aria-hidden="true"><path d="M12 7.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z"/><path fill-rule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v9.75c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 14.625v-9.75ZM8.25 9.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM18.75 9a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75V9.75a.75.75 0 0 0-.75-.75h-.008ZM4.5 9.75A.75.75 0 0 1 5.25 9h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V9.75Z" clip-rule="evenodd"/><path d="M2.25 18a.75.75 0 0 0 0 1.5c5.4 0 10.63.722 15.6 2.075 1.19.324 2.4-.558 2.4-1.82V18.75a.75.75 0 0 0-.75-.75H2.25Z"/></svg>
-                        Cobrar mesa
+                        {{ $esDelivery ? 'Cobrar delivery' : ($orden->tipo_origen === \App\Enums\TipoOrigenOrden::Llevar ? 'Cobrar para llevar' : 'Cobrar mesa') }}
                     </button>
                     @endcan
                 @endif
@@ -551,5 +683,11 @@
 </div>{{-- /pdv-root --}}
 
 <link rel="stylesheet" href="{{ asset('css/edit-pedido.css') }}?v={{ filemtime(public_path('css/edit-pedido.css')) }}">
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.store('carritoResumen', @js($this->getAlpineStoreResumen()));
+});
+</script>
 
 </x-filament-panels::page>

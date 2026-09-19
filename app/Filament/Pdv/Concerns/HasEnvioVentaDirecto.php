@@ -60,9 +60,11 @@ trait HasEnvioVentaDirecto
                     ->send();
             } else {
                 $venta->update([
-                    'sunat_success' => false,
-                    'sunat_mensaje' => $response->mensajeError(),
-                    'estado_sunat'  => EstadoSunat::Error,
+                    'sunat_success'     => false,
+                    'sunat_codigo'      => $response->sunatCode ?? $response->errorCode,
+                    'sunat_descripcion' => $response->mensajeError(),
+                    'sunat_mensaje'     => $response->mensajeError(),
+                    'estado_sunat'      => EstadoSunat::Error,
                 ]);
 
                 Notification::make()
@@ -73,9 +75,10 @@ trait HasEnvioVentaDirecto
             }
         } catch (\Throwable $e) {
             $venta->update([
-                'sunat_success' => false,
-                'sunat_mensaje' => $e->getMessage(),
-                'estado_sunat'  => EstadoSunat::Error,
+                'sunat_success'     => false,
+                'sunat_descripcion' => $e->getMessage(),
+                'sunat_mensaje'     => $e->getMessage(),
+                'estado_sunat'      => EstadoSunat::Error,
             ]);
 
             Notification::make()

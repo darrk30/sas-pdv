@@ -26,6 +26,7 @@ class Orden extends Model
         'empresa_id',
         'tipo_origen',
         'mesa_id',
+        'repartidor_id',
         'vendedor_id',
         'cliente_id',
         'numero',
@@ -116,6 +117,11 @@ class Orden extends Model
     public function mesa(): BelongsTo
     {
         return $this->belongsTo(Mesa::class);
+    }
+
+    public function repartidor(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'repartidor_id');
     }
 
     public function venta(): BelongsTo

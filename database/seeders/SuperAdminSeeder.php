@@ -85,6 +85,15 @@ class SuperAdminSeeder extends Seeder
         ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos.crear',  'description' => 'Registrar y editar gastos'],
         ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos.anular', 'description' => 'Anular gastos registrados'],
 
+        // ── Gastos Fijos ──────────────────────────────────────────────────────
+        ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos_fijos.ver',      'description' => 'Ver listado de gastos fijos'],
+        ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos_fijos.crear',    'description' => 'Crear nuevos gastos fijos'],
+        ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos_fijos.editar',   'description' => 'Editar gastos fijos existentes'],
+        ['module' => 'gastos', 'module_label' => 'Gastos', 'name' => 'gastos_fijos.eliminar', 'description' => 'Eliminar gastos fijos'],
+
+        // ── Resumen / Dashboard ───────────────────────────────────────────────
+        ['module' => 'resumen', 'module_label' => 'Resumen', 'name' => 'resumen.camino_ganancias', 'description' => 'Ver sección Camino a tus ganancias en el Resumen'],
+
         // ── Catálogo ───────────────────────────────────────────────────────────
         ['module' => 'catalogo', 'module_label' => 'Catálogo', 'name' => 'categorias.ver',       'description' => 'Ver categorías'],
         ['module' => 'catalogo', 'module_label' => 'Catálogo', 'name' => 'categorias.crear',     'description' => 'Crear categorías'],
@@ -160,6 +169,12 @@ class SuperAdminSeeder extends Seeder
         ['module' => 'reportes', 'module_label' => 'Reportes', 'name' => 'reportes.vendedor',       'description' => 'Reporte detallado por vendedor'],
         ['module' => 'reportes', 'module_label' => 'Reportes', 'name' => 'reportes.clientes',       'description' => 'Reporte de compras por cliente'],
         ['module' => 'reportes', 'module_label' => 'Reportes', 'name' => 'reportes.cuentas_cobrar', 'description' => 'Ver cuentas por cobrar'],
+
+        // ── Listas de Precios ──────────────────────────────────────────────────
+        ['module' => 'listas_precios', 'module_label' => 'Listas de Precios', 'name' => 'listas_precios.ver',      'description' => 'Ver listas de precios'],
+        ['module' => 'listas_precios', 'module_label' => 'Listas de Precios', 'name' => 'listas_precios.crear',    'description' => 'Crear listas de precios'],
+        ['module' => 'listas_precios', 'module_label' => 'Listas de Precios', 'name' => 'listas_precios.editar',   'description' => 'Editar listas de precios'],
+        ['module' => 'listas_precios', 'module_label' => 'Listas de Precios', 'name' => 'listas_precios.eliminar', 'description' => 'Eliminar listas de precios'],
     ];
 
     public function run(): void

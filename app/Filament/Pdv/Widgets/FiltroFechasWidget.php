@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Cache;
 class FiltroFechasWidget extends Widget
 {
     protected string $view          = 'filament.pdv.widgets.filtro-fechas';
-    protected static ?int $sort     = 3;
+    protected static ?int $sort     = 4;
     protected int|string|array $columnSpan = 'full';
 
     public string $filtro      = 'hoy';

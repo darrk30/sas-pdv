@@ -5,6 +5,7 @@ namespace App\Filament\Pdv\Resources\Productos\Pages;
 use App\Filament\Pdv\Resources\Productos\ProductoResource;
 use App\Models\Inventario;
 use App\Models\Kardex;
+use App\Models\ListaPrecioProducto;
 use App\Models\ProductoAtributo;
 use App\Models\ProductoAtributoValor;
 use App\Models\Variante;
@@ -49,6 +50,15 @@ class EditProducto extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
+        // Cargar precios de lista
+        $data['precios_lista'] = $this->record->preciosLista()
+            ->get()
+            ->map(fn ($p) => [
+                'lista_precio_id' => $p->lista_precio_id,
+                'precio'          => $p->precio,
+            ])
+            ->toArray();
+
         $producto = $this->record->load([
             'atributos'                                    => fn($q) => $q->where('estado', 'activo'),
             'atributos.valores'                            => fn($q) => $q->where('producto_atributo_valors.estado', 'activo'),
@@ -83,6 +93,48 @@ class EditProducto extends EditRecord
         $producto         = $this->getRecord();
         $estadoFormulario = $this->form->getRawState();
         $atributosForm    = $estadoFormulario['atributos'] ?? [];
+
+        // Sincronizar precios de lista
+        $puedeEditar  = auth()->user()?->can('listas_precios.editar') ?? false;
+        $puedeCrear   = auth()->user()?->can('listas_precios.crear')  ?? false;
+        $puedeElim    = auth()->user()?->can('listas_precios.eliminar') ?? false;
+
+        if ($puedeEditar || $puedeCrear || $puedeElim) {
+            $preciosLista    = $estadoFormulario['precios_lista'] ?? [];
+            $existentesIds   = ListaPrecioProducto::where('producto_id', $producto->id)
+                ->pluck('lista_precio_id')->toArray();
+            $idsGuardados    = [];
+
+            foreach ($preciosLista as $fila) {
+                $listaId = $fila['lista_precio_id'] ?? null;
+                $precio  = (float) ($fila['precio'] ?? 0);
+                if (! $listaId) continue;
+
+                $esNueva = ! in_array($listaId, $existentesIds);
+
+                if ($esNueva && $puedeCrear) {
+                    ListaPrecioProducto::create([
+                        'lista_precio_id' => $listaId,
+                        'producto_id'     => $producto->id,
+                        'precio'          => $precio,
+                    ]);
+                } elseif (! $esNueva && $puedeEditar) {
+                    ListaPrecioProducto::where('lista_precio_id', $listaId)
+                        ->where('producto_id', $producto->id)
+                        ->update(['precio' => $precio]);
+                }
+                $idsGuardados[] = $listaId;
+            }
+
+            // Agregar a idsGuardados las existentes que no tiene permiso de eliminar
+            if (! $puedeElim) {
+                $idsGuardados = array_unique(array_merge($idsGuardados, $existentesIds));
+            }
+
+            ListaPrecioProducto::where('producto_id', $producto->id)
+                ->whereNotIn('lista_precio_id', $idsGuardados)
+                ->delete();
+        }
 
         if (isset($estadoFormulario['stock_minimo'])) {
             Inventario::where('producto_id', $producto->id)

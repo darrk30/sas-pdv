@@ -3,11 +3,8 @@
 <link rel="stylesheet" href="{{ asset('css/punto-de-venta.css') }}?v={{ filemtime(public_path('css/punto-de-venta.css')) }}">
 
 @php
-    $mesa    = $mesaId ? \App\Models\Mesa::with('piso')->find($mesaId) : null;
-    $total   = $this->getTotal();
-    $count   = $this->getItemCount();
-    $resumen   = $this->getCarritoResumen();
-    $pendiente = $this->getPendienteResumen();
+    $mesa              = $mesaId ? \App\Models\Mesa::with('piso')->find($mesaId) : null;
+    $usuariosRepartidor = $esDelivery ? $this->getUsuariosRepartidor() : [];
 @endphp
 
 {{-- ═══════════════════════════════════════════════════════
@@ -163,9 +160,28 @@
     {{-- ══ HEADER ══ --}}
     <div class="pdv-header">
         <div class="pdv-header__left">
-            <p class="pdv-header__titulo">Nuevo Pedido</p>
+            <p class="pdv-header__titulo">
+                @if($esDelivery)
+                    <x-heroicon-o-truck style="width:1.1rem;height:1.1rem;display:inline;vertical-align:middle;margin-right:.3rem;" />
+                    Delivery
+                @elseif($esLlevar)
+                    <x-heroicon-o-shopping-bag style="width:1.1rem;height:1.1rem;display:inline;vertical-align:middle;margin-right:.3rem;" />
+                    Para llevar
+                @else
+                    Nuevo Pedido
+                @endif
+            </p>
             <p class="pdv-header__sub">
-                @if($mesa)
+                @if($esDelivery)
+                    Nueva orden a domicilio
+                @elseif($esLlevar)
+                    <input
+                        wire:model.live="clienteConcepto"
+                        type="text"
+                        placeholder="Nombre / referencia (opcional)"
+                        style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:.45rem;padding:.25rem .55rem;font-size:.82rem;color:inherit;outline:none;width:100%;max-width:220px;"
+                    />
+                @elseif($mesa)
                     Mesa: <strong>{{ $mesa->nombre }}</strong>
                     @if($mesa->piso) · {{ $mesa->piso->nombre }} @endif
                 @endif
@@ -189,14 +205,205 @@
         </div>
     </div>
 
-    <div class="pdv-wrap" x-data="{ carritoOpen: false }" @cerrar-carrito.window="carritoOpen = false">
+    {{-- ══ CARRITO ALPINE — gestión 100% client-side ══ --}}
+    <div class="pdv-wrap"
+        x-data="{
+            carritoOpen: false,
+            carrito: {},
+
+            _syncResumen() {
+                const r = {};
+                for (const [, item] of Object.entries(this.carrito)) {
+                    const rk = item.tipo + '_' + item.id;
+                    r[rk] = (r[rk] || 0) + item.cantidad;
+                    if (item.tipo === 'promocion' && item.detalles_resumen) {
+                        for (const d of item.detalles_resumen) {
+                            if (d.variante_id)  r['variante_' + d.variante_id]  = (r['variante_' + d.variante_id]  || 0) + d.cantidad * item.cantidad;
+                            else if (d.producto_id) r['producto_' + d.producto_id] = (r['producto_' + d.producto_id] || 0) + d.cantidad * item.cantidad;
+                        }
+                    }
+                }
+                Alpine.store('carritoResumen', r);
+            },
+
+            // Convierte un item del carrito (posiblemente proxy reactivo) a objeto plano con valores primitivos.
+            _rawItem(e, overrides) {
+                return Object.assign({
+                    tipo:             e.tipo,
+                    id:               e.id,
+                    nombre:           e.nombre,
+                    precio:           parseFloat(e.precio) || 0,
+                    precio_normal:    parseFloat(e.precio_normal) || 0,
+                    es_cortesia:      !!e.es_cortesia,
+                    puede_cortesia:   !!e.puede_cortesia,
+                    cantidad:         parseFloat(e.cantidad) || 0,
+                    producto_id:      e.producto_id,
+                    nota:             e.nota || '',
+                    detalles_resumen: e.detalles_resumen || [],
+                    stock_max:        e.stock_max ?? null,
+                    venta_sin_stock:  !!e.venta_sin_stock
+                }, overrides || {});
+            },
+
+            // Crea una copia plana del carrito actual (sin proxies reactivos como valores).
+            _cloneCarrito() {
+                const c = {};
+                for (const k in this.carrito) c[k] = this._rawItem(this.carrito[k]);
+                return c;
+            },
+
+            addToCart(p) {
+                const cortesia      = !!p.es_cortesia;
+                const puedeCortesia = !!p.puede_cortesia;
+                const newPrecio     = cortesia ? 0.0 : (parseFloat(p.precio) || 0);
+                const addQty        = parseFloat(p.cantidad) || 1;
+
+                // Buscar entrada existente: mismo tipo + id + estado cortesía + mismo precio
+                let matchKey = null;
+                for (const k in this.carrito) {
+                    const e = this.carrito[k];
+                    if (e.tipo !== p.tipo || e.id !== p.id) continue;
+                    if (!!e.es_cortesia !== cortesia) continue;
+                    if (!cortesia && Math.abs((parseFloat(e.precio) || 0) - newPrecio) >= 0.005) continue;
+                    matchKey = k; break;
+                }
+
+                const c = this._cloneCarrito();
+                if (matchKey !== null) {
+                    c[matchKey].cantidad += addQty;
+                } else {
+                    const baseKey = p.tipo + '_' + p.id + (cortesia ? '_cortesia' : '');
+                    let key = baseKey; let suffix = 2;
+                    while (c[key]) { key = baseKey + '_' + suffix; suffix++; }
+                    c[key] = {
+                        tipo: p.tipo, id: p.id, nombre: p.nombre,
+                        precio: newPrecio,
+                        precio_normal: parseFloat(p.precio_normal || p.precio) || 0,
+                        es_cortesia: cortesia,
+                        puede_cortesia: puedeCortesia,
+                        cantidad: addQty,
+                        producto_id: p.producto_id || p.id,
+                        nota: '',
+                        detalles_resumen: p.detalles_resumen || [],
+                        stock_max: p.stock_max ?? null,
+                        venta_sin_stock: !!p.venta_sin_stock
+                    };
+                }
+                this.carrito = c;
+                this._syncResumen();
+            },
+
+            toggleCortesia(key) {
+                if (!this.carrito[key]) return;
+                if (!this.carrito[key].puede_cortesia) return;
+                const item      = this.carrito[key];
+                const turningOn = !item.es_cortesia;
+                const newPrecio = turningOn ? 0.0 : (parseFloat(item.precio_normal) || 0);
+
+                // Buscar hermano con el estado destino y fusionar
+                let siblingKey = null;
+                for (const k in this.carrito) {
+                    if (k === key) continue;
+                    const other = this.carrito[k];
+                    if (other.tipo !== item.tipo || other.id !== item.id) continue;
+                    if (!!other.es_cortesia !== turningOn) continue;
+                    if (!turningOn && Math.abs((parseFloat(other.precio) || 0) - newPrecio) >= 0.005) continue;
+                    siblingKey = k; break;
+                }
+
+                const c = this._cloneCarrito();
+                if (siblingKey !== null) {
+                    c[siblingKey].cantidad += parseFloat(item.cantidad) || 0;
+                    delete c[key];
+                } else {
+                    c[key].es_cortesia = turningOn;
+                    c[key].precio      = newPrecio;
+                }
+                this.carrito = c;
+                this._syncResumen();
+            },
+
+            removeItem(key) {
+                const c = this._cloneCarrito();
+                delete c[key];
+                this.carrito = c;
+                this._syncResumen();
+            },
+
+            increment(key) {
+                if (!this.carrito[key]) return;
+                const item = this.carrito[key];
+                if (item.stock_max !== null && item.stock_max !== undefined && !item.venta_sin_stock && item.cantidad >= item.stock_max) return;
+                const c = this._cloneCarrito();
+                c[key].cantidad++;
+                this.carrito = c;
+                this._syncResumen();
+            },
+
+            decrement(key) {
+                if (!this.carrito[key]) return;
+                if (this.carrito[key].cantidad <= 1) { this.removeItem(key); return; }
+                const c = this._cloneCarrito();
+                c[key].cantidad--;
+                this.carrito = c;
+                this._syncResumen();
+            },
+
+            setCantidad(key, qty) {
+                const q = Math.max(0.01, parseFloat(qty) || 1);
+                if (!this.carrito[key]) return;
+                const c = this._cloneCarrito();
+                c[key].cantidad = q;
+                this.carrito = c;
+                this._syncResumen();
+            },
+
+            vaciar() {
+                this.carrito = {};
+                Alpine.store('carritoResumen', {});
+            },
+
+            get total() {
+                let t = 0;
+                for (const k in this.carrito) {
+                    const i = this.carrito[k];
+                    t += (parseFloat(i.precio) || 0) * (parseFloat(i.cantidad) || 0);
+                }
+                return t;
+            },
+
+            get count() {
+                let t = 0;
+                for (const k in this.carrito) t += parseFloat(this.carrito[k].cantidad) || 0;
+                return t;
+            },
+
+            get isEmpty() {
+                return Object.keys(this.carrito).length === 0;
+            },
+
+            // Delivery fields — Alpine-only, sincronizados a $wire justo antes de enviar
+            deliveryNombre:    '{{ addslashes($deliveryNombre) }}',
+            deliveryTelefono:  '{{ addslashes($deliveryTelefono) }}',
+            deliveryDireccion: '{{ addslashes($deliveryDireccion) }}',
+            repartidorId:      {{ $repartidorId ? (int) $repartidorId : 'null' }},
+            repartidorTexto:   '{{ addslashes($repartidorTexto) }}'
+        }"
+        @product-selected.window="addToCart($event.detail[0] ?? $event.detail)"
+        @cerrar-carrito.window="carritoOpen = false"
+        x-init="Alpine.store('carritoResumen', @js($this->getCarritoResumen()))"
+    >
 
         {{-- ── Catálogo ── --}}
         <div class="pdv-productos"
              wire:loading.class="pdv-productos--sending"
              wire:target="enviarPedido">
             @if($mesaId)
-                <livewire:pdv.product-catalog :carritoResumen="$resumen" :pendienteResumen="$pendiente" :showPromociones="true" wire:key="catalog-{{ $mesaId }}" />
+                <livewire:pdv.product-catalog :carritoResumen="[]" :pendienteResumen="[]" :showPromociones="true" wire:key="catalog-{{ $mesaId }}" />
+            @elseif($esLlevar)
+                <livewire:pdv.product-catalog :carritoResumen="[]" :pendienteResumen="[]" :showPromociones="true" wire:key="catalog-llevar" />
+            @elseif($esDelivery)
+                <livewire:pdv.product-catalog :carritoResumen="[]" :pendienteResumen="[]" :showPromociones="true" wire:key="catalog-delivery" />
             @endif
         </div>
 
@@ -208,98 +415,229 @@
                 <div class="pdv-carrito__titulo">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.502 6h7.128A3.375 3.375 0 0 1 18 9.375v9.375a3 3 0 0 0 3-3V6.108c0-1.505-1.125-2.811-2.664-2.94a48.972 48.972 0 0 0-.673-.05A3 3 0 0 0 15 1.5h-1.5a3 3 0 0 0-2.663 1.618c-.225.015-.45.032-.673.05C8.662 3.295 7.554 4.542 7.502 6ZM13.5 3A1.5 1.5 0 0 0 12 4.5h4.5A1.5 1.5 0 0 0 15 3h-1.5Z" clip-rule="evenodd"/><path fill-rule="evenodd" d="M3 9.375C3 8.339 3.84 7.5 4.875 7.5h9.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 0 1 3 20.625V9.375Z" clip-rule="evenodd"/></svg>
                     Pedido
-                    @if($count > 0)
-                        <span class="pdv-carrito__count">{{ $count }}</span>
-                    @endif
+                    <span class="pdv-carrito__count" x-show="count > 0" x-text="Math.round(count)"></span>
                 </div>
                 <div class="pdv-carrito__header-actions">
-                    @if(! empty($carrito))
-                        <button class="pdv-carrito__vaciar" wire:click="vaciarCarrito">Vaciar</button>
-                    @endif
+                    <button class="pdv-carrito__vaciar" x-show="!isEmpty" @click="vaciar()">Vaciar</button>
                     <button class="pdv-carrito__cerrar-mobile" @click="carritoOpen = false">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
             </div>
 
-            {{-- Lista de ítems --}}
+            {{-- Lista de ítems (Alpine x-for — sin round-trips) --}}
             <div class="pdv-carrito__lista">
-                @forelse($carrito as $key => $item)
-                    <div class="pdv-item pdv-item--card" wire:key="item-{{ $key }}">
+
+                {{-- Empty state --}}
+                <div class="pdv-carrito__empty" x-show="isEmpty">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z"/></svg>
+                    <p>Sin productos aún</p>
+                    <span>Selecciona productos del catálogo</span>
+                </div>
+
+                <template x-for="[key, item] in Object.entries(carrito)" :key="key">
+                    <div class="pdv-item pdv-item--card" :class="item.es_cortesia ? 'pdv-item--cortesia' : ''">
                         <div class="pdv-item__top">
                             <p class="pdv-item__nombre">
-                                {{ $item['nombre'] }}
-                                @if($item['tipo'] === 'promocion' && ! empty($item['detalles_resumen']))
-                                    <x-pdv.promo-vista :detalles="$item['detalles_resumen']" clase="promo-vista--cart" />
-                                @endif
+                                <template x-if="item.puede_cortesia">
+                                    <button
+                                        type="button"
+                                        class="pdv-item__badge-cortesia"
+                                        :class="item.es_cortesia ? 'pdv-item__badge-cortesia--on' : 'pdv-item__badge-cortesia--off'"
+                                        @click="toggleCortesia(key)"
+                                        :title="item.es_cortesia ? 'Quitar cortesía' : 'Aplicar como cortesía (gratis)'"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
+                                        <span x-text="item.es_cortesia ? 'GRATIS' : 'Cortesía'"></span>
+                                    </button>
+                                </template>
+                                <span x-text="item.nombre"></span>
+                                {{-- Promo inline (reemplaza x-pdv.promo-vista) --}}
+                                <template x-if="item.tipo === 'promocion' && item.detalles_resumen && item.detalles_resumen.length > 0">
+                                    <div class="promo-vista promo-vista--cart"
+                                         x-data="{ open: false, pstyle: '' }"
+                                         @click.window="open && !$el.contains($event.target) && (open = false)">
+                                        <div class="promo-vista__btn"
+                                             :class="{ 'promo-vista__btn--on': open }"
+                                             x-ref="promoTrigger"
+                                             role="button" tabindex="0"
+                                             @click.stop="
+                                                 if (open) { open = false; return; }
+                                                 const b = $refs.promoTrigger.getBoundingClientRect();
+                                                 const vw = window.innerWidth, vh = window.innerHeight;
+                                                 if (vw < 480) {
+                                                     pstyle = 'position:fixed;bottom:0;left:0;right:0;width:100%;border-radius:.75rem .75rem 0 0;z-index:500';
+                                                 } else {
+                                                     const w = Math.min(220, vw-16), right = Math.max(8, vw-b.right);
+                                                     pstyle = b.top > 140
+                                                         ? 'position:fixed;bottom:'+(vh-b.top+4)+'px;right:'+right+'px;width:'+w+'px;z-index:500'
+                                                         : 'position:fixed;top:'+(b.bottom+4)+'px;right:'+right+'px;width:'+w+'px;z-index:500';
+                                                 }
+                                                 open = true;
+                                             ">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178Z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                                            </svg>
+                                        </div>
+                                        <div x-show="open" class="promo-vista__backdrop" @click.stop="open = false" style="display:none"></div>
+                                        <div x-show="open" :style="pstyle" class="promo-vista__panel" @click.stop style="display:none">
+                                            <p class="promo-vista__panel-titulo">Incluye:</p>
+                                            <ul class="promo-vista__lista">
+                                                <template x-for="d in item.detalles_resumen" :key="d.nombre">
+                                                    <li class="promo-vista__item">
+                                                        <span class="promo-vista__qty" x-text="'×' + (Number.isInteger(d.cantidad) ? d.cantidad : parseFloat(d.cantidad).toFixed(2))"></span>
+                                                        <span class="promo-vista__nombre" x-text="d.nombre"></span>
+                                                    </li>
+                                                </template>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </template>
                             </p>
-                            <button class="pdv-item__del" wire:click="eliminarItem('{{ $key }}')">
+                            <button class="pdv-item__del" type="button" @click="removeItem(key)">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
-                        <div class="pdv-item__subtotal pdv-item__subtotal--big">
-                            S/ {{ number_format($item['precio'], 2) }} c/u
-                        </div>
+                        <div class="pdv-item__subtotal pdv-item__subtotal--big"
+                             :class="item.es_cortesia ? 'pdv-item__subtotal--gratis' : ''"
+                             x-text="item.es_cortesia ? 'Gratis' : 'S/ ' + item.precio.toFixed(2) + ' c/u'"></div>
                         <div class="pdv-item__bottom">
                             <div class="pdv-qty">
-                                <button class="pdv-qty__btn pdv-qty__btn--menos" wire:click="decrementar('{{ $key }}')">
+                                <button class="pdv-qty__btn pdv-qty__btn--menos" type="button" @click="decrement(key)">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
                                 </button>
                                 <input class="pdv-qty__input" type="number" min="0.01" step="1"
-                                    value="{{ $item['cantidad'] == floor($item['cantidad']) ? (int)$item['cantidad'] : number_format($item['cantidad'], 2) }}"
-                                    @change="$wire.setCantidad('{{ $key }}', parseFloat($event.target.value) || 1)">
-                                <button class="pdv-qty__btn pdv-qty__btn--mas" wire:click="incrementar('{{ $key }}')">
+                                    :value="item.cantidad % 1 === 0 ? Math.round(item.cantidad) : item.cantidad.toFixed(2)"
+                                    @change="setCantidad(key, $event.target.value)"
+                                    @keydown="if($event.key==='-'||$event.key==='e'||$event.key==='E')$event.preventDefault()"
+                                    @input="if(parseFloat($event.target.value)<0.01)$event.target.value=0.01">
+                                <button class="pdv-qty__btn pdv-qty__btn--mas" type="button" @click="increment(key)"
+                                    :disabled="item.stock_max !== null && item.stock_max !== undefined && !item.venta_sin_stock && item.cantidad >= item.stock_max"
+                                    :class="{'pdv-qty__btn--disabled': item.stock_max !== null && item.stock_max !== undefined && !item.venta_sin_stock && item.cantidad >= item.stock_max}">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                                 </button>
                             </div>
-                            <span class="pdv-item__precio-unit pdv-item__precio-unit--total">S/ {{ number_format($item['precio'] * $item['cantidad'], 2) }}</span>
+                            <span class="pdv-item__precio-unit pdv-item__precio-unit--total"
+                                  x-text="item.es_cortesia ? 'S/ 0.00' : 'S/ ' + (item.precio * item.cantidad).toFixed(2)"></span>
                         </div>
 
                         {{-- Nota para cocina --}}
-                        <div class="pdv-item__nota-wrap"
-                            x-data="{ open: {{ !empty($item['nota']) ? 'true' : 'false' }}, nota: @js($item['nota'] ?? '') }">
+                        <div class="pdv-item__nota-wrap" x-data="{ open: !!(item && item.nota) }">
                             <button type="button"
                                 class="pdv-nota-toggle"
-                                :class="{ 'pdv-nota-toggle--active': open || nota }"
+                                :class="{ 'pdv-nota-toggle--active': open || item.nota }"
                                 @click="open = !open">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="pdv-nota-icon"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z"/></svg>
-                                <span x-text="nota ? nota : 'Añadir nota para cocina'"></span>
+                                <span x-text="item.nota ? item.nota : 'Añadir nota para cocina'"></span>
                             </button>
                             <div x-show="open" x-transition.duration.150ms class="pdv-nota-input-wrap">
                                 <input
                                     type="text"
                                     class="pdv-nota-input"
                                     placeholder="Ej: sin cebolla, término medio, extra salsa…"
-                                    x-model="nota"
-                                    @blur="$wire.setNota('{{ $key }}', nota)"
+                                    :value="item.nota || ''"
+                                    @input="carrito[key] && (carrito[key].nota = $event.target.value)"
                                     maxlength="120">
                             </div>
                         </div>
                     </div>
-                @empty
-                    <div class="pdv-carrito__empty">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z"/></svg>
-                        <p>Sin productos aún</p>
-                        <span>Selecciona productos del catálogo</span>
-                    </div>
-                @endforelse
+                </template>
             </div>
+
+            {{-- Formulario Delivery (acordeón) --}}
+            @if($esDelivery)
+            <div class="pdv-delivery-accordion"
+                 x-data="{ open: false }"
+            >
+                {{-- Cabecera acordeón --}}
+                <button
+                    type="button"
+                    class="pdv-delivery-accordion__header"
+                    @click="open = !open"
+                >
+                    <span class="pdv-delivery-accordion__header-left">
+                        <span class="pdv-delivery-accordion__icon-wrap">
+                            <x-heroicon-m-truck style="width:.9rem;height:.9rem;" />
+                        </span>
+                        Datos del pedido
+                        <span
+                            class="pdv-delivery-accordion__summary"
+                            x-show="!open"
+                            x-text="deliveryNombre || '—'"
+                        ></span>
+                    </span>
+                    <span class="pdv-delivery-accordion__chevron" :class="{ 'pdv-delivery-accordion__chevron--open': open }">
+                        <svg viewBox="0 0 20 20" fill="currentColor" style="width:.9rem;height:.9rem;"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd"/></svg>
+                    </span>
+                </button>
+
+                {{-- Cuerpo acordeón — animado con max-height CSS --}}
+                <div
+                    class="pdv-delivery-accordion__body"
+                    :class="{ 'pdv-delivery-accordion__body--open': open }"
+                >
+                    <div class="pdv-delivery-form__fields">
+                        <div class="pdv-delivery-field">
+                            <label class="pdv-delivery-label">Nombre <span class="pdv-delivery-required">*</span></label>
+                            <input x-model="deliveryNombre" type="text" placeholder="Nombre del cliente" class="pdv-delivery-input" />
+                        </div>
+                        <div class="pdv-delivery-field">
+                            <label class="pdv-delivery-label">Teléfono</label>
+                            <input x-model="deliveryTelefono" type="tel" placeholder="987 654 321" class="pdv-delivery-input" />
+                        </div>
+                        <div class="pdv-delivery-field pdv-delivery-field--full">
+                            <label class="pdv-delivery-label">Dirección de entrega</label>
+                            <input x-model="deliveryDireccion" type="text" placeholder="Av. Ejemplo 123, piso 2" class="pdv-delivery-input" />
+                        </div>
+                        <div class="pdv-delivery-field pdv-delivery-field--full">
+                            <label class="pdv-delivery-label">Repartidor</label>
+                            @if(count($usuariosRepartidor) > 0)
+                                <select x-model="repartidorId" class="pdv-delivery-input">
+                                    <option value="">— Sin asignar / texto libre —</option>
+                                    @foreach($usuariosRepartidor as $u)
+                                        <option value="{{ $u['id'] }}">{{ $u['nombre'] }}</option>
+                                    @endforeach
+                                </select>
+                                <div x-show="!repartidorId">
+                                    <input x-model="repartidorTexto" type="text" placeholder="Nombre del repartidor (opcional)" class="pdv-delivery-input pdv-delivery-input--sub" />
+                                </div>
+                            @else
+                                <input x-model="repartidorTexto" type="text" placeholder="Nombre del repartidor (opcional)" class="pdv-delivery-input" />
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
 
             {{-- Footer --}}
             <div class="pdv-carrito__footer">
                 <div class="pdv-carrito__totales">
                     <div class="pdv-carrito__fila">
                         <span class="pdv-carrito__total-label">Total estimado</span>
-                        <span class="pdv-carrito__total-monto">S/ {{ number_format($total, 2) }}</span>
+                        <span class="pdv-carrito__total-monto" x-text="'S/ ' + total.toFixed(2)"></span>
                     </div>
                 </div>
 
                 @can('restaurante.pedido.crear')
                 <button
                     class="pdv-btn-venta"
-                    wire:click="enviarPedido"
+                    :disabled="isEmpty"
+                    :style="isEmpty ? 'opacity:.5;cursor:not-allowed;' : ''"
                     wire:loading.attr="disabled"
-                    @if(empty($carrito)) disabled style="opacity:.5;cursor:not-allowed;" @endif
+                    @click="
+                        if (isEmpty) return;
+                        $wire.carrito = carrito;
+                        @if($esDelivery)
+                        $wire.deliveryNombre    = deliveryNombre;
+                        $wire.deliveryTelefono  = deliveryTelefono;
+                        $wire.deliveryDireccion = deliveryDireccion;
+                        $wire.repartidorId      = parseInt(repartidorId) || null;
+                        $wire.repartidorTexto   = repartidorTexto;
+                        @endif
+                        $wire.enviarPedido();
+                    "
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1rem;height:1rem;flex-shrink:0;" aria-hidden="true"><path d="M3.478 2.405a.75.75 0 0 0-.926.94l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.405Z"/></svg>
                     <span wire:loading.remove wire:target="enviarPedido">Enviar pedido</span>
@@ -313,9 +651,7 @@
         {{-- FAB móvil --}}
         <button class="pdv-fab" @click="carritoOpen = true">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z"/></svg>
-            @if($count > 0)
-                <span class="pdv-fab__badge">{{ $count }}</span>
-            @endif
+            <span class="pdv-fab__badge" x-show="count > 0" x-text="Math.round(count)"></span>
         </button>
 
     </div>{{-- /pdv-wrap --}}

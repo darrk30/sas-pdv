@@ -23,6 +23,7 @@ class OrdenesStatsWidget extends BaseWidget
         $empresaId = Filament::getTenant()->id;
 
         $counts = Orden::where('empresa_id', $empresaId)
+            ->where('tipo_origen', \App\Enums\TipoOrigenOrden::Web)
             ->selectRaw("
                 COUNT(*) AS total,
                 SUM(CASE WHEN estado = ? THEN 1 ELSE 0 END) AS pagadas,

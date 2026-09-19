@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <style>
-@page { margin: 3mm 3mm; size: 80mm auto; }
+@page { size: 80mm auto; margin: 0; }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -28,7 +28,7 @@ body {
 .comp-num  { font-size: 10pt; font-weight: bold; }
 
 /* ── Separador ────────────────────────────────── */
-.sep { border-top: 1pt solid #000; margin: 2mm 0; }
+.sep { border-top: 0.4pt solid #000; margin: 2mm 0; }
 
 /* ── Datos ────────────────────────────────────── */
 .datos { font-size: 8.5pt; margin: 1mm 0; }
@@ -38,7 +38,7 @@ body {
 
 /* ── Tabla ítems ──────────────────────────────── */
 .items { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin: 1mm 0; }
-.items thead tr { border-bottom: 1pt solid #000; }
+.items thead tr { border-bottom: 0.4pt solid #000; }
 .items th {
     font-weight: bold; font-size: 8pt; text-transform: uppercase;
     text-align: left; padding: 0 0.5mm 1.5mm;
@@ -54,7 +54,7 @@ body {
 .tots table { width: 100%; border-collapse: collapse; }
 .tots td { padding: 0.4mm 0; }
 .tots td.val { text-align: right; white-space: nowrap; }
-.tot-total { font-size: 11.5pt; font-weight: bold; border-top: 1pt solid #000; padding-top: 1.5mm; margin-top: 0.5mm; }
+.tot-total { font-size: 11.5pt; font-weight: bold; padding-top: 1mm; }
 .tot-total table { width: 100%; }
 .tot-total td.val { text-align: right; }
 .letras { font-size: 8pt; font-style: italic; margin-top: 1mm; }
@@ -81,6 +81,7 @@ body {
 </style>
 </head>
 <body>
+<div style="padding: 3mm 5mm 4mm;">
 @php
     use App\Enums\TipoComprobante;
     $serie       = $venta->serie;
@@ -189,7 +190,9 @@ body {
 </table>
 
 {{-- ══ TOTALES ══ --}}
+@php $hayFilasTotales = $tieneIgv || (float)$venta->descuento_total > 0; @endphp
 <div class="tots">
+    @if($hayFilasTotales)
     <table>
         @if((float)$venta->descuento_total > 0)
         <tr><td>DESCUENTO</td><td class="val">- S/ {{ number_format($venta->descuento_total,2) }}</td></tr>
@@ -200,6 +203,8 @@ body {
         <tr><td>IGV</td><td class="val">S/ {{ number_format($venta->igv,2) }}</td></tr>
         @endif
     </table>
+    <div class="sep" style="margin:1mm 0"></div>
+    @endif
     <div class="tot-total">
         <table><tr><td>TOTAL</td><td class="val">S/ {{ number_format($venta->total,2) }}</td></tr></table>
     </div>
@@ -264,5 +269,6 @@ body {
     <div class="footer-gracias">GRACIAS POR SU PREFERENCIA</div>
 </div>
 
+</div>{{-- /wrapper padding --}}
 </body>
 </html>
