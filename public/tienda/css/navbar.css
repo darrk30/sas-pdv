@@ -7,6 +7,9 @@
     border-bottom: 1px solid var(--color-borde);
     box-shadow: var(--sombra-xs);
     height: var(--navbar-h);
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
 .navbar__contenido {
