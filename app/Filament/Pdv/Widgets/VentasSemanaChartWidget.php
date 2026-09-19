@@ -14,7 +14,7 @@ class VentasSemanaChartWidget extends ChartWidget
 {
     protected ?string $heading    = 'Ventas del período';
     protected ?string $maxHeight  = '300px';
-    protected static ?int $sort   = 6;
+    protected static ?int $sort   = 9;
     protected int|string|array $columnSpan = 'full';
 
     public string $desde = '';
@@ -86,19 +86,20 @@ class VentasSemanaChartWidget extends ChartWidget
                 'datasets' => [[
                     'label'           => 'Ventas S/',
                     'data'            => $data,
-                    'backgroundColor' => 'rgba(79, 127, 255, 0.15)',
+                    'backgroundColor' => 'rgba(79, 127, 255, 0.12)',
                     'borderColor'     => 'rgb(79, 127, 255)',
                     'borderWidth'     => 2,
-                    'borderRadius'    => 4,
                     'fill'            => true,
-                    'tension'         => 0.3,
+                    'tension'         => 0.45,
+                    'pointRadius'     => 3,
+                    'pointHoverRadius' => 5,
                 ]],
                 'labels' => $labels,
             ];
         });
     }
 
-    protected function getType(): string { return 'bar'; }
+    protected function getType(): string { return 'line'; }
 
     protected function getOptions(): array
     {

@@ -11,7 +11,7 @@ use Filament\Widgets\TableWidget as BaseWidget;
 class UltimasVentasWidget extends BaseWidget
 {
     protected static ?string $heading = 'Últimas ventas';
-    protected static ?int $sort = 6;
+    protected static ?int $sort = 7;
     protected int|string|array $columnSpan = 1;
 
     public function table(Table $table): Table
