@@ -12,7 +12,11 @@ class DespachoStatsWidget extends BaseWidget
 {
     protected static bool $isDiscovered = false;
 
-    protected int|array|null $columns = 3;
+    protected int|array|null $columns = [
+        'default' => 2,
+        'sm'      => 2,
+        'lg'      => 3,
+    ];
 
     protected function getStats(): array
     {

@@ -24,13 +24,22 @@ class RoleForm
 
         // Módulos completos a excluir según modulos_activos de la empresa
         $excludeModulos = [];
-        if (! $tieneFE)                                           $excludeModulos[] = 'fe';
-        if (! $tieneTienda)                                       $excludeModulos[] = 'tienda';
-        if (! ($empresa?->tieneModulo('compras')   ?? true))     $excludeModulos[] = 'compras';
-        if (! ($empresa?->tieneModulo('gastos')    ?? true))     $excludeModulos[] = 'gastos';
-        if (! ($empresa?->tieneModulo('catalogo')  ?? true))     $excludeModulos[] = 'catalogo';
-        if (! ($empresa?->tieneModulo('reportes')  ?? true))     $excludeModulos[] = 'reportes';
-        if (! ($empresa?->tieneModulo('inventario') ?? true))    $excludeModulos[] = 'productos';
+        if (! $tieneFE)                                               $excludeModulos[] = 'fe';
+        if (! $tieneTienda)                                           $excludeModulos[] = 'tienda';
+        if (! ($empresa?->tieneModulo('compras')     ?? true))       $excludeModulos[] = 'compras';
+        if (! ($empresa?->tieneModulo('gastos')      ?? true))       $excludeModulos[] = 'gastos';
+        if (! ($empresa?->tieneModulo('catalogo')    ?? true))       $excludeModulos[] = 'catalogo';
+        if (! ($empresa?->tieneModulo('reportes')    ?? true))       $excludeModulos[] = 'reportes';
+        if (! ($empresa?->tieneModulo('inventario')  ?? true))       $excludeModulos[] = 'productos';
+        if (! ($empresa?->tieneModulo('restaurante') ?? false)) {
+            $excludeModulos[] = 'restaurante';
+            $excludeModulos[] = 'pisos_mesas';
+        }
+        if (! ($empresa?->tieneFeature('cuentas'))) {
+            $excludeModulos[] = 'cuentas';
+            $excludeModulos[] = 'cuentas_cobrar';
+            $excludeModulos[] = 'cuentas_pagar';
+        }
 
         // Permisos individuales a excluir por sub-módulo inactivo dentro de 'config'
         $excludePermisos = [];

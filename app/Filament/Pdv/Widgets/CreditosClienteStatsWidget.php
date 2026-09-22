@@ -12,6 +12,12 @@ class CreditosClienteStatsWidget extends BaseWidget
 {
     protected static bool $isDiscovered = false;
 
+    public static function canView(): bool
+    {
+        $empresa = Filament::getTenant();
+        return $empresa && $empresa->tieneFeature('cuentas');
+    }
+
     public ?int $filtroClienteId = null;
 
     protected int | array | null $columns = [

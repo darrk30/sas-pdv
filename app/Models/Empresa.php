@@ -118,6 +118,7 @@ class Empresa extends Model
             'facturacion_electronica' => (bool) ($plan?->facturacion_electronica ?? false),
             'impresion_directa'       => (bool) ($plan?->tiene_impresion_directa ?? false),
             'lista_precios'           => (bool) ($plan?->tiene_lista_precios     ?? false),
+            'cuentas'                 => (bool) ($plan?->tiene_cuentas ?? false),
             default                   => false,
         };
     }
@@ -183,7 +184,10 @@ class Empresa extends Model
             'reporte_vendedores'  => true,
             'reporte_ajustes'     => true,
             'reporte_clientes'    => true,
-            'cuentas_por_cobrar'  => true,
+            // Cuentas
+            'cuentas'             => false,
+            'cuentas_por_cobrar'  => false,
+            'cuentas_por_pagar'   => false,
             // Gastos
             'gastos'              => true,
             // Restaurante
@@ -236,7 +240,9 @@ class Empresa extends Model
         'reporte_vendedores'  => 'reportes',
         'reporte_ajustes'     => 'reportes',
         'reporte_clientes'    => 'reportes',
-        'cuentas_por_cobrar'  => 'reportes',
+        // Cuentas
+        'cuentas_por_cobrar'  => 'cuentas',
+        'cuentas_por_pagar'   => 'cuentas',
         // Restaurante
         'mesas'               => 'restaurante',
         'comandas'            => 'restaurante',
@@ -251,10 +257,9 @@ class Empresa extends Model
 
     public function tieneModulo(string $modulo): bool
     {
-        $activos = $this->modulos_activos ?? [];
-        // El toggle padre es solo un helper "seleccionar todo" en la UI;
-        // el estado real de acceso lo determina únicamente el sub-módulo.
-        return (bool) ($activos[$modulo] ?? true);
+        $activos  = $this->modulos_activos ?? [];
+        $defaults = static::defaultModulos();
+        return (bool) ($activos[$modulo] ?? $defaults[$modulo] ?? true);
     }
 
     // ── Cache de configuración de impresión ───────────────────────────────────

@@ -49,7 +49,8 @@ class CuentasPorCobrarPage extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return Filament::getTenant()->tieneModulo('cuentas_por_cobrar')
+        $empresa = Filament::getTenant();
+        return $empresa->tieneFeature('cuentas')
             && (auth()->user()?->can('reportes.cuentas_cobrar') ?? false);
     }
 

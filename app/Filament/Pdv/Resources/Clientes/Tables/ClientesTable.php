@@ -8,6 +8,7 @@ use App\Filament\Pdv\Pages\CuentasPorCobrarPage;
 use App\Filament\Pdv\Pages\ReporteClienteComprasPage;
 use App\Models\Cliente;
 use App\Models\Venta;
+use Filament\Facades\Filament;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -24,6 +25,9 @@ class ClientesTable
 {
     public static function configure(Table $table): Table
     {
+        $empresa      = Filament::getTenant();
+        $tieneCuentas = $empresa && $empresa->tieneFeature('cuentas');
+
         return $table
             ->modifyQueryUsing(fn ($query) => $query->addSelect([
                 // Subquery: total facturado (ventas completadas)
@@ -94,7 +98,8 @@ class ClientesTable
                     ->alignRight()
                     ->color(fn ($state) => $state > 0 ? 'warning' : 'gray')
                     ->placeholder('—')
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible($tieneCuentas),
             ])
             ->filters([
                 SelectFilter::make('tipo_documento')
@@ -111,7 +116,8 @@ class ClientesTable
                             ->whereIn('estado_pago', ['pendiente', 'parcial'])
                             ->where('saldo_pendiente', '>', 0)
                     ))
-                    ->toggle(),
+                    ->toggle()
+                    ->hidden(! $tieneCuentas),
             ])
             ->recordActions([
                 ActionGroup::make([
@@ -132,8 +138,10 @@ class ClientesTable
                         ->icon('heroicon-o-banknotes')
                         ->color('warning')
                         ->visible(fn (Cliente $record) =>
-                            (int) ($record->total_creditos ?? 0) > 0 ||
-                            (float) ($record->credito_pendiente ?? 0) > 0
+                            $tieneCuentas && (
+                                (int) ($record->total_creditos ?? 0) > 0 ||
+                                (float) ($record->credito_pendiente ?? 0) > 0
+                            )
                         )
                         ->url(fn (Cliente $record) =>
                             CuentasPorCobrarPage::getUrl() . '?' . http_build_query([

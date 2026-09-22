@@ -23,6 +23,7 @@ class Plan extends Model
         'facturacion_electronica',
         'tiene_impresion_directa',
         'tiene_lista_precios',
+        'tiene_cuentas',
         'estado',
     ];
 
@@ -35,6 +36,7 @@ class Plan extends Model
             'facturacion_electronica' => 'boolean',
             'tiene_impresion_directa' => 'boolean',
             'tiene_lista_precios'     => 'boolean',
+            'tiene_cuentas'           => 'boolean',
             'estado'                  => EstadoGeneral::class,
         ];
     }
