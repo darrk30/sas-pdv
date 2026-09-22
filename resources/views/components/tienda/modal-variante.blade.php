@@ -46,7 +46,8 @@
 
             {{-- Grupos de atributos --}}
             <div class="modal-var__atributos"
-                 x-data="{ descAbierta: false }">
+                 x-data="{ descAbierta: false, descDesborda: false }"
+                 x-effect="producto?.descripcion && $nextTick(() => { const el = $el.querySelector('.modal-var__desc'); if (el) descDesborda = el.scrollHeight > el.clientHeight + 2 })">
                 <template x-if="producto">
                     <div>
                         <template x-for="attr in producto.atributos" :key="attr.id">
@@ -127,12 +128,12 @@
                 {{-- Descripción del producto --}}
                 <template x-if="producto?.descripcion">
                     <div class="modal-var__desc-wrap">
-                        <p class="modal-var__desc"
-                           :class="{ 'modal-var__desc--truncada': !descAbierta }"
-                           x-text="producto.descripcion"></p>
+                        <div class="modal-var__desc"
+                             :class="{ 'modal-var__desc--truncada': !descAbierta }"
+                             x-html="producto.descripcion"></div>
                         <button type="button"
                                 class="modal-var__desc-toggle"
-                                x-show="producto.descripcion.length > 120"
+                                x-show="descDesborda || descAbierta"
                                 @click="descAbierta = !descAbierta"
                                 x-text="descAbierta ? 'Ver menos' : 'Ver más'">
                         </button>

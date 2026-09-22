@@ -273,11 +273,15 @@
 }
 
 .modal-var__desc--truncada {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
+    max-height: 4.2rem;
     overflow: hidden;
 }
+
+.modal-var__desc p        { margin: 0 0 .3rem; }
+.modal-var__desc p:last-child { margin-bottom: 0; }
+.modal-var__desc strong, .modal-var__desc b { font-weight: 600; color: #4b5563; }
+.modal-var__desc ul, .modal-var__desc ol { padding-left: 1.1rem; margin: .2rem 0 .3rem; }
+.modal-var__desc li { margin-bottom: .15rem; }
 
 .modal-var__desc-toggle {
     background: none;
