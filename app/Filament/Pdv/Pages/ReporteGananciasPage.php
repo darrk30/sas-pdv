@@ -350,18 +350,6 @@ class ReporteGananciasPage extends Page implements HasForms, HasTable
                     ->weight('semibold')
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('utilidad_riesgo')
-                    ->label('En riesgo')
-                    ->state(function (Venta $r): string {
-                        $u = self::calcularUtilidad($r);
-                        return $u['riesgo'] > 0
-                            ? 'S/ ' . number_format($u['riesgo'], 2)
-                            : '—';
-                    })
-                    ->color(fn (Venta $r): string => self::calcularUtilidad($r)['riesgo'] > 0 ? 'warning' : 'gray')
-                    ->alignEnd()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
                 TextColumn::make('saldo_pendiente')
                     ->label('Saldo pendiente')
                     ->money('PEN')
@@ -396,6 +384,7 @@ class ReporteGananciasPage extends Page implements HasForms, HasTable
                     ->toggleable(isToggledHiddenByDefault: false),
 
             ])
+            ->recordClasses(fn (Venta $r): string => (float) $r->saldo_pendiente > 0 ? 'bg-red-50 dark:bg-red-950/20' : '')
             ->paginated([25, 50, 100])
             ->emptyStateHeading('Sin ventas')
             ->emptyStateIcon('heroicon-o-arrow-trending-up');

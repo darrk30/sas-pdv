@@ -11,22 +11,27 @@ use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-users';
+    protected static ?string $navigationLabel               = 'Usuarios';
+    protected static ?string $modelLabel                    = 'Usuario';
+    protected static ?string $pluralModelLabel              = 'Usuarios';
+    protected static string|UnitEnum|null $navigationGroup  = 'Usuarios';
+    protected static ?int    $navigationSort                = 1;
 
-    protected static ?string $recordTitleAttribute = 'User';
+    protected static ?string $recordTitleAttribute = 'name';
 
-    public static function canAccess(): bool              { return auth()->user()?->can('admin.usuarios') ?? false; }
-    public static function canCreate(): bool              { return auth()->user()?->can('admin.usuarios') ?? false; }
-    public static function canEdit(Model $record): bool   { return auth()->user()?->can('admin.usuarios') ?? false; }
-    public static function canDelete(Model $record): bool { return auth()->user()?->can('admin.usuarios') ?? false; }
+    public static function canAccess(): bool              { return auth()->user()?->can('admin.usuarios.ver') ?? false; }
+    public static function canCreate(): bool              { return auth()->user()?->can('admin.usuarios.crear') ?? false; }
+    public static function canEdit(Model $record): bool   { return auth()->user()?->can('admin.usuarios.editar') ?? false; }
+    public static function canDelete(Model $record): bool { return auth()->user()?->can('admin.usuarios.eliminar') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

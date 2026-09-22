@@ -20,6 +20,8 @@ class PdfVentaService
             'detalles.variante.producto.unidadMedida',
             'pagos.metodoPago',
             'cliente',
+            'sesionCaja.cajero',
+            'orden.vendedor.roles',
         ]);
 
         $tipoEnum = $venta->serie?->tipo;

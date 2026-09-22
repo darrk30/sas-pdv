@@ -17,11 +17,10 @@ class RoleForm
     {
         $empresa        = Filament::getTenant();
         $empresaId      = $empresa?->id;
-        $plan           = $empresa?->planActual();
-        $tieneTienda        = ($plan === null || $plan->tiene_catalogo_web) && ($empresa?->tieneModulo('pedidos_web') ?? true);
-        $tieneVariantes     = $plan === null || $plan->tiene_variantes;
+        $tieneTienda        = ($empresa?->tieneFeature('catalogo_web') ?? false) && ($empresa?->tieneModulo('pedidos_web') ?? true);
+        $tieneVariantes     = $empresa?->tieneFeature('variantes') ?? false;
         $tieneFE            = $empresa?->tieneFacturacionElectronica() ?? false;
-        $tieneListaPrecios  = $plan === null || ($plan->tiene_lista_precios ?? false);
+        $tieneListaPrecios  = $empresa?->tieneFeature('lista_precios') ?? false;
 
         // Módulos completos a excluir según modulos_activos de la empresa
         $excludeModulos = [];

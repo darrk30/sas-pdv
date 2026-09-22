@@ -216,9 +216,13 @@ class NuevoPedido extends Page
 
         // ── Para llevar ───────────────────────────────────────────────────────
         if ($this->esLlevar) {
+            if (empty(trim($this->clienteConcepto))) {
+                Notification::make()->title('El nombre del cliente es obligatorio')->warning()->send();
+                return;
+            }
             try {
                 DB::transaction(function () use ($empresa, $igvRate, &$orden) {
-                    $concepto = trim($this->clienteConcepto) ?: 'Sin nombre';
+                    $concepto = trim($this->clienteConcepto);
                     $orden = Orden::create([
                         'empresa_id'     => $empresa->id,
                         'tipo_origen'    => TipoOrigenOrden::Llevar->value,

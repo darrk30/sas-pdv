@@ -65,16 +65,12 @@ class ComprasTable
                 TextColumn::make('estado_pago')
                     ->label('Pago')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'pagado'    => 'success',
-                        'pendiente' => 'warning',
-                        default     => 'gray',
-                    })
-                    ->formatStateUsing(fn(string $state): string => match ($state) {
-                        'pagado'    => 'Pagado',
-                        'pendiente' => 'Pendiente',
-                        default     => $state,
-                    }),
+                    ->color(fn(string $state): string =>
+                        \App\Enums\EstadoPago::tryFrom($state)?->getColor() ?? 'gray'
+                    )
+                    ->formatStateUsing(fn(string $state): string =>
+                        \App\Enums\EstadoPago::tryFrom($state)?->getLabel() ?? ucfirst($state)
+                    ),
 
                 TextColumn::make('estado')
                     ->label('Estado')

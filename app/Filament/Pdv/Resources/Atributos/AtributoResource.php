@@ -36,8 +36,7 @@ class AtributoResource extends Resource
 
     private static function tieneVariantes(): bool
     {
-        $plan = Filament::getTenant()?->planActual();
-        return $plan === null || $plan->tiene_variantes;
+        return Filament::getTenant()?->tieneFeature('variantes') ?? false;
     }
 
     public static function canAccess(): bool              { return static::tieneVariantes() && Filament::getTenant()->tieneModulo('atributos') && (auth()->user()?->can('atributos.ver') ?? false); }

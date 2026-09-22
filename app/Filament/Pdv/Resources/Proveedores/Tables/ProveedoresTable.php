@@ -4,6 +4,10 @@ namespace App\Filament\Pdv\Resources\Proveedores\Tables;
 
 use App\Enums\EstadoGeneral;
 use App\Enums\TipoDocumento;
+use App\Filament\Pdv\Pages\CuentasPorPagarPage;
+use App\Models\Proveedor;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -52,6 +56,22 @@ class ProveedoresTable
                     ->placeholder('—')
                     ->toggleable(),
 
+                TextColumn::make('compras_pendientes_count')
+                    ->label('Compras pend.')
+                    ->badge()
+                    ->color(fn ($state): string => (int) $state > 0 ? 'warning' : 'gray')
+                    ->formatStateUsing(fn ($state): string => (int) $state > 0 ? (string) (int) $state : '—')
+                    ->alignCenter()
+                    ->sortable(),
+
+                TextColumn::make('saldo_deuda_total')
+                    ->label('Deuda total')
+                    ->money('PEN')
+                    ->color(fn ($state): string => (float) $state > 0 ? 'danger' : 'gray')
+                    ->formatStateUsing(fn ($state): string => (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—')
+                    ->alignRight()
+                    ->sortable(),
+
                 TextColumn::make('estado')
                     ->label('Estado')
                     ->badge()
@@ -73,8 +93,21 @@ class ProveedoresTable
             ])
 
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    Action::make('cuentas_pagar')
+                        ->label('Cuentas por Pagar')
+                        ->icon('heroicon-o-banknotes')
+                        ->color('warning')
+                        ->url(fn (Proveedor $record) =>
+                            CuentasPorPagarPage::getUrl() . '?' . http_build_query([
+                                'filtroProveedorId'     => $record->id,
+                                'filtroProveedorNombre' => $record->nombre,
+                            ])
+                        ),
+
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ]),
             ])
 
             ->toolbarActions([

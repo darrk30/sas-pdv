@@ -2,31 +2,32 @@
 
 namespace App\Filament\Pdv\Pages;
 
+use App\Enums\EstadoPago;
 use App\Enums\EstadoVenta;
+use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use App\Filament\Pdv\Concerns\HasVentaDetalleModal;
+use App\Filament\Pdv\Widgets\DespachoStatsWidget;
 use App\Models\Venta;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
-use App\Filament\Pdv\Concerns\HasFullWidthPage;
+use Filament\Actions\Action as TableAction;
+use Filament\Actions\ActionGroup as TableActionGroup;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Schema;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
-use Livewire\WithPagination;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
-class DespachoPage extends Page implements HasForms
+class DespachoPage extends Page implements HasTable
 {
     use HasVentaDetalleModal;
-    use InteractsWithForms;
-    use WithPagination;
+    use InteractsWithTable;
     use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.despacho';
@@ -35,6 +36,11 @@ class DespachoPage extends Page implements HasForms
     protected static string|UnitEnum|null $navigationGroup = 'Pedidos Web';
     protected static ?int $navigationSort = 4;
     protected static ?string $title = 'Despachos pendientes';
+
+    public function getHeading(): string
+    {
+        return 'Despachos pendientes';
+    }
 
     public static function canAccess(): bool
     {
@@ -46,10 +52,9 @@ class DespachoPage extends Page implements HasForms
         $empresaId = Filament::getTenant()?->id;
         if (! $empresaId) return null;
 
-        $count = cache()->remember("badge_despachos_{$empresaId}", 30, fn() =>
+        $count = cache()->remember("badge_despachos_{$empresaId}", 30, fn () =>
             Venta::where('empresa_id', $empresaId)
                 ->whereNotNull('estado_despacho')
-                ->whereNotIn('estado_despacho', ['entregado'])
                 ->where('estado', EstadoVenta::Completada)
                 ->count()
         );
@@ -62,221 +67,271 @@ class DespachoPage extends Page implements HasForms
         return 'warning';
     }
 
-    // ── Filtros ───────────────────────────────────────────────────────────────
-    public ?string $filtroCliente    = null;
-    public ?string $filtroFechaDesde = null;
-    public ?string $filtroFechaHasta = null;
-
-    // ── Modal cambiar estado ──────────────────────────────────────────────────
-    public bool    $modalEstado    = false;
-    public ?int    $estadoVentaId  = null;
-    public ?string $nuevoEstado    = null;
-    public ?array  $estadoVenta    = null;
-
-    // ── Máquina de estados ────────────────────────────────────────────────────
+    // ── State machine ──────────────────────────────────────────────────────────
 
     private const ORDEN = [
         'pendiente_envio',
         'en_preparacion',
         'en_agencia',
         'en_camino',
-        'entregado',     // terminal: guarda NULL en la base de datos
+        'entregado',
     ];
 
-    private const META = [
-        'pendiente_envio' => ['label' => 'Pendiente',      'css' => 'gray'],
-        'en_preparacion'  => ['label' => 'En preparación', 'css' => 'blue'],
-        'en_agencia'      => ['label' => 'En agencia',     'css' => 'purple'],
-        'en_camino'       => ['label' => 'En camino',      'css' => 'amber'],
-        'entregado'       => ['label' => 'Entregado',      'css' => 'green'],
+    public const META = [
+        'pendiente_envio' => ['label' => 'Pendiente',      'color' => 'gray'],
+        'en_preparacion'  => ['label' => 'En preparación', 'color' => 'info'],
+        'en_agencia'      => ['label' => 'En agencia',     'color' => 'warning'],
+        'en_camino'       => ['label' => 'En camino',      'color' => 'primary'],
+        'entregado'       => ['label' => 'Entregado',      'color' => 'success'],
     ];
 
-    /** Retorna los estados disponibles para avanzar desde $actual. */
     public static function siguientesEstados(?string $actual): array
     {
         $idx = array_search($actual ?? 'pendiente_envio', self::ORDEN);
         return array_slice(self::ORDEN, ($idx !== false ? $idx : 0) + 1);
     }
 
-    /** Retorna label y css para un estado dado. */
     public static function metaEstado(string $estado): array
     {
-        return self::META[$estado] ?? ['label' => ucfirst($estado), 'css' => 'gray'];
+        return self::META[$estado] ?? ['label' => ucfirst($estado), 'color' => 'gray'];
     }
 
-    // ── Inicialización ────────────────────────────────────────────────────────
+    // ── Widgets ────────────────────────────────────────────────────────────────
 
-    public function mount(): void
+    protected function getHeaderWidgets(): array
     {
-        $this->filtroFechaDesde = now()->subDays(30)->toDateString();
-        $this->filtroFechaHasta = now()->toDateString();
-        $this->form->fill();
+        return [DespachoStatsWidget::class];
     }
 
-    // ── Formulario ────────────────────────────────────────────────────────────
+    // ── Table ──────────────────────────────────────────────────────────────────
 
-    public function form(Schema $schema): Schema
+    public function table(Table $table): Table
     {
-        return $schema->components([
-            Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])->schema([
-                TextInput::make('filtroCliente')
+        return $table
+            ->query(
+                Venta::query()
+                    ->where('empresa_id', Filament::getTenant()->id)
+                    ->where('estado', EstadoVenta::Completada)
+                    ->whereNotNull('estado_despacho')
+                    ->with(['serie', 'detalles', 'cliente:id,telefono', 'orden:id,numero,venta_id'])
+                    ->orderBy('fecha_emision', 'desc')
+            )
+            ->columns([
+                TextColumn::make('comprobante')
+                    ->label('Comprobante')
+                    ->html()
+                    ->state(function (Venta $r) {
+                        $comp = e(($r->serie?->serie ?? '??') . '-' . str_pad($r->correlativo, 8, '0', STR_PAD_LEFT));
+                        $html = "<span class='font-mono font-bold'>{$comp}</span>";
+                        if ($r->orden) {
+                            $url = route('filament.pdv.resources.ordenes.view', [
+                                'tenant' => Filament::getTenant()->slug,
+                                'record' => $r->orden->id,
+                            ]);
+                            $html .= '<br><a href="' . e($url) . '" style="font-size:.7rem;color:#a78bfa;text-decoration:underline;">' . e($r->orden->codigo) . '</a>';
+                        }
+                        return $html;
+                    }),
+
+                TextColumn::make('fecha_emision')
+                    ->label('Fecha')
+                    ->state(fn (Venta $r) => Carbon::parse($r->fecha_emision)->format('d/m/Y'))
+                    ->description(fn (Venta $r) => Carbon::parse($r->fecha_emision)->format('g:i A'))
+                    ->sortable(),
+
+                TextColumn::make('cliente_nombre')
                     ->label('Cliente')
-                    ->placeholder('Nombre o documento…')
-                    ->prefixIcon('heroicon-o-magnifying-glass')
-                    ->live(debounce: 300)
-                    ->afterStateUpdated(fn() => $this->resetPage()),
+                    ->html()
+                    ->state(function (Venta $r) {
+                        $nombre   = e($r->cliente_nombre ?: 'Cliente general');
+                        $telefono = $r->cliente?->telefono;
+                        $html     = "<span class='font-medium'>{$nombre}</span>";
+                        if ($telefono) {
+                            $tel  = preg_replace('/\D/', '', $telefono);
+                            $wa   = 'https://wa.me/' . (strlen($tel) <= 9 ? '51' . $tel : $tel);
+                            $html .= '<br><a href="' . $wa . '" target="_blank" rel="noopener"'
+                                   . ' style="font-size:.7rem;color:#16a34a;text-decoration:underline;">'
+                                   . '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"'
+                                   . ' class="inline w-3 h-3 mr-0.5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>'
+                                   . e($telefono) . '</a>';
+                        }
+                        return $html;
+                    })
+                    ->searchable(query: fn (Builder $q, string $s) =>
+                        $q->where('cliente_nombre', 'like', "%{$s}%")
+                    ),
 
-                DatePicker::make('filtroFechaDesde')
-                    ->label('Desde')
-                    ->displayFormat('d/m/Y')
-                    ->live()
-                    ->afterStateUpdated(fn() => $this->resetPage()),
+                TextColumn::make('cliente_num_doc')
+                    ->label('Documento')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
-                DatePicker::make('filtroFechaHasta')
-                    ->label('Hasta')
-                    ->displayFormat('d/m/Y')
-                    ->live()
-                    ->afterStateUpdated(fn() => $this->resetPage()),
-            ]),
-        ]);
+                TextColumn::make('productos')
+                    ->label('Productos')
+                    ->html()
+                    ->state(function (Venta $r): string {
+                        $items = $r->detalles->take(3)->map(function ($d) {
+                            $cant = rtrim(rtrim(number_format((float) $d->cantidad, 4, '.', ''), '0'), '.');
+                            $desc = e($d->descripcion);
+                            return "<span class='text-xs text-gray-500 dark:text-slate-400'><strong class='text-gray-700 dark:text-slate-200'>×{$cant}</strong> {$desc}</span>";
+                        })->implode('<br>');
+
+                        $resto = $r->detalles->count() - 3;
+                        if ($resto > 0) {
+                            $items .= "<br><span class='text-xs italic text-gray-400'>+{$resto} más…</span>";
+                        }
+
+                        return $items;
+                    }),
+
+                TextColumn::make('total')
+                    ->label('Total')
+                    ->money('PEN')
+                    ->sortable()
+                    ->alignRight(),
+
+                TextColumn::make('estado_pago')
+                    ->label('Pago')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => EstadoPago::tryFrom($state)?->getLabel() ?? ucfirst((string) ($state ?? '')))
+                    ->color(fn ($state) => EstadoPago::tryFrom($state)?->getColor() ?? 'gray'),
+
+                TextColumn::make('estado_despacho')
+                    ->label('Despacho')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => self::metaEstado($state ?? 'pendiente_envio')['label'])
+                    ->color(fn ($state) => self::metaEstado($state ?? 'pendiente_envio')['color']),
+            ])
+            ->filters([
+                Filter::make('fecha')
+                    ->label('Período')
+                    ->schema([
+                        DatePicker::make('desde')
+                            ->label('Desde')
+                            ->displayFormat('d/m/Y')
+                            ->default(now()->subDays(30)),
+                        DatePicker::make('hasta')
+                            ->label('Hasta')
+                            ->displayFormat('d/m/Y')
+                            ->default(now()),
+                    ])
+                    ->query(fn (Builder $query, array $data) => $query
+                        ->when($data['desde'] ?? null, fn ($q, $v) => $q->whereDate('fecha_emision', '>=', $v))
+                        ->when($data['hasta'] ?? null, fn ($q, $v) => $q->whereDate('fecha_emision', '<=', $v))
+                    )
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if (! empty($data['desde'])) {
+                            $indicators[] = 'Desde ' . Carbon::parse($data['desde'])->format('d/m/Y');
+                        }
+                        if (! empty($data['hasta'])) {
+                            $indicators[] = 'Hasta ' . Carbon::parse($data['hasta'])->format('d/m/Y');
+                        }
+                        return $indicators;
+                    }),
+            ])
+            ->recordActions([
+                TableAction::make('ver_detalle')
+                    ->label('')
+                    ->icon('heroicon-o-eye')
+                    ->color('gray')
+                    ->button()
+                    ->size('sm')
+                    ->tooltip('Ver detalle')
+                    ->action(fn (Venta $record) => $this->abrirModalDetalle($record->id)),
+
+                TableAction::make('ticket')
+                    ->label('')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->button()
+                    ->size('sm')
+                    ->tooltip('Imprimir ticket de despacho')
+                    ->url(fn (Venta $record) => route('pdv.ticket.despacho', $record->id))
+                    ->openUrlInNewTab(),
+
+                TableActionGroup::make([
+                    TableAction::make('a_en_preparacion')
+                        ->label('En preparación')
+                        ->color('info')
+                        ->icon('heroicon-o-beaker')
+                        ->visible(fn (Venta $r) => in_array('en_preparacion', self::siguientesEstados($r->estado_despacho)))
+                        ->requiresConfirmation()
+                        ->modalHeading('Cambiar estado de despacho')
+                        ->modalDescription(fn (Venta $r) => $this->modalDescripcion($r, 'En preparación'))
+                        ->modalSubmitActionLabel('Confirmar')
+                        ->action(fn (Venta $r) => $this->cambiarEstadoVenta($r, 'en_preparacion')),
+
+                    TableAction::make('a_en_agencia')
+                        ->label('En agencia')
+                        ->color('warning')
+                        ->icon('heroicon-o-building-office')
+                        ->visible(fn (Venta $r) => in_array('en_agencia', self::siguientesEstados($r->estado_despacho)))
+                        ->requiresConfirmation()
+                        ->modalHeading('Cambiar estado de despacho')
+                        ->modalDescription(fn (Venta $r) => $this->modalDescripcion($r, 'En agencia'))
+                        ->modalSubmitActionLabel('Confirmar')
+                        ->action(fn (Venta $r) => $this->cambiarEstadoVenta($r, 'en_agencia')),
+
+                    TableAction::make('a_en_camino')
+                        ->label('En camino')
+                        ->color('primary')
+                        ->icon('heroicon-o-truck')
+                        ->visible(fn (Venta $r) => in_array('en_camino', self::siguientesEstados($r->estado_despacho)))
+                        ->requiresConfirmation()
+                        ->modalHeading('Cambiar estado de despacho')
+                        ->modalDescription(fn (Venta $r) => $this->modalDescripcion($r, 'En camino'))
+                        ->modalSubmitActionLabel('Confirmar')
+                        ->action(fn (Venta $r) => $this->cambiarEstadoVenta($r, 'en_camino')),
+
+                    TableAction::make('a_entregado')
+                        ->label('Entregado')
+                        ->color('success')
+                        ->icon('heroicon-o-check-circle')
+                        ->visible(fn (Venta $r) => in_array('entregado', self::siguientesEstados($r->estado_despacho)))
+                        ->requiresConfirmation()
+                        ->modalHeading('Marcar como entregado')
+                        ->modalDescription(fn (Venta $r) => $this->modalDescripcion($r, 'Entregado'))
+                        ->modalSubmitActionLabel('Confirmar entrega')
+                        ->action(fn (Venta $r) => $this->cambiarEstadoVenta($r, 'entregado')),
+                ])
+                ->label('')
+                ->icon('heroicon-o-arrows-right-left')
+                ->color('warning')
+                ->button()
+                ->size('sm')
+                ->tooltip('Cambiar estado de despacho')
+                ->visible(fn (Venta $r) => count(self::siguientesEstados($r->estado_despacho)) > 0),
+            ])
+            ->toolbarActions([])
+            ->emptyStateIcon('heroicon-o-paper-airplane')
+            ->emptyStateHeading('Sin despachos pendientes')
+            ->emptyStateDescription('Todos los pedidos han sido entregados.')
+            ->striped()
+            ->paginated([10, 25, 50]);
     }
 
-    public function hayFiltros(): bool
+    // ── Helpers para acciones de estado ───────────────────────────────────────
+
+    private function cambiarEstadoVenta(Venta $record, string $estado): void
     {
-        return ! empty($this->filtroCliente);
-    }
-
-    public function limpiarFiltros(): void
-    {
-        $this->filtroCliente    = null;
-        $this->filtroFechaDesde = now()->subDays(30)->toDateString();
-        $this->filtroFechaHasta = now()->toDateString();
-        $this->form->fill();
-        $this->resetPage();
-    }
-
-    // ── Queries ───────────────────────────────────────────────────────────────
-
-    private function baseQuery()
-    {
-        $q = Venta::where('empresa_id', Filament::getTenant()->id)
-            ->where('estado', EstadoVenta::Completada)
-            ->whereNotNull('estado_despacho');
-
-        if (! empty($this->filtroCliente)) {
-            $b = $this->filtroCliente;
-            $q->where(function ($sub) use ($b) {
-                $sub->where('cliente_nombre', 'like', "%{$b}%")
-                    ->orWhere('cliente_num_doc', 'like', "%{$b}%");
-            });
-        }
-
-        if (! empty($this->filtroFechaDesde)) {
-            $q->whereDate('fecha_emision', '>=', $this->filtroFechaDesde);
-        }
-
-        if (! empty($this->filtroFechaHasta)) {
-            $q->whereDate('fecha_emision', '<=', $this->filtroFechaHasta);
-        }
-
-        return $q;
-    }
-
-    public function getVentas(): LengthAwarePaginator
-    {
-        return $this->baseQuery()
-            ->with(['serie', 'detalles.variante:id,codigo', 'detalles.producto:id,codigo_interno', 'cliente:id,telefono', 'orden:id,numero,venta_id'])
-            ->orderBy('fecha_emision', 'desc')
-            ->paginate(25);
-    }
-
-    public function getResumen(): array
-    {
-        $empresaId = Filament::getTenant()->id;
-
-        $row = DB::table('ventas')
-            ->where('empresa_id', $empresaId)
-            ->where('estado', EstadoVenta::Completada->value)
-            ->whereNotNull('estado_despacho')
-            ->selectRaw('
-                COUNT(*) as total,
-                SUM(CASE WHEN DATE(fecha_emision) = CURDATE() THEN 1 ELSE 0 END) as hoy,
-                SUM(CASE WHEN fecha_emision >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as semana
-            ')
-            ->first();
-
-        return [
-            'total'  => (int) ($row->total  ?? 0),
-            'hoy'    => (int) ($row->hoy    ?? 0),
-            'semana' => (int) ($row->semana ?? 0),
-        ];
-    }
-
-    // ── Modal: cambiar estado de despacho ─────────────────────────────────────
-
-    public function abrirModalEstado(int $ventaId, string $nuevoEstado): void
-    {
-        $venta = Venta::with(['serie', 'detalles', 'cliente:id,telefono'])
-            ->where('empresa_id', Filament::getTenant()->id)
-            ->findOrFail($ventaId);
-
-        $tel    = preg_replace('/\D/', '', $venta->cliente?->telefono ?? '');
-        $wspUrl = $tel ? 'https://wa.me/51' . ltrim($tel, '0') : null;
-
-        $this->estadoVenta = [
-            'comprobante'     => $venta->serie->serie . '-' . $venta->correlativo,
-            'estado_actual'   => $venta->estado_despacho ?? 'pendiente_envio',
-            'cliente'         => $venta->cliente_nombre ?: 'Cliente general',
-            'cliente_doc'     => $venta->cliente_num_doc,
-            'telefono'        => $tel ? '+51 ' . $tel : null,
-            'wsp_url'         => $wspUrl,
-            'fecha'           => Carbon::parse($venta->fecha_emision)->format('d/m/Y H:i'),
-            'total'           => (float) $venta->total,
-            'saldo'           => (float) $venta->saldo_pendiente,
-            'es_cred_pend'    => (float) $venta->saldo_pendiente > 0,
-            'items'           => $venta->detalles->map(fn($d) => [
-                'descripcion' => $d->descripcion,
-                'cantidad'    => (float) $d->cantidad,
-            ])->toArray(),
-        ];
-
-        $this->estadoVentaId = $ventaId;
-        $this->nuevoEstado   = $nuevoEstado;
-        $this->modalEstado   = true;
-    }
-
-    /** Llamado por wire:change del <select> en la tabla. */
-    public function seleccionarEstado(int $ventaId, string $estado): void
-    {
-        if (! $estado) return;
-        $this->abrirModalEstado($ventaId, $estado);
-    }
-
-    public function cerrarModalEstado(): void
-    {
-        $this->modalEstado   = false;
-        $this->estadoVentaId = null;
-        $this->nuevoEstado   = null;
-        $this->estadoVenta   = null;
-    }
-
-    public function confirmarCambioEstado(): void
-    {
-        $venta = Venta::where('empresa_id', Filament::getTenant()->id)
-            ->whereNotNull('estado_despacho')
-            ->findOrFail($this->estadoVentaId);
-
-        // 'entregado' guarda NULL → sale de la lista
-        $valorDb = $this->nuevoEstado === 'entregado' ? null : $this->nuevoEstado;
-
-        $venta->update(['estado_despacho' => $valorDb]);
-
-        $label = self::metaEstado($this->nuevoEstado)['label'];
-        $this->cerrarModalEstado();
+        $record->update(['estado_despacho' => $estado === 'entregado' ? null : $estado]);
 
         Notification::make()
-            ->title("Estado actualizado: {$label}")
+            ->title('Estado actualizado: ' . self::metaEstado($estado)['label'])
             ->success()
             ->send();
+    }
+
+    private function modalDescripcion(Venta $record, string $nuevoLabel): string
+    {
+        $cliente = $record->cliente_nombre ?: 'Cliente general';
+        $texto   = "Cliente: {$cliente} → {$nuevoLabel}";
+
+        if ((float) $record->saldo_pendiente > 0) {
+            $texto .= ' · ⚠ Saldo pendiente: S/ ' . number_format((float) $record->saldo_pendiente, 2);
+        }
+
+        return $texto;
     }
 }

@@ -285,6 +285,21 @@ class VentasSesionPage extends Page implements HasTable
                         ->icon('heroicon-o-eye')
                         ->action(fn (Venta $record) => $this->abrirDetalle($record->id)),
 
+                    Action::make('editar')
+                        ->label('Editar venta')
+                        ->icon('heroicon-o-pencil-square')
+                        ->color('warning')
+                        ->visible(fn (Venta $record): bool =>
+                            ! $record->estaAnulada()
+                            && in_array(
+                                $record->estado_sunat instanceof \App\Enums\EstadoSunat
+                                    ? $record->estado_sunat->value
+                                    : (string) $record->estado_sunat,
+                                [\App\Enums\EstadoSunat::NoAplica->value, \App\Enums\EstadoSunat::PorEnviar->value, \App\Enums\EstadoSunat::Error->value]
+                            )
+                        )
+                        ->url(fn (Venta $record) => \App\Filament\Pdv\Pages\EditarVentaPage::getUrl(tenant: Filament::getTenant()) . '?venta_id=' . $record->id),
+
                     $this->buildImprimirTicketAction(),
 
                     Action::make('pdf')

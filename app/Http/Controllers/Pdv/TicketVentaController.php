@@ -59,6 +59,8 @@ class TicketVentaController extends Controller
                 'detalles.variante.producto.unidadMedida',
                 'pagos.metodoPago',
                 'cliente',
+                'sesionCaja.cajero',
+                'orden.vendedor.roles',
             ])
             ->firstOrFail();
 

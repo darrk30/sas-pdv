@@ -4,6 +4,8 @@ namespace App\Filament\Pdv\Pages;
 
 use App\Services\FacturadorService;
 use BackedEnum;
+use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\QROptions;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
@@ -21,6 +23,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Pages\Page;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use UnitEnum;
 
@@ -189,10 +192,7 @@ class MiEmpresaPage extends Page implements HasForms
                                 Section::make('Catálogo web')
                                     ->icon('heroicon-o-shopping-bag')
                                     ->description('Visibilidad de la tienda en línea para tus clientes.')
-                                    ->hidden(function (): bool {
-                                        $plan = Filament::getTenant()?->suscripcion?->plan;
-                                        return $plan === null || ! $plan->tiene_catalogo_web;
-                                    })
+                                    ->hidden(fn (): bool => ! Filament::getTenant()?->tieneFeature('catalogo_web'))
                                     ->schema([
                                         Select::make('carta_activa_cliente')
                                             ->label('Estado del catálogo')
@@ -201,6 +201,20 @@ class MiEmpresaPage extends Page implements HasForms
                                                 'inactivo' => 'Inactivo — el catálogo está oculto al público',
                                             ])
                                             ->native(false),
+
+                                        Actions::make([
+                                            Action::make('generar_qr')
+                                                ->label('Generar QR del catálogo')
+                                                ->icon('heroicon-o-qr-code')
+                                                ->color('primary')
+                                                ->modalHeading('QR del catálogo web')
+                                                ->modalDescription(fn () =>
+                                                    'Comparte este código QR con tus clientes para que accedan directamente a tu catálogo en línea.'
+                                                )
+                                                ->modalContent(fn (): HtmlString => $this->renderQrModal())
+                                                ->modalSubmitAction(false)
+                                                ->modalCancelActionLabel('Cerrar'),
+                                        ]),
                                     ]),
 
                                 // Sección impresión directa — solo si el plan la incluye
@@ -211,7 +225,7 @@ class MiEmpresaPage extends Page implements HasForms
                                     ->columns(1)
                                     ->schema([
                                         Toggle::make('impresion_comprobante_directo')
-                                            ->label('Impresión directa al emitir comprobante')
+                                            ->label('Impresión directa')
                                             ->helperText('Requiere que la caja tenga una impresora asignada y que el Monitor de Impresión esté activo en la PC.')
                                             ->onColor('success'),
 
@@ -543,5 +557,116 @@ class MiEmpresaPage extends Page implements HasForms
             ->body('El nuevo token de impresión está activo. Reconecta el Monitor con este token.')
             ->success()
             ->send();
+    }
+
+    // ── QR del catálogo ───────────────────────────────────────────────────────
+
+    public function renderQrModal(): HtmlString
+    {
+        $empresa   = Filament::getTenant();
+        $catalogoUrl = 'http://' . $empresa->slug . '.' . env('APP_DOMAIN', 'sas-pdv.test');
+        $dataUrl   = $this->generarQrDataUrl($empresa, $catalogoUrl);
+        $urlEsc    = e($catalogoUrl);
+        $nombre    = e($empresa->name);
+
+        return new HtmlString(<<<HTML
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1.25rem;padding:1rem 0 .5rem;">
+            <img src="{$dataUrl}" alt="QR {$nombre}"
+                 style="width:260px;height:260px;border-radius:.75rem;box-shadow:0 4px 16px rgba(0,0,0,.15);" />
+            <p style="font-size:.8rem;color:#6b7280;margin:0;">{$urlEsc}</p>
+            <a href="{$dataUrl}" download="qr-catalogo-{$empresa->slug}.png"
+               style="display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1.25rem;
+                      background:#2563eb;color:#fff;border-radius:.5rem;font-size:.875rem;
+                      text-decoration:none;font-weight:500;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                     stroke="currentColor" style="width:1rem;height:1rem;">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Descargar PNG
+            </a>
+        </div>
+        HTML);
+    }
+
+    private function generarQrDataUrl(object $empresa, string $url): string
+    {
+        // Opciones: ECC alto (H) para tolerar el logo, tamaño 10 → ~370px
+        $options = new QROptions([
+            'outputType'      => QRCode::OUTPUT_IMAGE_PNG,
+            'eccLevel'        => QRCode::ECC_H,
+            'scale'           => 10,
+            'addQuietzone'    => true,
+            'quietzoneSize'   => 2,
+            'addLogoSpace'    => true,
+            'logoSpaceWidth'  => 13,
+            'logoSpaceHeight' => 13,
+        ]);
+
+        // render() devuelve data URI completo; extraer bytes PNG para GD
+        $dataUri = (new QRCode($options))->render($url);
+
+        // Si no hay logo, devolver el data URI directo
+        $logoPath = $empresa->logo ? storage_path('app/public/' . $empresa->logo) : null;
+
+        if (! $logoPath || ! is_file($logoPath)) {
+            return $dataUri;
+        }
+
+        // Extraer bytes PNG del data URI
+        preg_match('/base64,(.+)/', $dataUri, $m);
+        $qrPng = base64_decode($m[1] ?? '');
+
+        if (! $qrPng) {
+            return $dataUri;
+        }
+
+        // Cargar QR y logo con GD
+        $qrImg  = imagecreatefromstring($qrPng);
+        $logoImg = @imagecreatefromstring(file_get_contents($logoPath));
+
+        if (! $qrImg || ! $logoImg) {
+            return $dataUri;
+        }
+
+        $qrW  = imagesx($qrImg);
+        $qrH  = imagesy($qrImg);
+
+        // Logo: 22% del QR, centrado
+        $logoTargetSize = (int) round($qrW * 0.22);
+        $logoScaled     = imagecreatetruecolor($logoTargetSize, $logoTargetSize);
+
+        // Fondo blanco para el logo
+        $blanco = imagecolorallocate($logoScaled, 255, 255, 255);
+        imagefilledrectangle($logoScaled, 0, 0, $logoTargetSize - 1, $logoTargetSize - 1, $blanco);
+
+        imagecopyresampled(
+            $logoScaled, $logoImg,
+            0, 0, 0, 0,
+            $logoTargetSize, $logoTargetSize,
+            imagesx($logoImg), imagesy($logoImg)
+        );
+
+        // Padding blanco alrededor del logo (4px)
+        $pad     = 4;
+        $totalW  = $logoTargetSize + $pad * 2;
+        $totalH  = $logoTargetSize + $pad * 2;
+        $xDst    = (int) round(($qrW - $totalW) / 2);
+        $yDst    = (int) round(($qrH - $totalH) / 2);
+
+        $blancoQr = imagecolorallocate($qrImg, 255, 255, 255);
+        imagefilledrectangle($qrImg, $xDst, $yDst, $xDst + $totalW - 1, $yDst + $totalH - 1, $blancoQr);
+        imagecopy($qrImg, $logoScaled, $xDst + $pad, $yDst + $pad, 0, 0, $logoTargetSize, $logoTargetSize);
+
+        // Capturar PNG resultante
+        ob_start();
+        imagepng($qrImg);
+        $resultado = ob_get_clean();
+
+        imagedestroy($qrImg);
+        imagedestroy($logoImg);
+        imagedestroy($logoScaled);
+
+        return 'data:image/png;base64,' . base64_encode($resultado);
     }
 }

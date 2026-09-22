@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pdv\Resources\OrdenRest\Pages;
 
+use App\Enums\CondicionPago;
 use App\Enums\EstadoOrden;
 use App\Enums\EstadoSesion;
 use App\Enums\TipoComprobante;
@@ -60,11 +61,16 @@ class CobrarPedido extends Page
 
     // ── Pago ──────────────────────────────────────────────────────────────────
 
-    public ?int   $metodoPagoId   = null;
-    public string $montoPagoInput = '';
-    public string $pagoReferencia = '';
-    public string $descuentoInput = '0';
-    public array  $pagosAgregados = [];
+    public ?int    $metodoPagoId            = null;
+    public string  $montoPagoInput          = '';
+    public string  $pagoReferencia          = '';
+    public string  $descuentoInput          = '0';
+    public array   $pagosAgregados          = [];
+    public ?string $fechaVencimientoCredito = null;
+
+    // Respaldo del cliente original al entrar en modo crédito
+    public ?string $clienteNombreRespaldo   = null;
+    public ?string $clienteBusquedaRespaldo = null;
 
 
     public function mount(int|string $record): void
@@ -92,8 +98,10 @@ class CobrarPedido extends Page
 
         $this->autoSeleccionarComprobante();
         $this->autoSeleccionarClienteGeneral();
-        $this->montoPagoInput  = number_format((float) $this->orden->total, 2, '.', '');
-        $this->metodoPagoId    = $this->getMetodosPago()->first()?->id;
+        $this->montoPagoInput = number_format((float) $this->orden->total, 2, '.', '');
+        $metodos = $this->getMetodosPago();
+        $efectivo = $metodos->first(fn ($m) => mb_strtolower($m->nombre) === 'efectivo');
+        $this->metodoPagoId = ($efectivo ?? $metodos->first())?->id;
     }
 
     // ── Series / Métodos de pago ──────────────────────────────────────────────
@@ -133,16 +141,21 @@ class CobrarPedido extends Page
 
     private function autoSeleccionarClienteGeneral(): void
     {
-        $cliente = Cliente::where('empresa_id', Filament::getTenant()->id)
-            ->where('numero_documento', '99999999')
-            ->first();
-
-        if ($cliente) {
-            $this->clienteId       = $cliente->id;
-            $this->clienteNombre   = $cliente->nombre_completo;
-            $this->clienteTipoDoc  = $cliente->tipo_documento->value;
-            $this->clienteBusqueda = $cliente->nombre_completo;
+        // Para llevar/delivery: pre-rellenar con el nombre de la orden, sin documento
+        if (
+            in_array($this->orden->tipo_origen, [TipoOrigenOrden::Llevar, TipoOrigenOrden::Delivery])
+            && !empty($this->orden->cliente_nombre)
+        ) {
+            $this->clienteNombre   = $this->orden->cliente_nombre;
+            $this->clienteBusqueda = $this->orden->cliente_nombre;
+            // clienteId = null, clienteTipoDoc = null → sin documento
+            return;
         }
+
+        // Sin nombre: "PUBLICO EN GENERAL" sin documento
+        $this->clienteNombre   = 'PUBLICO EN GENERAL';
+        $this->clienteBusqueda = 'PUBLICO EN GENERAL';
+        // clienteId = null, clienteTipoDoc = null → sin documento
     }
 
     public function seleccionarComprobante(string $tipo): void
@@ -230,6 +243,27 @@ class CobrarPedido extends Page
         return max(0, (float) $this->orden->total - $this->getDescuento());
     }
 
+    // ── Lifecycle hooks ───────────────────────────────────────────────────────
+
+    public function updatedMetodoPagoId(): void
+    {
+        $metodo   = $this->getMetodosPago()->firstWhere('id', $this->metodoPagoId);
+        $esCredito = $metodo?->condicion_pago === CondicionPago::Credito;
+
+        if ($esCredito && empty($this->clienteId)) {
+            $this->clienteNombreRespaldo   = $this->clienteNombre;
+            $this->clienteBusquedaRespaldo = $this->clienteBusqueda;
+            $this->clienteNombre           = null;
+            $this->clienteBusqueda         = '';
+            $this->mostrarSugerencias      = false;
+        } elseif (! $esCredito && empty($this->clienteId) && ! empty($this->clienteNombreRespaldo)) {
+            $this->clienteNombre           = $this->clienteNombreRespaldo;
+            $this->clienteBusqueda         = $this->clienteBusquedaRespaldo ?? '';
+            $this->clienteNombreRespaldo   = null;
+            $this->clienteBusquedaRespaldo = null;
+        }
+    }
+
     // ── Pagos múltiples ───────────────────────────────────────────────────────
 
     public function agregarPago(): void
@@ -253,6 +287,8 @@ class CobrarPedido extends Page
             }
         }
 
+        $esCredito = $metodo?->condicion_pago === CondicionPago::Credito;
+
         if ($idx !== null) {
             $this->pagosAgregados[$idx]['monto'] += $monto;
         } else {
@@ -261,6 +297,7 @@ class CobrarPedido extends Page
                 'nombre'         => $metodo?->nombre ?? 'Pago',
                 'monto'          => $monto,
                 'referencia'     => $this->pagoReferencia,
+                'condicion_pago' => $esCredito ? 'credito' : 'contado',
             ];
         }
 
@@ -304,6 +341,19 @@ class CobrarPedido extends Page
             return;
         }
 
+        if (
+            $this->tipoComprobante === TipoComprobante::Boleta->value
+            && (float) $this->orden->total >= 700
+            && empty($this->clienteTipoDoc)
+        ) {
+            Notification::make()
+                ->title('Se requiere DNI del cliente')
+                ->body('Las boletas de S/ 700 o más deben incluir el DNI del comprador. Busca o registra al cliente.')
+                ->warning()
+                ->send();
+            return;
+        }
+
         $orden     = $this->orden;
         $empresa   = Filament::getTenant();
         $empresaId = $empresa->id;
@@ -311,6 +361,29 @@ class CobrarPedido extends Page
         $totalDescuento  = $this->getTotalConDescuento();
         $pagosLista      = $this->pagosAgregados;
         $esCortesiaTotal = $totalDescuento <= 0;
+
+        // ── Validaciones de crédito ───────────────────────────────────────────
+        $tieneCredito = collect($pagosLista)->contains(
+            fn ($p) => ($p['condicion_pago'] ?? 'contado') === 'credito'
+        );
+
+        if ($tieneCredito && $this->tipoComprobante !== TipoComprobante::Ticket->value) {
+            Notification::make()
+                ->title('Crédito solo disponible para tickets')
+                ->body('Las boletas y facturas no admiten venta a crédito en este sistema.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        if ($tieneCredito && empty($this->clienteId)) {
+            Notification::make()
+                ->title('Cliente requerido para crédito')
+                ->body('Selecciona un cliente registrado con DNI o RUC para procesar una venta a crédito.')
+                ->warning()
+                ->send();
+            return;
+        }
 
         if (! $esCortesiaTotal) {
             if (empty($pagosLista)) {
@@ -370,8 +443,10 @@ class CobrarPedido extends Page
             $notasVenta = 'Para llevar | Cliente: ' . $orden->cliente_nombre;
         }
 
+        $fechaVencimiento = $tieneCredito ? $this->fechaVencimientoCredito : null;
+
         try {
-            DB::transaction(function () use ($orden, $empresa, $empresaId, $pagosLista, $esDelivery, $esLlevar, $mesaNombre, $notasVenta, &$venta) {
+            DB::transaction(function () use ($orden, $empresa, $empresaId, $pagosLista, $esDelivery, $esLlevar, $mesaNombre, $notasVenta, $fechaVencimiento, &$venta) {
                 $orden->loadMissing(['detalles.producto.unidadMedida', 'detalles.variante.producto.unidadMedida', 'mesa']);
 
                 // Normalizar ítems del pedido al formato que acepta VentaService
@@ -426,6 +501,7 @@ class CobrarPedido extends Page
                     conceptoPrefix:   $mesaNombre,
                     igvPct:           (float) ($empresa->igv_porcentaje ?? 18),
                     stockYaReservado: true,
+                    fechaVencimiento: $fechaVencimiento,
                 );
 
                 // Marcar el tipo de origen y añadir datos de delivery/llevar si aplica

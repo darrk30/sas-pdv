@@ -12,6 +12,7 @@ class Plan extends Model
 
     protected $fillable = [
         'nombre',
+        'subtitulo',
         'descripcion',
         'precio',
         'ciclo_facturacion',

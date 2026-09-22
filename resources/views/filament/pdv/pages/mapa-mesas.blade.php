@@ -70,103 +70,72 @@
                 <p class="mm-empty-sub">Crea una nueva orden para llevar con el botón de arriba.</p>
             </div>
         @else
-            <div class="mm-llevar-list">
+            <div class="mm-ord-grid">
                 @foreach($llevarOrdens as $lo)
                     @php
-                        $minutos    = (int) $lo->created_at->diffInMinutes(now());
-                        $horas      = intdiv($minutos, 60);
-                        $mins       = $minutos % 60;
-                        $tiempoStr  = $horas > 0 ? "{$horas}h {$mins}m" : "{$minutos}m";
-                        $loCobrado  = $lo->venta_id !== null;
-                        $loEstado   = $lo->estado instanceof \App\Enums\EstadoOrden ? $lo->estado->value : $lo->estado;
+                        $minutos   = (int) $lo->created_at->diffInMinutes(now());
+                        $horas     = intdiv($minutos, 60);
+                        $mins      = $minutos % 60;
+                        $tiempoStr = $horas > 0 ? "{$horas}h {$mins}m" : "{$minutos}m";
+                        $loCobrado = $lo->venta_id !== null;
+                        $loEstado  = $lo->estado instanceof \App\Enums\EstadoOrden ? $lo->estado->value : $lo->estado;
+                        $urgencia  = $minutos >= 30 ? 'urgente' : ($minutos >= 15 ? 'alerta' : 'normal');
                     @endphp
-                    <div class="mm-llevar-card">
-                        <div class="mm-llevar-card-icon">
-                            <x-heroicon-o-shopping-bag style="width:1.5rem;height:1.5rem;" />
-                        </div>
-                        <div class="mm-llevar-card-info">
-                            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
-                                <span class="mm-llevar-card-nombre">{{ $lo->cliente_nombre ?: 'Sin nombre' }}</span>
-                                <span class="mm-ord-badge mm-ord-badge--{{ $loEstado }}">
-                                    {{ $lo->estado instanceof \App\Enums\EstadoOrden ? $lo->estado->getLabel() : $loEstado }}
-                                    @if($loCobrado) · Pagado @endif
-                                </span>
-                            </div>
-                            <span class="mm-llevar-card-meta">
-                                #{{ $lo->codigo }} · {{ $lo->created_at->format('d/m H:i') }} · {{ $tiempoStr }}
-                                @if($lo->total > 0) · S/ {{ number_format($lo->total, 2) }} @endif
+                    <div class="mm-ord-card mm-ord-card--llevar mm-ord-card--{{ $urgencia }}{{ $loop->first ? ' mm-ord-card--primero' : '' }}{{ $loEstado === 'en_preparacion' ? ' mm-ord-card--en-prep' : '' }}">
+                        <div class="mm-ord-top">
+                            <span class="mm-ord-pos">{{ $loop->iteration }}</span>
+                            <span class="mm-ord-tiempo mm-ord-tiempo--{{ $urgencia }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mm-ord-clock"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                {{ $tiempoStr }}
                             </span>
                         </div>
-                        <div class="mm-llevar-card-actions">
-                            {{-- Ver pedido --}}
+                        <div class="mm-ord-body">
+                            <div class="mm-ord-icon mm-ord-icon--llevar">
+                                <x-heroicon-o-shopping-bag style="width:1.1rem;height:1.1rem;" />
+                            </div>
+                            <span class="mm-ord-nombre">{{ $lo->cliente_nombre ?: 'Sin nombre' }}</span>
+                        </div>
+                        <div class="mm-ord-meta">
+                            <span class="mm-ord-codigo">#{{ $lo->codigo }}</span>
+                            <span>{{ $lo->created_at->format('H:i') }}</span>
+                            @if($lo->total > 0)<span class="mm-ord-total">S/ {{ number_format($lo->total, 2) }}</span>@endif
+                        </div>
+                        <span class="mm-ord-badge mm-ord-badge--{{ $loEstado }}">
+                            {{ $lo->estado instanceof \App\Enums\EstadoOrden ? $lo->estado->getLabel() : $loEstado }}
+                            @if($loCobrado) · Pagado @endif
+                        </span>
+                        <div class="mm-ord-actions">
                             @can('restaurante.pedido.editar')
                             @if($loCobrado)
-                            {{-- Pagado: abrir modal detalle (read-only) --}}
-                            <button
-                                wire:click="abrirDetalleOrden({{ $lo->id }})"
-                                class="mm-btn mm-btn--ver mm-btn--sm"
-                            >
-                                <x-heroicon-m-clipboard-document-list class="mm-btn-icon" />
-                                <span class="mm-btn-label">Ver</span>
+                            <button wire:click="abrirDetalleOrden({{ $lo->id }})" class="mm-btn mm-btn--ver mm-btn--sm">
+                                <x-heroicon-m-clipboard-document-list class="mm-btn-icon" /><span class="mm-btn-label">Ver</span>
                             </button>
                             @else
-                            {{-- No pagado: ir a editar --}}
-                            <a
-                                href="{{ \App\Filament\Pdv\Resources\OrdenRest\OrdenRestResource::getUrl('edit', ['record' => $lo->id], tenant: filament()->getTenant()) }}"
-                                class="mm-btn mm-btn--ver mm-btn--sm"
-                                wire:navigate
-                            >
-                                <x-heroicon-m-clipboard-document-list class="mm-btn-icon" />
-                                <span class="mm-btn-label">Ver</span>
+                            <a href="{{ \App\Filament\Pdv\Resources\OrdenRest\OrdenRestResource::getUrl('edit', ['record' => $lo->id], tenant: filament()->getTenant()) }}" class="mm-btn mm-btn--ver mm-btn--sm" wire:navigate>
+                                <x-heroicon-m-clipboard-document-list class="mm-btn-icon" /><span class="mm-btn-label">Ver</span>
                             </a>
                             @endif
                             @endcan
-
                             @if($loCobrado)
-                                {{-- Entregar + Cancelar (pagado) --}}
                                 @can('restaurante.pedido.editar')
-                                <button
-                                    wire:click="marcarEntregado({{ $lo->id }})"
-                                    wire:loading.attr="disabled"
-                                    wire:target="marcarEntregado({{ $lo->id }})"
-                                    class="mm-btn mm-btn--abrir mm-btn--sm"
-                                >
-                                    <x-heroicon-m-check-circle class="mm-btn-icon" />
-                                    <span class="mm-btn-label">Entregar</span>
+                                <button wire:click="marcarEntregado({{ $lo->id }})" wire:loading.attr="disabled" wire:target="marcarEntregado({{ $lo->id }})" class="mm-btn mm-btn--abrir mm-btn--sm">
+                                    <x-heroicon-m-check-circle class="mm-btn-icon" /><span class="mm-btn-label">Entregar</span>
                                 </button>
                                 @endcan
                                 @can('restaurante.pedido.eliminar')
-                                <button
-                                    wire:click="mountAction('cancelarOrdenPagada', {ordenId: {{ $lo->id }}})"
-                                    wire:loading.attr="disabled"
-                                    wire:target="mountAction"
-                                    class="mm-btn mm-btn--cancelar mm-btn--sm"
-                                >
-                                    <x-heroicon-m-x-mark class="mm-btn-icon" />
-                                    <span class="mm-btn-label">Cancelar</span>
+                                <button wire:click="mountAction('cancelarOrdenPagada', {ordenId: {{ $lo->id }}})" wire:loading.attr="disabled" wire:target="mountAction" class="mm-btn mm-btn--cancelar mm-btn--sm">
+                                    <x-heroicon-m-x-mark class="mm-btn-icon" /><span class="mm-btn-label">Cancelar</span>
                                 </button>
                                 @endcan
                             @else
-                                {{-- Cobrar y cancelar: solo si no hay venta --}}
                                 @can('restaurante.pedido.cobrar')
-                                <a
-                                    href="{{ \App\Filament\Pdv\Resources\OrdenRest\OrdenRestResource::getUrl('cobrar', ['record' => $lo->id], tenant: filament()->getTenant()) }}"
-                                    class="mm-btn mm-btn--pagar mm-btn--sm"
-                                    wire:navigate
-                                >
-                                    <x-heroicon-m-banknotes class="mm-btn-icon" />
-                                    <span class="mm-btn-label">Cobrar</span>
+                                <a href="{{ \App\Filament\Pdv\Resources\OrdenRest\OrdenRestResource::getUrl('cobrar', ['record' => $lo->id], tenant: filament()->getTenant()) }}" class="mm-btn mm-btn--pagar mm-btn--sm" wire:navigate>
+                                    <x-heroicon-m-banknotes class="mm-btn-icon" /><span class="mm-btn-label">Cobrar</span>
                                 </a>
                                 @endcan
                                 @can('restaurante.pedido.eliminar')
-                                <button
-                                    wire:click="mountAction('cancelarOrden', {ordenId: {{ $lo->id }}})"
-                                    wire:loading.attr="disabled"
-                                    wire:target="mountAction"
-                                    class="mm-btn mm-btn--cancelar mm-btn--sm"
-                                >
-                                    <x-heroicon-m-x-mark class="mm-btn-icon" />
-                                    <span class="mm-btn-label">Cancelar</span>
+                                <button wire:click="mountAction('cancelarOrden', {ordenId: {{ $lo->id }}})" wire:loading.attr="disabled" wire:target="mountAction" class="mm-btn mm-btn--cancelar mm-btn--sm">
+                                    <x-heroicon-m-x-mark class="mm-btn-icon" /><span class="mm-btn-label">Cancelar</span>
                                 </button>
                                 @endcan
                             @endif
@@ -202,18 +171,18 @@
                 <p class="mm-empty-sub">Crea una nueva orden delivery con el botón de arriba.</p>
             </div>
         @else
-            <div class="mm-llevar-list">
+            <div class="mm-ord-grid">
                 @foreach($deliveryOrdens as $do)
                     @php
-                        $minutos    = (int) $do->created_at->diffInMinutes(now());
-                        $horas      = intdiv($minutos, 60);
-                        $mins       = $minutos % 60;
-                        $tiempoStr  = $horas > 0 ? "{$horas}h {$mins}m" : "{$minutos}m";
-                        $doCobrado  = $do->venta_id !== null;
-                        $doEstado   = $do->estado instanceof \App\Enums\EstadoOrden ? $do->estado->value : $do->estado;
-                        $doEnPrep   = in_array($doEstado, ['pendiente_pago', 'en_preparacion']);
-                        // Nombre repartidor: usuario registrado o de notas_internas
-                        $repNombre  = null;
+                        $minutos   = (int) $do->created_at->diffInMinutes(now());
+                        $horas     = intdiv($minutos, 60);
+                        $mins      = $minutos % 60;
+                        $tiempoStr = $horas > 0 ? "{$horas}h {$mins}m" : "{$minutos}m";
+                        $doCobrado = $do->venta_id !== null;
+                        $doEstado  = $do->estado instanceof \App\Enums\EstadoOrden ? $do->estado->value : $do->estado;
+                        $doEnPrep  = in_array($doEstado, ['pendiente_pago', 'en_preparacion']);
+                        $urgencia  = $minutos >= 30 ? 'urgente' : ($minutos >= 15 ? 'alerta' : 'normal');
+                        $repNombre = null;
                         if ($do->repartidor) {
                             $repNombre = $do->repartidor->name;
                         } elseif ($do->notas_internas) {
@@ -221,127 +190,90 @@
                             $repNombre = $ni['repartidor'] ?? null;
                         }
                     @endphp
-                    <div class="mm-llevar-card mm-llevar-card--delivery">
-                        <div class="mm-llevar-card-icon mm-llevar-card-icon--delivery">
-                            <x-heroicon-o-truck style="width:1.5rem;height:1.5rem;" />
-                        </div>
-                        <div class="mm-llevar-card-info">
-                            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
-                                <span class="mm-llevar-card-nombre">{{ $do->cliente_nombre ?: 'Sin nombre' }}</span>
-                                <span class="mm-ord-badge mm-ord-badge--{{ $doEstado }}">
-                                    {{ $do->estado instanceof \App\Enums\EstadoOrden ? $do->estado->getLabel() : $doEstado }}
-                                    @if($doCobrado) · Pagado @endif
-                                </span>
-                            </div>
-                            <span class="mm-llevar-card-meta">
-                                #{{ $do->codigo }} · {{ $do->created_at->format('d/m H:i') }} · {{ $tiempoStr }}
-                                @if($do->total > 0) · S/ {{ number_format($do->total, 2) }} @endif
+                    <div class="mm-ord-card mm-ord-card--delivery mm-ord-card--{{ $urgencia }}{{ $loop->first ? ' mm-ord-card--primero' : '' }}{{ $doEstado === 'en_preparacion' ? ' mm-ord-card--en-prep mm-ord-card--en-prep-delivery' : '' }}">
+                        <div class="mm-ord-top">
+                            <span class="mm-ord-pos mm-ord-pos--delivery">{{ $loop->iteration }}</span>
+                            <span class="mm-ord-tiempo mm-ord-tiempo--{{ $urgencia }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mm-ord-clock"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                {{ $tiempoStr }}
                             </span>
-                            @if($do->cliente_telefono || $do->cliente_direccion)
-                                <span class="mm-llevar-card-meta">
-                                    @if($do->cliente_telefono)
-                                        <x-heroicon-m-phone style="width:.75rem;height:.75rem;display:inline;vertical-align:middle;" />
-                                        {{ $do->cliente_telefono }}
-                                    @endif
-                                    @if($do->cliente_direccion)
-                                        @if($do->cliente_telefono) · @endif
-                                        <x-heroicon-m-map-pin style="width:.75rem;height:.75rem;display:inline;vertical-align:middle;" />
-                                        {{ $do->cliente_direccion }}
-                                    @endif
-                                </span>
-                            @endif
-                            @if($repNombre)
-                                <span class="mm-llevar-card-rep">
-                                    <x-heroicon-m-user style="width:.75rem;height:.75rem;display:inline;vertical-align:middle;" />
-                                    {{ $repNombre }}
-                                </span>
-                            @endif
                         </div>
-                        <div class="mm-llevar-card-actions">
-                            {{-- Ver pedido --}}
+                        <div class="mm-ord-body">
+                            <div class="mm-ord-icon mm-ord-icon--delivery">
+                                <x-heroicon-o-truck style="width:1.1rem;height:1.1rem;" />
+                            </div>
+                            <span class="mm-ord-nombre">{{ $do->cliente_nombre ?: 'Sin nombre' }}</span>
+                        </div>
+                        <div class="mm-ord-meta">
+                            <span class="mm-ord-codigo">#{{ $do->codigo }}</span>
+                            <span>{{ $do->created_at->format('H:i') }}</span>
+                            @if($do->total > 0)<span class="mm-ord-total">S/ {{ number_format($do->total, 2) }}</span>@endif
+                        </div>
+                        @if($do->cliente_telefono || $do->cliente_direccion || $repNombre)
+                            <div class="mm-ord-extra">
+                                @if($do->cliente_telefono)
+                                    <span class="mm-ord-extra-row">
+                                        <x-heroicon-m-phone style="width:.7rem;height:.7rem;flex-shrink:0;" />
+                                        {{ $do->cliente_telefono }}
+                                    </span>
+                                @endif
+                                @if($do->cliente_direccion)
+                                    <span class="mm-ord-extra-row">
+                                        <x-heroicon-m-map-pin style="width:.7rem;height:.7rem;flex-shrink:0;" />
+                                        {{ $do->cliente_direccion }}
+                                    </span>
+                                @endif
+                                @if($repNombre)
+                                    <span class="mm-ord-extra-row">
+                                        <x-heroicon-m-user style="width:.7rem;height:.7rem;flex-shrink:0;" />
+                                        {{ $repNombre }}
+                                    </span>
+                                @endif
+                            </div>
+                        @endif
+                        <span class="mm-ord-badge mm-ord-badge--{{ $doEstado }}">
+                            {{ $do->estado instanceof \App\Enums\EstadoOrden ? $do->estado->getLabel() : $doEstado }}
+                            @if($doCobrado) · Pagado @endif
+                        </span>
+                        <div class="mm-ord-actions">
                             @can('restaurante.pedido.editar')
                             @if($doCobrado)
-                            {{-- Pagado: abrir modal detalle --}}
-                            <button
-                                wire:click="abrirDetalleOrden({{ $do->id }})"
-                                class="mm-btn mm-btn--ver mm-btn--sm"
-                            >
-                                <x-heroicon-m-clipboard-document-list class="mm-btn-icon" />
-                                <span class="mm-btn-label">Ver</span>
+                            <button wire:click="abrirDetalleOrden({{ $do->id }})" class="mm-btn mm-btn--ver mm-btn--sm">
+                                <x-heroicon-m-clipboard-document-list class="mm-btn-icon" /><span class="mm-btn-label">Ver</span>
                             </button>
                             @else
-                            {{-- No pagado: ir a editar --}}
-                            <a
-                                href="{{ \App\Filament\Pdv\Resources\OrdenRest\OrdenRestResource::getUrl('edit', ['record' => $do->id], tenant: filament()->getTenant()) }}"
-                                class="mm-btn mm-btn--ver mm-btn--sm"
-                                wire:navigate
-                            >
-                                <x-heroicon-m-clipboard-document-list class="mm-btn-icon" />
-                                <span class="mm-btn-label">Ver</span>
+                            <a href="{{ \App\Filament\Pdv\Resources\OrdenRest\OrdenRestResource::getUrl('edit', ['record' => $do->id], tenant: filament()->getTenant()) }}" class="mm-btn mm-btn--ver mm-btn--sm" wire:navigate>
+                                <x-heroicon-m-clipboard-document-list class="mm-btn-icon" /><span class="mm-btn-label">Ver</span>
                             </a>
                             @endif
                             @endcan
-
-                            {{-- En camino: cuando está en preparación (con o sin venta) --}}
                             @if($doEnPrep)
                                 @can('restaurante.pedido.editar')
-                                <button
-                                    wire:click="marcarEnCamino({{ $do->id }})"
-                                    wire:loading.attr="disabled"
-                                    wire:target="marcarEnCamino({{ $do->id }})"
-                                    class="mm-btn mm-btn--encamino mm-btn--sm"
-                                >
-                                    <x-heroicon-m-truck class="mm-btn-icon" />
-                                    <span class="mm-btn-label">En camino</span>
+                                <button wire:click="marcarEnCamino({{ $do->id }})" wire:loading.attr="disabled" wire:target="marcarEnCamino({{ $do->id }})" class="mm-btn mm-btn--encamino mm-btn--sm">
+                                    <x-heroicon-m-truck class="mm-btn-icon" /><span class="mm-btn-label">En camino</span>
                                 </button>
                                 @endcan
                             @endif
-
                             @if($doCobrado)
-                                {{-- Entregar + Cancelar pagado --}}
                                 @can('restaurante.pedido.editar')
-                                <button
-                                    wire:click="marcarEntregado({{ $do->id }})"
-                                    wire:loading.attr="disabled"
-                                    wire:target="marcarEntregado({{ $do->id }})"
-                                    class="mm-btn mm-btn--abrir mm-btn--sm"
-                                >
-                                    <x-heroicon-m-check-circle class="mm-btn-icon" />
-                                    <span class="mm-btn-label">Entregar</span>
+                                <button wire:click="marcarEntregado({{ $do->id }})" wire:loading.attr="disabled" wire:target="marcarEntregado({{ $do->id }})" class="mm-btn mm-btn--abrir mm-btn--sm">
+                                    <x-heroicon-m-check-circle class="mm-btn-icon" /><span class="mm-btn-label">Entregar</span>
                                 </button>
                                 @endcan
                                 @can('restaurante.pedido.eliminar')
-                                <button
-                                    wire:click="mountAction('cancelarOrdenPagada', {ordenId: {{ $do->id }}})"
-                                    wire:loading.attr="disabled"
-                                    wire:target="mountAction"
-                                    class="mm-btn mm-btn--cancelar mm-btn--sm"
-                                >
-                                    <x-heroicon-m-x-mark class="mm-btn-icon" />
-                                    <span class="mm-btn-label">Cancelar</span>
+                                <button wire:click="mountAction('cancelarOrdenPagada', {ordenId: {{ $do->id }}})" wire:loading.attr="disabled" wire:target="mountAction" class="mm-btn mm-btn--cancelar mm-btn--sm">
+                                    <x-heroicon-m-x-mark class="mm-btn-icon" /><span class="mm-btn-label">Cancelar</span>
                                 </button>
                                 @endcan
                             @else
-                                {{-- Cobrar y cancelar: solo si no hay venta --}}
                                 @can('restaurante.pedido.cobrar')
-                                <a
-                                    href="{{ \App\Filament\Pdv\Resources\OrdenRest\OrdenRestResource::getUrl('cobrar', ['record' => $do->id], tenant: filament()->getTenant()) }}"
-                                    class="mm-btn mm-btn--pagar mm-btn--sm"
-                                    wire:navigate
-                                >
-                                    <x-heroicon-m-banknotes class="mm-btn-icon" />
-                                    <span class="mm-btn-label">Cobrar</span>
+                                <a href="{{ \App\Filament\Pdv\Resources\OrdenRest\OrdenRestResource::getUrl('cobrar', ['record' => $do->id], tenant: filament()->getTenant()) }}" class="mm-btn mm-btn--pagar mm-btn--sm" wire:navigate>
+                                    <x-heroicon-m-banknotes class="mm-btn-icon" /><span class="mm-btn-label">Cobrar</span>
                                 </a>
                                 @endcan
                                 @can('restaurante.pedido.eliminar')
-                                <button
-                                    wire:click="mountAction('cancelarOrden', {ordenId: {{ $do->id }}})"
-                                    wire:loading.attr="disabled"
-                                    wire:target="mountAction"
-                                    class="mm-btn mm-btn--cancelar mm-btn--sm"
-                                >
-                                    <x-heroicon-m-x-mark class="mm-btn-icon" />
-                                    <span class="mm-btn-label">Cancelar</span>
+                                <button wire:click="mountAction('cancelarOrden', {ordenId: {{ $do->id }}})" wire:loading.attr="disabled" wire:target="mountAction" class="mm-btn mm-btn--cancelar mm-btn--sm">
+                                    <x-heroicon-m-x-mark class="mm-btn-icon" /><span class="mm-btn-label">Cancelar</span>
                                 </button>
                                 @endcan
                             @endif

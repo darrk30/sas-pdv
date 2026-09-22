@@ -13,22 +13,21 @@ use App\Models\Empresa;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class EmpresaResource extends Resource
 {
     protected static ?string $model = Empresa::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-building-office-2';
+    protected static ?string $navigationLabel               = 'Empresas';
+    protected static ?string $modelLabel                    = 'Empresa';
+    protected static ?string $pluralModelLabel              = 'Empresas';
+    protected static string|UnitEnum|null $navigationGroup  = 'Empresas';
+    protected static ?int    $navigationSort                = 1;
 
-    protected static ?string $recordTitleAttribute = 'Empresa';
-
-    public static function canAccess(): bool              { return auth()->user()?->can('admin.empresas') ?? false; }
-    public static function canCreate(): bool              { return auth()->user()?->can('admin.empresas') ?? false; }
-    public static function canEdit(Model $record): bool   { return auth()->user()?->can('admin.empresas') ?? false; }
-    public static function canDelete(Model $record): bool { return auth()->user()?->can('admin.empresas') ?? false; }
+    protected static ?string $recordTitleAttribute = 'nombre';
 
     public static function form(Schema $schema): Schema
     {

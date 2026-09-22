@@ -147,6 +147,7 @@ class PdvPanelProvider extends PanelProvider
                 Css::make('pdv-despacho',          asset('css/despacho.css')),
                 Css::make('pdv-venta-detalle',     asset('css/venta-detalle-modal.css')),
                 Css::make('pdv-cuentas-cobrar',    asset('css/cuentas-por-cobrar.css')),
+                Css::make('pdv-editar-venta',      asset('css/editar-venta.css')),
                 Css::make('pdv-dashboard-widgets', asset('css/pdv-dashboard-widgets.css')),
             ])
             ->tenantMiddleware([

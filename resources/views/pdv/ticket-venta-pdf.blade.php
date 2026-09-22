@@ -28,7 +28,7 @@ body {
 .comp-num  { font-size: 10pt; font-weight: bold; }
 
 /* ── Separador ────────────────────────────────── */
-.sep { border-top: 0.4pt solid #000; margin: 2mm 0; }
+.sep { border-top: 0.4pt dashed #888; margin: 2mm 0; }
 
 /* ── Datos ────────────────────────────────────── */
 .datos { font-size: 8.5pt; margin: 1mm 0; }
@@ -38,7 +38,7 @@ body {
 
 /* ── Tabla ítems ──────────────────────────────── */
 .items { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin: 1mm 0; }
-.items thead tr { border-bottom: 0.4pt solid #000; }
+.items thead tr { border-bottom: 0.4pt dashed #888; }
 .items th {
     font-weight: bold; font-size: 8pt; text-transform: uppercase;
     text-align: left; padding: 0 0.5mm 1.5mm;
@@ -69,8 +69,8 @@ body {
 /* ── QR + FE data ─────────────────────────────── */
 .fe-wrap { width: 100%; border-collapse: collapse; margin: 1.5mm 0; }
 .fe-wrap td { vertical-align: top; padding: 0; }
-.fe-qr { width: 32mm; }
-.fe-qr img { width: 30mm; height: 30mm; display: block; }
+.fe-qr { width: 22mm; }
+.fe-qr img { width: 20mm; height: 20mm; display: block; }
 .fe-data { font-size: 7.5pt; line-height: 1.5; padding-left: 2mm; }
 .fe-hash { font-size: 6.5pt; color: #444; word-break: break-all; margin-bottom: 1mm; }
 
@@ -100,14 +100,32 @@ body {
     $condicion   = ((float)($venta->saldo_pendiente ?? 0) > 0) ? 'CRÉDITO' : 'CONTADO';
 
     $clienteNombre  = $venta->cliente_nombre ?: ($venta->cliente?->razon_social ?? $venta->cliente?->nombre ?? 'PUBLICO EN GENERAL');
-    $clienteDoc     = $venta->cliente_num_doc ?: ($venta->cliente?->numero_documento ?? '00000000');
-    $clienteTipoDoc = strtoupper($venta->cliente_tipo_doc ?? $venta->cliente?->tipo_documento ?? 'DNI');
-    $clienteTel     = $venta->cliente?->telefono ?? null;
-    $clienteDir     = $venta->cliente?->direccion ?? null;
+    $clienteDoc     = $venta->cliente_num_doc ?: ($venta->cliente?->numero_documento ?? '-');
+    $clienteTipoDocRaw = strtoupper($venta->cliente_tipo_doc ?? $venta->cliente?->tipo_documento?->value ?? '-');
+    $clienteTipoDocLabel = match($clienteTipoDocRaw) {
+        'RUC'  => 'RUC',
+        'DNI'  => 'DNI',
+        default => 'DNI',
+    };
     $fechaEmision   = $venta->fecha_emision?->format('d/m/Y H:i') ?? $venta->created_at->format('d/m/Y H:i');
     $cajero         = $venta->sesionCaja?->cajero?->name ?? null;
 
+    $orden       = $venta->relationLoaded('orden') ? $venta->orden : null;
+    $ordenNumero = $orden?->numero ? 'ORD-' . (int) $orden->numero : null;
+    $tipoAtencionLabel = match($venta->tipo ?? '') {
+        'llevar'      => 'LLEVAR',
+        'delivery'    => 'DELIVERY',
+        'restaurante' => 'MESA',
+        default       => null,
+    };
+    $vendedorOrden     = $orden?->vendedor;
+    $responsableNombre = $vendedorOrden?->name ?? $cajero;
+    $responsableRol    = $vendedorOrden?->roles?->first()?->name ?? null;
+    $ordenDir = $orden?->cliente_direccion ?: ($venta->cliente?->direccion ?? null);
+    $ordenTel = $orden?->cliente_telefono  ?: ($venta->cliente?->telefono  ?? null);
+
     $logoPath = $empresa->logo ? public_path('storage/'.$empresa->logo) : null;
+    $logoTukipu = public_path('img/logotukipu.webp');
     $qrBase64 = $qrBase64 ?? null;
 @endphp
 
@@ -146,17 +164,14 @@ body {
 {{-- ══ DATOS ══ --}}
 <div class="datos">
 <table>
-    @if($cajero)
-    <tr><td class="lbl">CAJERO:</td><td>{{ $cajero }}</td></tr>
-    @endif
     <tr><td class="lbl">FECHA DE EMISION:</td><td>{{ $fechaEmision }}</td></tr>
     <tr><td class="lbl">CLIENTE:</td><td>{{ $clienteNombre }}</td></tr>
-    <tr><td class="lbl">{{ $clienteTipoDoc }}:</td><td>{{ $clienteDoc }}</td></tr>
-    @if($clienteTel)
-    <tr><td class="lbl">TELEFONO:</td><td>{{ $clienteTel }}</td></tr>
+    <tr><td class="lbl">{{ $clienteTipoDocLabel }}:</td><td>{{ $clienteDoc }}</td></tr>
+    @if($ordenDir)
+    <tr><td class="lbl">Dir.:</td><td>{{ $ordenDir }}</td></tr>
     @endif
-    @if($clienteDir)
-    <tr><td class="lbl">DIRECCION:</td><td>{{ $clienteDir }}</td></tr>
+    @if($ordenTel)
+    <tr><td class="lbl">Telf.:</td><td>{{ $ordenTel }}</td></tr>
     @endif
 </table>
 </div>
@@ -225,7 +240,7 @@ body {
             <strong>CÓDIGO HASH:</strong><br>
             <div class="fe-hash">{{ $venta->hash }}</div>
             @endif
-            <strong style="font-size:7pt">MÉTODOS DE PAGO</strong><br>
+            <strong style="font-size:7pt">FORMAS DE PAGO</strong><br>
             @foreach($pagos as $pago)
             {{ strtoupper($pago->metodoPago?->nombre ?? 'EFECTIVO') }}: S/ {{ number_format($pago->monto,2) }}<br>
             @endforeach
@@ -236,7 +251,7 @@ body {
 @else
 @if($pagos->isNotEmpty())
 <div class="pagos">
-<div style="font-size:7pt;font-weight:bold;text-transform:uppercase;letter-spacing:.04em;color:#555;margin-bottom:1mm">Métodos de pago</div>
+<div style="font-size:7pt;font-weight:bold;text-transform:uppercase;letter-spacing:.04em;color:#555;margin-bottom:1mm">Formas de pago</div>
 <table>
     @foreach($pagos as $pago)
     <tr>
@@ -255,6 +270,26 @@ body {
 @endif
 @endif
 
+{{-- ══ PEDIDO / ATENCIÓN / CAJERO / RESPONSABLE ══ --}}
+@if($ordenNumero || $tipoAtencionLabel || $responsableNombre)
+<div class="datos" style="margin-top:1mm;">
+<table>
+    @if($ordenNumero)
+    <tr><td class="lbl">PEDIDO:</td><td>{{ $ordenNumero }}</td></tr>
+    @endif
+    @if($tipoAtencionLabel)
+    <tr><td class="lbl">ATENCIÓN:</td><td>{{ $tipoAtencionLabel }} - CAJA</td></tr>
+    @endif
+    @if($responsableNombre)
+    <tr>
+        <td class="lbl">{{ $responsableRol ? strtoupper($responsableRol) : 'CAJERO' }}:</td>
+        <td>{{ $responsableNombre }}</td>
+    </tr>
+    @endif
+</table>
+</div>
+@endif
+
 <div class="sep"></div>
 
 {{-- ══ PIE ══ --}}
@@ -267,6 +302,14 @@ body {
     <div class="no-comp">Este documento NO constituye un comprobante de pago electrónico.</div>
     @endif
     <div class="footer-gracias">GRACIAS POR SU PREFERENCIA</div>
+
+    {{-- Branding Tukipu --}}
+    <div style="margin-top:3mm;padding-top:1.5mm;border-top:0.4pt dashed #ccc;text-align:center;">
+        @if(file_exists($logoTukipu))
+        <img src="{{ $logoTukipu }}" alt="Tukipu" style="height:4mm;display:block;margin:0 auto .8mm;opacity:.65;">
+        @endif
+        <span style="font-size:6.5pt;color:#888;">© {{ date('Y') }}. Tukipu — Sistema de Gestión</span>
+    </div>
 </div>
 
 </div>{{-- /wrapper padding --}}

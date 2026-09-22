@@ -344,7 +344,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->color('danger')
                     ->formatStateUsing(fn ($state): string => (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—')
                     ->tooltip('Monto aún no pagado de esta venta')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('estado')
                     ->label('Estado')
@@ -388,7 +388,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                             : '—'
                     )
                     ->color('gray')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('sunat_descripcion')
                     ->label('Desc. SUNAT')
@@ -511,6 +511,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                 ]),
             ])
             ->toolbarActions($this->accionesExportacion())
+            ->recordClasses(fn (Venta $r): string => (float) $r->saldo_pendiente > 0 ? 'bg-red-50 dark:bg-red-950/20' : '')
             ->paginated([25, 50, 100])
             ->emptyStateHeading('Sin ventas')
             ->emptyStateIcon('heroicon-o-receipt-percent');

@@ -2,6 +2,8 @@
    venta-detalle-modal.css — modal de detalle de venta (compartido)
    ============================================================ */
 
+[x-cloak] { display: none !important; }
+
 .vdm-overlay {
     position: fixed;
     inset: 0;

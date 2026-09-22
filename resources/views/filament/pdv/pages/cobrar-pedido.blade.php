@@ -188,6 +188,14 @@
 
                 <div class="cobrar-divider"></div>
 
+                {{-- Aviso: cliente requerido cuando se usa crédito --}}
+                @if($tipoComprobante === 'ticket' && $metodoActual?->condicion_pago === \App\Enums\CondicionPago::Credito && ! $clienteId)
+                <div style="display:flex;align-items:center;gap:.5rem;background:#fef3c7;border:1px solid #fcd34d;border-radius:.5rem;padding:.5rem .75rem;margin-bottom:.5rem;font-size:.78rem;color:#92400e;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1rem;height:1rem;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+                    <span>Para crédito debes seleccionar un cliente con DNI o RUC</span>
+                </div>
+                @endif
+
                 {{-- ── Pago ── --}}
                 <p class="cobrar-sec-title" style="margin-top:.75rem;">Método de pago</p>
 
@@ -195,6 +203,10 @@
                 <div class="cobrar-pago-row">
                     <select wire:model.live="metodoPagoId" class="pdv-form-input cobrar-pago-metodo">
                         @foreach($metodos as $m)
+                            {{-- Solo mostrar métodos de crédito cuando el comprobante sea ticket --}}
+                            @if($tipoComprobante !== 'ticket' && $m->condicion_pago === \App\Enums\CondicionPago::Credito)
+                                @continue
+                            @endif
                             <option value="{{ $m->id }}">{{ $m->nombre }}</option>
                         @endforeach
                     </select>
@@ -225,12 +237,40 @@
                 </div>
                 @endif
 
+                {{-- Fecha de vencimiento: opcional, solo cuando el método es crédito y el comprobante es ticket --}}
+                @if($tipoComprobante === 'ticket' && $metodoActual?->condicion_pago === \App\Enums\CondicionPago::Credito)
+                <div style="margin-top:.5rem;">
+                    <x-filament::input.wrapper
+                        label="Fecha de vencimiento"
+                        :prefix-icon="'heroicon-o-calendar-days'"
+                        style="--prefix-icon-size: .9rem;"
+                    >
+                        <x-filament::input
+                            type="date"
+                            wire:model.live="fechaVencimientoCredito"
+                            :min="now()->addDay()->toDateString()"
+                        />
+                    </x-filament::input.wrapper>
+                    @if($fechaVencimientoCredito)
+                    <p class="fi-fo-field-wrp-helper-text text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Vence {{ \Carbon\Carbon::parse($fechaVencimientoCredito)->format('d/m/Y') }}
+                        ({{ \Carbon\Carbon::parse($fechaVencimientoCredito)->diffForHumans() }})
+                    </p>
+                    @endif
+                </div>
+                @endif
+
                 {{-- Pagos agregados DEBAJO del input --}}
                 @if(! empty($pagosAgregados))
                 <div class="cobrar-pagos-lista">
                     @foreach($pagosAgregados as $i => $pago)
                     <div class="cobrar-pago-item">
-                        <span class="cobrar-pago-item__nombre">{{ $pago['nombre'] }}</span>
+                        <span class="cobrar-pago-item__nombre">
+                            {{ $pago['nombre'] }}
+                            @if(($pago['condicion_pago'] ?? 'contado') === 'credito')
+                                <span style="font-size:.65rem;background:#fef3c7;color:#92400e;padding:.1rem .35rem;border-radius:.25rem;margin-left:.3rem;font-weight:600;">CRÉDITO</span>
+                            @endif
+                        </span>
                         <span class="cobrar-pago-item__monto">S/ {{ number_format($pago['monto'], 2) }}</span>
                         <button wire:click="eliminarPago({{ $i }})" class="cobrar-pago-del" title="Eliminar">×</button>
                     </div>

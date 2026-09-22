@@ -240,7 +240,11 @@ class ReporteGananciasExportService
                     $sheet->getStyle("{$col}{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 }
             }
-            if ($isAlt) {
+            if ((float) $venta->saldo_pendiente > 0) {
+                $sheet->getStyle("A{$row}:{$lastCol}{$row}")
+                    ->getFill()->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()->setARGB('FEE2E2');
+            } elseif ($isAlt) {
                 $sheet->getStyle("A{$row}:{$lastCol}{$row}")
                     ->getFill()->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setARGB($colorAlt);
@@ -333,7 +337,7 @@ class ReporteGananciasExportService
         $usuarioNombre = auth()->user()?->name ?? 'Sistema';
 
         $rows = $ventas->map(function (Venta $v) use ($activeColumns): array {
-            $row = [];
+            $row = ['_saldo_pendiente' => (float) $v->saldo_pendiente];
             foreach (array_keys($activeColumns) as $key) {
                 $row[$key] = $this->valor($v, $key);
             }

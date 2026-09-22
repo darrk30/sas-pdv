@@ -346,6 +346,147 @@ html.dark .mm-llevar-card-icon--delivery { background: #1e1b4b; color: #a5b4fc; 
 
 .mm-llevar-card-rep { font-size: .75rem; color: var(--mm-muted); font-weight: 500; margin-top: .1rem; }
 
+/* ── Grid de órdenes (llevar + delivery) ─────────────────────── */
+.mm-ord-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.mm-ord-card {
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+    background: var(--mm-surface);
+    border: 1.5px solid var(--mm-border);
+    border-radius: 1rem;
+    padding: .875rem .875rem .875rem 1.2rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    position: relative;
+    overflow: hidden;
+}
+.mm-ord-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--mm-border);
+}
+.mm-ord-card--llevar::before   { background: #f59e0b; }
+.mm-ord-card--delivery::before { background: #6366f1; }
+
+.mm-ord-card--alerta  { border-color: #fcd34d; }
+.mm-ord-card--urgente { border-color: #f87171; box-shadow: 0 0 0 3px rgba(248,113,113,.13), 0 1px 4px rgba(0,0,0,.06); }
+
+.mm-ord-card--primero { box-shadow: 0 4px 18px rgba(0,0,0,.1); }
+.mm-ord-card--primero.mm-ord-card--llevar::before   { background: linear-gradient(180deg, #f59e0b, #ef4444); }
+.mm-ord-card--primero.mm-ord-card--delivery::before { background: linear-gradient(180deg, #6366f1, #06b6d4); }
+
+html.dark .mm-ord-card { border-color: #334155; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+html.dark .mm-ord-card--alerta  { border-color: #92400e; }
+html.dark .mm-ord-card--urgente { border-color: #991b1b; box-shadow: 0 0 0 3px rgba(153,27,27,.2), 0 1px 4px rgba(0,0,0,.3); }
+
+/* top: posición + tiempo */
+.mm-ord-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+}
+.mm-ord-pos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.6rem;
+    height: 1.6rem;
+    padding: 0 .3rem;
+    border-radius: .45rem;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: .72rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+    letter-spacing: -.01em;
+}
+html.dark .mm-ord-pos { background: #78350f; color: #fde68a; }
+.mm-ord-pos--delivery { background: #e0e7ff; color: #3730a3; }
+html.dark .mm-ord-pos--delivery { background: #1e1b4b; color: #a5b4fc; }
+
+.mm-ord-tiempo {
+    display: inline-flex;
+    align-items: center;
+    gap: .2rem;
+    font-size: .7rem;
+    font-weight: 600;
+    color: var(--mm-muted);
+    font-variant-numeric: tabular-nums;
+}
+.mm-ord-clock { width: .7rem; height: .7rem; flex-shrink: 0; }
+.mm-ord-tiempo--normal  { color: #16a34a; }
+.mm-ord-tiempo--alerta  { color: #d97706; }
+.mm-ord-tiempo--urgente { color: #dc2626; }
+html.dark .mm-ord-tiempo--normal  { color: #4ade80; }
+html.dark .mm-ord-tiempo--alerta  { color: #fbbf24; }
+html.dark .mm-ord-tiempo--urgente { color: #f87171; }
+
+/* body: icono + nombre */
+.mm-ord-body { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.mm-ord-icon {
+    display: flex; align-items: center; justify-content: center;
+    width: 1.9rem; height: 1.9rem; border-radius: .55rem;
+    background: #fef3c7; color: #d97706; flex-shrink: 0;
+}
+html.dark .mm-ord-icon { background: #78350f; color: #fde68a; }
+.mm-ord-icon--delivery { background: #e0e7ff; color: #4f46e5; }
+html.dark .mm-ord-icon--delivery { background: #1e1b4b; color: #a5b4fc; }
+.mm-ord-nombre { font-size: .875rem; font-weight: 700; color: var(--mm-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* meta */
+.mm-ord-meta {
+    display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
+    font-size: .7rem; color: var(--mm-muted); font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+.mm-ord-codigo { font-weight: 700; color: var(--mm-text); }
+.mm-ord-total  { font-weight: 700; color: var(--mm-text); margin-left: auto; }
+
+/* extra (delivery) */
+.mm-ord-extra { display: flex; flex-direction: column; gap: .2rem; }
+.mm-ord-extra-row {
+    display: flex; align-items: flex-start; gap: .3rem;
+    font-size: .7rem; color: var(--mm-muted); font-weight: 500; line-height: 1.35;
+}
+
+/* acciones */
+.mm-ord-actions {
+    display: flex; flex-wrap: wrap; gap: .35rem;
+    margin-top: auto; padding-top: .45rem;
+    border-top: 1px solid var(--mm-border);
+}
+html.dark .mm-ord-actions { border-top-color: #334155; }
+
+/* pulso para cartas en preparación */
+@keyframes mm-latir-llevar {
+    0%   { box-shadow: 0 0 0 0   rgba(245,158,11,.5); }
+    65%  { box-shadow: 0 0 0 10px rgba(245,158,11,.0); }
+    100% { box-shadow: 0 0 0 0   rgba(245,158,11,.0); }
+}
+@keyframes mm-latir-delivery {
+    0%   { box-shadow: 0 0 0 0   rgba(99,102,241,.5); }
+    65%  { box-shadow: 0 0 0 10px rgba(99,102,241,.0); }
+    100% { box-shadow: 0 0 0 0   rgba(99,102,241,.0); }
+}
+.mm-ord-card--en-prep {
+    animation: mm-latir-llevar 2s ease-out infinite;
+}
+.mm-ord-card--en-prep-delivery {
+    animation: mm-latir-delivery 2s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    .mm-ord-card--en-prep, .mm-ord-card--en-prep-delivery { animation: none; }
+}
+
 /* ── Modal detalle orden pagada ─────────────────────────────── */
 .mm-detalle-wrap {
     position: fixed; inset: 0; z-index: 9000;
@@ -508,4 +649,7 @@ html.dark .mm-comanda-chip--quitar { background: #450a0a; color: #fca5a5; }
     .mm-card-body { padding: .9rem .85rem .85rem; }
     .mm-llevar-card { flex-wrap: wrap; }
     .mm-llevar-card-actions { width: 100%; justify-content: flex-end; }
+    .mm-ord-grid { grid-template-columns: 1fr 1fr; gap: .65rem; }
+    .mm-ord-card { padding: .75rem .75rem .75rem 1rem; }
+    .mm-ord-nombre { font-size: .82rem; }
 }

@@ -1,4 +1,27 @@
-﻿<!DOCTYPE html>
+﻿@php
+  use App\Models\AppSetting;
+  use Illuminate\Support\Facades\Storage;
+
+  $cfg_nombre    = AppSetting::get('nombre',    'TUKIPU');
+  $cfg_slogan    = AppSetting::get('slogan');
+  $cfg_email     = AppSetting::get('email',     'hola@tukipu.com');
+  $cfg_telefono  = AppSetting::get('telefono');
+  $cfg_whatsapp  = AppSetting::get('whatsapp',  '51942407799');
+  $cfg_web       = AppSetting::get('web');
+  $cfg_facebook  = AppSetting::get('facebook');
+  $cfg_instagram = AppSetting::get('instagram');
+  $cfg_youtube   = AppSetting::get('youtube');
+  $cfg_linkedin  = AppSetting::get('linkedin');
+  $cfg_tiktok    = AppSetting::get('tiktok');
+  $cfg_twitter   = AppSetting::get('twitter');
+
+  $cfg_logoPath  = AppSetting::get('logo');
+  $cfg_logoUrl   = $cfg_logoPath ? Storage::disk('public')->url($cfg_logoPath) : asset('img/logotukipu.webp');
+
+  $waNavUrl = 'https://wa.me/' . $cfg_whatsapp . '?text=' . rawurlencode("Hola, quiero solicitar un demo de {$cfg_nombre}");
+  $waFabUrl = 'https://wa.me/' . $cfg_whatsapp . '?text=' . rawurlencode("Hola, quiero más información sobre {$cfg_nombre}");
+@endphp
+<!DOCTYPE html>
 <html lang="es">
 
 <head>
@@ -18,7 +41,7 @@
   <meta property="og:url"         content="{{ url('/') }}">
   <meta property="og:title"       content="TUKIPU — Sistema POS y Tienda Online para negocios en Perú">
   <meta property="og:description" content="Vende, gestiona inventario, emite comprobantes y ten tu tienda online desde S/50/mes. Prueba gratis.">
-  <meta property="og:image"       content="{{ asset('img/logotukipu.webp') }}">
+  <meta property="og:image"       content="{{ $cfg_logoUrl }}">
   <meta property="og:locale"      content="es_PE">
   <meta property="og:site_name"   content="TUKIPU">
 
@@ -26,7 +49,7 @@
   <meta name="twitter:card"        content="summary_large_image">
   <meta name="twitter:title"       content="TUKIPU — Sistema POS y Tienda Online para negocios en Perú">
   <meta name="twitter:description" content="Vende, gestiona inventario, emite comprobantes y ten tu tienda online desde S/50/mes.">
-  <meta name="twitter:image"       content="{{ asset('img/logotukipu.webp') }}">
+  <meta name="twitter:image"       content="{{ $cfg_logoUrl }}">
 
   <!-- Datos estructurados JSON-LD (Google) -->
   @php
@@ -37,10 +60,10 @@
           '@type' => 'Organization',
           'name'  => 'TUKIPU',
           'url'   => url('/'),
-          'logo'  => asset('img/logotukipu.webp'),
+          'logo'  => $cfg_logoUrl,
           'contactPoint' => [
             '@type'             => 'ContactPoint',
-            'telephone'         => '+51942407799',
+            'telephone'         => '+' . ltrim($cfg_whatsapp, '+'),
             'contactType'       => 'sales',
             'areaServed'        => 'PE',
             'availableLanguage' => 'Spanish',
@@ -79,7 +102,7 @@
     <div class="wrap">
       <div class="nav-i">
         <a href="#inicio">
-          <img src="{{ asset('img/logotukipu.webp') }}" alt="TUKIPU" style="height:38px;width:auto;display:block">
+          <img src="{{ $cfg_logoUrl }}" alt="{{ $cfg_nombre }}" style="height:38px;width:auto;display:block">
         </a>
         <ul class="nav-links">
           <li><a href="#caracteristicas">Características</a></li>
@@ -88,7 +111,7 @@
           <li><a href="#planes">Planes</a></li>
         </ul>
         <div class="nav-r">
-          <a href="https://wa.me/51942407799?text=Hola%2C%20quiero%20solicitar%20un%20demo%20de%20TUKIPU" target="_blank" rel="noopener" class="btn btn-or">
+          <a href="{{ $waNavUrl }}" target="_blank" rel="noopener" class="btn btn-or">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
               <path d="M11.999 0C5.373 0 0 5.373 0 12c0 2.117.549 4.099 1.514 5.82L.057 23.455a.5.5 0 0 0 .597.665l5.82-1.514A11.946 11.946 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0h-.001zm.001 21.818a9.818 9.818 0 0 1-5.018-1.374l-.36-.213-3.727.978.978-3.605-.234-.375A9.818 9.818 0 0 1 2.181 12c0-5.422 4.396-9.818 9.818-9.818 5.423 0 9.819 4.396 9.819 9.818 0 5.423-4.396 9.818-9.818 9.818z" />
@@ -115,7 +138,7 @@
       <a href="#industrias" onclick="document.getElementById('mn').classList.remove('open')">Para quién</a>
       <a href="#como-funciona" onclick="document.getElementById('mn').classList.remove('open')">Cómo funciona</a>
       <a href="#planes" onclick="document.getElementById('mn').classList.remove('open')">Planes</a>
-      <a href="https://wa.me/51942407799?text=Hola%2C%20quiero%20solicitar%20un%20demo%20de%20TUKIPU" target="_blank" rel="noopener" class="btn btn-or" style="margin-top:1rem;justify-content:center">Solicita tu demo</a>
+      <a href="{{ $waNavUrl }}" target="_blank" rel="noopener" class="btn btn-or" style="margin-top:1rem;justify-content:center">Solicita tu demo</a>
     </nav>
   </div>
 
@@ -621,168 +644,42 @@
           <h2 class="sec-h">Elige el plan para tu negocio</h2>
           <p class="sec-p" style="margin:0 auto">Todos los planes incluyen PDV, tienda online, inventario y comprobantes. Sin permanencia mínima ni contratos. Cancela cuando quieras.</p>
         </div>
-        @php
-        $planStyles = [
-        ['name_cls' => 'plan-name-s', 'cta_cls' => 'cta-out', 'chk' => 'pf-check-tl'],
-        ['name_cls' => 'plan-name-p', 'cta_cls' => 'cta-solid', 'chk' => 'pf-check-or', 'popular' => true],
-        ['name_cls' => 'plan-name-b', 'cta_cls' => 'cta-out', 'chk' => 'pf-check-tl'],
-        ];
-        @endphp
         <div class="plan-grid">
           @foreach($planes as $plan)
           @php
-          $i = $loop->index;
-          $s = $planStyles[$i] ?? end($planStyles);
-          $popular = $s['popular'] ?? false;
-          $chk = $s['chk'];
-          $waMsg = rawurlencode("Hola, me interesa el plan {$plan->nombre} de TUKIPU");
-          $prevNombre = $loop->first ? null : $planes->get($i - 1)?->nombre;
+          $n      = $loop->iteration;
+          $featured = $n === 2;
           $multiLoc = $plan->maximo_locales > 1;
-          $delay = $i > 0 ? "transition-delay:.{$i}s" : '';
+          $waMsg  = rawurlencode("Hola, me interesa el plan {$plan->nombre} de {$cfg_nombre}");
+          $delay  = $loop->index > 0 ? "transition-delay:.{$loop->index}s" : '';
           @endphp
-          <div class="plan-card{{ $popular ? ' popular' : '' }} fade-up" {{ $delay ? " style=\"{$delay}\"" : '' }}>
-            @if($popular)<div class="plan-badge">Más popular</div>@endif
-            <div class="plan-name {{ $s['name_cls'] }}">{{ $plan->nombre }}</div>
-            <p class="plan-desc">{{ $plan->descripcion }}</p>
+          <div class="plan-card p{{ $n }}{{ $featured ? ' featured' : '' }} fade-up"{{ $delay ? " style=\"{$delay}\"" : '' }}>
+            @if($featured)<div class="plan-badge">Más popular</div>@endif
+
+            <div class="plan-eyebrow">Plan {{ $n }}</div>
+            <div class="plan-name">{{ $plan->nombre }}</div>
+            @if($plan->subtitulo)
+            <p class="plan-subtitle">{{ $plan->subtitulo }}</p>
+            @endif
+
             <div class="plan-price-block">
-              <div class="plan-price-val"><sup>S/</sup>{{ number_format($plan->precio, 0) }}<sub>/mes</sub></div>
-              <div class="plan-price-note">
-                Incluye {{ $plan->maximo_usuarios }} {{ $plan->maximo_usuarios == 1 ? 'usuario' : 'usuarios' }}
-                · {{ $multiLoc ? 'hasta ' . $plan->maximo_locales . ' sucursales' : '1 sucursal' }}
-              </div>
+              <span class="plan-currency">S/</span>
+              <span class="plan-amount">{{ number_format($plan->precio, 0) }}</span>
+              <span class="plan-period">/mes</span>
             </div>
-            <div class="plan-limits">
-              <div class="pl-row">
-                @if($plan->maximo_usuarios > 2)
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                @else
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                </svg>
-                @endif
-                <span><strong>{{ $plan->maximo_usuarios }} {{ $plan->maximo_usuarios == 1 ? 'usuario' : 'usuarios' }}</strong> incluidos</span>
-              </div>
-              <div class="pl-row">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                </svg>
-                @if($multiLoc)
-                <span>Hasta <strong>{{ $plan->maximo_locales }} sucursales</strong></span>
-                @else
-                <span><strong>1 sucursal</strong></span>
-                @endif
-              </div>
+            <div class="plan-price-note">
+              {{ $plan->maximo_usuarios }} {{ $plan->maximo_usuarios == 1 ? 'usuario' : 'usuarios' }}
+              · {{ $multiLoc ? 'hasta ' . $plan->maximo_locales . ' sucursales' : '1 sucursal' }}
             </div>
-            <a href="https://wa.me/51942407799?text={{ $waMsg }}" target="_blank" rel="noopener"
-              class="plan-cta {{ $s['cta_cls'] }}" style="display:block;text-align:center">Solicitar acceso</a>
-            <button class="plan-specs-btn" onclick="togglePlanSpecs(this)" aria-expanded="false">
-              Ver especificaciones
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
-            <div class="plan-specs">
-            <div class="plan-divider">{{ $loop->first ? 'Incluye' : 'Todo lo de ' . $prevNombre . ', más' }}</div>
-            <div class="plan-feat">
-              {{-- Base: todos los planes --}}
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Punto de venta PDV</div>
-              @if($plan->tiene_catalogo_web)
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Tienda online con subdominio propio</div>
-              @endif
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Inventario y control de stock</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>{{ $plan->facturacion_electronica ? 'Boletas, facturas y tickets de venta' : 'Tickets de venta' }}</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Compras y control de proveedores</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Gestión de clientes</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Cierre de caja diario</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Reportes básicos de ventas</div>
-              {{-- Tier variantes: Comerciante y superior --}}
-              @if($plan->tiene_variantes)
-              @if($plan->facturacion_electronica)
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Facturas electrónicas</div>
-              @endif
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Variantes (talla, color, material)</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Promociones y combos</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Pedidos web con estados y notificaciones</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Notas de crédito / débito</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Costeo de productos</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Reportes completos de ventas</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Cuentas por cobrar</div>
-              @else
-              <div class="pf pf-dim"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pf-dim">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>Facturas electrónicas</div>
-              <div class="pf pf-dim"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pf-dim">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>Variantes de producto</div>
-              <div class="pf pf-dim"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pf-dim">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>Promociones y combos</div>
-              @endif
-              {{-- Tier multi-sucursal: Empresario --}}
-              @if($multiLoc)
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Reportes de ganancias y utilidades</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Kardex de inventario</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Múltiples sucursales</div>
-              <div class="pf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="{{ $chk }}">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>Soporte prioritario WhatsApp</div>
-              @elseif($plan->tiene_variantes)
-              <div class="pf pf-dim"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pf-dim">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>Reportes de ganancias y utilidades</div>
-              <div class="pf pf-dim"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pf-dim">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>Múltiples sucursales</div>
-              @endif
+
+            <hr class="plan-hr">
+
+            <div class="plan-feat plan-feat-rich">
+              {!! $plan->descripcion !!}
             </div>
-            </div>{{-- /.plan-specs --}}
+
+            <a href="https://wa.me/{{ $cfg_whatsapp }}?text={{ $waMsg }}" target="_blank" rel="noopener"
+              class="plan-cta">Solicitar acceso</a>
           </div>
           @endforeach
         </div>
@@ -813,7 +710,7 @@
             </div>
           </div>
         </div>
-        <p class="fade-up" style="text-align:center;margin-top:1.5rem;font-size:.84rem;color:var(--ink3)">Todos los planes incluyen soporte estándar vía WhatsApp · <a href="https://wa.me/51942407799" target="_blank" style="color:var(--or);font-weight:600">Contáctanos</a> para consultar la tarifa de implementación</p>
+        <p class="fade-up" style="text-align:center;margin-top:1.5rem;font-size:.84rem;color:var(--ink3)">Todos los planes incluyen soporte estándar vía WhatsApp · <a href="https://wa.me/{{ $cfg_whatsapp }}" target="_blank" style="color:var(--or);font-weight:600">Contáctanos</a> para consultar la tarifa de implementación</p>
       </div>
     </section>
 
@@ -905,7 +802,7 @@
         <h2 class="cta-h">Lleva tu negocio<br>al siguiente nivel</h2>
         <p class="cta-p">Únete a los comercios que ya gestionan ventas en físico y online desde una sola plataforma. Solicita tu acceso hoy.</p>
         <div class="cta-btns">
-          <a href="mailto:hola@tukipu.com" class="btn-grad">
+          <a href="mailto:{{ $cfg_email }}" class="btn-grad">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
@@ -923,9 +820,9 @@
       <div class="foot-grid">
         <div>
           <div class="foot-logo">
-            <img src="{{ asset('img/logotukipu.webp') }}" alt="TUKIPU" style="height:36px;width:auto;display:block">
+            <img src="{{ $cfg_logoUrl }}" alt="{{ $cfg_nombre }}" style="height:36px;width:auto;display:block">
           </div>
-          <p class="foot-tag">Sistema POS y tienda online para comercios minoristas. Conecta lo físico con lo digital.</p>
+          <p class="foot-tag">{{ $cfg_slogan ?: 'Sistema POS y tienda online para comercios minoristas. Conecta lo físico con lo digital.' }}</p>
         </div>
         <div class="foot-col">
           <h3>Producto</h3><a href="#caracteristicas">Características</a><a href="#tienda-online">Tienda online</a><a href="#como-funciona">Cómo funciona</a><a href="#planes">Planes</a>
@@ -934,11 +831,62 @@
           <h3>Para quién</h3><a href="#industrias">Ropa y moda</a><a href="#industrias">Minimarket</a><a href="#industrias">Ferretería</a><a href="#industrias">Cafetería</a>
         </div>
         <div class="foot-col">
-          <h3>Contacto</h3><a href="#cta">Solicitar demo</a><a href="mailto:hola@tukipu.com">hola@tukipu.com</a>
+          <h3>Contacto</h3>
+          @if($cfg_email)<a href="mailto:{{ $cfg_email }}">{{ $cfg_email }}</a>@endif
+          @if($cfg_telefono)<a href="tel:{{ $cfg_telefono }}">{{ $cfg_telefono }}</a>@endif
+
+          {{-- Íconos de redes sociales --}}
+          @php
+            $hasSocial = $cfg_whatsapp || $cfg_facebook || $cfg_instagram || $cfg_tiktok || $cfg_youtube || $cfg_linkedin || $cfg_twitter || $cfg_web;
+          @endphp
+          @if($hasSocial)
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1rem;align-items:center;">
+            @if($cfg_whatsapp)
+            <a href="{{ $waFabUrl }}" target="_blank" rel="noopener" title="WhatsApp" style="color:rgba(255,255,255,.55);transition:color .2s;line-height:0" onmouseover="this.style.color='#25D366'" onmouseout="this.style.color='rgba(255,255,255,.55)'">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            </a>
+            @endif
+            @if($cfg_facebook)
+            <a href="https://facebook.com/{{ $cfg_facebook }}" target="_blank" rel="noopener" title="Facebook" style="color:rgba(255,255,255,.55);transition:color .2s;line-height:0" onmouseover="this.style.color='#1877F2'" onmouseout="this.style.color='rgba(255,255,255,.55)'">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </a>
+            @endif
+            @if($cfg_instagram)
+            <a href="https://instagram.com/{{ ltrim($cfg_instagram,'@') }}" target="_blank" rel="noopener" title="Instagram" style="color:rgba(255,255,255,.55);transition:color .2s;line-height:0" onmouseover="this.style.color='#E4405F'" onmouseout="this.style.color='rgba(255,255,255,.55)'">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+            </a>
+            @endif
+            @if($cfg_tiktok)
+            <a href="https://tiktok.com/@{{ ltrim($cfg_tiktok,'@') }}" target="_blank" rel="noopener" title="TikTok" style="color:rgba(255,255,255,.55);transition:color .2s;line-height:0" onmouseover="this.style.color='#69C9D0'" onmouseout="this.style.color='rgba(255,255,255,.55)'">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.73a4.85 4.85 0 01-1.01-.04z"/></svg>
+            </a>
+            @endif
+            @if($cfg_youtube)
+            <a href="{{ $cfg_youtube }}" target="_blank" rel="noopener" title="YouTube" style="color:rgba(255,255,255,.55);transition:color .2s;line-height:0" onmouseover="this.style.color='#FF0000'" onmouseout="this.style.color='rgba(255,255,255,.55)'">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+            </a>
+            @endif
+            @if($cfg_linkedin)
+            <a href="{{ $cfg_linkedin }}" target="_blank" rel="noopener" title="LinkedIn" style="color:rgba(255,255,255,.55);transition:color .2s;line-height:0" onmouseover="this.style.color='#0A66C2'" onmouseout="this.style.color='rgba(255,255,255,.55)'">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            </a>
+            @endif
+            @if($cfg_twitter)
+            <a href="https://x.com/{{ ltrim($cfg_twitter,'@') }}" target="_blank" rel="noopener" title="Twitter / X" style="color:rgba(255,255,255,.55);transition:color .2s;line-height:0" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='rgba(255,255,255,.55)'">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.763l7.728-8.835L1.254 2.25H8.08l4.259 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </a>
+            @endif
+            @if($cfg_web)
+            <a href="{{ $cfg_web }}" target="_blank" rel="noopener" title="Sitio web" style="color:rgba(255,255,255,.55);transition:color .2s;line-height:0" onmouseover="this.style.color='#0097B5'" onmouseout="this.style.color='rgba(255,255,255,.55)'">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+            </a>
+            @endif
+          </div>
+          @endif
         </div>
       </div>
       <div class="foot-btm">
-        <span>© {{ date('Y') }} TUKIPU. Todos los derechos reservados.</span>
+        <span>© {{ date('Y') }} {{ $cfg_nombre }}. Todos los derechos reservados.</span>
         <span>Hecho con ❤ para el comercio peruano</span>
       </div>
     </div>
@@ -946,7 +894,7 @@
 
   <script src="{{ asset('landing/landing.js') }}" defer></script>
 
-  <a href="https://wa.me/51942407799?text=Hola%2C%20quiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20TUKIPU" target="_blank" rel="noopener" class="wsp-fab" aria-label="Contactar por WhatsApp">
+  <a href="{{ $waFabUrl }}" target="_blank" rel="noopener" class="wsp-fab" aria-label="Contactar por WhatsApp">
     <div class="wsp-pulse"></div>
     <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />

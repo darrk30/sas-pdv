@@ -76,7 +76,7 @@ class EmpresaForm
 
                         Tab::make('Sistema')
                             ->icon('heroicon-o-cog-6-tooth')
-                            ->hidden(fn ($record) => ! ($record?->suscripcion?->plan?->tiene_catalogo_web ?? false))
+                            ->hidden(fn ($record) => ! ($record?->tieneFeature('catalogo_web') ?? false))
                             ->schema([
                                 Grid::make(2)->schema([
                                     Select::make('carta_activa_cliente')
@@ -140,13 +140,77 @@ class EmpresaForm
                         Tab::make('Módulos')
                             ->icon('heroicon-o-squares-2x2')
                             ->schema([
-                                Grid::make(2)->schema([
 
-                                    // ── PUNTO DE VENTA ───────────────────────────────
+                                // ── FUNCIONALIDADES DEL PLAN (override por empresa) ──
+                                Section::make('Funcionalidades del Plan')
+                                    ->icon('heroicon-o-star')
+                                    ->description('Cada opción hereda del plan por defecto. Puedes forzar activar o desactivar para esta empresa en particular.')
+                                    ->compact()
+                                    ->collapsible()
+                                    ->collapsed()
+                                    ->columns(3)
+                                    ->schema([
+                                        Select::make('features_override.variantes')
+                                            ->label('Variantes de productos')
+                                            ->options([
+                                                ''  => '— Heredar del plan —',
+                                                '1' => 'Forzar ACTIVO',
+                                                '0' => 'Forzar INACTIVO',
+                                            ])
+                                            ->placeholder('— Heredar del plan —')
+                                            ->native(false)
+                                            ->helperText(fn ($record) => 'Plan: ' . (($record?->planActual()?->tiene_variantes ?? false) ? '✓ activo' : '✗ inactivo')),
+
+                                        Select::make('features_override.catalogo_web')
+                                            ->label('Catálogo web')
+                                            ->options([
+                                                ''  => '— Heredar del plan —',
+                                                '1' => 'Forzar ACTIVO',
+                                                '0' => 'Forzar INACTIVO',
+                                            ])
+                                            ->placeholder('— Heredar del plan —')
+                                            ->native(false)
+                                            ->helperText(fn ($record) => 'Plan: ' . (($record?->planActual()?->tiene_catalogo_web ?? false) ? '✓ activo' : '✗ inactivo')),
+
+                                        Select::make('features_override.facturacion_electronica')
+                                            ->label('Facturación electrónica')
+                                            ->options([
+                                                ''  => '— Heredar del plan —',
+                                                '1' => 'Forzar ACTIVO',
+                                                '0' => 'Forzar INACTIVO',
+                                            ])
+                                            ->placeholder('— Heredar del plan —')
+                                            ->native(false)
+                                            ->helperText(fn ($record) => 'Plan: ' . (($record?->planActual()?->facturacion_electronica ?? false) ? '✓ activo' : '✗ inactivo')),
+
+                                        Select::make('features_override.impresion_directa')
+                                            ->label('Impresión directa')
+                                            ->options([
+                                                ''  => '— Heredar del plan —',
+                                                '1' => 'Forzar ACTIVO',
+                                                '0' => 'Forzar INACTIVO',
+                                            ])
+                                            ->placeholder('— Heredar del plan —')
+                                            ->native(false)
+                                            ->helperText(fn ($record) => 'Plan: ' . (($record?->planActual()?->tiene_impresion_directa ?? false) ? '✓ activo' : '✗ inactivo')),
+
+                                        Select::make('features_override.lista_precios')
+                                            ->label('Lista de precios')
+                                            ->options([
+                                                ''  => '— Heredar del plan —',
+                                                '1' => 'Forzar ACTIVO',
+                                                '0' => 'Forzar INACTIVO',
+                                            ])
+                                            ->placeholder('— Heredar del plan —')
+                                            ->native(false)
+                                            ->helperText(fn ($record) => 'Plan: ' . (($record?->planActual()?->tiene_lista_precios ?? false) ? '✓ activo' : '✗ inactivo')),
+                                    ]),
+
+                                // ── PUNTO DE VENTA ───────────────────────────────
                                     Section::make('Punto de Venta')
                                         ->icon('heroicon-o-receipt-percent')
                                         ->description('Ventas en mostrador, sesiones, cierres, ingresos y egresos')
-                                        ->compact()->columnSpan(1)
+                                        ->compact()->collapsible()->collapsed()
                                         ->schema([
                                             Toggle::make('modulos_activos.caja')
                                                 ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
@@ -173,7 +237,7 @@ class EmpresaForm
                                     Section::make('Inventario')
                                         ->icon('heroicon-o-cube')
                                         ->description('Gestión de productos, inventario, kardex y ajustes de stock')
-                                        ->compact()->columnSpan(1)
+                                        ->compact()->collapsible()->collapsed()
                                         ->schema([
                                             Toggle::make('modulos_activos.inventario')
                                                 ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
@@ -198,7 +262,7 @@ class EmpresaForm
                                     Section::make('Pedidos Web')
                                         ->icon('heroicon-o-globe-alt')
                                         ->description('Órdenes, clientes web, promociones y despachos')
-                                        ->compact()->columnSpan(1)
+                                        ->compact()->collapsible()->collapsed()
                                         ->schema([
                                             Toggle::make('modulos_activos.pedidos_web')
                                                 ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
@@ -223,7 +287,7 @@ class EmpresaForm
                                     Section::make('Compras')
                                         ->icon('heroicon-o-shopping-cart')
                                         ->description('Registro de compras y gestión de proveedores')
-                                        ->compact()->columnSpan(1)
+                                        ->compact()->collapsible()->collapsed()
                                         ->schema([
                                             Toggle::make('modulos_activos.compras')
                                                 ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
@@ -244,7 +308,7 @@ class EmpresaForm
                                     Section::make('Catálogo')
                                         ->icon('heroicon-o-tag')
                                         ->description('Categorías, marcas, atributos, producción y dimensiones')
-                                        ->compact()->columnSpan(1)
+                                        ->compact()->collapsible()->collapsed()
                                         ->schema([
                                             Toggle::make('modulos_activos.catalogo')
                                                 ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
@@ -271,7 +335,7 @@ class EmpresaForm
                                     Section::make('Reportes')
                                         ->icon('heroicon-o-document-chart-bar')
                                         ->description('Todos los reportes del sistema')
-                                        ->compact()->columnSpan(1)
+                                        ->compact()->collapsible()->collapsed()
                                         ->schema([
                                             Toggle::make('modulos_activos.reportes')
                                                 ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
@@ -306,7 +370,7 @@ class EmpresaForm
                                     Section::make('Gastos')
                                         ->icon('heroicon-o-banknotes')
                                         ->description('Registro y control de gastos operativos de la empresa')
-                                        ->compact()->columnSpan(1)
+                                        ->compact()->collapsible()->collapsed()
                                         ->schema([
                                             Toggle::make('modulos_activos.gastos')
                                                 ->label('Activar módulo de Gastos')
@@ -319,7 +383,7 @@ class EmpresaForm
                                     Section::make('Restaurante')
                                         ->icon('heroicon-o-building-storefront')
                                         ->description('Pisos, mesas, comandas y envío de pedidos a cocina')
-                                        ->compact()->columnSpan(1)
+                                        ->compact()->collapsible()->collapsed()
                                         ->schema([
                                             Toggle::make('modulos_activos.restaurante')
                                                 ->label('Activar módulo completo')->onColor('success')->live()->default(false)->columnSpanFull()
@@ -340,7 +404,7 @@ class EmpresaForm
                                     Section::make('Configuración')
                                         ->icon('heroicon-o-cog-6-tooth')
                                         ->description('Cajas, series, métodos de pago/envío, impresoras, usuarios y roles')
-                                        ->compact()->columnSpan(1)
+                                        ->compact()->collapsible()->collapsed()
                                         ->schema([
                                             Toggle::make('modulos_activos.configuracion')
                                                 ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
@@ -364,8 +428,6 @@ class EmpresaForm
                                                     ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('configuracion', ['cajas_registradoras','metodos_pago','metodos_envio','series','impresoras','usuarios_roles'], $get, $set)),
                                             ])->columnSpanFull(),
                                         ]),
-
-                                ]),
                             ]),
 
                         Tab::make('Facturación Electrónica')

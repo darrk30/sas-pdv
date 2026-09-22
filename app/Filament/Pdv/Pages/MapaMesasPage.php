@@ -32,6 +32,14 @@ class MapaMesasPage extends Page
     protected static ?string                $title           = '';
     protected string                        $view            = 'filament.pdv.pages.mapa-mesas';
 
+    public static function getNavigationItemActiveRoutePattern(): string|array
+    {
+        return [
+            static::getRouteName(),
+            'filament.pdv.resources.orden-rest.*',
+        ];
+    }
+
     // Piso activo en el tab (se persiste en la URL para que el SPA no lo pierda)
     public ?int $pisoActivoId = null;
 
@@ -92,7 +100,7 @@ class MapaMesasPage extends Page
                 EstadoOrden::EnPreparacion->value,
                 EstadoOrden::EnCamino->value,
             ])
-            ->orderBy('created_at', 'desc')
+            ->orderBy('created_at', 'asc')
             ->get();
     }
 
@@ -106,7 +114,7 @@ class MapaMesasPage extends Page
                 EstadoOrden::EnCamino->value,
             ])
             ->with('repartidor:id,name')
-            ->orderBy('created_at', 'desc')
+            ->orderBy('created_at', 'asc')
             ->get();
     }
 

@@ -11,22 +11,21 @@ use App\Models\Plan;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class PlanResource extends Resource
 {
     protected static ?string $model = Plan::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
+    protected static ?string $navigationLabel               = 'Planes';
+    protected static ?string $modelLabel                    = 'Plan';
+    protected static ?string $pluralModelLabel              = 'Planes';
+    protected static string|UnitEnum|null $navigationGroup  = 'Comercial';
+    protected static ?int    $navigationSort                = 1;
 
-    protected static ?string $recordTitleAttribute = 'Plan';
-
-    public static function canAccess(): bool              { return auth()->user()?->can('admin.planes') ?? false; }
-    public static function canCreate(): bool              { return auth()->user()?->can('admin.planes') ?? false; }
-    public static function canEdit(Model $record): bool   { return auth()->user()?->can('admin.planes') ?? false; }
-    public static function canDelete(Model $record): bool { return auth()->user()?->can('admin.planes') ?? false; }
+    protected static ?string $recordTitleAttribute = 'nombre';
 
     public static function form(Schema $schema): Schema
     {

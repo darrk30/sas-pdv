@@ -182,15 +182,16 @@ class CompraForm
                             ->options(EstadoPago::class)
                             ->colors([
                                 'pendiente' => 'warning',
+                                'parcial'   => 'info',
                                 'pagado'    => 'success',
                             ])
                             ->inline()
                             ->required()
                             ->live()
-                            ->disabled(fn (Get $get): bool => (float) ($get('total') ?? 0) <= 0)
+                            ->disabled(fn (Get $get): bool => count($get('detalles') ?? []) === 0)
                             ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
                                 $value = $state instanceof \BackedEnum ? $state->value : $state;
-                                if ($value !== EstadoPago::Pagado->value) {
+                                if (! in_array($value, [EstadoPago::Pagado->value, EstadoPago::Parcial->value])) {
                                     return;
                                 }
                                 // Solo pre-cargar si no hay pagos ya registrados
@@ -403,7 +404,7 @@ class CompraForm
                     ->visible(function (Get $get): bool {
                         $state = $get('estado_pago');
                         $value = $state instanceof \BackedEnum ? $state->value : $state;
-                        return $value === EstadoPago::Pagado->value;
+                        return in_array($value, [EstadoPago::Pagado->value, EstadoPago::Parcial->value]);
                     })
                     ->schema([
                         Repeater::make('pagos')
