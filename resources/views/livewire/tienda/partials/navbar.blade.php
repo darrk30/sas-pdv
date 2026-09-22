@@ -14,11 +14,44 @@
     <div class="navbar__busqueda" x-data="{
         q: new URLSearchParams(window.location.search).get('q') ?? '',
         _t: null,
+        _tapHandler: null,
+        _popHandler: null,
         lanzar() {
             const ev = new CustomEvent('tienda-buscar', { detail: { q: this.q.trim() }, cancelable: true });
             window.dispatchEvent(ev);
             if (!ev.defaultPrevented) {
                 Livewire.navigate(this.q.trim() ? '/?q=' + encodeURIComponent(this.q.trim()) : '/');
+            }
+        },
+        abrirTeclado(input) {
+            // Bloquea taps fuera del buscador para que no disparen click en tarjetas
+            this._tapHandler = (e) => {
+                if (!e.target.closest('.navbar__busqueda')) {
+                    e.preventDefault();
+                    input.blur();
+                }
+            };
+            document.addEventListener('touchstart', this._tapHandler, { passive: false });
+
+            // Intercepta el botón Atrás de Android para que solo cierre el teclado
+            history.pushState({ teclado: true }, '');
+            this._popHandler = () => {
+                input.blur();
+                window.removeEventListener('popstate', this._popHandler);
+                this._popHandler = null;
+            };
+            window.addEventListener('popstate', this._popHandler);
+        },
+        cerrarTeclado() {
+            if (this._tapHandler) {
+                document.removeEventListener('touchstart', this._tapHandler);
+                this._tapHandler = null;
+            }
+            if (this._popHandler) {
+                window.removeEventListener('popstate', this._popHandler);
+                this._popHandler = null;
+                // Quita el estado fantasma que pusimos al abrir
+                if (history.state?.teclado) history.back();
             }
         }
     }">
@@ -30,6 +63,8 @@
                 x-model="q"
                 @input="clearTimeout(_t); _t = setTimeout(() => lanzar(), q.trim() === '' ? 0 : 400)"
                 @keydown.enter.prevent="clearTimeout(_t); lanzar()"
+                @focus="abrirTeclado($el)"
+                @blur="cerrarTeclado()"
                 type="search"
                 class="navbar__busqueda-input"
                 placeholder="Buscar en {{ $empresaNombre }}"

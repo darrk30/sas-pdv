@@ -12,6 +12,9 @@
     {{-- Diálogo --}}
     <div class="modal-var__dialog" @click.stop>
 
+        {{-- Drag indicator (visible solo en móvil) --}}
+        <div class="modal-var__drag"></div>
+
         {{-- Header --}}
         <div class="modal-var__header">
             <h2 class="modal-var__titulo" x-text="producto?.nombre ?? ''"></h2>
@@ -42,7 +45,8 @@
             </div>
 
             {{-- Grupos de atributos --}}
-            <div class="modal-var__atributos">
+            <div class="modal-var__atributos"
+                 x-data="{ descAbierta: false }">
                 <template x-if="producto">
                     <div>
                         <template x-for="attr in producto.atributos" :key="attr.id">
@@ -117,6 +121,21 @@
                            x-show="varianteSinStock">
                             Esta variante no tiene stock disponible.
                         </p>
+                    </div>
+                </template>
+
+                {{-- Descripción del producto --}}
+                <template x-if="producto?.descripcion">
+                    <div class="modal-var__desc-wrap">
+                        <p class="modal-var__desc"
+                           :class="{ 'modal-var__desc--truncada': !descAbierta }"
+                           x-text="producto.descripcion"></p>
+                        <button type="button"
+                                class="modal-var__desc-toggle"
+                                x-show="producto.descripcion.length > 120"
+                                @click="descAbierta = !descAbierta"
+                                x-text="descAbierta ? 'Ver menos' : 'Ver más'">
+                        </button>
                     </div>
                 </template>
             </div>
