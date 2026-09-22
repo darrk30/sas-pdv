@@ -45,6 +45,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->passwordReset()
             ->brandName(fn () => $this->appSetting('nombre', 'Tukipu'))
             ->brandLogo(fn () => $this->appSettingLogo('logo'))
             ->brandLogoHeight('2rem')
