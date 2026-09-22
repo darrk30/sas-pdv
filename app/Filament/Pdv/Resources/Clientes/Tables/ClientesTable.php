@@ -15,8 +15,10 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class ClientesTable
 {
@@ -98,6 +100,18 @@ class ClientesTable
                 SelectFilter::make('tipo_documento')
                     ->label('Tipo de documento')
                     ->options(TipoDocumento::class),
+
+                Filter::make('con_credito')
+                    ->label('Cuentas por cobrar')
+                    ->query(fn ($query) => $query->whereExists(
+                        Venta::select(DB::raw(1))
+                            ->whereColumn('cliente_id', 'clientes.id')
+                            ->whereColumn('empresa_id', 'clientes.empresa_id')
+                            ->where('estado', 'completada')
+                            ->whereIn('estado_pago', ['pendiente', 'parcial'])
+                            ->where('saldo_pendiente', '>', 0)
+                    ))
+                    ->toggle(),
             ])
             ->recordActions([
                 ActionGroup::make([

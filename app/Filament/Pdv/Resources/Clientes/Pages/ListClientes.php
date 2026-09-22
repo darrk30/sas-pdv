@@ -3,9 +3,11 @@
 namespace App\Filament\Pdv\Resources\Clientes\Pages;
 
 use App\Filament\Pdv\Resources\Clientes\ClienteResource;
+use App\Filament\Pdv\Widgets\ClientesStatsWidget;
 use App\Services\ClienteExportService;
 use App\Services\ClienteImportService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
@@ -19,25 +21,33 @@ class ListClientes extends ListRecords
 {
     protected static string $resource = ClienteResource::class;
 
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            ClientesStatsWidget::class,
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make(),
 
-            Action::make('exportar_clientes')
-                ->label('Exportar Excel')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('success')
-                ->action(function (): StreamedResponse {
-                    $empresa = Filament::getTenant();
-                    return app(ClienteExportService::class)->exportar($empresa);
-                }),
+            ActionGroup::make([
+                Action::make('exportar_clientes')
+                    ->label('Exportar Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(function (): StreamedResponse {
+                        $empresa = Filament::getTenant();
+                        return app(ClienteExportService::class)->exportar($empresa);
+                    }),
 
-            Action::make('importar_clientes')
-                ->label('Importar Excel')
-                ->icon('heroicon-o-arrow-up-tray')
-                ->color('gray')
-                ->form([
+                Action::make('importar_clientes')
+                    ->label('Importar Excel')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('gray')
+                    ->form([
                     Placeholder::make('link_plantilla')
                         ->label('')
                         ->content(fn () => new HtmlString(
@@ -78,10 +88,15 @@ class ListClientes extends ListRecords
                         @unlink($ruta);
                     }
                 })
-                ->modalHeading('Importar Clientes')
-                ->modalDescription('Descarga la plantilla, complétala y súbela aquí. Los clientes se crearán o actualizarán según el NUMERO_DOCUMENTO.')
-                ->modalSubmitActionLabel('Importar')
-                ->modalWidth('lg'),
+                    ->modalHeading('Importar Clientes')
+                    ->modalDescription('Descarga la plantilla, complétala y súbela aquí. Los clientes se crearán o actualizarán según el NUMERO_DOCUMENTO.')
+                    ->modalSubmitActionLabel('Importar')
+                    ->modalWidth('lg'),
+            ])
+                ->label('Acciones')
+                ->icon('heroicon-o-ellipsis-horizontal')
+                ->color('gray')
+                ->button(),
         ];
     }
 

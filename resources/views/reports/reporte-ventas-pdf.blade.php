@@ -61,8 +61,9 @@ tbody tr.anulada td { color: #9ca3af; }
     <tbody>
         @foreach($rows as $i => $row)
         @php
-            $bg        = $i % 2 === 0 ? '#EBF0F8' : '#ffffff';
-            $esAnulada = str_contains(strtolower($row['estado'] ?? ''), 'anulada');
+            $tieneSaldo = ($row['_saldo_pendiente'] ?? 0) > 0;
+            $bg         = $tieneSaldo ? '#FEE2E2' : ($i % 2 === 0 ? '#EBF0F8' : '#ffffff');
+            $esAnulada  = str_contains(strtolower($row['estado'] ?? ''), 'anulada');
         @endphp
         <tr style="background:{{ $bg }}" class="{{ $esAnulada ? 'anulada' : '' }}">
             @foreach($activeColumns as $key => $label)

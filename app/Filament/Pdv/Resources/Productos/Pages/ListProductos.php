@@ -3,6 +3,7 @@
 namespace App\Filament\Pdv\Resources\Productos\Pages;
 
 use App\Filament\Pdv\Resources\Productos\ProductoResource;
+use App\Filament\Pdv\Widgets\ProductosStatsWidget;
 use App\Services\ProductoExcelTemplateService;
 use App\Services\ProductoExportService;
 use App\Services\ProductoImportService;
@@ -69,20 +70,25 @@ class ListProductos extends ListRecords
             ->send();
     }
 
+    protected function getHeaderWidgets(): array
+    {
+        return [ProductosStatsWidget::class];
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make(),
 
-            Action::make('exportar_productos')
-                ->label('Exportar Excel')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('success')
-                ->action(function (): StreamedResponse {
-                    return app(ProductoExportService::class)->exportar(Filament::getTenant());
-                }),
-
             ActionGroup::make([
+
+                Action::make('exportar_productos')
+                    ->label('Exportar Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(function (): StreamedResponse {
+                        return app(ProductoExportService::class)->exportar(Filament::getTenant());
+                    }),
 
                 // ── Productos: Nuevo / Actualizar ─────────────────────────────
                 Action::make('importar_productos')
@@ -219,8 +225,8 @@ class ListProductos extends ListRecords
                     ->modalWidth('lg'),
 
             ])
-            ->label('Importar')
-            ->icon('heroicon-o-arrow-up-tray')
+            ->label('Importar / Exportar')
+            ->icon('heroicon-o-arrows-up-down')
             ->color('gray')
             ->button(),
         ];

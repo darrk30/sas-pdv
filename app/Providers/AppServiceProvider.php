@@ -2,10 +2,16 @@
 
 namespace App\Providers;
 
+use App\Models\Anuncio;
 use App\Models\Empresa;
 use App\Models\Mesa;
+use App\Models\Plan;
+use App\Models\TareaProgramada;
 use App\Observers\MesaObserver;
+use App\Policies\AnuncioPolicy;
 use App\Policies\EmpresaPolicy;
+use App\Policies\PlanPolicy;
+use App\Policies\TareaProgramadaPolicy;
 use App\Events\VentaCompletada;
 use App\Listeners\EmitirComprobanteElectronico;
 use Filament\Tables\Table;
@@ -26,6 +32,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::policy(Empresa::class, EmpresaPolicy::class);
+        Gate::policy(Plan::class, PlanPolicy::class);
+        Gate::policy(Anuncio::class, AnuncioPolicy::class);
+        Gate::policy(TareaProgramada::class, TareaProgramadaPolicy::class);
 
         Event::listen(VentaCompletada::class, EmitirComprobanteElectronico::class);
 

@@ -117,9 +117,7 @@ class UsuariosRelationManager extends RelationManager
 
                         $roles = $record->roles()->pluck('name');
 
-                        // NOTA: Ajusta 'module_label' según cómo tengas estructurada tu tabla de permisos
-                        // Si no usas módulos, puedes agrupar por otra columna o simplemente no agrupar.
-                        $permisosAgrupados = $record->getAllPermissions()->groupBy('module_label');
+                        $permisosAgrupados = $record->getAllPermissions()->where('scope', 'pdv')->groupBy('module_label');
 
                         $seccionesDePermisos = [];
 
@@ -168,8 +166,7 @@ class UsuariosRelationManager extends RelationManager
                     ->form(function () {
                         $empresaId = $this->getOwnerRecord()->id;
 
-                        // Obtenemos todos los permisos (Ajusta la consulta si tienes un 'scope' o si quieres todos)
-                        $modulos = \Spatie\Permission\Models\Permission::orderBy('name')->get()->groupBy('module_label');
+                        $modulos = \Spatie\Permission\Models\Permission::where('scope', 'pdv')->orderBy('module_label')->orderBy('name')->get()->groupBy('module_label');
                         $todosLosRoles = \Spatie\Permission\Models\Role::with('permissions')->where('empresa_id', $empresaId)->get();
 
                         $seccionesModulos = [];
@@ -254,8 +251,7 @@ class UsuariosRelationManager extends RelationManager
                             'roles' => $record->roles()->pluck('name')->toArray(),
                         ];
 
-                        // Cargamos TODOS los permisos para que inicien marcados
-                        $modulos = \Spatie\Permission\Models\Permission::get()->groupBy('module_label');
+                        $modulos = \Spatie\Permission\Models\Permission::where('scope', 'pdv')->orderBy('module_label')->orderBy('name')->get()->groupBy('module_label');
                         $todosLosPermisos = $record->getAllPermissions()->pluck('name')->toArray();
 
                         foreach ($modulos as $moduleLabel => $permisosDelModulo) {

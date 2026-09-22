@@ -3,9 +3,11 @@
 namespace App\Filament\Pdv\Resources\Proveedores\Pages;
 
 use App\Filament\Pdv\Resources\Proveedores\ProveedorResource;
+use App\Filament\Pdv\Widgets\ProveedoresStatsWidget;
 use App\Services\ProveedorExportService;
 use App\Services\ProveedorImportService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
@@ -19,21 +21,27 @@ class ListProveedores extends ListRecords
 {
     protected static string $resource = ProveedorResource::class;
 
+    protected function getHeaderWidgets(): array
+    {
+        return [ProveedoresStatsWidget::class];
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make(),
 
-            Action::make('exportar_proveedores')
-                ->label('Exportar Excel')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('success')
-                ->action(function (): StreamedResponse {
-                    $empresa = Filament::getTenant();
-                    return app(ProveedorExportService::class)->exportar($empresa);
-                }),
+            ActionGroup::make([
+                Action::make('exportar_proveedores')
+                    ->label('Exportar Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(function (): StreamedResponse {
+                        $empresa = Filament::getTenant();
+                        return app(ProveedorExportService::class)->exportar($empresa);
+                    }),
 
-            Action::make('importar_proveedores')
+                Action::make('importar_proveedores')
                 ->label('Importar Excel')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('gray')
@@ -82,6 +90,11 @@ class ListProveedores extends ListRecords
                 ->modalDescription('Descarga la plantilla, complétala y súbela aquí. Los proveedores se crearán o actualizarán según el NUMERO_DOCUMENTO.')
                 ->modalSubmitActionLabel('Importar')
                 ->modalWidth('lg'),
+            ])
+            ->label('Importar / Exportar')
+            ->icon('heroicon-o-arrows-up-down')
+            ->color('gray')
+            ->button(),
         ];
     }
 

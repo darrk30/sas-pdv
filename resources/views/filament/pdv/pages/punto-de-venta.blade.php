@@ -561,6 +561,35 @@
                                             />
                                         </div>
                                     @endif
+
+                                    @if($metodoActivo && ($metodoActivo['condicion_pago'] ?? '') === 'credito')
+                                        <div class="pdv-pago-referencia">
+                                            <x-filament::input.wrapper
+                                                label="Fecha de vencimiento"
+                                                :prefix-icon="'heroicon-o-calendar-days'"
+                                                style="--prefix-icon-size: .9rem;"
+                                            >
+                                                <x-filament::input
+                                                    type="date"
+                                                    wire:model.live="fechaVencimientoCredito"
+                                                    :min="now()->addDay()->toDateString()"
+                                                />
+                                            </x-filament::input.wrapper>
+                                            @if($fechaVencimientoCredito)
+                                                <p class="fi-fo-field-wrp-helper-text text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    Vence {{ \Carbon\Carbon::parse($fechaVencimientoCredito)->format('d/m/Y') }}
+                                                    ({{ \Carbon\Carbon::parse($fechaVencimientoCredito)->diffForHumans() }})
+                                                </p>
+                                            @endif
+                                        </div>
+
+                                        @if(! $clienteId)
+                                        <div style="display:flex;align-items:center;gap:.4rem;background:#fef3c7;border:1px solid #fcd34d;border-radius:.4rem;padding:.4rem .6rem;margin-top:.4rem;font-size:.73rem;color:#92400e;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.85rem;height:.85rem;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+                                            <span>Para crédito selecciona un cliente con DNI o RUC</span>
+                                        </div>
+                                        @endif
+                                    @endif
                                 @endif
                             </div>
                         </div>

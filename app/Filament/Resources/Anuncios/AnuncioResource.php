@@ -10,7 +10,6 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 class AnuncioResource extends Resource
@@ -22,11 +21,6 @@ class AnuncioResource extends Resource
     protected static ?string $pluralModelLabel             = 'Anuncios';
     protected static string|UnitEnum|null $navigationGroup = 'Sistema';
     protected static ?int    $navigationSort               = 9;
-
-    public static function canAccess(): bool              { return auth()->user()?->can('admin.configuracion') ?? false; }
-    public static function canCreate(): bool              { return auth()->user()?->can('admin.configuracion') ?? false; }
-    public static function canEdit(Model $record): bool   { return auth()->user()?->can('admin.configuracion') ?? false; }
-    public static function canDelete(Model $record): bool { return auth()->user()?->can('admin.configuracion') ?? false; }
 
     public static function form(Schema $schema): Schema
     {

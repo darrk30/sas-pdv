@@ -72,11 +72,12 @@ class PuntoDeVenta extends Page
     public bool $modalPago = false;
     public bool $modalSinSesion = false;
     public array $metodosPagoDisponibles = [];
-    public ?int $metodoPagoId = null;
-    public string $montoPagoInput = '';
-    public string $pagoReferencia = '';
-    public array $pagosAgregados = [];
-    public string $descuentoInput = '0';
+    public ?int    $metodoPagoId            = null;
+    public string  $montoPagoInput          = '';
+    public string  $pagoReferencia          = '';
+    public array   $pagosAgregados          = [];
+    public string  $descuentoInput          = '0';
+    public ?string $fechaVencimientoCredito = null;
     public bool $deliveryActivo       = false;
     public bool $despachoRequerido    = false;
     public string $despachoDireccion  = '';
@@ -644,12 +645,13 @@ class PuntoDeVenta extends Page
             ->values()
             ->toArray();
 
-        $this->metodoPagoId       = null;
-        $this->montoPagoInput     = '';
-        $this->pagoReferencia     = '';
-        $this->pagosAgregados     = [];
-        $this->descuentoInput     = '0';
-        $this->deliveryActivo     = false;
+        $this->metodoPagoId            = null;
+        $this->montoPagoInput          = '';
+        $this->pagoReferencia          = '';
+        $this->pagosAgregados          = [];
+        $this->descuentoInput          = '0';
+        $this->fechaVencimientoCredito = null;
+        $this->deliveryActivo          = false;
         $this->despachoRequerido  = false;
         $this->despachoDireccion  = '';
         $this->deliveryNombre     = '';
@@ -889,6 +891,29 @@ class PuntoDeVenta extends Page
         $tipoPagoVenta = count($pagosCredito) > 0 ? TipoPago::Credito : TipoPago::Contado;
         $estadoPago    = $saldoPendiente > 0.01 ? 'pendiente' : 'pagado';
 
+        // ── Validaciones de crédito ──────────────────────────────────────────
+        if ($tipoPagoVenta === TipoPago::Credito) {
+            if (! $esTicket) {
+                Notification::make()
+                    ->title('Crédito solo disponible para tickets')
+                    ->body('Las boletas y facturas no admiten venta a crédito en este sistema.')
+                    ->warning()
+                    ->send();
+                return;
+            }
+
+            if (empty($this->clienteId)) {
+                Notification::make()
+                    ->title('Cliente requerido para crédito')
+                    ->body('Selecciona un cliente registrado con DNI o RUC para procesar una venta a crédito.')
+                    ->warning()
+                    ->send();
+                return;
+            }
+        }
+
+        $fechaVencimiento = $tipoPagoVenta === TipoPago::Credito ? $this->fechaVencimientoCredito : null;
+
         $venta = null;
 
         try {
@@ -900,7 +925,7 @@ class PuntoDeVenta extends Page
                 $clienteId, $clienteNombre, $clienteTipoDoc, $serieId,
                 $deliveryActivo, $despachoRequerido, $despachoDireccion,
                 $deliveryNombre, $deliveryTelefono, $deliveryRepartidor,
-                &$venta
+                $fechaVencimiento, &$venta
             ) {
                 $serie = Serie::lockForUpdate()->findOrFail($serieId);
                 $nuevoNumero = $serie->numero + 1;
@@ -933,6 +958,7 @@ class PuntoDeVenta extends Page
                     'serie_id'         => $serieId,
                     'correlativo'      => $correlativo,
                     'tipo_pago'        => $tipoPagoVenta,
+                    'fecha_vencimiento'=> $fechaVencimiento,
                     'op_gravadas'      => $opGravadas,
                     'op_exoneradas'    => 0,
                     'op_inafectas'     => $opInafectas,

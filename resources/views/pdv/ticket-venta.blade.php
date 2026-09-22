@@ -47,11 +47,11 @@ html, body {
 .tk-datos-label { font-weight: 700; white-space: nowrap; }
 
 /* ── Separador ────────────────────────────────────── */
-.sep { border: none; border-top: 0.5px solid #000; margin: 1mm 0; }
+.sep { border: none; border-top: 0.5px dashed #888; margin: 1mm 0; }
 
 /* ── Tabla ítems ──────────────────────────────────── */
 .tk-tabla { width: 100%; border-collapse: collapse; font-size: 9.5px; margin: 1mm 0; }
-.tk-tabla thead tr { border-bottom: 0.5px solid #000; }
+.tk-tabla thead tr { border-bottom: 0.5px dashed #888; }
 .tk-tabla th {
     font-weight: 700;
     font-size: 9px;
@@ -72,7 +72,7 @@ html, body {
 .tk-tot-fila--total {
     font-size: 13px;
     font-weight: 700;
-    border-top: 0.5px solid #000;
+    border-top: 0.5px dashed #888;
     padding-top: 1.5mm;
     margin-top: .5mm;
 }
@@ -81,7 +81,7 @@ html, body {
 /* ── Pagos / QR ───────────────────────────────────── */
 .tk-fe-wrap { display: flex; gap: 2mm; align-items: flex-start; margin: 1.5mm 0; }
 .tk-qr { flex-shrink: 0; }
-.tk-qr img { width: 30mm; height: 30mm; display: block; }
+.tk-qr img { width: 20mm; height: 20mm; display: block; }
 .tk-fe-data { font-size: 8.5px; line-height: 1.5; flex: 1; }
 .tk-fe-data strong { font-size: 8px; }
 .tk-hash { font-size: 7px; color: #444; word-break: break-all; margin-bottom: 1mm; }
@@ -128,13 +128,33 @@ html, body {
     $condicion   = ((float)($venta->saldo_pendiente ?? 0) > 0) ? 'CRÉDITO' : 'CONTADO';
 
     $clienteNombre = $venta->cliente_nombre ?: ($venta->cliente?->razon_social ?? $venta->cliente?->nombre ?? 'PUBLICO EN GENERAL');
-    $clienteDoc    = $venta->cliente_num_doc   ?: ($venta->cliente?->numero_documento ?? '00000000');
-    $clienteTipoDoc = strtoupper($venta->cliente_tipo_doc ?? $venta->cliente?->tipo_documento ?? 'DNI');
+    $clienteDoc    = $venta->cliente_num_doc   ?: ($venta->cliente?->numero_documento ?? '-');
+    $clienteTipoDocRaw = strtoupper($venta->cliente_tipo_doc ?? $venta->cliente?->tipo_documento?->value ?? '-');
+    $clienteTipoDocLabel = match($clienteTipoDocRaw) {
+        'RUC'  => 'RUC',
+        'DNI'  => 'DNI',
+        default => 'DNI', // '-' u otro → mostrar DNI: -
+    };
     $clienteTel    = $venta->cliente?->telefono ?? '—';
     $clienteDir    = $venta->cliente?->direccion ?? '—';
 
     $fechaEmision  = $venta->fecha_emision?->format('d/m/Y H:i') ?? $venta->created_at->format('d/m/Y H:i');
     $cajero        = $venta->sesionCaja?->cajero?->name ?? null;
+
+    // Orden relacionada
+    $orden       = $venta->orden;
+    $ordenNumero = $orden?->numero ? 'ORD-' . (int) $orden->numero : null;
+    $tipoAtencionLabel = match($venta->tipo ?? '') {
+        'llevar'      => 'LLEVAR',
+        'delivery'    => 'DELIVERY',
+        'restaurante' => 'MESA',
+        default       => null,
+    };
+
+    // Responsable: usar el nombre del rol asignado en Spatie
+    $vendedorOrden     = $orden?->vendedor;
+    $responsableNombre = $vendedorOrden?->name ?? $cajero;
+    $responsableRol    = $vendedorOrden?->roles?->first()?->name ?? null;
 
     $qrBase64 = $qrBase64 ?? null;
 @endphp
@@ -175,17 +195,18 @@ html, body {
 
     {{-- ══ DATOS ══ --}}
     <div class="tk-datos">
-        @if($cajero)
-        <div class="tk-datos-fila"><span class="tk-datos-label">CAJERO:</span><span>{{ $cajero }}</span></div>
-        @endif
         <div class="tk-datos-fila"><span class="tk-datos-label">FECHA DE EMISION:</span><span>{{ $fechaEmision }}</span></div>
         <div class="tk-datos-fila"><span class="tk-datos-label">CLIENTE:</span><span>{{ $clienteNombre }}</span></div>
-        <div class="tk-datos-fila"><span class="tk-datos-label">{{ $clienteTipoDoc }}:</span><span>{{ $clienteDoc }}</span></div>
-        @if($clienteTel && $clienteTel !== '—')
-        <div class="tk-datos-fila"><span class="tk-datos-label">TELEFONO:</span><span>{{ $clienteTel }}</span></div>
+        <div class="tk-datos-fila"><span class="tk-datos-label">{{ $clienteTipoDocLabel }}:</span><span>{{ $clienteDoc }}</span></div>
+        @php
+            $ordenDir = $orden?->cliente_direccion ?: ($clienteDir !== '—' ? $clienteDir : null);
+            $ordenTel = $orden?->cliente_telefono  ?: ($clienteTel !== '—' ? $clienteTel : null);
+        @endphp
+        @if($ordenDir)
+        <div class="tk-datos-fila"><span class="tk-datos-label">Dir.:</span><span>{{ $ordenDir }}</span></div>
         @endif
-        @if($clienteDir && $clienteDir !== '—')
-        <div class="tk-datos-fila"><span class="tk-datos-label">DIRECCION:</span><span>{{ $clienteDir }}</span></div>
+        @if($ordenTel)
+        <div class="tk-datos-fila"><span class="tk-datos-label">Telf.:</span><span>{{ $ordenTel }}</span></div>
         @endif
     </div>
 
@@ -249,7 +270,7 @@ html, body {
             @if($venta->hash)
             <strong>CÓDIGO HASH:</strong><div class="tk-hash">{{ $venta->hash }}</div>
             @endif
-            <strong style="font-size:8px">MÉTODOS DE PAGO</strong><br>
+            <strong style="font-size:8px">FORMAS DE PAGO</strong><br>
             @foreach($pagos as $pago)
             {{ strtoupper($pago->metodoPago?->nombre ?? 'EFECTIVO') }}: S/ {{ number_format($pago->monto,2) }}<br>
             @endforeach
@@ -261,7 +282,7 @@ html, body {
     @else
     @if($pagos->isNotEmpty())
     <div class="tk-pago-bloque">
-        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#555;margin-bottom:1mm">Métodos de pago</div>
+        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#555;margin-bottom:1mm">Formas de pago</div>
         @foreach($pagos as $pago)
         <div class="tk-pago-fila">
             <span>{{ strtoupper($pago->metodoPago?->nombre ?? 'EFECTIVO') }}</span>
@@ -279,6 +300,24 @@ html, body {
     @endif
     @endif
 
+    {{-- ══ PEDIDO / ATENCIÓN / CAJERO / RESPONSABLE ══ --}}
+    @if($ordenNumero || $tipoAtencionLabel || $responsableNombre)
+    <div class="tk-datos" style="margin-top:1mm;">
+        @if($ordenNumero)
+        <div class="tk-datos-fila"><span class="tk-datos-label">PEDIDO:</span><span>{{ $ordenNumero }}</span></div>
+        @endif
+        @if($tipoAtencionLabel)
+        <div class="tk-datos-fila"><span class="tk-datos-label">ATENCIÓN:</span><span>{{ $tipoAtencionLabel }} - CAJA</span></div>
+        @endif
+        @if($responsableNombre)
+        <div class="tk-datos-fila">
+            <span class="tk-datos-label">{{ $responsableRol ? strtoupper($responsableRol) : 'CAJERO' }}:</span>
+            <span>{{ $responsableNombre }}</span>
+        </div>
+        @endif
+    </div>
+    @endif
+
     <div class="sep"></div>
 
     {{-- ══ PIE ══ --}}
@@ -292,6 +331,12 @@ html, body {
         <div class="tk-no-comp">Este documento NO constituye un comprobante de pago electrónico.</div>
         @endif
         <div class="tk-footer-gracias">GRACIAS POR SU PREFERENCIA</div>
+
+        {{-- Branding Tukipu --}}
+        <div style="margin-top:4mm;padding-top:2mm;border-top:0.5px dashed #ccc;display:flex;flex-direction:column;align-items:center;gap:.8mm;">
+            <img src="{{ asset('img/logotukipu.webp') }}" alt="Tukipu" style="height:5mm;object-fit:contain;opacity:.7;" onerror="this.style.display='none'">
+            <span style="font-size:7px;color:#888;letter-spacing:.03em;">© {{ date('Y') }}. Tukipu — Sistema de Gestión</span>
+        </div>
     </div>
 
     <button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>

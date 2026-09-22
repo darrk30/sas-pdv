@@ -20,24 +20,26 @@ class ReporteVentasExportService
     // key => [label, filament_column_name (usado para detectar visibilidad)]
     // 'cliente_doc' comparte el toggle de 'cliente_nombre' (es la descripción de ese campo)
     private const COLS = [
-        'comprobante'       => ['Comprobante',   'comprobante'],
-        'created_at'        => ['Fecha',          'created_at'],
-        'cliente_nombre'    => ['Cliente',        'cliente_nombre'],
-        'cliente_doc'       => ['Documento',      'cliente_nombre'],
-        'detalles_count'    => ['Ítems',          'detalles_count'],
-        'cortesias_count'   => ['Cortesía',       'cortesias_count'],
-        'metodo'            => ['Método de Pago', 'metodo'],
-        'op_gravadas'       => ['Op. Gravada',    'op_gravadas'],
-        'igv'               => ['IGV',            'igv'],
-        'descuento_total'   => ['Descuento',      'descuento_total'],
-        'total'             => ['Total',          'total'],
-        'estado'            => ['Estado',         'estado'],
-        'estado_sunat'      => ['SUNAT',          'estado_sunat'],
-        'notas_count'       => ['NC',             'notas_count'],
-        'sunat_descripcion' => ['Desc. SUNAT',    'sunat_descripcion'],
+        'comprobante'       => ['Comprobante',     'comprobante'],
+        'created_at'        => ['Fecha',            'created_at'],
+        'cliente_nombre'    => ['Cliente',          'cliente_nombre'],
+        'cliente_doc'       => ['Documento',        'cliente_nombre'],
+        'detalles_count'    => ['Ítems',            'detalles_count'],
+        'cortesias_count'   => ['Cortesía',         'cortesias_count'],
+        'metodo'            => ['Método de Pago',   'metodo'],
+        'op_gravadas'       => ['Op. Gravada',      'op_gravadas'],
+        'igv'               => ['IGV',              'igv'],
+        'descuento_total'   => ['Descuento',        'descuento_total'],
+        'total'             => ['Total',            'total'],
+        'saldo_pendiente'   => ['Saldo Pendiente',  'saldo_pendiente'],
+        'estado'            => ['Estado',           'estado'],
+        'estado_sunat'      => ['SUNAT',            'estado_sunat'],
+        'tipo'              => ['Origen',           'tipo'],
+        'notas'             => ['Notas',            'notas'],
+        'sunat_descripcion' => ['Desc. SUNAT',      'sunat_descripcion'],
     ];
 
-    private const MONEY_COLS = ['op_gravadas', 'igv', 'descuento_total', 'total'];
+    private const MONEY_COLS = ['op_gravadas', 'igv', 'descuento_total', 'total', 'saldo_pendiente'];
 
     // ── Columnas activas según visibilidad de la tabla ────────────────────────
 
@@ -74,9 +76,18 @@ class ReporteVentasExportService
             'igv'               => (float) ($v->igv ?? 0),
             'descuento_total'   => (float) ($v->descuento_total ?? 0),
             'total'             => (float) ($v->total ?? 0),
+            'saldo_pendiente'   => (float) ($v->saldo_pendiente ?? 0),
             'estado'            => ucfirst($v->estado?->value ?? ''),
             'estado_sunat'      => $v->estado_sunat?->getLabel() ?? '—',
-            'notas_count'       => (int) ($v->notas_count ?? 0),
+            'tipo'              => match ($v->tipo ?? '') {
+                'pdv'         => 'PDV',
+                'restaurante' => 'Mesa',
+                'delivery'    => 'Delivery',
+                'llevar'      => 'Llevar',
+                'web'         => 'Web',
+                default       => strtoupper($v->tipo ?? '—'),
+            },
+            'notas'             => $v->notas ?? '',
             'sunat_descripcion' => $v->sunat_descripcion ?? '',
             default             => '',
         };
@@ -229,7 +240,11 @@ class ReporteVentasExportService
                 $colIdx++;
             }
 
-            if ($isAlt) {
+            if ((float) $venta->saldo_pendiente > 0) {
+                $sheet->getStyle("A{$row}:{$lastColLetter}{$row}")
+                    ->getFill()->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()->setARGB('FEE2E2');
+            } elseif ($isAlt) {
                 $sheet->getStyle("A{$row}:{$lastColLetter}{$row}")
                     ->getFill()->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setARGB($colorAlt);
@@ -241,11 +256,13 @@ class ReporteVentasExportService
         // ── Fila de totales ───────────────────────────────────────────────────
         $totalRow  = $row;
         $colIdx    = 1;
+        $completadas = $ventas->where('estado', \App\Enums\EstadoVenta::Completada);
         $totales   = [
-            'op_gravadas'    => (float) $ventas->where('estado', \App\Enums\EstadoVenta::Completada)->sum('op_gravadas'),
-            'igv'            => (float) $ventas->where('estado', \App\Enums\EstadoVenta::Completada)->sum('igv'),
+            'op_gravadas'    => (float) $completadas->sum('op_gravadas'),
+            'igv'            => (float) $completadas->sum('igv'),
             'descuento_total'=> (float) $ventas->sum('descuento_total'),
             'total'          => (float) $ventas->sum('total'),
+            'saldo_pendiente'=> (float) $completadas->sum('saldo_pendiente'),
         ];
 
         foreach (array_keys($activeColumns) as $key) {
@@ -320,18 +337,20 @@ class ReporteVentasExportService
         $nombre        = 'reporte-ventas-' . now()->format('Ymd-His') . '.pdf';
 
         $rows = $ventas->map(function (Venta $v) use ($activeColumns) {
-            $row = [];
+            $row = ['_saldo_pendiente' => (float) ($v->saldo_pendiente ?? 0)];
             foreach (array_keys($activeColumns) as $key) {
                 $row[$key] = $this->valor($v, $key);
             }
             return $row;
         });
 
+        $completadas = $ventas->where('estado', \App\Enums\EstadoVenta::Completada);
         $totales = [
-            'op_gravadas'     => (float) $ventas->where('estado', \App\Enums\EstadoVenta::Completada)->sum('op_gravadas'),
-            'igv'             => (float) $ventas->where('estado', \App\Enums\EstadoVenta::Completada)->sum('igv'),
+            'op_gravadas'     => (float) $completadas->sum('op_gravadas'),
+            'igv'             => (float) $completadas->sum('igv'),
             'descuento_total' => (float) $ventas->sum('descuento_total'),
             'total'           => (float) $ventas->sum('total'),
+            'saldo_pendiente' => (float) $completadas->sum('saldo_pendiente'),
         ];
 
         $moneyKeys = self::MONEY_COLS;

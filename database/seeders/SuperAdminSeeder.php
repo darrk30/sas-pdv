@@ -12,11 +12,41 @@ class SuperAdminSeeder extends Seeder
     // ── Permisos del panel Admin (scope global, sin empresa_id) ───────────────
 
     public static array $permisosAdmin = [
-        ['module' => 'admin_empresas',   'module_label' => 'Empresas',          'name' => 'admin.empresas',      'description' => 'Gestionar empresas del SaaS'],
-        ['module' => 'admin_usuarios',   'module_label' => 'Usuarios del sistema','name' => 'admin.usuarios',     'description' => 'Gestionar usuarios del sistema'],
-        ['module' => 'admin_planes',     'module_label' => 'Planes',             'name' => 'admin.planes',        'description' => 'Gestionar planes de suscripción'],
-        ['module' => 'admin_metodos',    'module_label' => 'Métodos de Pago',    'name' => 'admin.metodos_pago',  'description' => 'Gestionar métodos de pago globales'],
-        ['module' => 'admin_config',     'module_label' => 'Configuración',      'name' => 'admin.configuracion', 'description' => 'Acceder a configuración global del sistema'],
+        // ── Empresas ──────────────────────────────────────────────────────────
+        ['module' => 'admin_empresas', 'module_label' => 'Empresas',           'name' => 'admin.empresas.ver',              'description' => 'Ver empresas del SaaS'],
+        ['module' => 'admin_empresas', 'module_label' => 'Empresas',           'name' => 'admin.empresas.crear',            'description' => 'Crear empresas en el SaaS'],
+        ['module' => 'admin_empresas', 'module_label' => 'Empresas',           'name' => 'admin.empresas.editar',           'description' => 'Editar datos de empresas'],
+        ['module' => 'admin_empresas', 'module_label' => 'Empresas',           'name' => 'admin.empresas.eliminar',         'description' => 'Eliminar empresas del SaaS'],
+
+        // ── Usuarios del sistema ───────────────────────────────────────────────
+        ['module' => 'admin_usuarios', 'module_label' => 'Usuarios del sistema', 'name' => 'admin.usuarios.ver',            'description' => 'Ver usuarios del sistema'],
+        ['module' => 'admin_usuarios', 'module_label' => 'Usuarios del sistema', 'name' => 'admin.usuarios.crear',          'description' => 'Crear usuarios del sistema'],
+        ['module' => 'admin_usuarios', 'module_label' => 'Usuarios del sistema', 'name' => 'admin.usuarios.editar',         'description' => 'Editar usuarios del sistema'],
+        ['module' => 'admin_usuarios', 'module_label' => 'Usuarios del sistema', 'name' => 'admin.usuarios.eliminar',       'description' => 'Eliminar usuarios del sistema'],
+
+        // ── Planes ────────────────────────────────────────────────────────────
+        ['module' => 'admin_planes',   'module_label' => 'Planes',             'name' => 'admin.planes.ver',                'description' => 'Ver planes de suscripción'],
+        ['module' => 'admin_planes',   'module_label' => 'Planes',             'name' => 'admin.planes.crear',              'description' => 'Crear planes de suscripción'],
+        ['module' => 'admin_planes',   'module_label' => 'Planes',             'name' => 'admin.planes.editar',             'description' => 'Editar planes de suscripción'],
+        ['module' => 'admin_planes',   'module_label' => 'Planes',             'name' => 'admin.planes.eliminar',           'description' => 'Eliminar planes de suscripción'],
+
+        // ── Métodos de Pago ───────────────────────────────────────────────────
+        ['module' => 'admin_metodos',  'module_label' => 'Métodos de Pago',    'name' => 'admin.metodos_pago.ver',          'description' => 'Ver métodos de pago globales'],
+        ['module' => 'admin_metodos',  'module_label' => 'Métodos de Pago',    'name' => 'admin.metodos_pago.crear',        'description' => 'Crear métodos de pago globales'],
+        ['module' => 'admin_metodos',  'module_label' => 'Métodos de Pago',    'name' => 'admin.metodos_pago.editar',       'description' => 'Editar métodos de pago globales'],
+        ['module' => 'admin_metodos',  'module_label' => 'Métodos de Pago',    'name' => 'admin.metodos_pago.eliminar',     'description' => 'Eliminar métodos de pago globales'],
+
+        // ── Anuncios ──────────────────────────────────────────────────────────
+        ['module' => 'admin_anuncios', 'module_label' => 'Anuncios',           'name' => 'admin.anuncios.ver',              'description' => 'Ver anuncios del sistema'],
+        ['module' => 'admin_anuncios', 'module_label' => 'Anuncios',           'name' => 'admin.anuncios.crear',            'description' => 'Crear anuncios del sistema'],
+        ['module' => 'admin_anuncios', 'module_label' => 'Anuncios',           'name' => 'admin.anuncios.editar',           'description' => 'Editar anuncios del sistema'],
+        ['module' => 'admin_anuncios', 'module_label' => 'Anuncios',           'name' => 'admin.anuncios.eliminar',         'description' => 'Eliminar anuncios del sistema'],
+
+        // ── Tareas Programadas ────────────────────────────────────────────────
+        ['module' => 'admin_tareas',   'module_label' => 'Tareas Programadas', 'name' => 'admin.tareas.ver',                'description' => 'Ver tareas programadas del sistema'],
+        ['module' => 'admin_tareas',   'module_label' => 'Tareas Programadas', 'name' => 'admin.tareas.crear',              'description' => 'Crear tareas programadas'],
+        ['module' => 'admin_tareas',   'module_label' => 'Tareas Programadas', 'name' => 'admin.tareas.editar',             'description' => 'Editar tareas programadas'],
+        ['module' => 'admin_tareas',   'module_label' => 'Tareas Programadas', 'name' => 'admin.tareas.eliminar',           'description' => 'Eliminar tareas programadas'],
     ];
 
     // ── Permisos del panel PDV (scope por empresa) ────────────────────────────
@@ -184,9 +214,13 @@ class SuperAdminSeeder extends Seeder
         $registrar->setPermissionsTeamId(null);
 
         // ── Limpiar permisos obsoletos renombrados ────────────────────────────
-        Permission::whereIn('name', ['mesas.ver', 'comandas.ver', 'comandas.gestionar', 'comandas.cobrar'])
-            ->where('guard_name', 'web')
-            ->delete();
+        Permission::whereIn('name', [
+            'mesas.ver', 'comandas.ver', 'comandas.gestionar', 'comandas.cobrar',
+            // Permisos admin monolíticos reemplazados por granulares
+            'admin.empresas', 'admin.usuarios', 'admin.planes', 'admin.metodos_pago', 'admin.configuracion',
+            // Permisos admin.configuracion.* fusionados → separados en anuncios y tareas
+            'admin.configuracion.ver', 'admin.configuracion.crear', 'admin.configuracion.editar', 'admin.configuracion.eliminar',
+        ])->where('guard_name', 'web')->delete();
         $registrar->forgetCachedPermissions();
 
         // ── Crear todos los permisos (admin + pdv) ────────────────────────────

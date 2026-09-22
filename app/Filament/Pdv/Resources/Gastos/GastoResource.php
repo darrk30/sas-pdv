@@ -5,6 +5,7 @@ namespace App\Filament\Pdv\Resources\Gastos;
 use App\Filament\Pdv\Resources\Gastos\Pages\CreateGasto;
 use App\Filament\Pdv\Resources\Gastos\Pages\EditGasto;
 use App\Filament\Pdv\Resources\Gastos\Pages\ListGastos;
+use App\Filament\Pdv\Resources\Gastos\Pages\ViewGasto;
 use App\Filament\Pdv\Resources\Gastos\Schemas\GastoForm;
 use App\Filament\Pdv\Resources\Gastos\Tables\GastosTable;
 use App\Models\Gasto;
@@ -36,8 +37,9 @@ class GastoResource extends Resource
 
     public static function canAccess(): bool            { return Filament::getTenant()->tieneModulo('gastos') && (auth()->user()?->can('gastos.ver') ?? false); }
     public static function canCreate(): bool            { return auth()->user()?->can('gastos.crear') ?? false; }
+    public static function canView(Model $r): bool      { return auth()->user()?->can('gastos.ver') ?? false; }
     public static function canEdit(Model $r): bool      { return (auth()->user()?->can('gastos.crear') ?? false) && ! $r->estaAnulado(); }
-    public static function canDelete(Model $r): bool    { return false; }
+    public static function canDelete(Model $r): bool    { return auth()->user()?->can('gastos.anular') ?? false; }
 
     public static function form(Schema $schema): Schema
     {
@@ -59,6 +61,7 @@ class GastoResource extends Resource
         return [
             'index'  => ListGastos::route('/'),
             'create' => CreateGasto::route('/create'),
+            'view'   => ViewGasto::route('/{record}'),
             'edit'   => EditGasto::route('/{record}/edit'),
         ];
     }

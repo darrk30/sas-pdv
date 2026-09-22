@@ -9,12 +9,14 @@ use Filament\Support\Contracts\HasLabel;
 enum EstadoPago: string implements HasLabel, HasColor, HasIcon
 {
     case Pendiente = 'pendiente';
+    case Parcial   = 'parcial';
     case Pagado    = 'pagado';
 
     public function getLabel(): ?string
     {
         return match ($this) {
             self::Pendiente => 'Pendiente',
+            self::Parcial   => 'Parcial',
             self::Pagado    => 'Pagado',
         };
     }
@@ -23,6 +25,7 @@ enum EstadoPago: string implements HasLabel, HasColor, HasIcon
     {
         return match ($this) {
             self::Pendiente => 'warning',
+            self::Parcial   => 'info',
             self::Pagado    => 'success',
         };
     }
@@ -31,7 +34,8 @@ enum EstadoPago: string implements HasLabel, HasColor, HasIcon
     {
         return match ($this) {
             self::Pendiente => 'heroicon-o-clock',
-            self::Pagado    => 'heroicon-o-banknotes',
+            self::Parcial   => 'heroicon-o-banknotes',
+            self::Pagado    => 'heroicon-o-check-circle',
         };
     }
 }

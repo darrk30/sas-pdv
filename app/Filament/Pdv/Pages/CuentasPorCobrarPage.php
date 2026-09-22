@@ -7,36 +7,38 @@ use App\Enums\TipoPago;
 use App\Enums\TipoMovimiento;
 use App\Filament\Pdv\Concerns\HasVentaDetalleModal;
 use App\Filament\Pdv\Resources\Clientes\ClienteResource;
+use App\Filament\Pdv\Widgets\CreditosClienteStatsWidget;
 use App\Models\MetodoPago;
 use App\Models\SesionCaja;
 use App\Models\Transaccion;
 use App\Models\Venta;
 use App\Models\VentaPago;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Schema;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
-use Livewire\WithPagination;
 use UnitEnum;
 
-class CuentasPorCobrarPage extends Page implements HasForms
+class CuentasPorCobrarPage extends Page implements HasTable
 {
     use HasVentaDetalleModal;
-    use InteractsWithForms;
-    use WithPagination;
+    use InteractsWithTable;
     use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.cuentas-por-cobrar';
@@ -45,26 +47,79 @@ class CuentasPorCobrarPage extends Page implements HasForms
     protected static ?int $navigationSort = 5;
     protected static bool $shouldRegisterNavigation = false;
 
-    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('cuentas_por_cobrar') && (auth()->user()?->can('reportes.cuentas_cobrar') ?? false); }
+    public static function canAccess(): bool
+    {
+        return Filament::getTenant()->tieneModulo('cuentas_por_cobrar')
+            && (auth()->user()?->can('reportes.cuentas_cobrar') ?? false);
+    }
 
+    public static function getNavigationBadge(): ?string
+    {
+        $empresaId = Filament::getTenant()?->id;
+        if (! $empresaId) return null;
 
-    // public function getTitle(): string
-    // {
-    //     return ! empty($this->filtroClienteNombre)
-    //         ? "Créditos — {$this->filtroClienteNombre}"
-    //         : 'Cuentas por Cobrar';
-    // }
+        $count = cache()->remember("badge_creditos_vencidos_{$empresaId}", 60, fn () =>
+            \App\Models\Venta::where('empresa_id', $empresaId)
+                ->whereNotNull('fecha_vencimiento')
+                ->whereDate('fecha_vencimiento', '<', today())
+                ->where('saldo_pendiente', '>', 0)
+                ->count()
+        );
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'danger';
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Créditos vencidos sin cobrar';
+    }
+
+    public function getTitle(): string|Htmlable
+    {
+        return ! empty($this->filtroClienteNombre)
+            ? "Créditos — {$this->filtroClienteNombre}"
+            : 'Cuentas por Cobrar';
+    }
+
+    public function getHeading(): string|Htmlable
+    {
+        return $this->getTitle();
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return null;
+    }
 
     public function getBreadcrumbs(): array
     {
         if (! empty($this->filtroClienteId)) {
+            $label = ! empty($this->filtroClienteNombre)
+                ? "Créditos ({$this->filtroClienteNombre})"
+                : 'Créditos';
+
             return [
                 ClienteResource::getUrl('index') => 'Clientes',
-                '#' => 'Créditos',
+                '#' => $label,
             ];
         }
 
         return parent::getBreadcrumbs();
+    }
+
+    public function getHeaderWidgets(): array
+    {
+        return [CreditosClienteStatsWidget::class];
+    }
+
+    public function getWidgetData(): array
+    {
+        return ['filtroClienteId' => $this->filtroClienteId];
     }
 
     // ── Filtros fijos (URL params) ────────────────────────────────────────────
@@ -73,13 +128,6 @@ class CuentasPorCobrarPage extends Page implements HasForms
 
     #[Url]
     public ?string $filtroClienteNombre = null;
-
-    // ── Filtros interactivos ──────────────────────────────────────────────────
-    public ?string $filtroCliente     = null;
-    public ?string $filtroEstadoPago  = null; // '' | 'pendiente' | 'pagado'
-    public ?string $filtroVencimiento = null; // '' | 'vigente' | 'vencida'
-    public ?string $filtroFechaDesde  = null;
-    public ?string $filtroFechaHasta  = null;
 
     // ── Modal de historial ────────────────────────────────────────────────────
     public bool   $modalHistorial   = false;
@@ -99,81 +147,7 @@ class CuentasPorCobrarPage extends Page implements HasForms
     {
         if (empty($this->filtroClienteId)) {
             $this->redirect(ClienteResource::getUrl('index'));
-            return;
         }
-
-        $this->filtroFechaDesde = now()->subDays(90)->toDateString();
-        $this->filtroFechaHasta = now()->toDateString();
-        $this->form->fill();
-    }
-
-    // ── Formulario de filtros ─────────────────────────────────────────────────
-
-    public function form(Schema $schema): Schema
-    {
-        $clienteFijo = ! empty($this->filtroClienteId);
-        $cols        = ['default' => 1, 'sm' => 2, 'lg' => $clienteFijo ? 4 : 5];
-
-        $fields = [];
-
-        if (! $clienteFijo) {
-            $fields[] = TextInput::make('filtroCliente')
-                ->label('Cliente')
-                ->placeholder('Nombre o documento…')
-                ->prefixIcon('heroicon-o-magnifying-glass')
-                ->live(debounce: 300)
-                ->afterStateUpdated(fn () => $this->resetPage());
-        }
-
-        $fields[] = Select::make('filtroEstadoPago')
-            ->label('Estado pago')
-            ->placeholder('Todos')
-            ->options(['pendiente' => 'Pendientes', 'pagado' => 'Pagados'])
-            ->native(false)
-            ->live()
-            ->afterStateUpdated(fn () => $this->resetPage());
-
-        $fields[] = Select::make('filtroVencimiento')
-            ->label('Vencimiento')
-            ->placeholder('Todos')
-            ->options(['vigente' => 'Vigentes', 'vencida' => 'Vencidas'])
-            ->native(false)
-            ->live()
-            ->afterStateUpdated(fn () => $this->resetPage());
-
-        $fields[] = DatePicker::make('filtroFechaDesde')
-            ->label('Emisión desde')
-            ->displayFormat('d/m/Y')
-            ->live()
-            ->afterStateUpdated(fn () => $this->resetPage());
-
-        $fields[] = DatePicker::make('filtroFechaHasta')
-            ->label('Emisión hasta')
-            ->displayFormat('d/m/Y')
-            ->live()
-            ->afterStateUpdated(fn () => $this->resetPage());
-
-        return $schema->components([
-            Grid::make($cols)->schema($fields),
-        ]);
-    }
-
-    public function hayFiltros(): bool
-    {
-        return (empty($this->filtroClienteId) && ! empty($this->filtroCliente))
-            || ! empty($this->filtroEstadoPago)
-            || ! empty($this->filtroVencimiento);
-    }
-
-    public function limpiarFiltros(): void
-    {
-        $this->filtroCliente     = null;
-        $this->filtroEstadoPago  = null;
-        $this->filtroVencimiento = null;
-        $this->filtroFechaDesde  = now()->subDays(90)->toDateString();
-        $this->filtroFechaHasta  = now()->toDateString();
-        $this->form->fill();
-        $this->resetPage();
     }
 
     // ── Query base ────────────────────────────────────────────────────────────
@@ -187,70 +161,180 @@ class CuentasPorCobrarPage extends Page implements HasForms
                     ->orWhere('estado_pago', 'parcial');
             });
 
-        // Filtro fijo por cliente (viene del resource de clientes)
         if (! empty($this->filtroClienteId)) {
             $q->where('cliente_id', $this->filtroClienteId);
-        } elseif (! empty($this->filtroCliente)) {
-            $b = $this->filtroCliente;
-            $q->where(function ($sub) use ($b) {
-                $sub->where('cliente_nombre', 'like', "%{$b}%")
-                    ->orWhere('cliente_num_doc', 'like', "%{$b}%");
-            });
-        }
-
-        if (! empty($this->filtroEstadoPago)) {
-            $q->where('estado_pago', $this->filtroEstadoPago);
-        }
-
-        if ($this->filtroVencimiento === 'vigente') {
-            $q->where(function ($sub) {
-                $sub->whereNull('fecha_vencimiento')
-                    ->orWhere('fecha_vencimiento', '>=', today());
-            });
-        } elseif ($this->filtroVencimiento === 'vencida') {
-            $q->whereNotNull('fecha_vencimiento')
-              ->where('fecha_vencimiento', '<', today());
-        }
-
-        if (! empty($this->filtroFechaDesde)) {
-            $q->whereDate('fecha_emision', '>=', $this->filtroFechaDesde);
-        }
-
-        if (! empty($this->filtroFechaHasta)) {
-            $q->whereDate('fecha_emision', '<=', $this->filtroFechaHasta);
         }
 
         return $q;
     }
 
-    public function getVentas(): LengthAwarePaginator
+    public function table(Table $table): Table
     {
-        return $this->baseQuery()
-            ->with(['serie'])
-            ->orderByRaw('fecha_vencimiento IS NULL, fecha_vencimiento ASC')
-            ->orderBy('fecha_emision', 'asc')
-            ->paginate(20);
-    }
+        return $table
+            ->query(
+                $this->baseQuery()
+                    ->with('serie')
+                    ->orderByRaw('fecha_vencimiento IS NULL, fecha_vencimiento ASC')
+                    ->orderBy('fecha_emision', 'asc')
+            )
+            ->columns([
+                TextColumn::make('fecha_emision')
+                    ->label('Fecha')
+                    ->date('d/m/Y')
+                    ->description(fn (Venta $record): string =>
+                        \Carbon\Carbon::parse($record->fecha_emision)->format('H:i')
+                    )
+                    ->sortable(),
 
-    public function getResumen(): array
-    {
-        $row = (clone $this->baseQuery())->selectRaw('
-            COUNT(*) as total_creditos,
-            COALESCE(SUM(total), 0) as total_facturado,
-            COALESCE(SUM(monto_pagado), 0) as total_cobrado,
-            COALESCE(SUM(saldo_pendiente), 0) as total_pendiente,
-            COALESCE(SUM(CASE WHEN estado_pago = "pendiente" AND fecha_vencimiento IS NOT NULL AND fecha_vencimiento < CURDATE() THEN 1 ELSE 0 END), 0) as cuentas_vencidas,
-            COALESCE(SUM(CASE WHEN estado_pago = "pendiente" AND fecha_vencimiento IS NOT NULL AND fecha_vencimiento < CURDATE() THEN saldo_pendiente ELSE 0 END), 0) as monto_vencido
-        ')->first();
+                TextColumn::make('comprobante')
+                    ->label('Comprobante')
+                    ->state(fn (Venta $record): string =>
+                        ($record->serie->serie ?? '?') . '-' . $record->correlativo
+                    )
+                    ->weight('bold')
+                    ->copyable()
+                    ->searchable(query: fn (Builder $query, string $search): Builder =>
+                        $query->where(function ($q) use ($search) {
+                            $num = preg_replace('/[^0-9]/', '', $search);
+                            if ($num !== '') {
+                                $q->where('correlativo', 'like', '%' . ltrim($num, '0') . '%');
+                            }
+                            $q->orWhereHas('serie', fn ($sq) =>
+                                $sq->where('serie', 'like', '%' . $search . '%')
+                            );
+                        })
+                    ),
 
-        return [
-            'total_creditos'   => (int)   ($row->total_creditos   ?? 0),
-            'total_facturado'  => (float) ($row->total_facturado  ?? 0),
-            'total_cobrado'    => (float) ($row->total_cobrado    ?? 0),
-            'total_pendiente'  => (float) ($row->total_pendiente  ?? 0),
-            'cuentas_vencidas' => (int)   ($row->cuentas_vencidas ?? 0),
-            'monto_vencido'    => (float) ($row->monto_vencido    ?? 0),
-        ];
+                TextColumn::make('cliente_nombre')
+                    ->label('Cliente')
+                    ->description(fn (Venta $record): ?string =>
+                        $record->cliente_num_doc
+                            ? ($record->cliente_tipo_doc . ' ' . $record->cliente_num_doc)
+                            : null
+                    )
+                    ->wrap(),
+
+                TextColumn::make('estado_pago')
+                    ->label('Estado')
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => match ($state) {
+                        'pendiente' => 'Pendiente',
+                        'pagado'    => 'Pagado',
+                        'parcial'   => 'Parcial',
+                        default     => ucfirst((string) $state),
+                    })
+                    ->color(fn ($state): string => match ($state) {
+                        'pendiente' => 'warning',
+                        'pagado'    => 'success',
+                        'parcial'   => 'info',
+                        default     => 'gray',
+                    }),
+
+                TextColumn::make('total')
+                    ->label('Total')
+                    ->money('PEN')
+                    ->alignRight()
+                    ->sortable(),
+
+                TextColumn::make('monto_pagado')
+                    ->label('Pagado')
+                    ->money('PEN')
+                    ->alignRight()
+                    ->color('success'),
+
+                TextColumn::make('saldo_pendiente')
+                    ->label('Pendiente')
+                    ->money('PEN')
+                    ->alignRight()
+                    ->color(fn ($state): string => (float) $state > 0 ? 'danger' : 'success')
+                    ->weight('bold'),
+
+                TextColumn::make('fecha_vencimiento')
+                    ->label('Vencimiento')
+                    ->date('d/m/Y')
+                    ->badge()
+                    ->color(fn ($state, Venta $record): string =>
+                        $record->fecha_vencimiento?->isPast() ? 'danger' : 'gray'
+                    )
+                    ->placeholder('Sin fecha'),
+            ])
+            ->filters([
+                SelectFilter::make('estado_pago')
+                    ->label('Estado')
+                    ->options([
+                        'pendiente' => 'Pendiente',
+                        'pagado'    => 'Pagado',
+                        'parcial'   => 'Parcial',
+                    ])
+                    ->placeholder('Todos')
+                    ->native(false),
+
+                Filter::make('vencimiento')
+                    ->form([
+                        Select::make('vencimiento')
+                            ->label('Vencimiento')
+                            ->options(['vigente' => 'Vigente', 'vencida' => 'Vencida'])
+                            ->placeholder('Todos')
+                            ->native(false),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => match ($data['vencimiento'] ?? '') {
+                        'vigente' => $query->where(fn ($q) => $q->whereNull('fecha_vencimiento')->orWhere('fecha_vencimiento', '>=', today())),
+                        'vencida' => $query->whereNotNull('fecha_vencimiento')->where('fecha_vencimiento', '<', today()),
+                        default   => $query,
+                    })
+                    ->indicateUsing(fn (array $data): array => filled($data['vencimiento'] ?? null)
+                        ? ['Vencimiento: ' . ($data['vencimiento'] === 'vigente' ? 'Vigente' : 'Vencida')]
+                        : []
+                    ),
+
+                Filter::make('fecha_emision')
+                    ->label('Período')
+                    ->form([
+                        DatePicker::make('desde')
+                            ->label('Desde')
+                            ->displayFormat('d/m/Y')
+                            ->default(now()->subDays(90)->toDateString()),
+                        DatePicker::make('hasta')
+                            ->label('Hasta')
+                            ->displayFormat('d/m/Y')
+                            ->default(now()->toDateString()),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when($data['desde'] ?? null, fn ($q) => $q->whereDate('fecha_emision', '>=', $data['desde']))
+                        ->when($data['hasta'] ?? null, fn ($q) => $q->whereDate('fecha_emision', '<=', $data['hasta']))
+                    )
+                    ->indicateUsing(fn (array $data): array => array_values(array_filter([
+                        ($data['desde'] ?? null) ? 'Desde: ' . $data['desde'] : null,
+                        ($data['hasta'] ?? null) ? 'Hasta: ' . $data['hasta'] : null,
+                    ]))),
+            ])
+            ->searchPlaceholder('Buscar por comprobante…')
+            ->recordActions([
+                ActionGroup::make([
+                    Action::make('ver')
+                        ->label('Ver detalle')
+                        ->icon('heroicon-o-eye')
+                        ->color('gray')
+                        ->action(fn (Venta $record) => $this->abrirModalDetalle($record->id)),
+
+                    Action::make('historial')
+                        ->label('Historial de pagos')
+                        ->icon('heroicon-o-document-text')
+                        ->color('info')
+                        ->action(fn (Venta $record) => $this->abrirModalHistorial($record->id)),
+
+                    Action::make('cobrar')
+                        ->label('Registrar cobro')
+                        ->icon('heroicon-o-banknotes')
+                        ->color('warning')
+                        ->visible(fn (Venta $record): bool =>
+                            in_array($record->estado_pago, ['pendiente', 'parcial'])
+                        )
+                        ->action(fn (Venta $record) => $this->abrirModalCobro($record->id)),
+                ]),
+            ])
+            ->striped()
+            ->paginated([15, 25, 50]);
     }
 
     public function getMetodosPago(): Collection
@@ -278,16 +362,16 @@ class CuentasPorCobrarPage extends Page implements HasForms
         $pagado = (float) $venta->monto_pagado;
 
         $this->historialVenta = [
-            'comprobante'      => $venta->serie->serie . '-' . $venta->correlativo,
-            'cliente'          => $venta->cliente_nombre ?: 'Cliente general',
-            'cliente_doc'      => $venta->cliente_num_doc,
-            'total'            => $total,
-            'monto_pagado'     => $pagado,
-            'saldo_pendiente'  => (float) $venta->saldo_pendiente,
-            'estado_pago'      => $venta->estado_pago,
-            'fecha_emision'    => \Carbon\Carbon::parse($venta->fecha_emision)->format('d/m/Y'),
-            'fecha_vencimiento'=> $venta->fecha_vencimiento?->format('d/m/Y'),
-            'porcentaje'       => $total > 0 ? min(100, round(($pagado / $total) * 100, 1)) : 0,
+            'comprobante'       => $venta->serie->serie . '-' . $venta->correlativo,
+            'cliente'           => $venta->cliente_nombre ?: 'Cliente general',
+            'cliente_doc'       => $venta->cliente_num_doc,
+            'total'             => $total,
+            'monto_pagado'      => $pagado,
+            'saldo_pendiente'   => (float) $venta->saldo_pendiente,
+            'estado_pago'       => $venta->estado_pago,
+            'fecha_emision'     => \Carbon\Carbon::parse($venta->fecha_emision)->format('d/m/Y'),
+            'fecha_vencimiento' => $venta->fecha_vencimiento?->format('d/m/Y'),
+            'porcentaje'        => $total > 0 ? min(100, round(($pagado / $total) * 100, 1)) : 0,
         ];
 
         $this->historialPagos = $pagos
@@ -303,6 +387,7 @@ class CuentasPorCobrarPage extends Page implements HasForms
 
         $this->historialVentaId = $ventaId;
         $this->modalHistorial   = true;
+        $this->dispatch('open-modal', id: 'historial-modal');
     }
 
     public function cerrarModalHistorial(): void
@@ -311,6 +396,7 @@ class CuentasPorCobrarPage extends Page implements HasForms
         $this->historialVentaId = null;
         $this->historialVenta   = null;
         $this->historialPagos   = [];
+        $this->dispatch('close-modal', id: 'historial-modal');
     }
 
     public function cobrarDesdeHistorial(int $ventaId): void
@@ -344,6 +430,7 @@ class CuentasPorCobrarPage extends Page implements HasForms
         $this->cobroMonto  = number_format((float) $venta->saldo_pendiente, 2, '.', '');
         $this->cobroRef    = '';
         $this->modalCobro  = true;
+        $this->dispatch('open-modal', id: 'cobro-modal');
     }
 
     public function cerrarModal(): void
@@ -352,6 +439,7 @@ class CuentasPorCobrarPage extends Page implements HasForms
         $this->ventaId    = null;
         $this->ventaModal = null;
         $this->resetErrorBag();
+        $this->dispatch('close-modal', id: 'cobro-modal');
     }
 
     public function registrarCobro(): void
@@ -421,6 +509,7 @@ class CuentasPorCobrarPage extends Page implements HasForms
         $this->modalCobro = false;
         $this->ventaId    = null;
         $this->ventaModal = null;
+        $this->dispatch('close-modal', id: 'cobro-modal');
 
         Notification::make()
             ->title('Cobro registrado correctamente')

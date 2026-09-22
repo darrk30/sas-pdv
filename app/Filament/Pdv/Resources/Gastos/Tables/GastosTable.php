@@ -8,7 +8,9 @@ use App\Models\Gasto;
 use Filament\Notifications\Notification;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -80,10 +82,17 @@ class GastosTable
                     ->options(EstadoGasto::class)
                     ->native(false),
             ])
-            ->actions([
+            ->recordActions([
                 ActionGroup::make([
-                    EditAction::make()->label('Editar'),
+                    // Siempre visible
+                    ViewAction::make()->label('Ver'),
 
+                    // Solo cuando NO está anulado (pendiente o aprobado)
+                    EditAction::make()
+                        ->label('Editar')
+                        ->visible(fn (Gasto $record) => ! $record->estaAnulado()),
+
+                    // Solo cuando está pendiente
                     Action::make('aprobar')
                         ->label('Aprobar')
                         ->icon('heroicon-o-check-circle')
@@ -98,6 +107,7 @@ class GastosTable
                             Notification::make()->title('Gasto aprobado')->success()->send();
                         }),
 
+                    // Solo cuando está aprobado
                     Action::make('anular')
                         ->label('Anular')
                         ->icon('heroicon-o-x-circle')
@@ -106,12 +116,17 @@ class GastosTable
                         ->modalHeading('¿Anular este gasto?')
                         ->modalDescription('Esta acción no se puede deshacer.')
                         ->modalSubmitActionLabel('Sí, anular')
-                        ->visible(fn (Gasto $record) => ! $record->estaAnulado()
+                        ->visible(fn (Gasto $record) => $record->estado === EstadoGasto::Aprobado
                             && (auth()->user()?->can('gastos.anular') ?? false))
                         ->action(function (Gasto $record) {
                             $record->update(['estado' => EstadoGasto::Anulado]);
                             Notification::make()->title('Gasto anulado')->success()->send();
                         }),
+
+                    // Solo cuando está anulado
+                    DeleteAction::make()
+                        ->label('Eliminar')
+                        ->visible(fn (Gasto $record) => $record->estaAnulado()),
                 ]),
             ])
             ->defaultSort('fecha', 'desc')

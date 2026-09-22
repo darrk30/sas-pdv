@@ -25,6 +25,7 @@
         redirectUrl: '',
         ticketBase: '{{ url('/ticket/comanda') }}'
     }"
+    x-init="Alpine.store('hasLastComanda', false)"
     @imprimir-comanda-browser.window="
         const raw = $event.detail;
         const d   = (Array.isArray(raw) ? raw[0] : raw) || {};
@@ -39,7 +40,24 @@
         if (areas.length > 0) {
             activeTab = 0;
             open      = true;
+            try { localStorage.setItem('comanda_orden_' + ordenId, JSON.stringify(d)); Alpine.store('hasLastComanda', true); } catch(ec) {}
         }
+    "
+    @replay-last-comanda.window="
+        try {
+            if (!ordenId) return;
+            const saved = localStorage.getItem('comanda_orden_' + ordenId);
+            if (!saved) return;
+            const d = JSON.parse(saved);
+            mesa        = d.mesa     || '';
+            cajero      = d.cajero   || '';
+            rol         = d.rol      || '';
+            numero      = d.numero   || '';
+            parcial     = !!d.parcial;
+            redirectUrl = '';
+            try { areas = JSON.parse(d.areasJson || '[]'); } catch(e2) { areas = []; }
+            if (areas.length > 0) { activeTab = 0; open = true; }
+        } catch(e) {}
     "
     style="display:contents"
 >
@@ -178,8 +196,10 @@
                     <input
                         wire:model.live="clienteConcepto"
                         type="text"
-                        placeholder="Nombre / referencia (opcional)"
-                        style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:.45rem;padding:.25rem .55rem;font-size:.82rem;color:inherit;outline:none;width:100%;max-width:220px;"
+                        placeholder="Nombre del cliente *"
+                        required
+                        class="pdv-llevar-nombre-input"
+                        x-bind:class="!$wire.clienteConcepto?.trim() ? 'pdv-llevar-nombre-input--vacio' : 'pdv-llevar-nombre-input--ok'"
                     />
                 @elseif($mesa)
                     Mesa: <strong>{{ $mesa->nombre }}</strong>
@@ -192,16 +212,15 @@
                 <p class="pdv-header__fecha">{{ now()->format('d/m/Y  H:i') }}</p>
                 <p class="pdv-header__sub">Mozo: {{ auth()->user()->name }}</p>
             </div>
-            @if(! empty($lastComandaData))
                 <button
+                    x-show="$store.hasLastComanda"
+                    style="display:none;margin-left:.5rem;"
                     class="ep-btn ep-btn--icon"
-                    wire:click="reenviarComanda"
-                    title="Reenviar comanda"
-                    style="margin-left:.5rem;"
+                    @click.stop="$dispatch('replay-last-comanda')"
+                    title="Reimprimir última comanda"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.875 1.5C6.839 1.5 6 2.34 6 3.375v2.99c-.426.053-.851.11-1.274.174-1.454.218-2.476 1.483-2.476 2.917v6.294a3 3 0 0 0 3 3h.27l-.155 1.705A1.875 1.875 0 0 0 7.232 22.5h9.536a1.875 1.875 0 0 0 1.867-2.045l-.155-1.705h.27a3 3 0 0 0 3-3V9.456c0-1.434-1.022-2.7-2.476-2.917A48.716 48.716 0 0 0 18 6.366V3.375c0-1.036-.84-1.875-1.875-1.875h-8.25ZM16.5 6.205v-2.83A.375.375 0 0 0 16.125 3h-8.25a.375.375 0 0 0-.375.375v2.83a49.353 49.353 0 0 1 9 0Zm-.217 8.265c.178.018.317.16.333.337l.526 5.784a.375.375 0 0 1-.374.409H7.232a.375.375 0 0 1-.374-.409l.526-5.784a.337.337 0 0 1 .333-.337 41.741 41.741 0 0 1 8.566 0Zm.967-3.97a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H18a.75.75 0 0 1-.75-.75V10.5ZM15 9.75a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75V10.5a.75.75 0 0 0-.75-.75H15Z" clip-rule="evenodd"/></svg>
                 </button>
-            @endif
         </div>
     </div>
 

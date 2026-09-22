@@ -30,6 +30,7 @@ class Empresa extends Model
         'cod_local',
         'country_code',
         'modulos_activos',
+        'features_override',
         'fe_envio_directo_boleta',
         'fe_envio_directo_factura',
         'impresion_comprobante_directo',
@@ -41,6 +42,7 @@ class Empresa extends Model
 
     protected $casts = [
         'modulos_activos'                    => 'array',
+        'features_override'                  => 'array',
         'suscripcion_proxima_a_vencer'       => 'boolean',
         'fe_envio_directo_boleta'      => 'boolean',
         'fe_envio_directo_factura'     => 'boolean',
@@ -86,27 +88,54 @@ class Empresa extends Model
         return $this->hasOne(EmpresaFacturacion::class);
     }
 
-    public function tieneFacturacionElectronica(): bool
-    {
-        return (bool) ($this->planActual()?->facturacion_electronica ?? false)
-            && $this->facturacion !== null;
-    }
-
     public function planActual(): ?Plan
     {
         $this->loadMissing('suscripcion.plan');
         return $this->suscripcion?->plan;
     }
 
+    /**
+     * Comprueba si una feature está activa.
+     * Lógica: override de empresa primero; si es null, hereda del plan.
+     *
+     * Keys válidas: variantes | catalogo_web | facturacion_electronica |
+     *               impresion_directa | lista_precios
+     */
+    public function tieneFeature(string $feature): bool
+    {
+        $override = $this->features_override[$feature] ?? null;
+
+        // '' = "heredar del plan" (valor vacío del Select en el admin)
+        if ($override !== null && $override !== '') {
+            return (bool) $override;
+        }
+
+        $plan = $this->planActual();
+
+        return match ($feature) {
+            'variantes'               => (bool) ($plan?->tiene_variantes         ?? false),
+            'catalogo_web'            => (bool) ($plan?->tiene_catalogo_web      ?? false),
+            'facturacion_electronica' => (bool) ($plan?->facturacion_electronica ?? false),
+            'impresion_directa'       => (bool) ($plan?->tiene_impresion_directa ?? false),
+            'lista_precios'           => (bool) ($plan?->tiene_lista_precios     ?? false),
+            default                   => false,
+        };
+    }
+
+    public function tieneFacturacionElectronica(): bool
+    {
+        return $this->tieneFeature('facturacion_electronica')
+            && $this->facturacion !== null;
+    }
+
     public function tieneVariantes(): bool
     {
-        return (bool) ($this->planActual()?->tiene_variantes ?? false);
+        return $this->tieneFeature('variantes');
     }
 
     public function tienePlanListaPrecios(): bool
     {
-        $plan = $this->planActual();
-        return $plan === null || (bool) ($plan->tiene_lista_precios ?? false);
+        return $this->tieneFeature('lista_precios');
     }
 
     // ── Módulos ───────────────────────────────────────────────────────────────
@@ -240,10 +269,8 @@ class Empresa extends Model
     public function cachedConfigImpresion(): array
     {
         return Cache::remember($this->configImpresionCacheKey(), now()->addDay(), function () {
-            $planHabilita = (bool) ($this->suscripcion?->plan?->tiene_impresion_directa ?? false);
             return [
-                // El plan habilita la funcionalidad Y la empresa la tiene activa
-                'tiene_impresion_directa'      => $planHabilita && (bool) $this->impresion_comprobante_directo,
+                'tiene_impresion_directa'      => $this->tieneFeature('impresion_directa') && (bool) $this->impresion_comprobante_directo,
                 'impresion_comprobante_directo' => (bool) $this->impresion_comprobante_directo,
                 'api_token_impresion'           => $this->api_token_impresion ?? Str::uuid(),
             ];
@@ -257,6 +284,6 @@ class Empresa extends Model
 
     public function tieneImpresionDirecta(): bool
     {
-        return (bool) ($this->suscripcion?->plan?->tiene_impresion_directa ?? false);
+        return $this->tieneFeature('impresion_directa');
     }
 }

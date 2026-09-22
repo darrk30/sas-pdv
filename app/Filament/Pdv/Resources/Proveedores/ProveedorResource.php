@@ -15,7 +15,9 @@ use Filament\Facades\Filament;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class ProveedorResource extends Resource
 {
@@ -33,6 +35,32 @@ class ProveedorResource extends Resource
     protected static ?string $modelLabel = 'Proveedor';
 
     protected static ?string $pluralModelLabel = 'Proveedores';
+
+    public static function getEloquentQuery(): Builder
+    {
+        $empresaId = Filament::getTenant()->id;
+
+        $pagadoSub = DB::table('compra_pagos')
+            ->selectRaw('compra_id, SUM(monto) as total_pagado')
+            ->groupBy('compra_id');
+
+        return parent::getEloquentQuery()
+            ->select('proveedores.*')
+            ->addSelect([
+                'compras_pendientes_count' => DB::table('compras')
+                    ->whereColumn('proveedor_id', 'proveedores.id')
+                    ->where('empresa_id', $empresaId)
+                    ->whereIn('estado_pago', ['pendiente', 'parcial'])
+                    ->selectRaw('COUNT(*)'),
+
+                'saldo_deuda_total' => DB::table('compras as c')
+                    ->leftJoinSub($pagadoSub, 'p', 'p.compra_id', '=', 'c.id')
+                    ->whereColumn('c.proveedor_id', 'proveedores.id')
+                    ->where('c.empresa_id', $empresaId)
+                    ->whereIn('c.estado_pago', ['pendiente', 'parcial'])
+                    ->selectRaw('COALESCE(SUM(c.total - COALESCE(p.total_pagado, 0)), 0)'),
+            ]);
+    }
 
     public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('proveedores') && (auth()->user()?->can('proveedores.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('proveedores.crear') ?? false; }

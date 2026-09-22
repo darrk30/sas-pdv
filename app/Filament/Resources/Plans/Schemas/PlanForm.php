@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\Plans\Schemas;
 
 use App\Enums\EstadoGeneral;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -30,10 +30,17 @@ class PlanForm
                             ->required()
                             ->maxLength(255)
                             ->columnSpan([
-                                'default' => 1, // Ocupa toda la fila en celular
-                                'sm' => 2,      // Ocupa 2 columnas en tablet
-                                'lg' => 2,      // Ocupa 2 columnas en PC
+                                'default' => 1,
+                                'sm' => 2,
+                                'lg' => 2,
                             ]),
+
+                        TextInput::make('subtitulo')
+                            ->label('Subtítulo')
+                            ->helperText('Frase corta que aparece bajo el nombre en la página pública.')
+                            ->maxLength(120)
+                            ->placeholder('Para negocios que empiezan a digitalizar sus ventas.')
+                            ->columnSpanFull(),
 
                         Select::make('estado')
                             ->label('Estado')
@@ -59,9 +66,15 @@ class PlanForm
                             ->required()
                             ->columnSpan(1),
 
-                        Textarea::make('descripcion')
-                            ->label('Descripción')
-                            ->rows(3) // Le da una altura inicial más agradable
+                        RichEditor::make('descripcion')
+                            ->label('Descripción / Características')
+                            ->helperText('Puedes copiar y pegar texto con formato. Se mostrará tal cual en la página pública.')
+                            ->toolbarButtons([
+                                'bold', 'italic', 'underline', 'strike',
+                                'bulletList', 'orderedList',
+                                'h2', 'h3',
+                                'undo', 'redo',
+                            ])
                             ->columnSpanFull(),
                     ])->columnSpanFull(),
 

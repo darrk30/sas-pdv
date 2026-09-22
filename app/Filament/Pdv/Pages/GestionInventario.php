@@ -14,6 +14,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification;
@@ -124,6 +125,7 @@ class GestionInventario extends Page implements HasTable
                 Inventario::query()
                     ->where('estado_almacen', 'activo')
                     ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado'))
+                    ->orderByRaw("FIELD(estado_inventario, 'disponible', 'por_agotarse', 'agotado')")
                     ->with([
                         'producto',
                         'variante.valores.valor',
@@ -131,6 +133,19 @@ class GestionInventario extends Page implements HasTable
                     ])
             )
             ->columns([
+                ImageColumn::make('foto')
+                    ->label('')
+                    ->getStateUsing(function (Inventario $record): ?string {
+                        if ($record->variante_id && $record->variante?->imagen) {
+                            return $record->variante->imagen;
+                        }
+                        return $record->producto?->logo;
+                    })
+                    ->disk('public')
+                    ->size(40)
+                    ->defaultImageUrl(asset('img/placeholder-producto.svg'))
+                    ->extraImgAttributes(['style' => 'border-radius:6px;object-fit:cover;']),
+
                 TextColumn::make('producto.nombre')
                     ->label('Producto')
                     ->formatStateUsing(function (string $state, Inventario $record): string {
@@ -200,7 +215,19 @@ class GestionInventario extends Page implements HasTable
 
                 TextColumn::make('estado_inventario')
                     ->label('Estado')
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => match ($state?->value ?? $state) {
+                        'disponible'   => 'Disponible',
+                        'por_agotarse' => 'Por agotarse',
+                        'agotado'      => 'Agotado',
+                        default        => $state,
+                    })
+                    ->color(fn ($state): string => match ($state?->value ?? $state) {
+                        'disponible'   => 'success',
+                        'por_agotarse' => 'warning',
+                        'agotado'      => 'danger',
+                        default        => 'gray',
+                    }),
             ])
             ->filters([
                 SelectFilter::make('estado_inventario')
