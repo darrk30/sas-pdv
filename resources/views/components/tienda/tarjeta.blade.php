@@ -128,6 +128,7 @@
          modalProducto: @js([
              'id'             => $producto->id,
              'nombre'         => $producto->nombre,
+             'descripcion'    => $producto->descripcion ?: null,
              'imagen'         => $imagenes->first(),
              'precioBase'     => $precioFinal,
              'codigo_interno' => $producto->codigo_interno,

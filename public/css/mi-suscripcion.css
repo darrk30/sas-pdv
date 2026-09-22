@@ -62,7 +62,7 @@
     padding: .6rem;
     display: flex;
 }
-.msp-hero > div { min-width: 0; flex: 1; }
+.msp-hero-text { min-width: 0; flex: 1; }
 .msp-hero-svg   { width: 2rem; height: 2rem; color: #fff; }
 .msp-hero-title { font-size: 1.1rem; font-weight: 700; margin: 0 0 .2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .msp-hero-sub   { font-size: .825rem; opacity: .85; margin: 0; line-height: 1.45; word-break: break-word; }
@@ -136,7 +136,41 @@
 .msp-price-amount { font-size: 2.4rem; font-weight: 800; line-height: 1; color: var(--msp-text); }
 .msp-price-cycle  { font-size: .875rem; color: var(--msp-text-subtle); margin-left: .1rem; }
 
-.msp-plan-desc { font-size: .85rem; color: var(--msp-text-muted); margin: 0 0 .75rem; }
+/* ── Acordeón de características ─────────────────────────────────── */
+.msp-details {
+    border-top: 1px solid var(--msp-border-soft);
+    margin-top: 1rem;
+    padding-top: .75rem;
+}
+.msp-details-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    list-style: none;
+    font-size: .8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--msp-text-subtle);
+    user-select: none;
+    gap: .5rem;
+}
+.msp-details-summary::-webkit-details-marker { display: none; }
+.msp-details-arrow {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    transition: transform .2s ease;
+}
+.msp-details[open] .msp-details-arrow { transform: rotate(180deg); }
+
+.msp-plan-desc { font-size: .85rem; color: var(--msp-text-muted); margin: .75rem 0 0; }
+.msp-plan-desc p        { margin: 0 0 .4rem; }
+.msp-plan-desc p:last-child { margin-bottom: 0; }
+.msp-plan-desc strong   { font-weight: 600; color: var(--msp-text); }
+.msp-plan-desc ul, .msp-plan-desc ol { padding-left: 1.2rem; margin: .25rem 0 .5rem; }
+.msp-plan-desc li       { margin-bottom: .2rem; }
 
 .msp-features {
     list-style: none;

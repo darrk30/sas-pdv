@@ -7,7 +7,7 @@
             <div class="msp-hero-icon">
                 <x-heroicon-o-credit-card class="msp-hero-svg" />
             </div>
-            <div>
+            <div class="msp-hero-text">
                 <h2 class="msp-hero-title">Mi Suscripción</h2>
                 <p class="msp-hero-sub">Consulta el estado de tu plan, las fechas de vencimiento y registra tus comprobantes de pago para que el administrador los verifique.</p>
             </div>
@@ -58,10 +58,6 @@
                         <span class="msp-price-cycle">/ {{ $plan->ciclo_facturacion }}</span>
                     </div>
 
-                    @if ($plan->descripcion)
-                        <p class="msp-plan-desc">{{ $plan->descripcion }}</p>
-                    @endif
-
                     <ul class="msp-features">
                         <li class="msp-feature">
                             <x-heroicon-o-users class="msp-feature-ico" />
@@ -86,6 +82,16 @@
                             </li>
                         @endif
                     </ul>
+
+                    @if ($plan->descripcion)
+                        <details class="msp-details">
+                            <summary class="msp-details-summary">
+                                <span>Características del plan</span>
+                                <svg class="msp-details-arrow" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
+                            </summary>
+                            <div class="msp-plan-desc">{!! $plan->descripcion !!}</div>
+                        </details>
+                    @endif
                 </div>
 
                 {{-- Tarjeta de vigencia ──────────────────────────────────── --}}
