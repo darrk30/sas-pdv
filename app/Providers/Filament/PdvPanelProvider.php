@@ -115,6 +115,7 @@ class PdvPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->login()
+            ->passwordReset()
             ->profile()
             ->font('Inter', provider: GoogleFontProvider::class)
             ->discoverWidgets(in: app_path('Filament/Pdv/Widgets'), for: 'App\Filament\Pdv\Widgets')

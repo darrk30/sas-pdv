@@ -95,4 +95,5 @@ class User extends Authenticatable implements HasTenants, HasName, FilamentUser
     {
         return $this->belongsToMany(Turno::class, 'caja_usuario');
     }
+
 }

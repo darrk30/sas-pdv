@@ -14,6 +14,8 @@ use App\Policies\PlanPolicy;
 use App\Policies\TareaProgramadaPolicy;
 use App\Events\VentaCompletada;
 use App\Listeners\EmitirComprobanteElectronico;
+use App\Notifications\Auth\RestablecerContrasenaNotification;
+use Filament\Auth\Notifications\ResetPassword as FilamentResetPassword;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Event;
@@ -21,7 +23,10 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        $this->app->bind(FilamentResetPassword::class, RestablecerContrasenaNotification::class);
+    }
 
     public function boot(): void
     {
