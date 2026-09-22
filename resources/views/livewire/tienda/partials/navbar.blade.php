@@ -16,15 +16,18 @@
         _t: null,
         _tapHandler: null,
         _popHandler: null,
+        _lastQ: new URLSearchParams(window.location.search).get('q') ?? '',
         lanzar() {
-            const ev = new CustomEvent('tienda-buscar', { detail: { q: this.q.trim() }, cancelable: true });
+            const q = this.q.trim();
+            if (q === this._lastQ) return;
+            this._lastQ = q;
+            const ev = new CustomEvent('tienda-buscar', { detail: { q }, cancelable: true });
             window.dispatchEvent(ev);
             if (!ev.defaultPrevented) {
-                Livewire.navigate(this.q.trim() ? '/?q=' + encodeURIComponent(this.q.trim()) : '/');
+                Livewire.navigate(q ? '/?q=' + encodeURIComponent(q) : '/');
             }
         },
         abrirTeclado(input) {
-            // Bloquea taps fuera del buscador para que no disparen click en tarjetas
             this._tapHandler = (e) => {
                 if (!e.target.closest('.navbar__busqueda')) {
                     e.preventDefault();
@@ -33,7 +36,6 @@
             };
             document.addEventListener('touchstart', this._tapHandler, { passive: false });
 
-            // Intercepta el botón Atrás de Android para que solo cierre el teclado
             history.pushState({ teclado: true }, '');
             this._popHandler = () => {
                 input.blur();
@@ -50,9 +52,9 @@
             if (this._popHandler) {
                 window.removeEventListener('popstate', this._popHandler);
                 this._popHandler = null;
-                // Quita el estado fantasma que pusimos al abrir
-                if (history.state?.teclado) history.back();
             }
+            // Reemplaza el estado fantasma sin disparar popstate (history.back dispara Livewire)
+            if (history.state?.teclado) history.replaceState(null, '');
         }
     }">
         <div class="navbar__busqueda-campo">
@@ -61,7 +63,7 @@
             </svg>
             <input
                 x-model="q"
-                @input="clearTimeout(_t); _t = setTimeout(() => lanzar(), q.trim() === '' ? 0 : 400)"
+                @input="clearTimeout(_t); _t = setTimeout(() => lanzar(), 600)"
                 @keydown.enter.prevent="clearTimeout(_t); lanzar()"
                 @focus="abrirTeclado($el)"
                 @blur="cerrarTeclado()"
@@ -75,14 +77,42 @@
     {{-- ── Acciones derecha ────────────────────────────────────── --}}
     <div class="navbar__acciones">
 
-        {{-- Usuario — dropdown por hover --}}
+        {{-- Usuario — hover en desktop, tap en móvil --}}
         <div
             class="navbar__usuario-menu"
-            x-data="{ abierto: false, _t: null }"
-            @mouseenter="clearTimeout(_t); abierto = true"
-            @mouseleave="_t = setTimeout(() => { abierto = false }, 180)"
+            x-data="{
+                abierto: false,
+                _t: null, _tm: null,
+                _esMovil: false,
+                _tapFuera: null,
+                cerrar() {
+                    this.abierto = false;
+                    if (this._tapFuera) {
+                        document.removeEventListener('touchstart', this._tapFuera);
+                        this._tapFuera = null;
+                    }
+                },
+                toggleMovil() {
+                    if (this.abierto) {
+                        this.cerrar();
+                    } else {
+                        this.abierto = true;
+                        this._tapFuera = (e) => {
+                            if (!e.target.closest('.navbar__usuario-menu')) {
+                                e.preventDefault();
+                                this.cerrar();
+                            }
+                        };
+                        document.addEventListener('touchstart', this._tapFuera, { passive: false });
+                    }
+                }
+            }"
+            @touchstart.passive="_esMovil = true; clearTimeout(_tm); _tm = setTimeout(() => _esMovil = false, 800)"
+            @mouseenter="if (!_esMovil) { clearTimeout(_t); abierto = true }"
+            @mouseleave="if (!_esMovil) { _t = setTimeout(() => cerrar(), 180) }"
         >
-            <button class="navbar__saludo" type="button" aria-haspopup="true" :aria-expanded="abierto">
+            <button class="navbar__saludo" type="button" aria-haspopup="true" :aria-expanded="abierto"
+                    @click.stop="if (_esMovil) toggleMovil()">
                 <span class="navbar__saludo-hola">Hola,</span>
                 <span class="navbar__saludo-nombre">
                     {{ $cliente ? $cliente->nombre : 'Iniciar Sesión' }}

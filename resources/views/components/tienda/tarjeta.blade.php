@@ -161,18 +161,46 @@
              }
          },
          siguiente() {
-             if (this.imagenes.length > 1)
-                 this.indice = (this.indice + 1) % this.imagenes.length;
+             if (this.indice < this.imagenes.length - 1) this.indice++;
          },
          anterior() {
-             if (this.imagenes.length > 1)
-                 this.indice = (this.indice - 1 + this.imagenes.length) % this.imagenes.length;
+             if (this.indice > 0) this.indice--;
          },
          touchX: 0,
-         tocarInicio(e) { this.touchX = e.touches[0].clientX; },
+         touchY: 0,
+         touchDx: 0,
+         arrastrandoImg: false,
+         _dirGesto: null,
+         tocarInicio(e) {
+             if (this.imgColor || this.imagenes.length <= 1) return;
+             this.touchX = e.touches[0].clientX;
+             this.touchY = e.touches[0].clientY;
+             this.touchDx = 0;
+             this.arrastrandoImg = false;
+             this._dirGesto = null;
+         },
+         tocarMover(e) {
+             if (this._dirGesto === 'v') return;
+             const dx = e.touches[0].clientX - this.touchX;
+             const dy = e.touches[0].clientY - this.touchY;
+             if (this._dirGesto === null) {
+                 if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+                 this._dirGesto = Math.abs(dy) > Math.abs(dx) ? 'v' : 'h';
+                 if (this._dirGesto === 'h') this.arrastrandoImg = true;
+                 else return;
+             }
+             if (dx > 0 && this.indice === 0) { this.touchDx = 0; return; }
+             if (dx < 0 && this.indice === this.imagenes.length - 1) { this.touchDx = 0; return; }
+             this.touchDx = dx;
+         },
          tocarFin(e) {
-             if (this.imgColor) return;
+             if (this._dirGesto !== 'h') {
+                 this._dirGesto = null; this.touchDx = 0; this.arrastrandoImg = false; return;
+             }
              const dx = e.changedTouches[0].clientX - this.touchX;
+             this.arrastrandoImg = false;
+             this.touchDx = 0;
+             this._dirGesto = null;
              if (Math.abs(dx) > 40) { if (dx < 0) this.siguiente(); else this.anterior(); }
          },
          agregarOModal(el) {
@@ -224,11 +252,29 @@
     {{-- ── Imagen ──────────────────────────────────────────────── --}}
     <div class="tarjeta__imagen"
          @touchstart.passive="tocarInicio($event)"
+         @touchmove.passive="tocarMover($event)"
          @touchend.passive="tocarFin($event)">
 
         @if ($imagenes->isNotEmpty())
-            <img :src="imgActual" alt="{{ $producto->nombre }}" class="tarjeta__img" loading="lazy"
-                 :class="{ 'tarjeta__img--agotado': agotado || stockRestante === 0 }">
+            {{-- Tira deslizable --}}
+            <div class="tarjeta__tira"
+                 x-show="!imgColor"
+                 :style="`transform:translateX(calc(-${indice*100}% + ${touchDx}px));transition:${arrastrandoImg?'none':'transform .3s cubic-bezier(.25,1,.5,1)'}`">
+                <template x-for="img in imagenes" :key="img">
+                    <img :src="img"
+                         class="tarjeta__img"
+                         :class="{ 'tarjeta__img--agotado': agotado || stockRestante === 0 }"
+                         alt="{{ $producto->nombre }}"
+                         loading="lazy">
+                </template>
+            </div>
+            {{-- Overlay imagen de color --}}
+            <img x-show="imgColor"
+                 :src="imgColor || ''"
+                 class="tarjeta__img tarjeta__img--color"
+                 :class="{ 'tarjeta__img--agotado': agotado || stockRestante === 0 }"
+                 alt="{{ $producto->nombre }}"
+                 loading="lazy">
         @else
             <div class="tarjeta__sin-imagen">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="tarjeta__sin-imagen-svg">

@@ -9,17 +9,49 @@ const _pdPage = function(productoData, imagenesData, colorImagenMap) {
         seleccion:     {},
         cantidad:      1,
         touchX:        0,
+        touchY:        0,
+        touchDx:       0,
+        arrastrandoImg: false,
+        _dirGesto:     null,
 
         get imgActual() {
             return this.imgOverride ?? this.imagenes[this.indice] ?? null;
         },
 
         seleccionarThumb(i) { this.indice = i; this.imgOverride = null; },
-        siguiente() { if (this.imagenes.length > 1) this.indice = (this.indice + 1) % this.imagenes.length; },
-        anterior()  { if (this.imagenes.length > 1) this.indice = (this.indice - 1 + this.imagenes.length) % this.imagenes.length; },
-        tocarInicio(e) { this.touchX = e.touches[0].clientX; },
+        siguiente() { if (this.indice < this.imagenes.length - 1) this.indice++; },
+        anterior()  { if (this.indice > 0) this.indice--; },
+
+        tocarInicio(e) {
+            if (this.imgOverride || this.imagenes.length <= 1) return;
+            this.touchX = e.touches[0].clientX;
+            this.touchY = e.touches[0].clientY;
+            this.touchDx = 0;
+            this.arrastrandoImg = false;
+            this._dirGesto = null;
+        },
+        tocarMover(e) {
+            if (this._dirGesto === 'v') return;
+            const dx = e.touches[0].clientX - this.touchX;
+            const dy = e.touches[0].clientY - this.touchY;
+            if (this._dirGesto === null) {
+                if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+                this._dirGesto = Math.abs(dy) > Math.abs(dx) ? 'v' : 'h';
+                if (this._dirGesto === 'h') this.arrastrandoImg = true;
+                else return;
+            }
+            if (dx > 0 && this.indice === 0) { this.touchDx = 0; return; }
+            if (dx < 0 && this.indice === this.imagenes.length - 1) { this.touchDx = 0; return; }
+            this.touchDx = dx;
+        },
         tocarFin(e) {
+            if (this._dirGesto !== 'h') {
+                this._dirGesto = null; this.touchDx = 0; this.arrastrandoImg = false; return;
+            }
             const dx = e.changedTouches[0].clientX - this.touchX;
+            this.arrastrandoImg = false;
+            this.touchDx = 0;
+            this._dirGesto = null;
             if (Math.abs(dx) > 40) { if (dx < 0) this.siguiente(); else this.anterior(); }
         },
 
@@ -141,8 +173,12 @@ const _pdPage = function(productoData, imagenesData, colorImagenMap) {
                 }
             }
 
-            const imgEl = this.$refs?.imgPrincipal;
-            if (imgEl && imgEl.src) flyAlCarrito(imgEl);
+            const ref  = this.$refs?.imgPrincipal;
+            const r    = ref?.getBoundingClientRect();
+            const flyEl = (r && r.width > 0)
+                ? ref
+                : this.$el.querySelector('.pd-galeria__tira img');
+            if (flyEl) flyAlCarrito(flyEl);
             let varNombre = Object.values(this.seleccion).map(val => val.label).filter(Boolean).join(' / ') || null;
             if (!varNombre && this.producto.variantes.length === 0 && this.producto.atributos.length > 0) {
                 const especiales = this.producto.atributos.filter(a =>

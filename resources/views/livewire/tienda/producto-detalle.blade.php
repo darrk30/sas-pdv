@@ -23,13 +23,29 @@
             {{-- Imagen principal --}}
             <div class="pd-galeria__principal"
                  @touchstart.passive="tocarInicio($event)"
+                 @touchmove.passive="tocarMover($event)"
                  @touchend.passive="tocarFin($event)">
 
                 @if ($imagenes->isNotEmpty())
+                    {{-- Tira deslizable --}}
+                    <div class="pd-galeria__tira"
+                         x-show="!imgOverride"
+                         :style="`transform:translateX(calc(-${indice*100}% + ${touchDx}px));transition:${arrastrandoImg?'none':'transform .3s cubic-bezier(.25,1,.5,1)'}`">
+                        <template x-for="(img, i) in imagenes" :key="img">
+                            <img :src="img"
+                                 class="pd-galeria__img pd-galeria__img--zoom"
+                                 alt="{{ $producto->nombre }}"
+                                 @click="abrirLightbox(i)"
+                                 loading="lazy"
+                                 title="Clic para ampliar">
+                        </template>
+                    </div>
+                    {{-- Overlay para imagen de variante/color --}}
                     <img x-ref="imgPrincipal"
-                         :src="imgActual"
+                         x-show="imgOverride"
+                         :src="imgOverride || ''"
                          alt="{{ $producto->nombre }}"
-                         class="pd-galeria__img pd-galeria__img--zoom"
+                         class="pd-galeria__img pd-galeria__img--zoom pd-galeria__img--override"
                          @click="abrirLightbox(indice)"
                          title="Clic para ampliar">
                 @else

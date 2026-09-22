@@ -63,6 +63,26 @@
     user-select: none;
 }
 
+/* ── Tira deslizable ─────────────────────────────────────────── */
+.pd-galeria__tira {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    will-change: transform;
+}
+
+.pd-galeria__tira .pd-galeria__img {
+    flex: 0 0 100%;
+}
+
+/* Overlay imagen de variante/color */
+.pd-galeria__img--override {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
 .pd-galeria__img {
     width: 100%;
     height: 100%;

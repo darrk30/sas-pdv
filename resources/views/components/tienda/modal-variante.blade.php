@@ -2,6 +2,7 @@
     x-data="modalVariante()"
     @abrir-modal-variante.window="abrir($event.detail)"
     @keydown.escape.window="cerrar()"
+    @drag-cerrar.window="cerrar()"
     x-show="abierto"
     style="display:none"
     class="modal-var"
@@ -10,7 +11,48 @@
     <div class="modal-var__overlay" @click="cerrar()"></div>
 
     {{-- Diálogo --}}
-    <div class="modal-var__dialog" @click.stop>
+    <div class="modal-var__dialog"
+         @click.stop
+         x-data="{
+             dy: 0,
+             sy: 0,
+             dragging: false,
+             desdeHeader: false,
+
+             tStart(e) {
+                 this.sy       = e.touches[0].clientY;
+                 this.dy       = 0;
+                 this.dragging = true;
+                 this.desdeHeader = !!e.target.closest('.modal-var__drag, .modal-var__header');
+             },
+             tMove(e) {
+                 if (!this.dragging) return;
+                 const delta = e.touches[0].clientY - this.sy;
+                 if (delta <= 0) { this.dy = 0; return; }
+                 if (!this.desdeHeader) {
+                     const cuerpo = this.$el.querySelector('.modal-var__cuerpo');
+                     if (cuerpo && cuerpo.scrollTop > 0) return;
+                 }
+                 this.dy = delta;
+             },
+             tEnd() {
+                 this.dragging = false;
+                 if (this.dy > 110) {
+                     this.dy = window.innerHeight;
+                     setTimeout(() => {
+                         window.dispatchEvent(new Event('drag-cerrar'));
+                         this.dy = 0;
+                     }, 260);
+                 } else {
+                     this.dy = 0;
+                 }
+             }
+         }"
+         :style="`transform:translateY(${dy}px);transition:${dragging ? 'none' : 'transform .3s cubic-bezier(.2,1,.3,1)'}`"
+         @touchstart.passive="tStart($event)"
+         @touchmove.passive="tMove($event)"
+         @touchend.passive="tEnd()"
+    >
 
         {{-- Drag indicator (visible solo en móvil) --}}
         <div class="modal-var__drag"></div>
