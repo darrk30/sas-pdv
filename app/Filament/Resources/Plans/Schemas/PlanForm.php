@@ -149,6 +149,13 @@ class PlanForm
                             ->onColor('success')
                             ->default(false)
                             ->columnSpan(1),
+
+                        Toggle::make('tiene_cuentas')
+                            ->label('Cuentas por Cobrar / Pagar')
+                            ->helperText('Permite gestionar créditos a clientes y deudas a proveedores')
+                            ->onColor('success')
+                            ->default(false)
+                            ->columnSpan(1),
                     ])->columnSpanFull(),
             ]);
     }

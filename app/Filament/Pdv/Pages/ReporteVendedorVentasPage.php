@@ -39,7 +39,7 @@ class ReporteVendedorVentasPage extends Page implements HasForms, HasTable
 
     public static function canAccess(): bool
     {
-        return Filament::getTenant()->tieneModulo('reporte_vendedores')
+        return Filament::getTenant()->tieneModulo('reporte_ventas')
             && (auth()->user()?->can('caja.reporte_vendedores') ?? false);
     }
 

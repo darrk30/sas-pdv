@@ -6,6 +6,7 @@ use App\Enums\EstadoGeneral;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\Filter;
@@ -17,6 +18,14 @@ class ProductosTable
     {
         return $table
             ->columns([
+                ImageColumn::make('logo')
+                    ->label('')
+                    ->disk('public')
+                    ->defaultImageUrl(asset('img/placeholder-producto.svg'))
+                    ->size(40)
+                    ->square()
+                    ->extraImgAttributes(['class' => 'rounded object-cover']),
+
                 TextColumn::make('nombre')
                     ->label('Producto')
                     ->searchable()
@@ -58,7 +67,21 @@ class ProductosTable
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('precio_venta')
-                    ->label('Precio Venta')
+                    ->label('Precio base')
+                    ->money('PEN')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('porcentaje_descuento')
+                    ->label('Descuento')
+                    ->suffix('%')
+                    ->sortable()
+                    ->color('warning')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('precio_con_descuento')
+                    ->label('Precio final')
                     ->money('PEN')
                     ->sortable(),
 

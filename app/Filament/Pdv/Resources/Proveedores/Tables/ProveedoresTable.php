@@ -6,6 +6,7 @@ use App\Enums\EstadoGeneral;
 use App\Enums\TipoDocumento;
 use App\Filament\Pdv\Pages\CuentasPorPagarPage;
 use App\Models\Proveedor;
+use Filament\Facades\Filament;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -20,6 +21,9 @@ class ProveedoresTable
 {
     public static function configure(Table $table): Table
     {
+        $empresa      = Filament::getTenant();
+        $tieneCuentas = $empresa && $empresa->tieneFeature('cuentas');
+
         return $table
             ->columns([
 
@@ -70,7 +74,8 @@ class ProveedoresTable
                     ->color(fn ($state): string => (float) $state > 0 ? 'danger' : 'gray')
                     ->formatStateUsing(fn ($state): string => (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—')
                     ->alignRight()
-                    ->sortable(),
+                    ->sortable()
+                    ->visible($tieneCuentas),
 
                 TextColumn::make('estado')
                     ->label('Estado')
@@ -98,6 +103,7 @@ class ProveedoresTable
                         ->label('Cuentas por Pagar')
                         ->icon('heroicon-o-banknotes')
                         ->color('warning')
+                        ->visible($tieneCuentas)
                         ->url(fn (Proveedor $record) =>
                             CuentasPorPagarPage::getUrl() . '?' . http_build_query([
                                 'filtroProveedorId'     => $record->id,

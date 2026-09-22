@@ -20,42 +20,48 @@ class ProveedoresStatsWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $empresaId = Filament::getTenant()->id;
+        $empresa      = Filament::getTenant();
+        $empresaId    = $empresa->id;
+        $tieneCuentas = $empresa->tieneFeature('cuentas');
 
         $totalProveedores = Proveedor::where('empresa_id', $empresaId)->count();
 
-        $pagadoSub = DB::table('compra_pagos')
-            ->selectRaw('compra_id, SUM(monto) as total_pagado')
-            ->groupBy('compra_id');
-
-        $deuda = DB::table('compras as c')
-            ->leftJoinSub($pagadoSub, 'p', 'p.compra_id', '=', 'c.id')
-            ->where('c.empresa_id', $empresaId)
-            ->whereIn('c.estado_pago', ['pendiente', 'parcial'])
-            ->selectRaw('COUNT(DISTINCT c.proveedor_id) AS con_deuda, COALESCE(SUM(c.total - COALESCE(p.total_pagado, 0)), 0) AS saldo_total')
-            ->first();
-
-        $conDeuda   = (int)   ($deuda->con_deuda   ?? 0);
-        $saldoTotal = (float) ($deuda->saldo_total ?? 0);
-
-        return [
+        $stats = [
             Stat::make('Total proveedores', number_format($totalProveedores))
                 ->description('Proveedores registrados')
                 ->descriptionIcon('heroicon-o-truck')
                 ->color('primary')
                 ->icon('heroicon-o-truck'),
+        ];
 
-            Stat::make('Con deuda pendiente', number_format($conDeuda))
+        if ($tieneCuentas) {
+            $pagadoSub = DB::table('compra_pagos')
+                ->selectRaw('compra_id, SUM(monto) as total_pagado')
+                ->groupBy('compra_id');
+
+            $deuda = DB::table('compras as c')
+                ->leftJoinSub($pagadoSub, 'p', 'p.compra_id', '=', 'c.id')
+                ->where('c.empresa_id', $empresaId)
+                ->whereIn('c.estado_pago', ['pendiente', 'parcial'])
+                ->selectRaw('COUNT(DISTINCT c.proveedor_id) AS con_deuda, COALESCE(SUM(c.total - COALESCE(p.total_pagado, 0)), 0) AS saldo_total')
+                ->first();
+
+            $conDeuda   = (int)   ($deuda->con_deuda   ?? 0);
+            $saldoTotal = (float) ($deuda->saldo_total ?? 0);
+
+            $stats[] = Stat::make('Con deuda pendiente', number_format($conDeuda))
                 ->description('Proveedores con saldo por pagar')
                 ->descriptionIcon('heroicon-o-credit-card')
                 ->color($conDeuda > 0 ? 'warning' : 'gray')
-                ->icon('heroicon-o-credit-card'),
+                ->icon('heroicon-o-credit-card');
 
-            Stat::make('Cuentas por pagar', 'S/ ' . number_format($saldoTotal, 2))
+            $stats[] = Stat::make('Cuentas por pagar', 'S/ ' . number_format($saldoTotal, 2))
                 ->description('Saldo total con proveedores')
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color($saldoTotal > 0 ? 'danger' : 'gray')
-                ->icon('heroicon-o-banknotes'),
-        ];
+                ->icon('heroicon-o-banknotes');
+        }
+
+        return $stats;
     }
 }

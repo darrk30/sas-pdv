@@ -16,7 +16,10 @@ class OrdenNuevaNotification extends Notification
 
     public function toDatabase(mixed $notifiable): array
     {
-        $url = 'http://' . $this->orden->empresa->slug . '.' . config('app.domain') . '/pdv/ordenes/' . $this->orden->id . '/edit';
+        $appUrl = config('app.url');
+        $scheme = parse_url($appUrl, PHP_URL_SCHEME) ?: 'https';
+        $domain = env('APP_DOMAIN') ?: parse_url($appUrl, PHP_URL_HOST);
+        $url = $scheme . '://' . $this->orden->empresa->slug . '.' . $domain . '/pdv/ordenes/' . $this->orden->id . '/edit';
 
         return [
             'empresa_id' => $this->orden->empresa_id,

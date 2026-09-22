@@ -85,7 +85,7 @@ class PdvPanelProvider extends PanelProvider
             ->path('pdv')
             ->profile(isSimple: false)
             ->colors([
-                'primary' => '#46449e',
+                'primary' => '#1d5194',
             ])
             ->brandLogoHeight('3.5rem')
             ->brandName(fn () => Str::limit($this->resolverEmpresa()?->nombre ?? 'Tukipu', 22, ''))
@@ -116,7 +116,7 @@ class PdvPanelProvider extends PanelProvider
             ])
             ->login()
             ->profile()
-            ->font('Vend Sans', provider: GoogleFontProvider::class)
+            ->font('Inter', provider: GoogleFontProvider::class)
             ->discoverWidgets(in: app_path('Filament/Pdv/Widgets'), for: 'App\Filament\Pdv\Widgets')
             ->widgets([
                 // AccountWidget::class,    

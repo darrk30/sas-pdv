@@ -564,7 +564,10 @@ class MiEmpresaPage extends Page implements HasForms
     public function renderQrModal(): HtmlString
     {
         $empresa   = Filament::getTenant();
-        $catalogoUrl = 'http://' . $empresa->slug . '.' . env('APP_DOMAIN', 'sas-pdv.test');
+        $appUrl    = config('app.url');
+        $scheme    = parse_url($appUrl, PHP_URL_SCHEME) ?: 'https';
+        $domain    = env('APP_DOMAIN') ?: parse_url($appUrl, PHP_URL_HOST);
+        $catalogoUrl = $scheme . '://' . $empresa->slug . '.' . $domain;
         $dataUrl   = $this->generarQrDataUrl($empresa, $catalogoUrl);
         $urlEsc    = e($catalogoUrl);
         $nombre    = e($empresa->name);

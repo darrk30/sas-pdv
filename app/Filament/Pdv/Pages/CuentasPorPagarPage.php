@@ -44,7 +44,9 @@ class CuentasPorPagarPage extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->can('compras.ver') ?? false;
+        $empresa = Filament::getTenant();
+        return $empresa->tieneFeature('cuentas')
+            && (auth()->user()?->can('compras.ver') ?? false);
     }
 
     public function getTitle(): string|Htmlable
