@@ -83,11 +83,9 @@ class MapaMesasPage extends Page
     }
 
     /** Recibe el broadcast de Reverb cuando cambia el estado de alguna mesa del tenant */
-    #[On('echo-private:mesas.{empresaId},.MesaActualizada')]
-    public function refrescarMesas(): void
-    {
-        // Livewire re-renderiza el componente automáticamente al ejecutar este método
-    }
+    #[On('echo:mesas.{empresaId},.MesaActualizada')]
+    public function refrescarMesas(): void {}
+
 
     // ── Queries ──────────────────────────────────────────────────────────────
 

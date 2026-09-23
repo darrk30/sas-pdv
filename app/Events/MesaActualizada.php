@@ -3,20 +3,20 @@
 namespace App\Events;
 
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Broadcasting\Channel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class MesaActualizada implements ShouldBroadcast
+class MesaActualizada implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(public readonly int $empresaId) {}
 
-    public function broadcastOn(): PrivateChannel
+    public function broadcastOn(): Channel
     {
-        return new PrivateChannel('mesas.' . $this->empresaId);
+        return new Channel('mesas.' . $this->empresaId);
     }
 
     public function broadcastAs(): string

@@ -43,7 +43,7 @@
             try { localStorage.setItem('comanda_orden_' + ordenId, JSON.stringify(d)); Alpine.store('hasLastComanda', true); } catch(ec) {}
         }
     "
-    @replay-last-comanda.window="
+    @replay-last-comanda.window="(() => {
         try {
             if (!ordenId) return;
             const saved = localStorage.getItem('comanda_orden_' + ordenId);
@@ -58,7 +58,7 @@
             try { areas = JSON.parse(d.areasJson || '[]'); } catch(e2) { areas = []; }
             if (areas.length > 0) { activeTab = 0; open = true; }
         } catch(e) {}
-    "
+    })()"
     style="display:contents"
 >
     <template x-if="open">

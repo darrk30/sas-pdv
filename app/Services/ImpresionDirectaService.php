@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Events\PrintComandaJob;
-use App\Events\PrintComprobanteJob;
+use App\Jobs\BroadcastPrintComanda;
+use App\Jobs\BroadcastPrintComprobante;
 use App\Models\Empresa;
 use App\Models\Orden;
 use App\Models\SesionCaja;
@@ -54,17 +54,17 @@ class ImpresionDirectaService
         $numero       = ($venta->serie?->serie ?? '---') . '-'
             . str_pad($venta->correlativo, 8, '0', STR_PAD_LEFT);
 
-        event(new PrintComprobanteJob([
+        BroadcastPrintComprobante::dispatch([
             'tipo'           => 'comprobante',
             'api_token'      => $apiToken,
             'pdf_base64'     => $base64,
-            'printer_name'   => $nombreImpresora,   // nombre de impresora (o null = predeterminada)
+            'printer_name'   => $nombreImpresora,
             'numero'         => $numero,
             'total'          => (float) $venta->total,
             'cajero'         => $cajeroNombre,
             'hora'           => now()->format('H:i:s'),
             'fecha'          => now()->format('d/m/Y'),
-        ]));
+        ]);
 
         return true;
     }
@@ -135,7 +135,7 @@ class ImpresionDirectaService
         foreach ($itemsPorArea as $areaData) {
             $base64 = $this->generarBase64Comanda($areaData, $cajeroNombre);
 
-            event(new PrintComandaJob([
+            BroadcastPrintComanda::dispatch([
                 'tipo'         => 'comanda',
                 'api_token'    => $apiToken,
                 'pdf_base64'   => $base64,
@@ -144,7 +144,7 @@ class ImpresionDirectaService
                 'cajero'       => $cajeroNombre,
                 'hora'         => now()->format('H:i'),
                 'fecha'        => now()->format('d/m/Y'),
-            ]));
+            ]);
         }
     }
 
@@ -218,7 +218,7 @@ class ImpresionDirectaService
             ]);
             $base64 = $this->generarBase64Comanda($areaDataCompleta, $cajeroNombre);
 
-            event(new PrintComandaJob([
+            BroadcastPrintComanda::dispatch([
                 'tipo'         => 'comanda',
                 'api_token'    => $apiToken,
                 'pdf_base64'   => $base64,
@@ -227,7 +227,7 @@ class ImpresionDirectaService
                 'cajero'       => $cajeroNombre,
                 'hora'         => now()->format('H:i'),
                 'fecha'        => now()->format('d/m/Y'),
-            ]));
+            ]);
         }
     }
 
@@ -268,7 +268,7 @@ class ImpresionDirectaService
 
         $base64 = base64_encode($pdf->output());
 
-        event(new PrintComandaJob([
+        BroadcastPrintComanda::dispatch([
             'tipo'         => 'precuenta',
             'api_token'    => $apiToken,
             'pdf_base64'   => $base64,
@@ -277,7 +277,7 @@ class ImpresionDirectaService
             'cajero'       => $cajeroNombre,
             'hora'         => now()->format('H:i'),
             'fecha'        => now()->format('d/m/Y'),
-        ]));
+        ]);
 
         return true;
     }
@@ -320,7 +320,7 @@ class ImpresionDirectaService
 
             $base64 = $this->generarBase64Comanda($areaData, $cajeroNombre);
 
-            event(new PrintComandaJob([
+            BroadcastPrintComanda::dispatch([
                 'tipo'         => 'comanda',
                 'api_token'    => $apiToken,
                 'pdf_base64'   => $base64,
@@ -329,7 +329,7 @@ class ImpresionDirectaService
                 'cajero'       => $cajeroNombre,
                 'hora'         => now()->format('H:i'),
                 'fecha'        => now()->format('d/m/Y'),
-            ]));
+            ]);
         }
     }
 

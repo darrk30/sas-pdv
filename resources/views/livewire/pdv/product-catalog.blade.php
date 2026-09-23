@@ -193,8 +193,6 @@
                             ? $producto->variantesActivas->map(fn($v) => "variante_{$v->id}")->values()->toArray()
                             : ["producto_{$producto->id}"];
 
-                        // dbStock = raw stock_reserva; Alpine store handles the real-time delta
-                        // (no PHP adjustment — that would double-subtract with the Alpine pending)
                         $stockVisible = $stock;
 
                         $agotado    = $producto->control_de_stock
@@ -203,7 +201,6 @@
                             && $stockVisible <= 0;
                         $stockNivel = $stockVisible === null ? null : ($stockVisible <= 0 ? 'agotado' : ($stockVisible <= 5 ? 'bajo' : 'ok'));
 
-                        // Para quick-add: precompute precio y es_decimal (sin variantes, sin cortesia)
                         $precioNorm  = (float) $producto->precio_venta;
                         $precioFinal = ($producto->porcentaje_descuento > 0 && $producto->precio_con_descuento)
                             ? (float) $producto->precio_con_descuento
@@ -211,7 +208,6 @@
                         $esDecimal   = $producto->unidadMedida?->esContinua() ?? false;
                         $quickAdd    = ! $tieneVariantes && ! $producto->es_cortesia;
 
-                        // Listas de precios activas del producto (solo si el plan y el permiso lo permiten)
                         $listasPrecios = $this->featureListaPrecios
                             ? $producto->preciosLista
                                 ->filter(fn($p) => $p->lista?->activa)
@@ -220,6 +216,52 @@
                                 ->toArray()
                             : [];
                         $tieneListasPrecios = count($listasPrecios) > 0;
+
+                        // Datos para el modal Alpine (solo productos con variantes)
+                        $variantData = null;
+                        if ($tieneVariantes) {
+                            $pavIdsUsados = $producto->variantesActivas
+                                ->flatMap(fn ($v) => $v->valores->pluck('id'))
+                                ->unique()->flip()->toArray();
+                            $variantData = [
+                                'productoId'         => $producto->id,
+                                'nombre'             => $producto->nombre,
+                                'precioBase'         => $precioFinal,
+                                'precioBaseOriginal' => $precioNorm,
+                                'controlStock'       => (bool) $producto->control_de_stock,
+                                'ventaSinStock'      => (bool) $producto->venta_sin_stock,
+                                'esCortesia'         => (bool) $producto->es_cortesia,
+                                'esDecimal'          => $esDecimal,
+                                'unidadSimbolo'      => $producto->unidadMedida?->simbolo ?? '',
+                                'atributos'          => $producto->atributos
+                                    ->map(fn ($pa) => [
+                                        'id'      => $pa->id,
+                                        'nombre'  => $pa->atributo->nombre,
+                                        'valores' => $pa->detallesPrecios
+                                            ->filter(fn ($pav) => isset($pavIdsUsados[$pav->id]))
+                                            ->map(fn ($pav) => [
+                                                'id'               => $pav->id,
+                                                'valor_id'         => $pav->valor_id,
+                                                'nombre'           => $pav->valor->nombre,
+                                                'precio_adicional' => (float) $pav->precio_adicional,
+                                            ])->values()->all(),
+                                    ])
+                                    ->filter(fn ($a) => count($a['valores']) > 0)
+                                    ->values()->all(),
+                                'variantes'          => $producto->variantesActivas
+                                    ->map(fn ($v) => [
+                                        'id'      => $v->id,
+                                        'pav_ids' => $v->valores->pluck('id')->toArray(),
+                                        'stock'   => (float) ($v->inventario?->stock_reserva ?? 0),
+                                    ])->values()->all(),
+                                'exclusiones'        => $producto->atributos->reduce(function ($carry, $pa) {
+                                    foreach ($pa->detallesExclusiones as $ex) {
+                                        $carry[(string) $ex->valor_base_id][] = $ex->valor_exluido_id;
+                                    }
+                                    return $carry;
+                                }, []),
+                            ];
+                        }
                     @endphp
                     <button
                         class="pdv-card {{ $agotado ? 'pdv-card--agotado' : '' }}"
@@ -242,14 +284,17 @@
                             }
                         }"
                         @if($tieneVariantes)
-                            @click="$wire.abrirModalProducto({{ $producto->id }}, listaActiva ? precioActual : null)"
+                            @click="$store.vm.abrir(@js($variantData), listaActiva ? precioActual : null)"
                         @else
                             @click="$dispatch('product-selected', [{ tipo: 'producto', id: {{ $producto->id }}, nombre: '{{ addslashes($producto->nombre) }}', precio: precioActual, precio_normal: precioNorm, es_cortesia: false, cantidad: 1, producto_id: {{ $producto->id }}, puede_cortesia: false, es_decimal: {{ $esDecimal ? 'true' : 'false' }}, stock_max: {{ $stockVisible !== null ? (float)$stockVisible : 'null' }}, venta_sin_stock: {{ $producto->venta_sin_stock ? 'true' : 'false' }} }])"
                         @endif
                         @elseif($quickAdd)
                             @click="$dispatch('product-selected', [{ tipo: 'producto', id: {{ $producto->id }}, nombre: '{{ addslashes($producto->nombre) }}', precio: {{ $precioFinal }}, precio_normal: {{ $precioNorm }}, es_cortesia: false, cantidad: 1, producto_id: {{ $producto->id }}, puede_cortesia: false, es_decimal: {{ $esDecimal ? 'true' : 'false' }}, stock_max: {{ $stockVisible !== null ? (float)$stockVisible : 'null' }}, venta_sin_stock: {{ $producto->venta_sin_stock ? 'true' : 'false' }} }])"
+                        @elseif($tieneVariantes)
+                            @click="$store.vm.abrir(@js($variantData))"
                         @else
-                            wire:click="abrirModalProducto({{ $producto->id }})"
+                            {{-- Cortesía sin variantes --}}
+                            @click="$dispatch('product-selected', [{ tipo: 'producto', id: {{ $producto->id }}, nombre: '{{ addslashes($producto->nombre) }}', precio: {{ $precioFinal }}, precio_normal: {{ $precioNorm }}, es_cortesia: false, cantidad: 1, producto_id: {{ $producto->id }}, puede_cortesia: true, es_decimal: {{ $esDecimal ? 'true' : 'false' }}, stock_max: {{ $stockVisible !== null ? (float)$stockVisible : 'null' }}, venta_sin_stock: {{ $producto->venta_sin_stock ? 'true' : 'false' }} }])"
                         @endif
                         @if($agotado) disabled @endif
                     >
@@ -380,77 +425,44 @@
         @endif
     </div>
 
-    {{-- ── Modal variantes ─────────────────────────────────────────────── --}}
-    @if($modalAbierto)
-    <div class="pdv-overlay" x-data="{
-            cantidad: {{ $modalCantidad }},
-            esCortesia: {{ $modalCortesia ? 'true' : 'false' }},
-            puedeCortesia: {{ $productoEsCortesia ? 'true' : 'false' }},
-            esDecimal: {{ $productoEsDecimal ? 'true' : 'false' }},
-        }">
-        <div class="pdv-overlay__backdrop" wire:click="cerrarModal"></div>
+    {{-- ── Modal variantes 100% Alpine (sin round-trips Livewire) ──────── --}}
+    <div x-show="$store.vm && $store.vm.open" class="pdv-overlay" x-cloak style="display:none">
+        <div class="pdv-overlay__backdrop" @click="$store.vm.cerrar()"></div>
         <div class="pdv-modal">
 
-            {{-- Header --}}
             <div class="pdv-modal__header">
-                <h3 class="pdv-modal__titulo">{{ $productoModalNombre }}</h3>
-                <button class="pdv-modal__cerrar" wire:click="cerrarModal">
+                <h3 class="pdv-modal__titulo" x-text="$store.vm.nombre"></h3>
+                <button class="pdv-modal__cerrar" @click="$store.vm.cerrar()">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
 
-            {{-- Body scrollable --}}
             <div class="pdv-modal__body">
-
-                {{-- Precio + Cortesía --}}
-                @php
-                    // Buscar stock de la variante según los atributos ya seleccionados
-                    $stockVarianteModal = null;
-                    if ($productoControlStock && count($atributosModal) > 0 && count($seleccionados) >= count($atributosModal)) {
-                        $selectedPavIds = array_values($seleccionados);
-                        foreach ($variantesInfo as $vInfo) {
-                            if (count($vInfo['pav_ids']) === count($selectedPavIds)
-                                && empty(array_diff($selectedPavIds, $vInfo['pav_ids']))) {
-                                $stockVarianteModal = (float) $vInfo['stock'];
-                                break;
-                            }
-                        }
-                    }
-                    $stockNivelModal = $stockVarianteModal === null ? null
-                        : ($stockVarianteModal <= 0
-                            ? ($productoVentaSinStock ? 'sin-stock' : 'agotado')
-                            : ($stockVarianteModal <= 5 ? 'bajo' : 'ok'));
-                @endphp
                 <div class="pdv-modal__precio-row">
                     <div>
                         <p class="pdv-modal__precio-label">Precio</p>
-                        <p class="pdv-modal__precio-total" x-text="'S/ ' + ({{ $precioBase }} + {{ $precioAdicionalTotal }}).toFixed(2)"
-                            :class="esCortesia ? 'pdv-modal__precio-gratis' : ''"></p>
-                        @if($precioBase < $precioBaseOriginal)
-                            <p class="pdv-modal__precio-detalle" style="text-decoration:line-through;">S/ {{ number_format($precioBaseOriginal + $precioAdicionalTotal, 2) }}</p>
-                        @endif
+                        <p class="pdv-modal__precio-total"
+                           x-text="'S/ ' + $store.vm.precioFinal.toFixed(2)"
+                           :class="$store.vm.modalCortesia ? 'pdv-modal__precio-gratis' : ''"></p>
+                        <p class="pdv-modal__precio-detalle"
+                           style="text-decoration:line-through"
+                           x-show="$store.vm.precioBase < $store.vm.precioBaseOriginal"
+                           x-text="'S/ ' + ($store.vm.precioBaseOriginal + $store.vm.precioAdicional).toFixed(2)"></p>
                     </div>
                     <div class="pdv-modal__precio-right">
-                        @if($stockVarianteModal !== null)
-                            <span class="pdv-modal__stock-badge pdv-modal__stock-badge--{{ $stockNivelModal }}">
-                                @if($stockNivelModal === 'agotado')
-                                    Agotado
-                                @elseif($stockNivelModal === 'sin-stock')
-                                    Sin stock
-                                @else
-                                    Stock {{ $productoEsDecimal ? number_format($stockVarianteModal, 2) : (int) $stockVarianteModal }} {{ $productoUnidadSimbolo ?: 'unid.' }}
-                                @endif
+                        <template x-if="$store.vm.controlStock && $store.vm.varianteActual">
+                            <span
+                                :class="'pdv-modal__stock-badge pdv-modal__stock-badge--' + ($store.vm.stockActual <= 0 ? ($store.vm.ventaSinStock ? 'sin-stock' : 'agotado') : ($store.vm.stockActual <= 5 ? 'bajo' : 'ok'))"
+                                x-text="$store.vm.stockActual <= 0 ? ($store.vm.ventaSinStock ? 'Sin stock' : 'Agotado') : 'Stock ' + ($store.vm.esDecimal ? $store.vm.stockActual.toFixed(2) : Math.floor($store.vm.stockActual)) + ($store.vm.unidadSimbolo ? ' ' + $store.vm.unidadSimbolo : ' unid.')">
                             </span>
-                        @endif
-                        <template x-if="puedeCortesia">
-                            <button
-                                type="button"
+                        </template>
+                        <template x-if="$store.vm.esCortesia">
+                            <button type="button"
                                 class="pdv-modal__cortesia-btn"
-                                :class="esCortesia ? 'pdv-modal__cortesia-btn--on' : ''"
-                                @click="esCortesia = !esCortesia"
-                            >
+                                :class="$store.vm.modalCortesia ? 'pdv-modal__cortesia-btn--on' : ''"
+                                @click="$store.vm.modalCortesia = !$store.vm.modalCortesia">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.8rem;height:.8rem;">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/>
                                 </svg>
@@ -460,67 +472,55 @@
                     </div>
                 </div>
 
-                {{-- Atributos --}}
-                @foreach($atributosModal as $atributo)
-                <div>
-                    <p class="pdv-atributo__label">
-                        {{ $atributo['nombre'] }}
-                        <span class="pdv-atributo__requerido">requerido</span>
-                    </p>
-                    <div class="pdv-atributo__opciones">
-                        @foreach($atributo['valores'] as $valor)
-                            @php
-                                $seleccionado  = isset($seleccionados[$atributo['id']]) && (int)$seleccionados[$atributo['id']] === (int)$valor['id'];
-                                $deshabilitado = in_array((int)$valor['id'], $valoresDeshabilitados);
-                            @endphp
-                            <button
-                                type="button"
-                                class="pdv-valor-btn {{ $seleccionado ? 'pdv-valor-btn--activo' : '' }}"
-                                wire:click="seleccionarValor({{ $atributo['id'] }}, {{ $valor['id'] }})"
-                                @if($deshabilitado) disabled style="opacity:.35;cursor:not-allowed;" @endif
-                            >
-                                {{ $valor['nombre'] }}
-                                @if($valor['precio_adicional'] > 0)
-                                    <span class="pdv-valor-btn__extra">+{{ number_format($valor['precio_adicional'], 2) }}</span>
-                                @endif
-                            </button>
-                        @endforeach
+                <template x-for="atributo in $store.vm.atributos" :key="atributo.id">
+                    <div>
+                        <p class="pdv-atributo__label">
+                            <span x-text="atributo.nombre"></span>
+                            <span class="pdv-atributo__requerido">requerido</span>
+                        </p>
+                        <div class="pdv-atributo__opciones">
+                            <template x-for="valor in atributo.valores" :key="valor.id">
+                                <button
+                                    type="button"
+                                    :class="'pdv-valor-btn' + ($store.vm.seleccionados[atributo.id] == valor.id ? ' pdv-valor-btn--activo' : '')"
+                                    :disabled="$store.vm.deshabilitados.includes(valor.id)"
+                                    :style="$store.vm.deshabilitados.includes(valor.id) ? 'opacity:.35;cursor:not-allowed;' : ''"
+                                    @click="$store.vm.seleccionarValor(atributo.id, valor.id)"
+                                >
+                                    <span x-text="valor.nombre"></span>
+                                    <span class="pdv-valor-btn__extra"
+                                          x-show="valor.precio_adicional > 0"
+                                          x-text="'+' + valor.precio_adicional.toFixed(2)"></span>
+                                </button>
+                            </template>
+                        </div>
                     </div>
-                </div>
-                @endforeach
+                </template>
+            </div>
 
-            </div>{{-- /body --}}
-
-            {{-- Footer: cantidad + confirmar --}}
             <div class="pdv-modal__footer">
                 <div class="pdv-modal__qty-row">
                     <span class="pdv-modal__qty-label">Cantidad</span>
                     <div class="pdv-modal__qty">
                         <button type="button" class="pdv-qty__btn pdv-qty__btn--menos"
-                            @click="cantidad = esDecimal ? Math.max(0.1, +(cantidad - 0.1).toFixed(3)) : Math.max(1, cantidad - 1)">
+                            @click="$store.vm.cantidad = $store.vm.esDecimal ? Math.max(0.1, +($store.vm.cantidad - 0.1).toFixed(3)) : Math.max(1, $store.vm.cantidad - 1)">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
                         </button>
-                        <input
-                            type="number"
-                            class="pdv-modal__qty-input"
-                            x-model.number="cantidad"
-                            :min="esDecimal ? 0.001 : 1"
-                            :step="esDecimal ? 0.1 : 1"
-                        />
+                        <input type="number" class="pdv-modal__qty-input"
+                               x-model.number="$store.vm.cantidad"
+                               :min="$store.vm.esDecimal ? 0.001 : 1"
+                               :step="$store.vm.esDecimal ? 0.1 : 1" />
                         <button type="button" class="pdv-qty__btn pdv-qty__btn--mas"
-                            @click="cantidad = esDecimal ? +(cantidad + 0.1).toFixed(3) : cantidad + 1">
+                            @click="$store.vm.cantidad = $store.vm.esDecimal ? +($store.vm.cantidad + 0.1).toFixed(3) : $store.vm.cantidad + 1">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                         </button>
                     </div>
                 </div>
-
-                <button
-                    type="button"
+                <button type="button"
                     class="pdv-btn-confirmar"
                     style="display:flex;align-items:center;justify-content:center;gap:.4rem;"
-                    @click="$wire.confirmarModalConParams(cantidad, esCortesia)"
-                    @if(count($seleccionados) < count($atributosModal)) disabled @endif
-                >
+                    :disabled="!$store.vm.completado"
+                    @click="$store.vm.confirmar()">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1rem;height:1rem;flex-shrink:0;">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
                     </svg>
@@ -530,6 +530,161 @@
 
         </div>
     </div>
-    @endif
+
+    <script>
+    (function() {
+        const define = function() {
+            if (Alpine.store('vm')) return;
+            Alpine.store('vm', {
+                open: false, nombre: '', precioBase: 0, precioBaseOriginal: 0,
+                atributos: [], variantes: [], exclusiones: {},
+                seleccionados: {}, deshabilitados: [], precioAdicional: 0,
+                controlStock: false, ventaSinStock: false, esCortesia: false,
+                esDecimal: false, unidadSimbolo: '', productoId: null,
+                cantidad: 1, modalCortesia: false, _precioLista: null,
+
+                get precioFinal() {
+                    return (this._precioLista !== null ? this._precioLista : this.precioBase) + this.precioAdicional;
+                },
+                get completado() {
+                    return Object.keys(this.seleccionados).length >= this.atributos.length && this.atributos.length > 0;
+                },
+                get varianteActual() {
+                    if (!this.completado) return null;
+                    const ids = Object.values(this.seleccionados).map(Number);
+                    return this.variantes.find(v =>
+                        v.pav_ids.length === ids.length && ids.every(id => v.pav_ids.includes(id))
+                    ) || null;
+                },
+                get stockActual() {
+                    if (!this.controlStock) return null;
+                    const v = this.varianteActual;
+                    return v ? v.stock : null;
+                },
+
+                abrir(data, precioLista) {
+                    this.open = true;
+                    this.nombre             = data.nombre;
+                    this.precioBase         = data.precioBase;
+                    this.precioBaseOriginal = data.precioBaseOriginal;
+                    this.atributos          = data.atributos;
+                    this.variantes          = data.variantes;
+                    this.exclusiones        = data.exclusiones || {};
+                    this.seleccionados      = {};
+                    this.deshabilitados     = [];
+                    this.precioAdicional    = 0;
+                    this.controlStock       = data.controlStock;
+                    this.ventaSinStock      = data.ventaSinStock;
+                    this.esCortesia         = data.esCortesia;
+                    this.esDecimal          = data.esDecimal;
+                    this.unidadSimbolo      = data.unidadSimbolo || '';
+                    this.productoId         = data.productoId;
+                    this.cantidad           = 1;
+                    this.modalCortesia      = false;
+                    this._precioLista       = precioLista !== undefined ? precioLista : null;
+                    this._recalcDes();
+                },
+
+                cerrar() { this.open = false; },
+
+                seleccionarValor(paId, pavId) {
+                    paId = Number(paId); pavId = Number(pavId);
+                    const s = Object.assign({}, this.seleccionados);
+                    if (s[paId] === pavId) { delete s[paId]; } else { s[paId] = pavId; }
+                    this.seleccionados = s;
+                    this._recalcPrecio();
+                    this._recalcDes();
+                },
+
+                _recalcPrecio() {
+                    let t = 0;
+                    for (const [paId, pavId] of Object.entries(this.seleccionados)) {
+                        for (const a of this.atributos) {
+                            if (Number(a.id) === Number(paId)) {
+                                const v = a.valores.find(v => Number(v.id) === Number(pavId));
+                                if (v) t += v.precio_adicional || 0;
+                            }
+                        }
+                    }
+                    this.precioAdicional = t;
+                },
+
+                _recalcDes() {
+                    const dis = [];
+                    for (const [paId, pavId] of Object.entries(this.seleccionados)) {
+                        let valorId = null;
+                        for (const a of this.atributos) {
+                            if (Number(a.id) === Number(paId)) {
+                                const v = a.valores.find(v => Number(v.id) === Number(pavId));
+                                if (v) { valorId = v.valor_id; break; }
+                            }
+                        }
+                        if (valorId && this.exclusiones[valorId]) {
+                            for (const eId of this.exclusiones[valorId]) {
+                                for (const a of this.atributos) {
+                                    for (const v of a.valores) {
+                                        if (Number(v.valor_id) === Number(eId)) dis.push(Number(v.id));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (this.controlStock && !this.ventaSinStock) {
+                        for (const a of this.atributos) {
+                            for (const val of a.valores) {
+                                const pid = Number(val.id);
+                                if (this.seleccionados[a.id] === pid) continue;
+                                let ok = false;
+                                for (const vi of this.variantes) {
+                                    if (!vi.pav_ids.includes(pid)) continue;
+                                    let compat = true;
+                                    for (const [sp, sv] of Object.entries(this.seleccionados)) {
+                                        if (Number(sp) === Number(a.id)) continue;
+                                        if (!vi.pav_ids.includes(Number(sv))) { compat = false; break; }
+                                    }
+                                    if (compat && vi.stock > 0) { ok = true; break; }
+                                }
+                                if (!ok) dis.push(pid);
+                            }
+                        }
+                    }
+                    this.deshabilitados = [...new Set(dis)];
+                },
+
+                confirmar() {
+                    if (!this.completado) return;
+                    const v = this.varianteActual;
+                    if (!v) return;
+                    if (this.controlStock && !this.ventaSinStock && this.cantidad > v.stock) {
+                        alert('Stock insuficiente. Disponible: ' + v.stock);
+                        return;
+                    }
+                    const sufijo = this.atributos.map(a => {
+                        const sel = a.valores.find(vv => Number(vv.id) === Number(this.seleccionados[a.id]));
+                        return sel ? sel.nombre : null;
+                    }).filter(Boolean).join(' - ');
+                    const nombre = sufijo ? this.nombre + ' (' + sufijo + ')' : this.nombre;
+                    const esCort = this.esCortesia && this.modalCortesia;
+                    const base   = this._precioLista !== null ? this._precioLista : this.precioBase;
+                    window.dispatchEvent(new CustomEvent('product-selected', { detail: [{
+                        tipo: 'variante', id: v.id, nombre,
+                        precio:        esCort ? 0 : base + this.precioAdicional,
+                        precio_normal: this.precioBaseOriginal + this.precioAdicional,
+                        es_cortesia:   esCort,
+                        cantidad:      this.cantidad,
+                        producto_id:   this.productoId,
+                        puede_cortesia: this.esCortesia,
+                        es_decimal:    this.esDecimal,
+                        stock_max:     this.controlStock ? v.stock : null,
+                        venta_sin_stock: this.ventaSinStock,
+                    }]}));
+                    this.open = false;
+                }
+            });
+        };
+        if (typeof Alpine !== 'undefined') { define(); }
+        else { document.addEventListener('alpine:init', define); }
+    })();
+    </script>
 
 </div>

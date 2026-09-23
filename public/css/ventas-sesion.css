@@ -2,6 +2,8 @@
    ventas-sesion.css — Ventas del Turno
    ============================================================ */
 
+[x-cloak] { display: none !important; }
+
 :root {
     --vs-bg:           #ffffff;
     --vs-bg-subtle:    #f9fafb;
@@ -1570,3 +1572,65 @@ html.dark .vs-card--amber .vs-card__value { color: #fef3c7; }
 .dark .vs-conv-sug-doc { color: #6b7280; }
 .dark .vs-conv-igv-preview { background: #111827; }
 .dark .vs-conv-igv-row--total { border-color: #374151; color: #f9fafb; }
+
+/* ── Venta Detalle Modal (vd-*) ───────────────────────────────────────────── */
+.vd-root { display: flex; flex-direction: column; gap: .875rem; padding-bottom: .5rem; font-size: .875rem; }
+
+.vd-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .375rem; }
+.vd-fecha { color: #6b7280; font-size: .8rem; }
+
+.vd-badge { display: inline-flex; align-items: center; border-radius: 9999px; padding: .15rem .6rem; font-size: .72rem; font-weight: 600; }
+.vd-badge--ok      { background: #dcfce7; color: #15803d; }
+.vd-badge--anulada { background: #fee2e2; color: #b91c1c; }
+.vd-badge--despacho{ background: #fef3c7; color: #b45309; }
+
+.vd-cliente { display: flex; align-items: baseline; gap: .375rem; color: #374151; }
+.vd-cliente span { color: #6b7280; font-size: .8rem; }
+.vd-direccion { color: #6b7280; font-size: .8rem; }
+
+.vd-section-label { margin: 0 0 .4rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #9ca3af; }
+
+.vd-table-wrap { overflow-x: auto; border-radius: .5rem; border: 1px solid #e5e7eb; }
+.vd-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.vd-table thead tr { background: #f9fafb; }
+.vd-table th { padding: .45rem .75rem; text-align: left; font-weight: 600; color: #6b7280; white-space: nowrap; }
+.vd-table td { padding: .45rem .75rem; color: #374151; border-top: 1px solid #f3f4f6; }
+.vd-ta-r { text-align: right; font-variant-numeric: tabular-nums; }
+.vd-bold { font-weight: 600; color: #111827; }
+.vd-cortesia { background: #fffbeb; }
+.vd-cortesia-tag { margin-left: .25rem; font-size: .68rem; color: #d97706; font-weight: 500; }
+
+.vd-totales { border: 1px solid #e5e7eb; border-radius: .5rem; background: #f9fafb; padding: .625rem .875rem; display: flex; flex-direction: column; gap: .15rem; }
+.vd-total-fila { display: flex; justify-content: space-between; padding: .2rem 0; font-size: .82rem; color: #6b7280; font-variant-numeric: tabular-nums; }
+.vd-total-fila--desc { color: #dc2626; }
+.vd-total-fila--grande { border-top: 1px solid #e5e7eb; margin-top: .25rem; padding-top: .45rem; font-size: .95rem; font-weight: 700; color: #111827; }
+
+.vd-pagos { display: flex; flex-direction: column; gap: .375rem; }
+.vd-pago-item { display: flex; align-items: center; justify-content: space-between; border: 1px solid #e5e7eb; border-radius: .5rem; padding: .45rem .75rem; }
+.vd-pago-info { display: flex; flex-direction: column; gap: .1rem; }
+.vd-pago-metodo { font-weight: 600; color: #374151; }
+.vd-pago-ref { font-size: .75rem; color: #9ca3af; }
+.vd-pago-monto { font-weight: 600; color: #111827; font-variant-numeric: tabular-nums; }
+.vd-pago-item--saldo { border-color: #fca5a5; background: #fff1f2; }
+.vd-pago-item--saldo span { color: #b91c1c; font-weight: 600; }
+
+/* dark */
+.dark .vd-fecha, .dark .vd-cliente span, .dark .vd-direccion { color: #9ca3af; }
+.dark .vd-cliente { color: #e5e7eb; }
+.dark .vd-badge--ok      { background: #14532d; color: #86efac; }
+.dark .vd-badge--anulada { background: #450a0a; color: #fca5a5; }
+.dark .vd-badge--despacho{ background: #451a03; color: #fcd34d; }
+.dark .vd-table-wrap { border-color: #374151; }
+.dark .vd-table thead tr { background: #1f2937; }
+.dark .vd-table th { color: #9ca3af; }
+.dark .vd-table td { color: #d1d5db; border-top-color: #1f2937; }
+.dark .vd-bold { color: #f9fafb; }
+.dark .vd-cortesia { background: #1c1408; }
+.dark .vd-totales { background: #1f2937; border-color: #374151; }
+.dark .vd-total-fila { color: #9ca3af; }
+.dark .vd-total-fila--grande { color: #f9fafb; border-top-color: #374151; }
+.dark .vd-pago-item { border-color: #374151; }
+.dark .vd-pago-metodo { color: #e5e7eb; }
+.dark .vd-pago-monto { color: #f9fafb; }
+.dark .vd-pago-item--saldo { border-color: #991b1b; background: #1a0505; }
+.dark .vd-pago-item--saldo span { color: #fca5a5; }
