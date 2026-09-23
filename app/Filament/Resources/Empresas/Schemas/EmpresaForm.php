@@ -55,7 +55,7 @@ class EmpresaForm
                                     TextInput::make('slug')->label('URL amigable (Slug)')->required()->unique(ignoreRecord: true),
                                     Select::make('estado')->options(['activo' => 'Activo', 'inactivo' => 'Inactivo'])->default('activo')->native(false),
                                 ]),
-                                FileUpload::make('logo')->label('Logotipo')->image()->directory('logos')->columnSpanFull(),
+                                FileUpload::make('logo')->label('Logotipo')->image()->directory('logos')->optimize('webp', 85)->maxImageWidth(512)->columnSpanFull(),
                             ]),
 
                         Tab::make('Ubicación')

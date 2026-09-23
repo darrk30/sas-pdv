@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Observers\GaleriaProductoObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[ObservedBy([GaleriaProductoObserver::class])]
 class GaleriaProducto extends Model
 {
     protected $table = 'galeria_productos';
