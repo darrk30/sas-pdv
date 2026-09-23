@@ -124,15 +124,15 @@ body {
     $ordenDir = $orden?->cliente_direccion ?: ($venta->cliente?->direccion ?? null);
     $ordenTel = $orden?->cliente_telefono  ?: ($venta->cliente?->telefono  ?? null);
 
-    $logoPath = $empresa->logo ? public_path('storage/'.$empresa->logo) : null;
+    $logoBase64 = $logoBase64 ?? null;
     $logoTukipu = public_path('img/logotukipu.webp');
     $qrBase64 = $qrBase64 ?? null;
 @endphp
 
 {{-- ══ EMPRESA ══ --}}
 <div class="empresa">
-    @if($logoPath && file_exists($logoPath))
-        <img src="{{ $logoPath }}" class="empresa-logo" alt="Logo">
+    @if($logoBase64)
+        <img src="{{ $logoBase64 }}" class="empresa-logo" alt="Logo">
     @endif
     <div class="empresa-nombre">{{ $empresa->name }}</div>
     <div class="empresa-info">

@@ -64,14 +64,6 @@ class VentasSesionPage extends Page implements HasTable
     public string $filtroEstado  = '';
     public string $filtroOrigen  = '';
 
-    // ── Modal detalle ─────────────────────────────────────────────────────────
-    public ?int $ventaModalId = null;
-
-    // ── Modal anular ──────────────────────────────────────────────────────────
-    public ?int  $ventaAnularId  = null;
-    public bool  $modalAnular    = false;
-    public bool  $revertirStock  = true;
-    public string $motivoBaja    = 'Error en emisión';
 
 
     public function updatedBusqueda(): void     { }
@@ -105,16 +97,24 @@ class VentasSesionPage extends Page implements HasTable
         $this->filtroOrigen = '';
     }
 
-    // ── Sesión activa ─────────────────────────────────────────────────────────
+    // ── Sesión activa (cached por request) ───────────────────────────────────
+
+    private ?SesionCaja $_sesion      = null;
+    private bool        $_sesionLeida = false;
 
     public function getSesionActiva(): ?SesionCaja
     {
-        return SesionCaja::where('empresa_id', Filament::getTenant()->id)
-            ->where('user_id', auth()->id())
-            ->where('estado', EstadoSesion::Abierta->value)
-            ->with('caja')
-            ->latest()
-            ->first();
+        if (! $this->_sesionLeida) {
+            $this->_sesion = SesionCaja::where('empresa_id', Filament::getTenant()->id)
+                ->where('user_id', auth()->id())
+                ->where('estado', EstadoSesion::Abierta->value)
+                ->with('caja')
+                ->latest()
+                ->first();
+            $this->_sesionLeida = true;
+        }
+
+        return $this->_sesion;
     }
 
     // ── Tabla Filament ────────────────────────────────────────────────────────
@@ -283,7 +283,15 @@ class VentasSesionPage extends Page implements HasTable
                     Action::make('ver')
                         ->label('Ver detalle')
                         ->icon('heroicon-o-eye')
-                        ->action(fn (Venta $record) => $this->abrirDetalle($record->id)),
+                        ->modalHeading(fn (Venta $record): string =>
+                            ($record->serie?->serie ?? '---') . '-' . str_pad($record->correlativo, 8, '0', STR_PAD_LEFT)
+                        )
+                        ->modalContent(fn (Venta $record) => view(
+                            'filament.pdv.components.venta-detalle-modal',
+                            ['venta' => $record->load(['serie', 'detalles', 'pagos.metodoPago'])]
+                        ))
+                        ->modalFooterActions([])
+                        ->slideOver(),
 
                     Action::make('editar')
                         ->label('Editar venta')
@@ -343,7 +351,32 @@ class VentasSesionPage extends Page implements HasTable
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
                         ->visible(fn (Venta $record): bool => ! $record->estaAnulada())
-                        ->action(fn (Venta $record) => $this->abrirAnular($record->id)),
+                        ->modalHeading(fn (Venta $record): string =>
+                            'Anular ' . ($record->serie?->serie ?? '---') . '-' . str_pad($record->correlativo, 8, '0', STR_PAD_LEFT)
+                        )
+                        ->modalDescription(fn (Venta $record): string =>
+                            'Esta acción no se puede deshacer. Se registrará una devolución de S/ ' . number_format($record->total, 2) . '.'
+                        )
+                        ->modalIcon('heroicon-o-x-circle')
+                        ->modalIconColor('danger')
+                        ->form(fn (Venta $record): array => [
+                            \Filament\Forms\Components\Toggle::make('revertir_stock')
+                                ->label('Revertir inventario')
+                                ->helperText('Se devolverá el stock de los productos con control de inventario y se registrará en el kardex.')
+                                ->default(true)
+                                ->visible(fn () => $this->tieneItemsConStockRecord($record)),
+                            \Filament\Forms\Components\TextInput::make('motivo_baja')
+                                ->label('Motivo de anulación (SUNAT)')
+                                ->default('Error en emisión')
+                                ->maxLength(100)
+                                ->helperText('Solo aplica para facturas. Las boletas usan el Resumen Diario (RC).')
+                                ->visible(fn () => $this->necesitaBajaSunatRecord($record)),
+                        ])
+                        ->action(fn (Venta $record, array $data) => $this->confirmarAnularRecord(
+                            $record,
+                            (bool) ($data['revertir_stock'] ?? true),
+                            (string) ($data['motivo_baja'] ?? 'Error en emisión'),
+                        )),
 
                     Action::make('enviarBajaSunat')
                         ->label('Enviar baja a SUNAT')
@@ -420,138 +453,102 @@ class VentasSesionPage extends Page implements HasTable
         $sesion = $this->getSesionActiva();
 
         if (! $sesion) {
-            return ['count' => 0, 'total' => 0.0, 'anuladas' => 0, 'despacho' => 0, 'porMetodo' => []];
+            return ['count' => 0, 'total' => 0.0, 'descuentoTotal' => 0.0, 'cortesias' => 0, 'anuladas' => 0, 'despacho' => 0, 'porMetodo' => []];
         }
 
-        $base = Venta::where('empresa_id', Filament::getTenant()->id)
-            ->where('sesion_caja_id', $sesion->id);
+        $empresaId = Filament::getTenant()->id;
+        $completada = EstadoVenta::Completada->value;
+        $anulada    = EstadoVenta::Anulada->value;
+        $pendEnvio  = EstadoVenta::PendienteEnvio->value;
 
-        $completadas    = (clone $base)->where('estado', EstadoVenta::Completada->value);
-        $count          = (clone $completadas)->count();
-        $total          = (float) (clone $completadas)->sum('total');
-        $descuentoTotal = (float) (clone $completadas)->sum('descuento_total');
-        $cortesias      = (clone $completadas)->whereHas('detalles', fn($q) => $q->where('precio_unitario', 0))->count();
-        $anuladas       = (clone $base)->where('estado', EstadoVenta::Anulada->value)->count();
-        $despacho       = (clone $base)->where('estado_despacho', EstadoVenta::PendienteEnvio->value)->count();
+        // 1 query: todos los totales de ventas de la sesión
+        $stats = DB::table('ventas')
+            ->where('empresa_id', $empresaId)
+            ->where('sesion_caja_id', $sesion->id)
+            ->selectRaw("
+                SUM(CASE WHEN estado = ? THEN 1 ELSE 0 END)             AS cnt,
+                SUM(CASE WHEN estado = ? THEN total           ELSE 0 END) AS total,
+                SUM(CASE WHEN estado = ? THEN descuento_total ELSE 0 END) AS descuento_total,
+                SUM(CASE WHEN estado = ? THEN 1 ELSE 0 END)             AS anuladas,
+                SUM(CASE WHEN estado_despacho = ? THEN 1 ELSE 0 END)    AS despacho
+            ", [$completada, $completada, $completada, $anulada, $pendEnvio])
+            ->first();
 
-        $porMetodo = VentaPago::whereHas('venta', fn($q) => $q
-                ->where('sesion_caja_id', $sesion->id)
-                ->where('estado', EstadoVenta::Completada->value)
-            )
-            ->with('metodoPago:id,nombre')
+        // 1 query: ventas con al menos un item cortesía (precio = 0)
+        $cortesias = Venta::where('empresa_id', $empresaId)
+            ->where('sesion_caja_id', $sesion->id)
+            ->where('estado', $completada)
+            ->whereHas('detalles', fn ($q) => $q->where('precio_unitario', 0))
+            ->count();
+
+        // 1 query: totales agrupados por método de pago con GROUP BY
+        $porMetodo = DB::table('venta_pagos')
+            ->join('ventas',       'ventas.id',       '=', 'venta_pagos.venta_id')
+            ->join('metodos_pago', 'metodos_pago.id', '=', 'venta_pagos.metodo_pago_id')
+            ->where('ventas.sesion_caja_id', $sesion->id)
+            ->where('ventas.estado', $completada)
+            ->selectRaw('metodos_pago.nombre, SUM(venta_pagos.monto) AS total')
+            ->groupBy('metodos_pago.id', 'metodos_pago.nombre')
             ->get()
-            ->groupBy('metodo_pago_id')
-            ->map(fn($pagos) => [
-                'nombre' => $pagos->first()->metodoPago?->nombre ?? 'N/A',
-                'total'  => (float) $pagos->sum('monto'),
-            ])
+            ->map(fn ($p) => ['nombre' => $p->nombre, 'total' => (float) $p->total])
             ->values()
             ->toArray();
 
-        return compact('count', 'total', 'descuentoTotal', 'cortesias', 'anuladas', 'despacho', 'porMetodo');
+        return [
+            'count'          => (int)   ($stats->cnt            ?? 0),
+            'total'          => (float) ($stats->total          ?? 0),
+            'descuentoTotal' => (float) ($stats->descuento_total ?? 0),
+            'cortesias'      => $cortesias,
+            'anuladas'       => (int)   ($stats->anuladas       ?? 0),
+            'despacho'       => (int)   ($stats->despacho       ?? 0),
+            'porMetodo'      => $porMetodo,
+        ];
     }
 
-    // ── Modal detalle ─────────────────────────────────────────────────────────
+    // ── Anular (Filament modal nativo) ────────────────────────────────────────
 
-    public function abrirDetalle(int $ventaId): void
+    public function tieneItemsConStockRecord(Venta $venta): bool
     {
-        $this->ventaModalId = $ventaId;
-    }
-
-    public function cerrarDetalle(): void
-    {
-        $this->ventaModalId = null;
-    }
-
-    public function getVentaModal(): ?Venta
-    {
-        if (! $this->ventaModalId) return null;
-
-        return Venta::with([
-            'serie',
-            'detalles',
-            'pagos.metodoPago',
-        ])->find($this->ventaModalId);
-    }
-
-    // ── Modal anular ──────────────────────────────────────────────────────────
-
-    public function abrirAnular(int $ventaId): void
-    {
-        $this->ventaAnularId = $ventaId;
-        $this->revertirStock = true;
-        $this->modalAnular   = true;
-    }
-
-    public function cerrarAnular(): void
-    {
-        $this->ventaAnularId = null;
-        $this->modalAnular   = false;
-        $this->revertirStock = true;
-        $this->motivoBaja    = 'Error en emisión';
-    }
-
-    public function getVentaAnular(): ?Venta
-    {
-        if (! $this->ventaAnularId) return null;
-
-        return Venta::with([
-            'serie',
-            'detalles.producto',
-            'detalles.variante.producto',
-            'pagos.metodoPago',
-        ])->find($this->ventaAnularId);
-    }
-
-    public function necesitaBajaSunat(): bool
-    {
-        $venta = $this->getVentaAnular();
-        if (! $venta) return false;
-        $empresa = Filament::getTenant();
-        return $empresa->tieneFacturacionElectronica() && $this->estadoNecesitaBaja($venta);
-    }
-
-    public function tieneItemsConStock(): bool
-    {
-        $venta = $this->getVentaAnular();
-        if (! $venta) return false;
+        $venta->loadMissing(['detalles.producto', 'detalles.variante.producto']);
 
         foreach ($venta->detalles as $d) {
-            if ($d->tipo_item === TipoItem::Promocion)                    return true;
-            if ($d->producto?->control_de_stock)                          return true;
-            if ($d->variante?->producto?->control_de_stock)               return true;
+            if ($d->tipo_item === TipoItem::Promocion)          return true;
+            if ($d->producto?->control_de_stock)                return true;
+            if ($d->variante?->producto?->control_de_stock)     return true;
         }
 
         return false;
     }
 
-    public function confirmarAnular(): void
+    public function necesitaBajaSunatRecord(Venta $venta): bool
     {
-        if (! $this->ventaAnularId) return;
+        return Filament::getTenant()->tieneFacturacionElectronica()
+            && $this->estadoNecesitaBaja($venta);
+    }
 
-        $venta = Venta::with([
+    public function confirmarAnularRecord(Venta $venta, bool $revertirStock, string $motivoBaja): void
+    {
+        $venta->loadMissing([
             'serie',
             'detalles.producto',
             'detalles.variante.producto',
             'pagos',
-        ])->find($this->ventaAnularId);
+        ]);
 
-        if (! $venta || $venta->empresa_id !== Filament::getTenant()->id) {
+        if ($venta->empresa_id !== Filament::getTenant()->id) {
             Notification::make()->title('Venta no encontrada')->danger()->send();
-            $this->cerrarAnular();
             return;
         }
 
         if ($venta->estaAnulada()) {
             Notification::make()->title('Esta venta ya está anulada')->warning()->send();
-            $this->cerrarAnular();
             return;
         }
 
         $empresaId   = Filament::getTenant()->id;
         $comprobante = ($venta->serie?->serie ?? '---') . '-' . $venta->correlativo;
         $sesion      = $this->getSesionActiva();
-        $revertir    = $this->revertirStock;
+        $revertir    = $revertirStock;
 
         try {
             DB::transaction(function () use ($venta, $empresaId, $comprobante, $sesion, $revertir) {
@@ -752,16 +749,12 @@ class VentasSesionPage extends Page implements HasTable
             return;
         }
 
-        $motivoBaja = $this->motivoBaja;
-        $this->cerrarAnular();
-
         Notification::make()
             ->title("Venta {$comprobante} anulada")
-            ->body($revertir ? 'Se registró la devolución y se revirtió el inventario.' : 'Se registró la devolución. El inventario no fue modificado.')
+            ->body($revertirStock ? 'Se registró la devolución y se revirtió el inventario.' : 'Se registró la devolución. El inventario no fue modificado.')
             ->warning()
             ->send();
 
-        // Si el comprobante ya fue enviado a SUNAT, enviar Comunicación de Baja (RA)
         if ($this->estadoNecesitaBaja($venta)) {
             $this->enviarBajaASunat($venta, $motivoBaja);
         }

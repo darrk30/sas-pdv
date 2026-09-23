@@ -115,8 +115,8 @@
         redirectUrl: '',
         ticketBase: '{{ url('/ticket/comanda') }}'
     }"
-    x-init="try { Alpine.store('hasLastComanda', !!localStorage.getItem('comanda_orden_{{ $orden->id }}')); } catch(e) { Alpine.store('hasLastComanda', false); }"
-    @imprimir-comanda-browser.window="
+    x-init="(() => { try { Alpine.store('hasLastComanda', !!localStorage.getItem('comanda_orden_{{ $orden->id }}')); } catch(e) { Alpine.store('hasLastComanda', false); } })()"
+    @imprimir-comanda-browser.window="(() => {
         const raw = $event.detail;
         const d   = (Array.isArray(raw) ? raw[0] : raw) || {};
         ordenId     = d.ordenId     || 0;
@@ -134,8 +134,8 @@
             if (redirectUrl) $dispatch('pdv-anulado');
             try { localStorage.setItem('comanda_orden_{{ $orden->id }}', JSON.stringify(d)); Alpine.store('hasLastComanda', true); } catch(ec) {}
         }
-    "
-    @replay-last-comanda.window="
+    })()"
+    @replay-last-comanda.window="(() => {
         try {
             const saved = localStorage.getItem('comanda_orden_{{ $orden->id }}');
             if (!saved) return;
@@ -151,7 +151,7 @@
             try { areas = JSON.parse(d.areasJson || '[]'); } catch(e2) { areas = []; }
             if (areas.length > 0) { activeTab = 0; open = true; }
         } catch(e) {}
-    "
+    })()"
     style="display:contents"
 >
     <template x-if="open">
