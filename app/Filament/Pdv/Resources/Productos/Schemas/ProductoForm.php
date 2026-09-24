@@ -348,7 +348,10 @@ class ProductoForm
                                             ->values()
                                             ->toArray();
 
-                                        $record->galeriaProductos()->whereNotIn('imagen_path', $paths)->delete();
+                                        $record->galeriaProductos()
+                                            ->whereNotIn('imagen_path', $paths)
+                                            ->get()
+                                            ->each(fn($g) => $g->delete());
 
                                         foreach ($paths as $index => $path) {
                                             $record->galeriaProductos()->updateOrCreate(

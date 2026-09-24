@@ -44,8 +44,11 @@ class VencerSuscripcionesCommand extends Command
         $this->info("Suscripciones vencidas: {$vencidas->count()}.");
 
         // ── 2. Marcar próximas a vencer (entre hoy y DIAS_ALERTA días) ────────
+        // Las suscripciones de prueba gratuita se manejan con su propio banner y no
+        // necesitan el flag suscripcion_proxima_a_vencer.
         $proximasAVencer = Suscripcion::query()
             ->where('estado', EstadoGeneral::Activo)
+            ->where('es_prueba_gratuita', false)
             ->whereDate('fecha_fin', '>=', $hoy)
             ->whereDate('fecha_fin', '<=', $limite)
             ->with('empresa')

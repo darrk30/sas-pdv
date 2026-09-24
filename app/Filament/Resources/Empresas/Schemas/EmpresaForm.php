@@ -55,7 +55,7 @@ class EmpresaForm
                                     TextInput::make('slug')->label('URL amigable (Slug)')->required()->unique(ignoreRecord: true),
                                     Select::make('estado')->options(['activo' => 'Activo', 'inactivo' => 'Inactivo'])->default('activo')->native(false),
                                 ]),
-                                FileUpload::make('logo')->label('Logotipo')->image()->directory('logos')->columnSpanFull(),
+                                FileUpload::make('logo')->label('Logotipo')->image()->directory('logos')->optimize('webp', 85)->maxImageWidth(512)->columnSpanFull(),
                             ]),
 
                         Tab::make('Ubicación')
@@ -582,6 +582,24 @@ class EmpresaForm
                                             ->label('Fecha de Vencimiento')
                                             ->required()
                                             ->native(false)
+                                            ->columnSpan(1),
+
+                                        Select::make('ciclo')
+                                            ->label('Ciclo de pago')
+                                            ->options([
+                                                'mensual' => 'Mensual',
+                                                'anual'   => 'Anual',
+                                                'prueba'  => 'Prueba gratuita',
+                                            ])
+                                            ->default('mensual')
+                                            ->required()
+                                            ->columnSpan(1),
+
+                                        Toggle::make('es_prueba_gratuita')
+                                            ->label('Es período de prueba')
+                                            ->helperText('Si está activo, se muestra banner de prueba en el PDV en lugar de alerta de vencimiento.')
+                                            ->onColor('info')
+                                            ->default(false)
                                             ->columnSpan(1),
                                     ])
                             ]),

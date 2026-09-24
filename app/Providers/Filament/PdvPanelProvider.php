@@ -88,7 +88,7 @@ class PdvPanelProvider extends PanelProvider
                 'primary' => '#1d5194',
             ])
             ->brandLogoHeight('3.5rem')
-            ->brandName(fn () => Str::limit($this->resolverEmpresa()?->nombre ?? 'Tukipu', 22, ''))
+            ->brandName(fn () => Str::limit($this->resolverEmpresa()?->name ?? 'Tukipu', 22, ''))
             ->brandLogo(function () {
                 $logo = $this->resolverEmpresa()?->logo;
                 return $logo ? asset('storage/' . $logo) : null;

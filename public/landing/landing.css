@@ -246,9 +246,9 @@ h1.hero-h em{font-style:normal;background:linear-gradient(90deg,var(--or),var(--
 .plan-feat-rich ol li{font-size:.85rem;color:#334155;line-height:1.5}
 
 /* CTA */
-.plan-cta{display:block;text-align:center;margin-top:auto;padding:11px 20px;padding-top:24px;border-radius:10px;font-size:.875rem;font-weight:700;text-decoration:none;border:2px solid var(--pacc);color:var(--pacc);background:transparent;transition:background .15s,color .15s,filter .15s}
+.plan-cta{display:flex;align-items:center;justify-content:center;margin-top:auto;padding:11px 20px;border-radius:10px;font-size:.875rem;font-weight:700;text-decoration:none;border:2px solid var(--pacc);color:var(--pacc);background:transparent;transition:background .15s,color .15s,filter .15s;line-height:1.2}
 .plan-cta:hover{background:var(--pacc);color:#fff}
-.plan-card.featured .plan-cta{background:var(--pacc);color:#fff;padding-top:11px}
+.plan-card.featured .plan-cta{background:var(--pacc);color:#fff}
 .plan-card.featured .plan-cta:hover{filter:brightness(1.08);background:var(--pacc);color:#fff}
 
 .plan-addons{background:#fff;border-radius:16px;padding:1.75rem 2rem;border:1.5px solid #E2E8F0;display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.06)}

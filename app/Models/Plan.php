@@ -15,6 +15,9 @@ class Plan extends Model
         'subtitulo',
         'descripcion',
         'precio',
+        'precio_anual',
+        'dias_prueba_gratuita',
+        'modulos_activos',
         'ciclo_facturacion',
         'maximo_usuarios',
         'maximo_locales',
@@ -31,6 +34,9 @@ class Plan extends Model
     {
         return [
             'precio'                  => 'decimal:2',
+            'precio_anual'            => 'decimal:2',
+            'dias_prueba_gratuita'    => 'integer',
+            'modulos_activos'         => 'array',
             'tiene_variantes'         => 'boolean',
             'tiene_catalogo_web'      => 'boolean',
             'facturacion_electronica' => 'boolean',

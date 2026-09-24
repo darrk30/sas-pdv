@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Observers\VarianteObserver;
 use App\Traits\BelongsToEmpresa;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Model;
 
+#[ObservedBy([VarianteObserver::class])]
 class Variante extends Model
 {
     use BelongsToEmpresa;

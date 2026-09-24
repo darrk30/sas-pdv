@@ -4,11 +4,14 @@ namespace App\Models;
 
 use App\Enums\EstadoGeneral;
 use App\Enums\ProductoEtiqueta;
+use App\Observers\ProductoObserver;
 use App\Traits\BelongsToEmpresa;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[ObservedBy([ProductoObserver::class])]
 class Producto extends Model
 {
     use BelongsToEmpresa;

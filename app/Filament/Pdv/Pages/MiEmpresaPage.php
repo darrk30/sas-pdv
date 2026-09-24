@@ -186,6 +186,10 @@ class MiEmpresaPage extends Page implements HasForms
                         // ── Tab 3: Configuración ──────────────────────────────
                         Tab::make('Configuración')
                             ->icon('heroicon-o-cog-6-tooth')
+                            ->visible(fn (): bool =>
+                                (Filament::getTenant()?->tieneFeature('catalogo_web') ?? false) ||
+                                (Filament::getTenant()?->tieneImpresionDirecta() ?? false)
+                            )
                             ->schema([
 
                                 // Sección catálogo — solo si el plan lo incluye

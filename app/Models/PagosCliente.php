@@ -11,7 +11,12 @@ class PagosCliente extends Model
 
     protected $fillable = [
         'suscripcion_id',
+        'plan_id',
+        'ciclo',
         'monto',
+        'concepto',
+        'periodo_desde',
+        'periodo_hasta',
         'estado',
         'path_url',
         'fecha_pago',
@@ -22,9 +27,16 @@ class PagosCliente extends Model
     protected function casts(): array
     {
         return [
-            'monto' => 'decimal:2',
-            'fecha_pago' => 'datetime',
+            'monto'         => 'decimal:2',
+            'fecha_pago'    => 'datetime',
+            'periodo_desde' => 'date',
+            'periodo_hasta' => 'date',
         ];
+    }
+
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class);
     }
 
     public function suscripcion()
