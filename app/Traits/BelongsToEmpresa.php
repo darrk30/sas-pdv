@@ -31,12 +31,16 @@ trait BelongsToEmpresa
 
         // 2. Auto-asignación (Crear datos)
         static::creating(function ($model) {
-            
+            // Los seeders del Observer setean empresa_id explícitamente — no sobreescribir
+            if (app()->bound('bypass_tenant_scope') && app('bypass_tenant_scope')) {
+                return;
+            }
+
             $panel = app()->bound('filament') ? filament()->getCurrentPanel() : null;
 
             if ($panel && $panel->getId() !== 'admin') {
                 $tenant = filament()->getTenant();
-                
+
                 if ($tenant) {
                     $model->empresa_id = $tenant->id;
                 }

@@ -19,6 +19,20 @@ use App\Models\Venta;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
+// ── Registro público de nuevas empresas ──────────────────────────────────────
+Route::livewire('/registrarse', 'registro.registro-publico')
+    ->name('registro.publico')
+    ->middleware('throttle:20,1');
+
+Route::get('/terminos-y-condiciones', function () {
+    $config = [
+        'nombre'   => \App\Models\AppSetting::get('nombre',   config('app.name')),
+        'telefono' => \App\Models\AppSetting::get('telefono'),
+        'logo'     => \App\Models\AppSetting::get('logo'),
+    ];
+    return view('terminos', compact('config'));
+})->name('terminos');
+
 // ── Ticket compartido via WhatsApp (firmado, sin login) ──────────────────────
 Route::get('/ticket/venta/{id}/compartir', [TicketVentaController::class, 'compartir'])
     ->name('pdv.ticket.venta.compartir')

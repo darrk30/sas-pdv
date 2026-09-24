@@ -14,7 +14,7 @@ class TiendaEmpresa
         $empresa = Empresa::with('suscripcion.plan')->where('slug', $slug)->first();
 
         if (! $empresa) {
-            abort(404, 'Tienda no encontrada.');
+            return redirect(config('app.url'));
         }
 
         app()->instance('tienda.empresa', $empresa);

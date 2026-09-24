@@ -678,8 +678,13 @@
               {!! $plan->descripcion !!}
             </div>
 
-            <a href="https://wa.me/{{ $cfg_whatsapp }}?text={{ $waMsg }}" target="_blank" rel="noopener"
-              class="plan-cta">Solicitar acceso</a>
+            <a href="{{ route('registro.publico') }}" class="plan-cta">
+              @if($plan->dias_prueba_gratuita > 0)
+                Inicia tu prueba gratis
+              @else
+                Comenzar ahora
+              @endif
+            </a>
           </div>
           @endforeach
         </div>
@@ -802,11 +807,11 @@
         <h2 class="cta-h">Lleva tu negocio<br>al siguiente nivel</h2>
         <p class="cta-p">Únete a los comercios que ya gestionan ventas en físico y online desde una sola plataforma. Solicita tu acceso hoy.</p>
         <div class="cta-btns">
-          <a href="mailto:{{ $cfg_email }}" class="btn-grad">
+          <a href="{{ route('registro.publico') }}" class="btn-grad">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
-            Solicitar acceso gratis
+            Inicia tu prueba gratis
           </a>
           <a href="#planes" class="btn-ghost">Ver planes</a>
         </div>

@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\Empresas\RelationManagers;
 
+use App\Enums\EstadoGeneral;
 use App\Enums\MetodoPago;
 use App\Filament\Resources\Empresas\EmpresaResource;
+use App\Models\Plan;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -17,6 +19,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -39,20 +43,40 @@ class PagosRelationManager extends RelationManager
 
                 TextColumn::make('monto')
                     ->label('Monto')
-                    ->money('PEN') // Cambia a 'USD' si fuera necesario
+                    ->money('PEN')
                     ->sortable()
                     ->weight('bold'),
+
+                TextColumn::make('ciclo')
+                    ->label('Ciclo')
+                    ->badge()
+                    ->color('info')
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'anual'  => 'Anual',
+                        'prueba' => 'Prueba',
+                        default  => 'Mensual',
+                    }),
+
+                TextColumn::make('periodo_desde')
+                    ->label('Desde')
+                    ->date('d/m/Y')
+                    ->placeholder('—'),
+
+                TextColumn::make('periodo_hasta')
+                    ->label('Hasta')
+                    ->date('d/m/Y')
+                    ->placeholder('—'),
 
                 TextColumn::make('metodo_pago')
                     ->label('Método')
                     ->badge()
                     ->color('success')
-                    ->formatStateUsing(fn(string $state): string => ucfirst($state)), // Capitaliza la primera letra
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state)),
 
-                TextColumn::make('referencia')
-                    ->label('N° Operación')
-                    ->searchable()
-                    ->placeholder('Sin referencia'),
+                TextColumn::make('concepto')
+                    ->label('Concepto')
+                    ->getStateUsing(fn ($record) => $record->concepto ?? $record->referencia)
+                    ->placeholder('—'),
 
                 TextColumn::make('estado')
                     ->label('Estado')
@@ -70,13 +94,14 @@ class PagosRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
-                    ->modalHeading('Registrar Nuevo Pago')
-                    ->label('Registrar Pago')->before(function (CreateAction $action, $livewire) {
+                    ->modalHeading('Registrar Pago Manualmente')
+                    ->label('Registrar Pago')
+                    ->before(function (CreateAction $action, $livewire) {
                         if (! $livewire->ownerRecord->suscripcion) {
                             Notification::make()
                                 ->warning()
                                 ->title('Falta Suscripción')
-                                ->body('Esta empresa aún no tiene un plan asignado. Ve a la pestaña "Suscripción y Plan" y asígnale uno antes de cobrar.')
+                                ->body('Esta empresa no tiene un plan asignado. Asígnale uno en la pestaña "Suscripción y Plan".')
                                 ->send();
                             $action->halt();
                         }
@@ -90,7 +115,22 @@ class PagosRelationManager extends RelationManager
                     ->visible(fn ($record) => $record->estado === 'pendiente')
                     ->requiresConfirmation()
                     ->modalHeading('Aprobar pago y renovar suscripción')
-                    ->modalDescription(fn ($record) => "Se aprobará el pago de S/ {$record->monto} y se extenderá la suscripción según el ciclo del plan activo.")
+                    ->modalDescription(function ($record, $livewire) {
+                        $empresa     = $livewire->ownerRecord;
+                        $suscripcion = $empresa->suscripcion;
+                        $ciclo       = $record->ciclo ?? $suscripcion?->ciclo ?? 'mensual';
+
+                        $finActual    = $suscripcion?->fecha_fin;
+                        $periodoDesde = ($finActual && $finActual->isFuture())
+                            ? $finActual->copy()->addDay()->startOfDay()
+                            : now()->startOfDay();
+                        $periodoHasta = $ciclo === 'anual'
+                            ? $periodoDesde->copy()->addYear()->subDay()
+                            : $periodoDesde->copy()->addMonth()->subDay();
+
+                        return "Pago de S/ {$record->monto} — ciclo {$ciclo}.\n"
+                            . "Nuevo período: {$periodoDesde->format('d/m/Y')} → {$periodoHasta->format('d/m/Y')}.";
+                    })
                     ->action(function ($record, $livewire) {
                         $empresa     = $livewire->ownerRecord;
                         $suscripcion = $empresa->suscripcion;
@@ -100,8 +140,30 @@ class PagosRelationManager extends RelationManager
                             return;
                         }
 
-                        // Aprobar este pago
-                        $record->update(['estado' => 'aprobado']);
+                        // Ciclo y plan a aplicar (del pago o del plan activo actual)
+                        $ciclo       = $record->ciclo ?? $suscripcion->ciclo ?? 'mensual';
+                        $nuevoPlanId = $record->plan_id ?? $suscripcion->plan_id;
+                        $nuevoPlan   = Plan::find($nuevoPlanId);
+
+                        // periodo_desde: si hay días vigentes → acumular; si venció → desde hoy
+                        $finActual    = $suscripcion->fecha_fin;
+                        $periodoDesde = ($finActual && $finActual->isFuture())
+                            ? $finActual->copy()->addDay()->startOfDay()
+                            : now()->startOfDay();
+
+                        // periodo_hasta según ciclo
+                        $periodoHasta = $ciclo === 'anual'
+                            ? $periodoDesde->copy()->addYear()->subDay()
+                            : $periodoDesde->copy()->addMonth()->subDay();
+
+                        // Actualizar el registro de pago con el período calculado
+                        $record->updateQuietly([
+                            'estado'        => 'aprobado',
+                            'plan_id'       => $nuevoPlanId,
+                            'ciclo'         => $ciclo,
+                            'periodo_desde' => $periodoDesde,
+                            'periodo_hasta' => $periodoHasta,
+                        ]);
 
                         // Rechazar otros pagos pendientes de la misma suscripción
                         $suscripcion->pagos()
@@ -109,32 +171,32 @@ class PagosRelationManager extends RelationManager
                             ->where('id', '!=', $record->id)
                             ->update(['estado' => 'rechazado']);
 
-                        // Extender fecha_fin según ciclo del plan
-                        $ciclo    = $suscripcion->plan?->ciclo_facturacion ?? 'mensual';
-                        $base     = $suscripcion->fecha_fin && $suscripcion->fecha_fin->isFuture()
-                                    ? $suscripcion->fecha_fin
-                                    : now();
-                        $nuevaFin = match ($ciclo) {
-                            'anual'      => $base->copy()->addYear(),
-                            'trimestral' => $base->copy()->addMonths(3),
-                            default      => $base->copy()->addMonth(),
-                        };
-
+                        // Actualizar la suscripción
                         $suscripcion->update([
-                            'estado'       => 'activo',
-                            'fecha_inicio' => $base->copy()->startOfDay(),
-                            'fecha_fin'    => $nuevaFin,
+                            'plan_id'            => $nuevoPlanId,
+                            'estado'             => EstadoGeneral::Activo,
+                            'fecha_inicio'       => $periodoDesde,
+                            'fecha_fin'          => $periodoHasta,
+                            'ciclo'              => $ciclo,
+                            'precio_pagado'      => $record->monto,
+                            'es_prueba_gratuita' => false,
                         ]);
 
+                        // Reactivar empresa si estaba suspendida
                         $empresa->update([
                             'estado'                       => 'activo',
                             'suscripcion_proxima_a_vencer' => false,
                         ]);
 
+                        // Sincronizar módulos si cambió el plan
+                        if ($nuevoPlan?->modulos_activos) {
+                            $empresa->update(['modulos_activos' => $nuevoPlan->modulos_activos]);
+                        }
+
                         Notification::make()
                             ->success()
                             ->title('Pago aprobado')
-                            ->body("Suscripción renovada hasta {$nuevaFin->format('d/m/Y')}.")
+                            ->body("Suscripción renovada hasta {$periodoHasta->format('d/m/Y')}.")
                             ->send();
                     }),
 
@@ -155,7 +217,6 @@ class PagosRelationManager extends RelationManager
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->modalHeading('Confirmar Eliminación Masiva')
-                        ->modalDescription('Estás a punto de eliminar múltiples registros. Esta acción no se puede deshacer. Por seguridad, ingresa tu contraseña para continuar.')
                         ->modalSubmitActionLabel('Sí, eliminar todo')
                         ->schema([
                             TextInput::make('password')
@@ -177,7 +238,42 @@ class PagosRelationManager extends RelationManager
     {
         return $schema
             ->schema([
-                Hidden::make('suscripcion_id')->default(fn($livewire) => $livewire->ownerRecord->suscripcion?->id),
+                Hidden::make('suscripcion_id')
+                    ->default(fn ($livewire) => $livewire->ownerRecord->suscripcion?->id),
+
+                Select::make('plan_id')
+                    ->label('Plan')
+                    ->options(fn () => Plan::orderBy('nombre')->pluck('nombre', 'id'))
+                    ->native(false)
+                    ->default(fn ($livewire) => $livewire->ownerRecord->suscripcion?->plan_id)
+                    ->live()
+                    ->afterStateUpdated(function ($state, Get $get, Set $set) {
+                        $plan  = Plan::find($state);
+                        $ciclo = $get('ciclo') ?? 'mensual';
+                        if ($plan) {
+                            $set('monto', ($ciclo === 'anual' && $plan->precio_anual)
+                                ? $plan->precio_anual
+                                : $plan->precio);
+                        }
+                    }),
+
+                Select::make('ciclo')
+                    ->label('Ciclo')
+                    ->options([
+                        'mensual' => 'Mensual',
+                        'anual'   => 'Anual',
+                        'prueba'  => 'Prueba gratuita',
+                    ])
+                    ->default('mensual')
+                    ->live()
+                    ->afterStateUpdated(function ($state, Get $get, Set $set) {
+                        $plan = Plan::find($get('plan_id'));
+                        if ($plan) {
+                            $set('monto', ($state === 'anual' && $plan->precio_anual)
+                                ? $plan->precio_anual
+                                : $plan->precio);
+                        }
+                    }),
 
                 TextInput::make('monto')
                     ->required()
@@ -187,8 +283,15 @@ class PagosRelationManager extends RelationManager
                 Select::make('metodo_pago')
                     ->label('Método de Pago')
                     ->native(false)
-                    ->options(MetodoPago::class)
-                    ->default(MetodoPago::Efectivo)
+                    ->options([
+                        'transferencia' => 'Transferencia Bancaria',
+                        'yape'          => 'Yape',
+                        'plin'          => 'Plin',
+                        'tarjeta'       => 'Tarjeta',
+                        'efectivo'      => 'Efectivo',
+                        'gratuito'      => 'Gratuito',
+                    ])
+                    ->default('transferencia')
                     ->required(),
 
                 DateTimePicker::make('fecha_pago')
@@ -198,7 +301,25 @@ class PagosRelationManager extends RelationManager
                 TextInput::make('referencia')
                     ->maxLength(255),
 
-                FileUpload::make('path_url')->label('Comprobante')->image()->directory('comprobantes')->columnSpanFull(),
+                Select::make('estado')
+                    ->label('Estado')
+                    ->options([
+                        'pendiente'  => 'Pendiente',
+                        'aprobado'   => 'Aprobado',
+                        'rechazado'  => 'Rechazado',
+                    ])
+                    ->default('pendiente')
+                    ->required(),
+
+                FileUpload::make('path_url')
+                    ->label('Comprobante')
+                    ->image()
+                    ->directory('comprobantes')
+                    ->required(fn (Get $get): bool => $get('metodo_pago') !== 'gratuito')
+                    ->helperText(fn (Get $get): string => $get('metodo_pago') === 'gratuito'
+                        ? 'No requerido para pagos gratuitos.'
+                        : 'Requerido: adjunta la captura del comprobante de pago.')
+                    ->columnSpanFull(),
             ]);
     }
 }

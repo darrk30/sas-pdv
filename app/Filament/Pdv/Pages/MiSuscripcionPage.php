@@ -4,22 +4,23 @@ namespace App\Filament\Pdv\Pages;
 
 use App\Enums\MetodoPago;
 use App\Models\PagosCliente;
+use App\Models\Plan;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use UnitEnum;
@@ -80,12 +81,33 @@ class MiSuscripcionPage extends Page implements HasTable
                     ->sortable()
                     ->weight('bold'),
 
+                TextColumn::make('ciclo')
+                    ->label('Ciclo')
+                    ->badge()
+                    ->color('info')
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'anual'  => 'Anual',
+                        'prueba' => 'Prueba',
+                        default  => 'Mensual',
+                    }),
+
+                TextColumn::make('periodo_desde')
+                    ->label('Desde')
+                    ->date('d/m/Y')
+                    ->placeholder('—'),
+
+                TextColumn::make('periodo_hasta')
+                    ->label('Hasta')
+                    ->date('d/m/Y')
+                    ->placeholder('—'),
+
                 TextColumn::make('metodo_pago')
                     ->label('Método')
                     ->formatStateUsing(fn ($state) => ucfirst($state)),
 
-                TextColumn::make('referencia')
-                    ->label('N° Operación')
+                TextColumn::make('concepto')
+                    ->label('Concepto')
+                    ->getStateUsing(fn ($record) => $record->concepto ?? $record->referencia)
                     ->placeholder('—'),
 
                 TextColumn::make('estado')
@@ -122,56 +144,90 @@ class MiSuscripcionPage extends Page implements HasTable
 
     public function registrarPagoAction(): Action
     {
-        $suscripcion = $this->suscripcion;
-
         return Action::make('registrarPago')
             ->label('Registrar comprobante de pago')
             ->icon('heroicon-o-plus-circle')
             ->color('primary')
             ->visible(function () {
-                $empresa = Filament::getTenant()->fresh();
-                return ($empresa->suscripcion_proxima_a_vencer || $empresa->estado === 'inactivo')
-                    && ! $this->tienePagoPendiente;
+                $empresa     = Filament::getTenant()->fresh();
+                $suscripcion = $empresa->suscripcion;
+
+                // Mostrar si: en prueba, próxima a vencer, o inactiva — y sin pago pendiente
+                $debeVerBoton = $suscripcion?->es_prueba_gratuita
+                    || $empresa->suscripcion_proxima_a_vencer
+                    || $empresa->estado === 'inactivo';
+
+                return $debeVerBoton && ! $this->tienePagoPendiente;
             })
-            ->disabled(fn () => ! $suscripcion)
-            ->tooltip(fn () => ! $suscripcion ? 'No tienes suscripción activa' : null)
+            ->disabled(fn () => ! $this->suscripcion)
+            ->tooltip(fn () => ! $this->suscripcion ? 'No tienes suscripción activa' : null)
             ->modalHeading('Registrar comprobante de pago')
             ->modalDescription('Sube el comprobante de tu pago para que el administrador lo verifique y renueve tu suscripción.')
             ->modalWidth('lg')
-            ->schema([
-                TextInput::make('monto')
+            ->schema(function () {
+                $suscripcion = $this->suscripcion;
+                $plan        = $suscripcion?->plan;
+                $tieneAnual  = $plan && $plan->precio_anual !== null && $plan->precio_anual > 0;
+
+                $fields = [];
+
+                // Selector de ciclo solo si el plan ofrece precio anual
+                if ($tieneAnual) {
+                    $fields[] = Radio::make('ciclo')
+                        ->label('Ciclo de facturación')
+                        ->options([
+                            'mensual' => "Mensual — S/ {$plan->precio}",
+                            'anual'   => "Anual — S/ {$plan->precio_anual} (ahorra " . round((1 - $plan->precio_anual / ($plan->precio * 12)) * 100) . '%)',
+                        ])
+                        ->default('mensual')
+                        ->live()
+                        ->afterStateUpdated(function ($state, $set) use ($plan) {
+                            $monto = ($state === 'anual') ? $plan->precio_anual : $plan->precio;
+                            $set('monto', $monto);
+                        })
+                        ->inline(false);
+                } else {
+                    $fields[] = \Filament\Forms\Components\Hidden::make('ciclo')
+                        ->default('mensual');
+                }
+
+                $fields[] = TextInput::make('monto')
                     ->label('Monto a pagar')
-                    ->default(fn () => $suscripcion?->plan?->precio ?? 0)
+                    ->default(fn () => $plan?->precio ?? 0)
                     ->numeric()
                     ->prefix('S/')
                     ->readOnly()
-                    ->helperText('El monto corresponde al precio del plan y no puede modificarse.'),
+                    ->helperText('El monto corresponde al precio del plan seleccionado.');
 
-                Select::make('metodo_pago')
+                $fields[] = Select::make('metodo_pago')
                     ->label('Método de Pago')
                     ->native(false)
                     ->options(MetodoPago::class)
                     ->default(MetodoPago::Transferencia->value)
-                    ->required(),
+                    ->required();
 
-                TextInput::make('referencia')
+                $fields[] = TextInput::make('referencia')
                     ->label('N° de Operación / Referencia')
-                    ->maxLength(255),
+                    ->maxLength(255);
 
-                DateTimePicker::make('fecha_pago')
+                $fields[] = DateTimePicker::make('fecha_pago')
                     ->label('Fecha del Pago')
                     ->default(now())
                     ->required()
-                    ->native(false),
+                    ->native(false);
 
-                FileUpload::make('path_url')
+                $fields[] = FileUpload::make('path_url')
                     ->label('Comprobante (captura o voucher)')
                     ->image()
                     ->disk('public')
                     ->directory('comprobantes')
-                    ->columnSpanFull(),
-            ])
-            ->action(function (array $data) use ($suscripcion): void {
+                    ->columnSpanFull();
+
+                return $fields;
+            })
+            ->action(function (array $data): void {
+                $suscripcion = $this->suscripcion;
+
                 if (! $suscripcion) {
                     Notification::make()->warning()->title('Sin suscripción activa')
                         ->body('Tu empresa aún no tiene un plan asignado. Contacta al administrador.')
@@ -179,10 +235,12 @@ class MiSuscripcionPage extends Page implements HasTable
                     return;
                 }
 
-                $precioEsperado = (float) $suscripcion->plan->precio;
-                $montoEnviado   = (float) $data['monto'];
+                $plan   = $suscripcion->plan;
+                $ciclo  = $data['ciclo'] ?? 'mensual';
+                $monto  = ($ciclo === 'anual' && $plan->precio_anual) ? (float) $plan->precio_anual : (float) $plan->precio;
+                $montoEnviado = (float) $data['monto'];
 
-                if (round($montoEnviado, 2) !== round($precioEsperado, 2)) {
+                if (round($montoEnviado, 2) !== round($monto, 2)) {
                     Notification::make()->danger()->title('Monto inválido')
                         ->body('El monto fue modificado y no coincide con el precio del plan. La operación fue cancelada.')
                         ->send();
@@ -191,17 +249,21 @@ class MiSuscripcionPage extends Page implements HasTable
 
                 PagosCliente::create([
                     'suscripcion_id' => $suscripcion->id,
-                    'monto'          => $precioEsperado,
+                    'plan_id'        => $suscripcion->plan_id,
+                    'ciclo'          => $ciclo,
+                    'monto'          => $monto,
                     'metodo_pago'    => $data['metodo_pago'],
                     'referencia'     => $data['referencia'] ?? null,
                     'fecha_pago'     => $data['fecha_pago'],
                     'path_url'       => $data['path_url'] ?? null,
+                    'estado'         => 'pendiente',
                 ]);
 
                 Notification::make()->success()->title('Pago registrado correctamente')
                     ->body('Tu comprobante fue enviado. El administrador lo revisará y renovará tu suscripción pronto.')
                     ->send();
 
+                // Notificar super admins
                 $empresa  = Filament::getTenant();
                 $adminIds = DB::table('model_has_roles')
                     ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
@@ -210,9 +272,10 @@ class MiSuscripcionPage extends Page implements HasTable
                     ->whereNull('roles.empresa_id')
                     ->pluck('model_has_roles.model_id');
 
+                $cicloLabel = $ciclo === 'anual' ? 'anual' : 'mensual';
                 foreach (User::whereIn('id', $adminIds)->get() as $admin) {
                     Notification::make()->warning()->title('Pago pendiente de aprobación')
-                        ->body("La empresa **{$empresa->name}** registró un comprobante de pago. Revísalo para renovar su suscripción.")
+                        ->body("La empresa **{$empresa->name}** registró un comprobante de pago ({$cicloLabel}). Revísalo para renovar su suscripción.")
                         ->sendToDatabase($admin);
                 }
 

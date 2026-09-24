@@ -18,6 +18,7 @@ class Empresa extends Model
         'icono',
         'slug',
         'direccion',
+        'rubro',
         'telefono',
         'email',
         'departamento',
