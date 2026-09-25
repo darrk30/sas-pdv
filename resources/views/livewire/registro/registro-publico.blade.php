@@ -74,8 +74,12 @@
                 {{-- FASE B: ingresar código --}}
                 @if($codigoEnviado && ! $codigoVerificado)
                 <div class="rg-verify-box">
-                    <div class="rg-verify-icon">✉</div>
+                    <div class="rg-verify-icon">{{ $codigoYaExistia ? '🔒' : '✉' }}</div>
+                    @if($codigoYaExistia)
+                    <p class="rg-verify-msg">Ya enviamos un código a <strong>{{ $email }}</strong>. Ingrésalo abajo — sigue vigente. Si no lo encuentras, usa <em>Reenviar código</em>.</p>
+                    @else
                     <p class="rg-verify-msg">Enviamos un código de 6 dígitos a <strong>{{ $email }}</strong>. Revisa tu bandeja de entrada (y spam).</p>
+                    @endif
                 </div>
                 <form wire:submit="verificarCodigo">
                 <div class="rg-field-wrap" style="margin-top:16px">
@@ -442,7 +446,9 @@
                     </div>
                     <div class="rg-summary-row">
                         <span>Facturación</span>
-                        <strong>{{ $anualSel ? 'Anual · S/ ' . number_format((float)$planSel->precio_anual, 0) . '/año' : 'Mensual' }}</strong>
+                        <strong>{{ $anualSel
+                            ? 'Anual · S/ ' . number_format((float)$planSel->precio_anual, 0) . '/año'
+                            : 'Mensual · S/ ' . number_format((float)$planSel->precio, 0) . '/mes' }}</strong>
                     </div>
                     @if($esTrialSel)
                     <div class="rg-summary-row">
@@ -451,7 +457,10 @@
                     </div>
                     <div class="rg-summary-row">
                         <span>Primer cobro</span>
-                        <strong>Después de los {{ $planSel->dias_prueba_gratuita }} días</strong>
+                        <strong>
+                            S/ {{ number_format((float)($anualSel ? $planSel->precio_anual : $planSel->precio), 0) }}
+                            {{ $anualSel ? '/año' : '/mes' }} · después de los {{ $planSel->dias_prueba_gratuita }} días
+                        </strong>
                     </div>
                     @else
                     <div class="rg-summary-row">

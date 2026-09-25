@@ -9,14 +9,13 @@ use App\Enums\EstadoSunat;
 use App\Enums\EstadoVenta;
 use Filament\Forms\Components\TextInput;
 use App\Enums\TipoItem;
-use App\Enums\TipoMovimiento;
+use App\Filament\Pdv\Widgets\VentasSesionResumenWidget;
 use App\Models\Inventario;
 use App\Models\Orden;
 use App\Models\Promocion;
 use App\Models\SesionCaja;
 use App\Models\Transaccion;
 use App\Models\Venta;
-use App\Models\VentaPago;
 use App\Services\KardexService;
 use App\Services\PdfVentaService;
 use BackedEnum;
@@ -34,6 +33,8 @@ use Filament\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -58,17 +59,23 @@ class VentasSesionPage extends Page implements HasTable
 
     public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('ventas_turno') && (auth()->user()?->can('caja.ventas_turno') ?? false); }
 
+    public function getHeading(): string { return 'Ventas del Turno'; }
 
-    // ── Filtros ───────────────────────────────────────────────────────────────
-    public string $busqueda      = '';
-    public string $filtroEstado  = '';
-    public string $filtroOrigen  = '';
+    public function getSubheading(): ?string
+    {
+        $sesion = $this->getSesionActiva();
+        if (! $sesion) return null;
+        return ($sesion->caja?->nombre ?? 'Caja') . ' — abierta el ' . $sesion->fecha_apertura->format('d/m/Y H:i');
+    }
 
+    // ── Widgets ───────────────────────────────────────────────────────────────
 
+    protected function getHeaderWidgets(): array
+    {
+        return [VentasSesionResumenWidget::class];
+    }
 
-    public function updatedBusqueda(): void     { }
-    public function updatedFiltroEstado(): void { }
-    public function updatedFiltroOrigen(): void { }
+    // ── Opciones de origen (usadas por el filtro de tabla) ────────────────────
 
     public function getOrigenOptions(): array
     {
@@ -88,13 +95,6 @@ class VentasSesionPage extends Page implements HasTable
         }
 
         return $opts;
-    }
-
-    public function limpiarFiltros(): void
-    {
-        $this->busqueda     = '';
-        $this->filtroEstado = '';
-        $this->filtroOrigen = '';
     }
 
     // ── Sesión activa (cached por request) ───────────────────────────────────
@@ -130,7 +130,7 @@ class VentasSesionPage extends Page implements HasTable
                     ->withCount([
                         'detalles',
                         'notas',
-                        'detalles as cortesias_count' => fn($q) => $q->where('precio_unitario', 0),
+                        'detalles as cortesias_count' => fn ($q) => $q->where('precio_unitario', 0),
                     ]);
 
                 if ($sesion) {
@@ -139,26 +139,21 @@ class VentasSesionPage extends Page implements HasTable
                     $q->whereRaw('0=1');
                 }
 
-                if ($this->busqueda !== '') {
-                    $b = $this->busqueda;
-                    $q->where(function ($sub) use ($b) {
-                        $sub->where('cliente_nombre', 'like', "%{$b}%")
-                            ->orWhere('cliente_num_doc', 'like', "%{$b}%")
-                            ->orWhere('correlativo', 'like', "%{$b}%");
-                    });
-                }
-
-                if ($this->filtroEstado !== '') {
-                    $q->where('estado', $this->filtroEstado);
-                }
-
-                if ($this->filtroOrigen !== '') {
-                    $q->where('tipo', $this->filtroOrigen);
-                }
-
                 return $q;
             })
             ->defaultSort('created_at', 'desc')
+            ->filters([
+                SelectFilter::make('estado')
+                    ->label('Estado')
+                    ->options([
+                        'completada' => 'Completadas',
+                        'anulada'    => 'Anuladas',
+                    ]),
+                SelectFilter::make('tipo')
+                    ->label('Origen')
+                    ->options(fn () => $this->getOrigenOptions()),
+            ])
+            ->filtersFormColumns(2)
             ->columns([
                 TextColumn::make('comprobante')
                     ->label('Comprobante')
@@ -173,7 +168,11 @@ class VentasSesionPage extends Page implements HasTable
                 TextColumn::make('cliente_nombre')
                     ->label('Cliente')
                     ->description(fn (Venta $r): string => strtoupper($r->cliente_tipo_doc) . ' ' . $r->cliente_num_doc)
-                    ->searchable(false),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(
+                        fn ($q) => $q->where('cliente_nombre', 'like', "%{$search}%")
+                            ->orWhere('cliente_num_doc', 'like', "%{$search}%")
+                            ->orWhere('correlativo', 'like', "%{$search}%")
+                    )),
 
                 TextColumn::make('cortesias_count')
                     ->label('Cortesía')
@@ -213,7 +212,12 @@ class VentasSesionPage extends Page implements HasTable
                     ->label('Total')
                     ->money('PEN')
                     ->alignEnd()
-                    ->weight('semibold'),
+                    ->weight('semibold')
+                    ->summarize(
+                        Sum::make()
+                            ->label('Total turno')
+                            ->money('PEN')
+                    ),
 
                 TextColumn::make('saldo_pendiente')
                     ->label('Saldo pendiente')
@@ -444,65 +448,6 @@ class VentasSesionPage extends Page implements HasTable
             ->paginated([20, 50, 100])
             ->emptyStateHeading('Sin ventas en este turno')
             ->emptyStateIcon('heroicon-o-receipt-percent');
-    }
-
-    // ── Resumen del turno ─────────────────────────────────────────────────────
-
-    public function getResumen(): array
-    {
-        $sesion = $this->getSesionActiva();
-
-        if (! $sesion) {
-            return ['count' => 0, 'total' => 0.0, 'descuentoTotal' => 0.0, 'cortesias' => 0, 'anuladas' => 0, 'despacho' => 0, 'porMetodo' => []];
-        }
-
-        $empresaId = Filament::getTenant()->id;
-        $completada = EstadoVenta::Completada->value;
-        $anulada    = EstadoVenta::Anulada->value;
-        $pendEnvio  = EstadoVenta::PendienteEnvio->value;
-
-        // 1 query: todos los totales de ventas de la sesión
-        $stats = DB::table('ventas')
-            ->where('empresa_id', $empresaId)
-            ->where('sesion_caja_id', $sesion->id)
-            ->selectRaw("
-                SUM(CASE WHEN estado = ? THEN 1 ELSE 0 END)             AS cnt,
-                SUM(CASE WHEN estado = ? THEN total           ELSE 0 END) AS total,
-                SUM(CASE WHEN estado = ? THEN descuento_total ELSE 0 END) AS descuento_total,
-                SUM(CASE WHEN estado = ? THEN 1 ELSE 0 END)             AS anuladas,
-                SUM(CASE WHEN estado_despacho = ? THEN 1 ELSE 0 END)    AS despacho
-            ", [$completada, $completada, $completada, $anulada, $pendEnvio])
-            ->first();
-
-        // 1 query: ventas con al menos un item cortesía (precio = 0)
-        $cortesias = Venta::where('empresa_id', $empresaId)
-            ->where('sesion_caja_id', $sesion->id)
-            ->where('estado', $completada)
-            ->whereHas('detalles', fn ($q) => $q->where('precio_unitario', 0))
-            ->count();
-
-        // 1 query: totales agrupados por método de pago con GROUP BY
-        $porMetodo = DB::table('venta_pagos')
-            ->join('ventas',       'ventas.id',       '=', 'venta_pagos.venta_id')
-            ->join('metodos_pago', 'metodos_pago.id', '=', 'venta_pagos.metodo_pago_id')
-            ->where('ventas.sesion_caja_id', $sesion->id)
-            ->where('ventas.estado', $completada)
-            ->selectRaw('metodos_pago.nombre, SUM(venta_pagos.monto) AS total')
-            ->groupBy('metodos_pago.id', 'metodos_pago.nombre')
-            ->get()
-            ->map(fn ($p) => ['nombre' => $p->nombre, 'total' => (float) $p->total])
-            ->values()
-            ->toArray();
-
-        return [
-            'count'          => (int)   ($stats->cnt            ?? 0),
-            'total'          => (float) ($stats->total          ?? 0),
-            'descuentoTotal' => (float) ($stats->descuento_total ?? 0),
-            'cortesias'      => $cortesias,
-            'anuladas'       => (int)   ($stats->anuladas       ?? 0),
-            'despacho'       => (int)   ($stats->despacho       ?? 0),
-            'porMetodo'      => $porMetodo,
-        ];
     }
 
     // ── Anular (Filament modal nativo) ────────────────────────────────────────

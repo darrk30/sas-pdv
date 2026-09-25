@@ -637,21 +637,37 @@
     </section>
 
     <!-- PRICING -->
-    <section id="planes">
+    <section id="planes" x-data="{ ciclo: 'mensual' }">
       <div class="wrap">
         <div class="sec-head fade-up" style="text-align:center">
           <span class="sec-tag sec-tag-or">Planes y precios</span>
           <h2 class="sec-h">Elige el plan para tu negocio</h2>
           <p class="sec-p" style="margin:0 auto">Todos los planes incluyen PDV, tienda online, inventario y comprobantes. Sin permanencia mínima ni contratos. Cancela cuando quieras.</p>
         </div>
+
+        <!-- Toggle mensual / anual — solo si hay planes con precio anual -->
+        @if($planes->whereNotNull('precio_anual')->isNotEmpty())
+        @php $maxAhorro = $planes->whereNotNull('precio_anual')->max(fn($p) => round(($p->precio * 12 - $p->precio_anual) / ($p->precio * 12) * 100)); @endphp
+        <div class="plan-ciclo-wrap fade-up">
+          <div class="plan-ciclo-toggle">
+            <button type="button" class="plan-ciclo-btn" :class="ciclo === 'mensual' && 'active'" @click="ciclo = 'mensual'">Mensual</button>
+            <button type="button" class="plan-ciclo-btn" :class="ciclo === 'anual' && 'active'" @click="ciclo = 'anual'">
+              Anual <span class="plan-ciclo-badge">-{{ $maxAhorro }}%</span>
+            </button>
+          </div>
+        </div>
+        @endif
+
         <div class="plan-grid">
           @foreach($planes as $plan)
           @php
-          $n      = $loop->iteration;
+          $n        = $loop->iteration;
           $featured = $n === 2;
           $multiLoc = $plan->maximo_locales > 1;
-          $waMsg  = rawurlencode("Hola, me interesa el plan {$plan->nombre} de {$cfg_nombre}");
-          $delay  = $loop->index > 0 ? "transition-delay:.{$loop->index}s" : '';
+          $delay    = $loop->index > 0 ? "transition-delay:.{$loop->index}s" : '';
+          $tieneAnual = $plan->precio_anual !== null;
+          $precioAnualMes = $tieneAnual ? (int) round($plan->precio_anual / 12) : (int) $plan->precio;
+          $ahorro = $tieneAnual ? (int) round($plan->precio * 12 - $plan->precio_anual) : 0;
           @endphp
           <div class="plan-card p{{ $n }}{{ $featured ? ' featured' : '' }} fade-up"{{ $delay ? " style=\"{$delay}\"" : '' }}>
             @if($featured)<div class="plan-badge">Más popular</div>@endif
@@ -662,11 +678,24 @@
             <p class="plan-subtitle">{{ $plan->subtitulo }}</p>
             @endif
 
-            <div class="plan-price-block">
+            <!-- Precio mensual -->
+            <div class="plan-price-block" x-show="ciclo === 'mensual'">
               <span class="plan-currency">S/</span>
               <span class="plan-amount">{{ number_format($plan->precio, 0) }}</span>
               <span class="plan-period">/mes</span>
             </div>
+            <!-- Precio anual (equivalente mensual) -->
+            <div class="plan-price-block" x-show="ciclo === 'anual'" style="display:none">
+              <span class="plan-currency">S/</span>
+              <span class="plan-amount">{{ $precioAnualMes }}</span>
+              <span class="plan-period">/mes</span>
+            </div>
+            @if($tieneAnual)
+            <p class="plan-anual-note" x-show="ciclo === 'anual'" style="display:none">
+              S/ {{ number_format($plan->precio_anual, 0) }} facturado al año · ahorras S/ {{ $ahorro }}
+            </p>
+            @endif
+
             <div class="plan-price-note">
               {{ $plan->maximo_usuarios }} {{ $plan->maximo_usuarios == 1 ? 'usuario' : 'usuarios' }}
               · {{ $multiLoc ? 'hasta ' . $plan->maximo_locales . ' sucursales' : '1 sucursal' }}
@@ -678,7 +707,7 @@
               {!! $plan->descripcion !!}
             </div>
 
-            <a href="{{ route('registro.publico') }}" class="plan-cta">
+            <a :href="`{{ route('registro.publico') }}?plan={{ $plan->id }}&ciclo=${ciclo}`" class="plan-cta">
               @if($plan->dias_prueba_gratuita > 0)
                 Inicia tu prueba gratis
               @else
@@ -898,6 +927,7 @@
   </footer>
 
   <script src="{{ asset('landing/landing.js') }}" defer></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 
   <a href="{{ $waFabUrl }}" target="_blank" rel="noopener" class="wsp-fab" aria-label="Contactar por WhatsApp">
     <div class="wsp-pulse"></div>

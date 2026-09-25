@@ -25,6 +25,8 @@ class EditProducto extends EditRecord
 
     protected static string $resource = ProductoResource::class;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     public function getTitle(): string
     {
         return 'Editar ' . ($this->getRecord()->nombre ?? 'Producto');
@@ -139,7 +141,7 @@ class EditProducto extends EditRecord
         if (isset($estadoFormulario['stock_minimo'])) {
             Inventario::where('producto_id', $producto->id)
                 ->whereNull('variante_id')
-                ->update(['stock_minimo' => $estadoFormulario['stock_minimo']]);
+                ->update(['stock_minimo' => (float) ($estadoFormulario['stock_minimo'] ?: 0)]);
         }
 
         $idsPresentes = collect($atributosForm)->pluck('atributo_id')->filter()->toArray();
@@ -174,7 +176,7 @@ class EditProducto extends EditRecord
                     [
                         'stock_real'        => 0,
                         'stock_reserva'     => 0,
-                        'stock_minimo'      => $estadoFormulario['stock_minimo'] ?? 0,
+                        'stock_minimo'      => (float) ($estadoFormulario['stock_minimo'] ?: 0),
                         'estado_almacen'    => 'activo',
                         'estado_inventario' => 'agotado',
                     ]

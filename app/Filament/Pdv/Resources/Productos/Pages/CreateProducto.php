@@ -19,6 +19,8 @@ class CreateProducto extends CreateRecord
 
     protected static string $resource = ProductoResource::class;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['slug'] = Str::slug($data['nombre']);
@@ -29,7 +31,7 @@ class CreateProducto extends CreateRecord
     {
         $producto          = $this->getRecord();
         $estadoFormulario  = $this->form->getRawState();
-        $stockMinimo       = $estadoFormulario['stock_minimo'] ?? 0;
+        $stockMinimo       = (float) ($estadoFormulario['stock_minimo'] ?: 0);
         $stockInicial      = (float) ($estadoFormulario['stock_inicial'] ?? 0);
         $atributosForm     = $estadoFormulario['atributos'] ?? [];
 
