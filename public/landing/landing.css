@@ -252,7 +252,7 @@ h1.hero-h em{font-style:normal;background:linear-gradient(90deg,var(--or),var(--
 .plan-ciclo-btn.active{background:#fff;color:#0E2F5A;box-shadow:0 1px 6px rgba(0,0,0,.1)}
 .plan-ciclo-badge{font-size:.7rem;font-weight:800;background:#22c55e;color:#fff;border-radius:999px;padding:1px 7px;line-height:1.6}
 .plan-anual-note{font-size:.75rem;color:#64748B;margin:4px 0 0;text-align:left;font-weight:500}
-.plan-card.featured .plan-anual-note{color:rgba(255,255,255,.7)}
+.plan-card.featured .plan-anual-note{color:var(--pacc)}
 
 /* CTA */
 .plan-cta{display:flex;align-items:center;justify-content:center;margin-top:auto;padding:11px 20px;border-radius:10px;font-size:.875rem;font-weight:700;text-decoration:none;border:2px solid var(--pacc);color:var(--pacc);background:transparent;transition:background .15s,color .15s,filter .15s;line-height:1.2}
