@@ -40,6 +40,7 @@ class RegistroPublico extends Component
 
     // Verificación de correo
     public bool   $codigoEnviado    = false;
+    public bool   $codigoYaExistia  = false;
     public string $codigoIngresado  = '';
     #[Locked]
     public bool   $codigoVerificado = false;
@@ -72,6 +73,19 @@ class RegistroPublico extends Component
     #[Locked]
     public string $redirectUrl = '';
 
+    public function mount(): void
+    {
+        $planParam  = request()->integer('plan');
+        $cicloParam = request()->string('ciclo');
+
+        if ($planParam > 0) {
+            $this->planId = $planParam;
+        }
+        if (in_array($cicloParam, ['mensual', 'anual'])) {
+            $this->ciclo = $cicloParam;
+        }
+    }
+
     public function siguientePaso(): void
     {
         match ($this->paso) {
@@ -96,6 +110,26 @@ class RegistroPublico extends Component
             'email.unique'      => 'Este correo ya está registrado.',
         ]);
 
+        // Si ya hay un código activo para este email → ir directo a la fase de ingreso sin reenviar
+        if (Cache::has('reg_code:' . $this->email)) {
+            $this->codigoEnviado   = true;
+            $this->codigoYaExistia = true;
+            $this->codigoIngresado = '';
+            return;
+        }
+
+        $this->codigoYaExistia = false;
+
+        // Rate limit por IP: máx 5 envíos por hora (evita spam a múltiples correos)
+        $ipKey = 'reg-ip:' . request()->ip();
+        if (RateLimiter::tooManyAttempts($ipKey, 5)) {
+            $minutos = (int) ceil(RateLimiter::availableIn($ipKey) / 60);
+            $this->addError('email', "Demasiados intentos desde tu red. Puedes reintentar en {$minutos} minuto(s).");
+            return;
+        }
+        RateLimiter::hit($ipKey, 3600);
+
+        // Rate limit por email: máx 5 intentos / 60s (protección adicional)
         $ratKey = 'reg-send:' . $this->email;
         if (RateLimiter::tooManyAttempts($ratKey, 5)) {
             $segundos = RateLimiter::availableIn($ratKey);
@@ -159,8 +193,13 @@ class RegistroPublico extends Component
 
     public function reenviarCodigo(): void
     {
+        // Limpiar código existente para forzar nuevo envío (no bloqueado por la verificación anti-spam)
+        Cache::forget('reg_code:'  . $this->email);
+        Cache::forget('reg_tries:' . $this->email);
+
         $this->codigoEnviado    = false;
         $this->codigoVerificado = false;
+        $this->codigoYaExistia  = false;
         $this->codigoIngresado  = '';
         $this->enviarCodigo();
     }
@@ -190,6 +229,12 @@ class RegistroPublico extends Component
             'password.mixed_case' => 'Debe incluir al menos una mayúscula.',
             'password.symbols'    => 'Debe incluir al menos un carácter especial (ej. @#$!).',
         ]);
+
+        // Si viene con plan preseleccionado desde la landing y sigue activo → saltar al paso 3
+        if ($this->planId && Plan::where('id', $this->planId)->where('estado', 'activo')->exists()) {
+            $this->paso = 3;
+            return;
+        }
 
         $this->paso = 2;
     }

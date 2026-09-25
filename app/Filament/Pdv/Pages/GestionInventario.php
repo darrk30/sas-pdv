@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pdv\Pages;
 
+use App\Filament\Pdv\Widgets\GestionInventarioStatsWidget;
 use App\Models\AjusteDetalle;
 use App\Models\Inventario;
 use App\Services\InventarioExportService;
@@ -112,11 +113,17 @@ class GestionInventario extends Page implements HasTable
     protected static string|UnitEnum|null $navigationGroup = 'Inventario';
     protected static ?int $navigationSort = 2;
     
-    // ELIMINAMOS 'static' de aquí para evitar el Error Fatal de PHP
     protected string $view = 'filament.pdv.pages.gestion-inventario';
-    
-    // Usamos $heading (no estático) en lugar de $title para evitar posibles choques similares
-    protected ?string $heading = 'Inventario Activo';
+
+    public function getHeading(): string
+    {
+        return 'Inventario Activo';
+    }
+
+    public function getHeaderWidgets(): array
+    {
+        return [GestionInventarioStatsWidget::class];
+    }
 
     public function table(Table $table): Table
     {

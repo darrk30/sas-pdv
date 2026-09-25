@@ -92,7 +92,8 @@ class ProductoForm
                                         ->numeric()
                                         ->step(0.01)
                                         ->prefix('S/ ')
-                                        ->default(0),
+                                        ->default(0)
+                                        ->dehydrateStateUsing(fn($state) => empty($state) ? 0 : $state),
 
                                     TextInput::make('porcentaje_descuento')
                                         ->label('% Descuento')
@@ -119,6 +120,7 @@ class ProductoForm
                                         ->default(0)
                                         ->minValue(0)
                                         ->dehydrated()
+                                        ->dehydrateStateUsing(fn($state) => empty($state) ? 0 : $state)
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                             $precioFinal = floatval($state ?: 0);
@@ -951,6 +953,7 @@ class ProductoForm
                                             ->integer()
                                             ->default(0)
                                             ->minValue(0)
+                                            ->dehydrateStateUsing(fn($state) => empty($state) ? 0 : $state)
                                             ->helperText('Número de posición en el listado. Menor número = aparece primero.'),
                                     ]),
                             ]),
