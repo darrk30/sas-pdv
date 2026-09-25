@@ -29,9 +29,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- SEO básico -->
-  <title>TUKIPU — Sistema POS y Tienda Online para negocios en Perú</title>
-  <meta name="description" content="TUKIPU es el sistema POS en la nube para tiendas, minimarkets, ferreterías y más. Vende, gestiona inventario, emite comprobantes y ten tu tienda online desde S/50/mes.">
-  <meta name="keywords" content="sistema para punto de venta, software para tiendas, tienda virtual, sistema de inventario, sistema POS Peru, punto de venta en la nube, software para tiendas, tienda online Peru, POS minimarket, inventario en la nube, comprobantes electronicos Peru, sistema de ventas para negocios, programa para tienda, caja registradora online, boletas y facturas electronicas, software para bodega, sistema para ferreteria, sistema para cafeteria, sistema para ropa, TUKIPU">
+  <title>Sistema POS para negocios en Perú — Punto de venta en la nube | TUKIPU</title>
+  <meta name="description" content="TUKIPU: sistema punto de venta en la nube para tiendas de ropa, minimarkets, ferreterías, bodegas y cafeterías. PDV + tienda online + inventario + comprobantes electrónicos. Desde S/50/mes. Prueba gratis.">
+  <meta name="keywords" content="sistema punto de venta Peru, sistema POS Peru, software para tienda de ropa, sistema para minimarket, sistema para ferreteria, sistema para bodega, sistema para cafeteria, programa punto de venta, caja registradora online, tienda online Peru, inventario en la nube, comprobantes electronicos Peru, boletas facturas electronicas, POS nube Peru, TUKIPU">
   <meta name="robots" content="index, follow">
   <meta name="author" content="TUKIPU">
   <link rel="canonical" href="{{ url('/') }}">
@@ -39,7 +39,7 @@
   <!-- Open Graph (Facebook, WhatsApp, LinkedIn) -->
   <meta property="og:type"        content="website">
   <meta property="og:url"         content="{{ url('/') }}">
-  <meta property="og:title"       content="TUKIPU — Sistema POS y Tienda Online para negocios en Perú">
+  <meta property="og:title"       content="Sistema POS para negocios en Perú — Punto de venta en la nube | TUKIPU">
   <meta property="og:description" content="Vende, gestiona inventario, emite comprobantes y ten tu tienda online desde S/50/mes. Prueba gratis.">
   <meta property="og:image"       content="{{ $cfg_logoUrl }}">
   <meta property="og:locale"      content="es_PE">
@@ -47,7 +47,7 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card"        content="summary_large_image">
-  <meta name="twitter:title"       content="TUKIPU — Sistema POS y Tienda Online para negocios en Perú">
+  <meta name="twitter:title"       content="Sistema POS para negocios en Perú — Punto de venta en la nube | TUKIPU">
   <meta name="twitter:description" content="Vende, gestiona inventario, emite comprobantes y ten tu tienda online desde S/50/mes.">
   <meta name="twitter:image"       content="{{ $cfg_logoUrl }}">
 
@@ -75,7 +75,7 @@
           'applicationCategory' => 'BusinessApplication',
           'operatingSystem'     => 'Web',
           'url'                 => url('/'),
-          'description'         => 'Sistema POS en la nube con tienda online integrada para comercios minoristas en Perú.',
+          'description'         => 'Sistema POS en la nube con tienda online integrada para comercios minoristas en Perú. Ideal para tiendas de ropa, minimarkets, ferreterías, bodegas y cafeterías.',
           'offers'              => $planes->map(fn($p) => [
             '@type'        => 'Offer',
             'name'         => 'Plan ' . $p->nombre,
@@ -85,6 +85,41 @@
           ])->values()->all(),
           'inLanguage'         => 'es-PE',
           'countriesSupported' => 'PE',
+        ],
+        [
+          '@type'      => 'FAQPage',
+          'mainEntity' => [
+            [
+              '@type'          => 'Question',
+              'name'           => '¿Qué necesito para empezar a usar TUKIPU?',
+              'acceptedAnswer' => ['@type' => 'Answer', 'text' => 'Solo necesitas un dispositivo con internet (PC, tablet o celular) y 10 minutos para registrar tu empresa. No hay instalaciones, servidores ni configuraciones técnicas.'],
+            ],
+            [
+              '@type'          => 'Question',
+              'name'           => '¿Puedo usar el sistema en varios dispositivos al mismo tiempo?',
+              'acceptedAnswer' => ['@type' => 'Answer', 'text' => 'Sí. TUKIPU es 100% web y puedes acceder desde cualquier dispositivo con navegador. Varios usuarios pueden operar simultáneamente, cada uno con su propia cuenta dentro del plan.'],
+            ],
+            [
+              '@type'          => 'Question',
+              'name'           => '¿Mi tienda online y el PDV están sincronizados?',
+              'acceptedAnswer' => ['@type' => 'Answer', 'text' => 'Sí, en tiempo real. Cuando realizas una venta en el punto de venta físico, el stock se descuenta automáticamente de la tienda online, y viceversa.'],
+            ],
+            [
+              '@type'          => 'Question',
+              'name'           => '¿Puedo cambiar de plan en cualquier momento?',
+              'acceptedAnswer' => ['@type' => 'Answer', 'text' => 'Claro que sí. Puedes subir o bajar de plan cuando lo necesites sin penalidades. El cambio se refleja en tu próximo período de facturación.'],
+            ],
+            [
+              '@type'          => 'Question',
+              'name'           => '¿Qué pasa con mis datos si decido cancelar?',
+              'acceptedAnswer' => ['@type' => 'Answer', 'text' => 'Tus datos son tuyos. Puedes exportar tu información en cualquier momento antes de cancelar. Conservamos los datos durante 30 días posteriores a la cancelación.'],
+            ],
+            [
+              '@type'          => 'Question',
+              'name'           => '¿El sistema funciona sin conexión a internet?',
+              'acceptedAnswer' => ['@type' => 'Answer', 'text' => 'TUKIPU requiere conexión a internet para sincronizar ventas e inventario en tiempo real. Para el PDV, una conexión de datos básica es suficiente.'],
+            ],
+          ],
         ],
       ],
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -158,10 +193,10 @@
               </svg>
               Sistema POS SaaS · Multiempresa
             </div>
-            <h1 class="hero-h">Vende más, gestiona<br>mejor — <em>todo en uno</em></h1>
+            <h1 class="hero-h">Sistema punto de venta<br>para tu negocio — <em>en la nube</em></h1>
             <p class="hero-sub">La plataforma perfecta para</p>
             <p class="typed-line"><span class="typed-word" id="typed"></span><span class="typed-cursor"></span></p>
-            <p class="hero-sub" style="margin-top:-.4rem;margin-bottom:1.75rem">Punto de venta, tienda online, inventario y reportes — todo desde un solo sistema en la nube.</p>
+            <p class="hero-sub" style="margin-top:-.4rem;margin-bottom:1.75rem">PDV + tienda online + inventario + comprobantes electrónicos — todo sincronizado en un solo sistema para tu comercio en Perú.</p>
             <div class="hero-btns">
               <a href="#cta" class="btn btn-or">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
@@ -321,13 +356,13 @@
     <!-- INDUSTRIES -->
     <section class="industries" id="industrias">
       <div class="wrap">
-        <p class="ind-lbl">Ideal para todo tipo de comercio minorista</p>
+        <p class="ind-lbl">Sistema POS ideal para todo tipo de comercio minorista en Perú</p>
         <div class="ind-grid">
           <div class="ind-item fade-up">
             <div class="ind-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--or)" stroke-width="1.8">
                 <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57A1 1 0 0 0 3.85 10H7v10a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V10h3.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z" />
               </svg></div>
-            <span class="ind-name">Ropa y moda</span>
+            <span class="ind-name">Tienda de ropa y moda</span>
           </div>
           <div class="ind-item fade-up" style="transition-delay:.05s">
             <div class="ind-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--tl)" stroke-width="1.8">
@@ -335,13 +370,13 @@
                 <circle cx="19" cy="21" r="1" />
                 <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
               </svg></div>
-            <span class="ind-name">Minimarket</span>
+            <span class="ind-name">Minimarket y abarrotes</span>
           </div>
           <div class="ind-item fade-up" style="transition-delay:.1s">
             <div class="ind-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C89000" stroke-width="1.8">
                 <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
               </svg></div>
-            <span class="ind-name">Ferretería</span>
+            <span class="ind-name">Ferretería y materiales</span>
           </div>
           <div class="ind-item fade-up" style="transition-delay:.15s">
             <div class="ind-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--or)" stroke-width="1.8">
@@ -351,14 +386,14 @@
                 <line x1="10" y1="1" x2="10" y2="4" />
                 <line x1="14" y1="1" x2="14" y2="4" />
               </svg></div>
-            <span class="ind-name">Cafetería</span>
+            <span class="ind-name">Cafetería y restaurante</span>
           </div>
           <div class="ind-item fade-up" style="transition-delay:.2s">
             <div class="ind-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--or-d)" stroke-width="1.8">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                 <polyline points="9,22 9,12 15,12 15,22" />
               </svg></div>
-            <span class="ind-name">Bodega</span>
+            <span class="ind-name">Bodega y abastos</span>
           </div>
           <div class="ind-item fade-up" style="transition-delay:.3s">
             <div class="ind-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" stroke-width="1.8">
@@ -366,9 +401,20 @@
                 <line x1="12" y1="8" x2="12" y2="16" />
                 <line x1="8" y1="12" x2="16" y2="12" />
               </svg></div>
-            <span class="ind-name">Y más…</span>
+            <span class="ind-name">Y más negocios…</span>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- SEO: texto estático indexable por industria -->
+    <section style="padding:0 0 2rem">
+      <div class="wrap">
+        <p style="text-align:center;font-size:.85rem;color:var(--ink3);max-width:680px;margin:0 auto;line-height:1.7">
+          TUKIPU es un <strong>sistema punto de venta (POS) en la nube para Perú</strong>. Funciona como
+          software para tienda de ropa, sistema para minimarket, programa para ferretería, sistema POS para cafetería,
+          software para bodega y más. Gestiona ventas, inventario y comprobantes electrónicos desde cualquier dispositivo.
+        </p>
       </div>
     </section>
 
@@ -377,8 +423,8 @@
       <div class="wrap">
         <div class="sec-head fade-up">
           <span class="sec-tag sec-tag-or">Características</span>
-          <h2 class="sec-h">Todo lo que tu negocio necesita,<br>integrado en un solo lugar</h2>
-          <p class="sec-p">Del mostrador al carrito online. Sin apps externas, sin integraciones complicadas — todo sincronizado en tiempo real.</p>
+          <h2 class="sec-h">Todo lo que tu negocio necesita<br>en un solo sistema POS</h2>
+          <p class="sec-p">Del mostrador al carrito online. Sin apps externas, sin integraciones complicadas — PDV, inventario, tienda online y comprobantes electrónicos sincronizados en tiempo real.</p>
         </div>
         <div class="feat-grid">
           <div class="feat-card fade-up">
@@ -444,8 +490,8 @@
         <div class="sc-in">
           <div class="fade-up">
             <span class="sec-tag sec-tag-tl">Tienda online</span>
-            <h2 class="sec-h">Tu catálogo en línea,<br>con tu propia marca</h2>
-            <p class="sec-p">Cada empresa obtiene una tienda online completa con subdominio propio. Un solo panel para gestionar todo.</p>
+            <h2 class="sec-h">Tienda online propia,<br>conectada a tu punto de venta</h2>
+            <p class="sec-p">Cada negocio obtiene una tienda online completa con subdominio propio. Vende en físico y en línea desde un solo panel de control.</p>
             <div class="store-perks">
               <div class="perk">
                 <div class="perk-icon perk-icon-or"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--or)" stroke-width="2.2">
