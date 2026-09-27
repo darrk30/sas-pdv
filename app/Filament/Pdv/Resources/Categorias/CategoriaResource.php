@@ -32,7 +32,7 @@ class CategoriaResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Categorías';
 
-    protected static ?string $recordTitleAttribute = 'Categoria';
+    protected static ?string $recordTitleAttribute = 'nombre';
 
     public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('categorias') && (auth()->user()?->can('categorias.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('categorias.crear') ?? false; }

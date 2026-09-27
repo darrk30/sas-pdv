@@ -124,19 +124,40 @@
             <div class="pdv-items-grid">
                 @foreach($promociones as $promo)
                     @php
-                        $stockBase     = $promo->stockPredictivo();
-                        $detallesVista = $promo->detalles->map(function ($d) {
+                        $stockBase       = $promo->stockPredictivo();
+                        $detallesResumen = $promo->detalles->map(function ($d) {
                             $nombre = $d->variante?->producto?->nombre ?? $d->producto?->nombre ?? '—';
                             if ($d->variante_id && $d->variante) {
                                 $vals = $d->variante->valores->map(fn($pav) => $pav->valor?->nombre)->filter()->join(' / ');
                                 if ($vals) $nombre .= " ($vals)";
                             }
-                            return ['nombre' => $nombre, 'cantidad' => $d->cantidad ?? 1];
+                            return [
+                                'nombre'      => $nombre,
+                                'cantidad'    => (float) ($d->cantidad ?? 1),
+                                'producto_id' => $d->producto_id,
+                                'variante_id' => $d->variante_id,
+                            ];
                         })->values()->all();
+                        $detallesVista   = collect($detallesResumen)->map(fn($d) => ['nombre' => $d['nombre'], 'cantidad' => $d['cantidad']])->all();
+                        $promoPayload    = [
+                            'tipo'             => 'promocion',
+                            'id'               => $promo->id,
+                            'nombre'           => $promo->nombre,
+                            'precio'           => (float) $promo->precio,
+                            'precio_normal'    => (float) $promo->precio,
+                            'es_cortesia'      => false,
+                            'cantidad'         => 1,
+                            'puede_cortesia'   => false,
+                            'es_decimal'       => false,
+                            'detalles_resumen' => $detallesResumen,
+                            'stock_max'        => $stockBase,
+                            'venta_sin_stock'  => false,
+                        ];
                     @endphp
                     <button
                         class="pdv-card pdv-card--promo {{ $stockBase === 0 ? 'pdv-card--agotada' : '' }}"
                         wire:key="promo-card-{{ $promo->id }}-{{ (int)($stockBase ?? -1) }}"
+                        data-pd="{{ json_encode($promoPayload) }}"
                         x-data="{
                             base: {{ $stockBase !== null ? (int) $stockBase : 'null' }},
                             get ic() { return (Alpine.store('carritoResumen')||{})['promocion_{{ $promo->id }}']||0; },
@@ -144,7 +165,7 @@
                         }"
                         :class="{ 'pdv-card--agotada': ds !== null && ds <= 0 }"
                         :disabled="ds !== null && ds <= 0"
-                        wire:click="seleccionarPromocion({{ $promo->id }})"
+                        @click="if (ds === null || ds > 0) $dispatch('product-selected', [JSON.parse($el.dataset.pd)])"
                         {{ $stockBase === 0 ? 'disabled' : '' }}
                     >
                         <div class="pdv-card__img-wrap">
@@ -503,15 +524,17 @@
                     <span class="pdv-modal__qty-label">Cantidad</span>
                     <div class="pdv-modal__qty">
                         <button type="button" class="pdv-qty__btn pdv-qty__btn--menos"
-                            @click="$store.vm.cantidad = $store.vm.esDecimal ? Math.max(0.1, +($store.vm.cantidad - 0.1).toFixed(3)) : Math.max(1, $store.vm.cantidad - 1)">
+                            @click="$store.vm.cantidad = Math.max(1, $store.vm.cantidad - 1)">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
                         </button>
                         <input type="number" class="pdv-modal__qty-input"
                                x-model.number="$store.vm.cantidad"
                                :min="$store.vm.esDecimal ? 0.001 : 1"
-                               :step="$store.vm.esDecimal ? 0.1 : 1" />
+                               :step="$store.vm.esDecimal ? 0.1 : 1"
+                               @input="if (!$store.vm.esDecimal) $store.vm.cantidad = Math.max(1, Math.round(+$event.target.value || 1))" />
                         <button type="button" class="pdv-qty__btn pdv-qty__btn--mas"
-                            @click="$store.vm.cantidad = $store.vm.esDecimal ? +($store.vm.cantidad + 0.1).toFixed(3) : $store.vm.cantidad + 1">
+                            :disabled="$store.vm.controlStock && !$store.vm.ventaSinStock && $store.vm.varianteActual && $store.vm.cantidad >= $store.vm.stockActual"
+                            @click="$store.vm.cantidad = $store.vm.cantidad + 1">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                         </button>
                     </div>
@@ -519,7 +542,7 @@
                 <button type="button"
                     class="pdv-btn-confirmar"
                     style="display:flex;align-items:center;justify-content:center;gap:.4rem;"
-                    :disabled="!$store.vm.completado"
+                    :disabled="!$store.vm.completado || ($store.vm.controlStock && !$store.vm.ventaSinStock && $store.vm.varianteActual && $store.vm.cantidad > $store.vm.stockActual)"
                     @click="$store.vm.confirmar()">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1rem;height:1rem;flex-shrink:0;">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
@@ -559,7 +582,9 @@
                 get stockActual() {
                     if (!this.controlStock) return null;
                     const v = this.varianteActual;
-                    return v ? v.stock : null;
+                    if (!v) return null;
+                    const enCarrito = (Alpine.store('carritoResumen') || {})['variante_' + v.id] || 0;
+                    return Math.max(0, v.stock - enCarrito);
                 },
 
                 abrir(data, precioLista) {
@@ -570,7 +595,6 @@
                     this.atributos          = data.atributos;
                     this.variantes          = data.variantes;
                     this.exclusiones        = data.exclusiones || {};
-                    this.seleccionados      = {};
                     this.deshabilitados     = [];
                     this.precioAdicional    = 0;
                     this.controlStock       = data.controlStock;
@@ -582,6 +606,25 @@
                     this.cantidad           = 1;
                     this.modalCortesia      = false;
                     this._precioLista       = precioLista !== undefined ? precioLista : null;
+                    // pre-seleccionar primera variante con stock disponible
+                    const _resumen = Alpine.store('carritoResumen') || {};
+                    let _primera = null;
+                    if (data.controlStock && !data.ventaSinStock) {
+                        for (const _v of data.variantes) {
+                            const _enc = _resumen['variante_' + _v.id] || 0;
+                            if (_v.stock - _enc > 0) { _primera = _v; break; }
+                        }
+                    }
+                    if (!_primera && (!data.controlStock || data.ventaSinStock)) _primera = data.variantes[0] || null;
+                    const _sel = {};
+                    if (_primera) {
+                        for (const a of data.atributos) {
+                            const _val = a.valores.find(_vv => _primera.pav_ids.includes(Number(_vv.id)));
+                            if (_val) _sel[a.id] = _val.id;
+                        }
+                    }
+                    this.seleccionados = _sel;
+                    this._recalcPrecio();
                     this._recalcDes();
                 },
 
@@ -642,7 +685,8 @@
                                         if (Number(sp) === Number(a.id)) continue;
                                         if (!vi.pav_ids.includes(Number(sv))) { compat = false; break; }
                                     }
-                                    if (compat && vi.stock > 0) { ok = true; break; }
+                                    const enCarro = (Alpine.store('carritoResumen') || {})['variante_' + vi.id] || 0;
+                                    if (compat && (vi.stock - enCarro) > 0) { ok = true; break; }
                                 }
                                 if (!ok) dis.push(pid);
                             }
@@ -655,8 +699,17 @@
                     if (!this.completado) return;
                     const v = this.varianteActual;
                     if (!v) return;
-                    if (this.controlStock && !this.ventaSinStock && this.cantidad > v.stock) {
-                        alert('Stock insuficiente. Disponible: ' + v.stock);
+                    const enCarrito = (Alpine.store('carritoResumen') || {})['variante_' + v.id] || 0;
+                    const stockDisp = Math.max(0, v.stock - enCarrito);
+                    if (this.controlStock && !this.ventaSinStock && this.cantidad > stockDisp) {
+                        window.Livewire.dispatch('notificationSent', { notification: {
+                            id: 'pdv-stock-' + Date.now(),
+                            title: 'Stock insuficiente',
+                            body: 'Disponible: ' + stockDisp + ' unidad(es).',
+                            color: 'warning', status: 'warning',
+                            icon: 'heroicon-o-exclamation-triangle', iconColor: 'warning',
+                            duration: 5000, actions: [], view: null, viewData: [],
+                        }});
                         return;
                     }
                     const sufijo = this.atributos.map(a => {

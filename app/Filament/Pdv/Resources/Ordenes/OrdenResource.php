@@ -37,7 +37,7 @@ class OrdenResource extends Resource
 
     protected static ?string $slug = 'ordenes';
 
-    protected static ?string $recordTitleAttribute = 'codigo';
+    protected static ?string $recordTitleAttribute = 'numero';
 
     public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('ordenes_web') && (auth()->user()?->can('ordenes.ver') ?? false); }
 

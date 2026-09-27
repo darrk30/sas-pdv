@@ -33,7 +33,7 @@ class CajaResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Cajas';
 
-    protected static ?string $recordTitleAttribute = 'Caja';
+    protected static ?string $recordTitleAttribute = 'nombre';
 
     public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('cajas_registradoras') && (auth()->user()?->can('cajas.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('cajas.crear') ?? false; }

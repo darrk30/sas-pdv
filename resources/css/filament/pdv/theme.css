@@ -1,2 +1,8 @@
-@import "tailwindcss/theme" layer(base);
-@import "tailwindcss/utilities" layer(utilities);
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../views/**/*.blade.php';
+@source '../../**/*.js';
+@source '../../../../app/**/*.php';
+
+/* Tailwind dark: variants siguen el toggle .dark de Filament, no el OS */
+@custom-variant dark (&:where(.dark, .dark *));

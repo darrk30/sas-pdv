@@ -36,6 +36,8 @@ class OrdenRestResource extends Resource
 
     protected static ?string $slug = 'orden-rest';
 
+    protected static ?string $recordTitleAttribute = 'numero';
+
     public static function canAccess(): bool
     {
         return Filament::getTenant()->tieneModulo('restaurante')

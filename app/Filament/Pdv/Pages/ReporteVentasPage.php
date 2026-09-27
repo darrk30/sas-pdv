@@ -41,6 +41,7 @@ use App\Filament\Pdv\Concerns\HasEnvioVentaDirecto;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use App\Filament\Pdv\Concerns\HasImpresionTicket;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -67,7 +68,28 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
     protected static ?int $navigationSort = 2;
     protected static ?string $title = 'Reporte de Ventas';
 
-    public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('reporte_ventas') && (auth()->user()?->can('caja.reporte_ventas') ?? false); }
+    public function getHeading(): string
+    {
+        return static::$title ?? '';
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [\App\Filament\Pdv\Widgets\ReporteVentasStatsWidget::class];
+    }
+
+    public function getWidgetData(): array
+    {
+        return [
+            'statsData'  => $this->getResumen(),
+            'sparksData' => $this->getSparklines(),
+        ];
+    }
+
+    public static function canAccess(): bool
+    {
+        return Filament::getTenant()->tieneModulo('reporte_ventas') && (auth()->user()?->can('caja.reporte_ventas') ?? false);
+    }
 
 
     // ── Estado de filtros (nullable: Select/DatePicker devuelven null al limpiar)
@@ -90,67 +112,74 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
     public function form(Schema $schema): Schema
     {
         return $schema->components([
-            Grid::make(['default' => 1, 'sm' => 2, 'md' => 4])->schema([
+            Section::make('Filtros')
+                ->description('Filtra las ventas según los criterios seleccionados.')
+                ->columns(1)
+                ->collapsible()
+                ->collapsed(true)
+                ->schema([
+                    Grid::make(['default' => 1, 'sm' => 2, 'md' => 3, 'lg' => 4])->schema([
 
-                TextInput::make('filtroCliente')
-                    ->label('Cliente')
-                    ->placeholder('Nombre o documento…')
-                    ->prefixIcon('heroicon-o-magnifying-glass')
-                    ->live(debounce: 300),
+                        TextInput::make('filtroCliente')
+                            ->label('Cliente')
+                            ->placeholder('Nombre o documento…')
+                            ->prefixIcon('heroicon-o-magnifying-glass')
+                            ->live(debounce: 300),
 
-                Select::make('filtroSerie')
-                    ->label('Serie')
-                    ->placeholder('Todas las series')
-                    ->options(fn() => Serie::where('empresa_id', Filament::getTenant()->id)
-                        ->orderBy('serie')->pluck('serie', 'serie')->toArray())
-                    ->native(false)
-                    ->searchable()
-                    ->live(),
+                        Select::make('filtroSerie')
+                            ->label('Serie')
+                            ->placeholder('Todas las series')
+                            ->options(fn() => Serie::where('empresa_id', Filament::getTenant()->id)
+                                ->orderBy('serie')->pluck('serie', 'serie')->toArray())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
 
-                TextInput::make('filtroCorrelativo')
-                    ->label('Correlativo')
-                    ->placeholder('Ej: 00001')
-                    ->live(debounce: 300),
+                        TextInput::make('filtroCorrelativo')
+                            ->label('Correlativo')
+                            ->placeholder('Ej: 00001')
+                            ->live(debounce: 300),
 
-                Select::make('filtroMetodo')
-                    ->label('Método de pago')
-                    ->placeholder('Todos los métodos')
-                    ->options(fn() => MetodoPago::where('empresa_id', Filament::getTenant()->id)
-                        ->orderBy('nombre')->pluck('nombre', 'id')->toArray())
-                    ->native(false)
-                    ->searchable()
-                    ->live(),
+                        Select::make('filtroMetodo')
+                            ->label('Método de pago')
+                            ->placeholder('Todos los métodos')
+                            ->options(fn() => MetodoPago::where('empresa_id', Filament::getTenant()->id)
+                                ->orderBy('nombre')->pluck('nombre', 'id')->toArray())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
 
-                DateTimePicker::make('filtroFechaDesde')
-                    ->label('Desde')
-                    ->displayFormat('d/m/Y H:i')
-                    ->format('Y-m-d H:i:s')
-                    ->seconds(false)
-                    ->live(),
+                        DateTimePicker::make('filtroFechaDesde')
+                            ->label('Desde')
+                            ->displayFormat('d/m/Y H:i')
+                            ->format('Y-m-d H:i:s')
+                            ->seconds(false)
+                            ->live(),
 
-                DateTimePicker::make('filtroFechaHasta')
-                    ->label('Hasta')
-                    ->displayFormat('d/m/Y H:i')
-                    ->format('Y-m-d H:i:s')
-                    ->seconds(false)
-                    ->live(),
+                        DateTimePicker::make('filtroFechaHasta')
+                            ->label('Hasta')
+                            ->displayFormat('d/m/Y H:i')
+                            ->format('Y-m-d H:i:s')
+                            ->seconds(false)
+                            ->live(),
 
-                Select::make('filtroEstado')
-                    ->label('Estado')
-                    ->placeholder('Todos los estados')
-                    ->options(['completada' => 'Completadas', 'anulada' => 'Anuladas'])
-                    ->native(false)
-                    ->live(),
+                        Select::make('filtroEstado')
+                            ->label('Estado')
+                            ->placeholder('Todos los estados')
+                            ->options(['completada' => 'Completadas', 'anulada' => 'Anuladas'])
+                            ->native(false)
+                            ->live(),
 
-                Select::make('filtroOrigen')
-                    ->label('Origen')
-                    ->placeholder('Todos los orígenes')
-                    ->options(fn() => $this->getOrigenOptions())
-                    ->native(false)
-                    ->live()
-                    ->hidden(fn() => count($this->getOrigenOptions()) < 2),
+                        Select::make('filtroOrigen')
+                            ->label('Origen')
+                            ->placeholder('Todos los orígenes')
+                            ->options(fn() => $this->getOrigenOptions())
+                            ->native(false)
+                            ->live()
+                            ->hidden(fn() => count($this->getOrigenOptions()) < 2),
 
-            ]),
+                    ]),
+                ]),
         ]);
     }
 
@@ -268,8 +297,8 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
             ->columns([
                 TextColumn::make('comprobante')
                     ->label('Comprobante')
-                    ->state(fn (Venta $r): string => ($r->serie?->serie ?? '---') . '-' . str_pad((string) $r->correlativo, 8, '0', STR_PAD_LEFT))
-                    ->description(fn (Venta $r): ?string => (float) $r->saldo_pendiente > 0
+                    ->state(fn(Venta $r): string => ($r->serie?->serie ?? '---') . '-' . str_pad((string) $r->correlativo, 8, '0', STR_PAD_LEFT))
+                    ->description(fn(Venta $r): ?string => (float) $r->saldo_pendiente > 0
                         ? '⚠ Saldo: S/ ' . number_format((float) $r->saldo_pendiente, 2)
                         : null)
                     ->weight('medium')
@@ -285,7 +314,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('cliente_nombre')
                     ->label('Cliente')
-                    ->description(fn (Venta $r): string => strtoupper($r->cliente_tipo_doc) . ' ' . $r->cliente_num_doc)
+                    ->description(fn(Venta $r): string => strtoupper($r->cliente_tipo_doc) . ' ' . $r->cliente_num_doc)
                     ->searchable(false)
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -294,17 +323,17 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->alignCenter()
                     ->badge()
                     ->color('warning')
-                    ->formatStateUsing(fn (int $state): string => $state > 0 ? 'Sí' : '—')
+                    ->formatStateUsing(fn(int $state): string => $state > 0 ? 'Sí' : '—')
                     ->sortable(false)
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('metodo')
                     ->label('Método')
-                    ->state(fn (Venta $r): string => $r->pagos
-                        ->filter(fn ($p) =>
-                            $p->metodoPago?->condicion_pago !== \App\Enums\CondicionPago::Credito
+                    ->state(fn(Venta $r): string => $r->pagos
+                        ->filter(fn($p) =>
+                        $p->metodoPago?->condicion_pago !== \App\Enums\CondicionPago::Credito
                             || $r->estado_pago === 'pendiente')
-                        ->map(fn ($p) => $p->metodoPago?->nombre)
+                        ->map(fn($p) => $p->metodoPago?->nombre)
                         ->filter()->unique()->implode(', ') ?: '—')
                     ->searchable(false)
                     ->sortable(false)
@@ -327,7 +356,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->money('PEN')
                     ->alignEnd()
                     ->color('danger')
-                    ->formatStateUsing(fn ($state): string => $state > 0 ? '- ' . number_format((float) $state, 2) : '—')
+                    ->formatStateUsing(fn($state): string => $state > 0 ? '- ' . number_format((float) $state, 2) : '—')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('total')
@@ -342,7 +371,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->money('PEN')
                     ->alignEnd()
                     ->color('danger')
-                    ->formatStateUsing(fn ($state): string => (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—')
+                    ->formatStateUsing(fn($state): string => (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—')
                     ->tooltip('Monto aún no pagado de esta venta')
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -359,7 +388,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                 TextColumn::make('tipo')
                     ->label('Origen')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                    ->formatStateUsing(fn(?string $state): string => match ($state) {
                         'pdv'         => 'PDV',
                         'restaurante' => 'Mesa',
                         'delivery'    => 'Delivery',
@@ -367,7 +396,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                         'web'         => 'Web',
                         default       => strtoupper($state ?? '—'),
                     })
-                    ->color(fn (?string $state): string => match ($state) {
+                    ->color(fn(?string $state): string => match ($state) {
                         'pdv'         => 'info',
                         'restaurante' => 'success',
                         'delivery'    => 'warning',
@@ -379,12 +408,13 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                 TextColumn::make('notas')
                     ->label('Notas')
                     ->html()
-                    ->formatStateUsing(fn (?string $state): string =>
+                    ->formatStateUsing(
+                        fn(?string $state): string =>
                         $state
                             ? implode('<br>', array_map(
-                                fn (string $s): string => '<span>' . e(trim($s)) . '</span>',
+                                fn(string $s): string => '<span>' . e(trim($s)) . '</span>',
                                 preg_split('/\s*\|\s*|\n/', trim($state))
-                              ))
+                            ))
                             : '—'
                     )
                     ->color('gray')
@@ -401,7 +431,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     Action::make('ver')
                         ->label('Ver detalle')
                         ->icon('heroicon-o-eye')
-                        ->action(fn (Venta $record) => $this->abrirDetalle($record->id)),
+                        ->action(fn(Venta $record) => $this->abrirDetalle($record->id)),
 
                     $this->buildImprimirTicketAction(),
 
@@ -415,7 +445,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                             $nombre  = $service->nombreArchivo($record);
 
                             return response()->streamDownload(
-                                fn () => print($pdf->output()),
+                                fn() => print($pdf->output()),
                                 $nombre,
                                 ['Content-Type' => 'application/pdf'],
                             );
@@ -425,34 +455,35 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                         ->label('Enviar a SUNAT')
                         ->icon('heroicon-o-paper-airplane')
                         ->color('success')
-                        ->visible(fn (Venta $record): bool => $record->estado_sunat === \App\Enums\EstadoSunat::PorEnviar)
+                        ->visible(fn(Venta $record): bool => $record->estado_sunat === \App\Enums\EstadoSunat::PorEnviar)
                         ->requiresConfirmation()
                         ->modalHeading('Enviar comprobante a SUNAT')
-                        ->modalDescription(fn (Venta $record): string => 'Se enviará ' . ($record->serie?->serie ?? '') . '-' . str_pad((string) $record->correlativo, 8, '0', STR_PAD_LEFT) . ' directamente a SUNAT.')
-                        ->action(fn (Venta $record) => $this->enviarAhora($record)),
+                        ->modalDescription(fn(Venta $record): string => 'Se enviará ' . ($record->serie?->serie ?? '') . '-' . str_pad((string) $record->correlativo, 8, '0', STR_PAD_LEFT) . ' directamente a SUNAT.')
+                        ->action(fn(Venta $record) => $this->enviarAhora($record)),
 
                     Action::make('reintentarEnvio')
                         ->label('Reintentar envío')
                         ->icon('heroicon-o-arrow-path')
                         ->color('warning')
-                        ->visible(fn (Venta $record): bool => $record->estado_sunat === \App\Enums\EstadoSunat::Error)
+                        ->visible(fn(Venta $record): bool => $record->estado_sunat === \App\Enums\EstadoSunat::Error)
                         ->requiresConfirmation()
                         ->modalHeading('Reintentar envío a SUNAT')
-                        ->modalDescription(fn (Venta $record): string => 'Se reintentará el envío de ' . ($record->serie?->serie ?? '') . '-' . str_pad((string) $record->correlativo, 8, '0', STR_PAD_LEFT) . '.')
-                        ->action(fn (Venta $record) => $this->enviarAhora($record)),
+                        ->modalDescription(fn(Venta $record): string => 'Se reintentará el envío de ' . ($record->serie?->serie ?? '') . '-' . str_pad((string) $record->correlativo, 8, '0', STR_PAD_LEFT) . '.')
+                        ->action(fn(Venta $record) => $this->enviarAhora($record)),
 
                     Action::make('anular')
                         ->label('Anular')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
-                        ->visible(fn (Venta $record): bool => ! $record->estaAnulada())
-                        ->action(fn (Venta $record) => $this->abrirAnular($record->id)),
+                        ->visible(fn(Venta $record): bool => ! $record->estaAnulada())
+                        ->action(fn(Venta $record) => $this->abrirAnular($record->id)),
 
                     Action::make('enviarBajaSunat')
                         ->label('Enviar baja a SUNAT')
                         ->icon('heroicon-o-archive-box-x-mark')
                         ->color('warning')
-                        ->visible(fn (Venta $record): bool =>
+                        ->visible(
+                            fn(Venta $record): bool =>
                             $record->estaAnulada() && (
                                 $this->estadoNecesitaBaja($record) ||
                                 ($record->estado_sunat === EstadoSunat::PorDarBaja && is_null($record->resumen_sunat_id))
@@ -467,43 +498,46 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                                 ->helperText('Solo aplica para facturas. Las boletas usan el Resumen Diario (RC).'),
                         ])
                         ->modalHeading('Enviar baja a SUNAT')
-                        ->modalDescription(fn (Venta $record): string =>
+                        ->modalDescription(
+                            fn(Venta $record): string =>
                             'Se enviará la baja para ' .
-                            ($record->serie?->serie ?? '') . '-' . str_pad((string) $record->correlativo, 8, '0', STR_PAD_LEFT) .
-                            '. Boletas: nuevo RC con estado="3". Facturas: Comunicación de Baja (RA).'
+                                ($record->serie?->serie ?? '') . '-' . str_pad((string) $record->correlativo, 8, '0', STR_PAD_LEFT) .
+                                '. Boletas: nuevo RC con estado="3". Facturas: Comunicación de Baja (RA).'
                         )
-                        ->action(fn (Venta $record, array $data) => $this->enviarBajaASunat($record, $data['motivo'])),
+                        ->action(fn(Venta $record, array $data) => $this->enviarBajaASunat($record, $data['motivo'])),
 
                     Action::make('consultarBaja')
                         ->label('Consultar baja SUNAT')
                         ->icon('heroicon-o-arrow-down-circle')
                         ->color('info')
-                        ->visible(fn (Venta $record): bool =>
+                        ->visible(
+                            fn(Venta $record): bool =>
                             $record->estado_sunat === EstadoSunat::PorDarBaja
-                            && $this->esFactura($record)
+                                && $this->esFactura($record)
                         )
                         ->requiresConfirmation()
                         ->modalHeading('Consultar estado de baja (RA)')
-                        ->modalDescription(fn (Venta $record): string =>
+                        ->modalDescription(
+                            fn(Venta $record): string =>
                             'Se consultará el ticket de la Comunicación de Baja para ' .
-                            ($record->serie?->serie ?? '') . '-' . str_pad((string) $record->correlativo, 8, '0', STR_PAD_LEFT) . '.'
+                                ($record->serie?->serie ?? '') . '-' . str_pad((string) $record->correlativo, 8, '0', STR_PAD_LEFT) . '.'
                         )
-                        ->action(fn (Venta $record) => $this->consultarBajaVenta($record)),
+                        ->action(fn(Venta $record) => $this->consultarBajaVenta($record)),
 
                     Action::make('descargarXml')
                         ->label('Descargar XML')
                         ->icon('heroicon-o-document-arrow-down')
                         ->color('gray')
-                        ->visible(fn (Venta $record): bool => ! empty($record->path_xml))
-                        ->url(fn (Venta $record) => route('fe.comprobante.download', [$record->id, 'xml']))
+                        ->visible(fn(Venta $record): bool => ! empty($record->path_xml))
+                        ->url(fn(Venta $record) => route('fe.comprobante.download', [$record->id, 'xml']))
                         ->openUrlInNewTab(),
 
                     Action::make('descargarCdr')
                         ->label('Descargar CDR')
                         ->icon('heroicon-o-document-check')
                         ->color('success')
-                        ->visible(fn (Venta $record): bool => ! empty($record->path_cdr_zip))
-                        ->url(fn (Venta $record) => route('fe.comprobante.download', [$record->id, 'cdr']))
+                        ->visible(fn(Venta $record): bool => ! empty($record->path_cdr_zip))
+                        ->url(fn(Venta $record) => route('fe.comprobante.download', [$record->id, 'cdr']))
                         ->openUrlInNewTab(),
 
                     $this->buildConvertirAction(),
@@ -511,7 +545,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                 ]),
             ])
             ->toolbarActions($this->accionesExportacion())
-            ->recordClasses(fn (Venta $r): string => (float) $r->saldo_pendiente > 0 ? 'bg-red-50 dark:bg-red-950/20' : '')
+            ->recordClasses(fn(Venta $r): string => (float) $r->saldo_pendiente > 0 ? 'bg-red-50 dark:bg-red-950/20' : '')
             ->paginated([25, 50, 100])
             ->emptyStateHeading('Sin ventas')
             ->emptyStateIcon('heroicon-o-receipt-percent');
@@ -640,15 +674,16 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
         $anuladas         = (clone $base)->where('estado', EstadoVenta::Anulada->value)->count();
 
         $porMetodo = VentaPago::whereHas('venta', function ($q) {
-                $q->where('empresa_id', Filament::getTenant()->id)
-                  ->where('estado', EstadoVenta::Completada->value);
-                $this->aplicarFiltros($q);
-            })
+            $q->where('empresa_id', Filament::getTenant()->id)
+                ->where('estado', EstadoVenta::Completada->value);
+            $this->aplicarFiltros($q);
+        })
             ->with(['metodoPago:id,nombre,condicion_pago', 'venta:id,estado_pago'])
             ->get()
-            ->filter(fn ($p) =>
+            ->filter(
+                fn($p) =>
                 $p->metodoPago?->condicion_pago !== CondicionPago::Credito
-                || $p->venta?->estado_pago === 'pendiente'
+                    || $p->venta?->estado_pago === 'pendiente'
             )
             ->groupBy('metodo_pago_id')
             ->map(fn($pagos) => [
@@ -661,12 +696,37 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
         return compact('count', 'total', 'descuentoTotal', 'cortesias', 'anuladas', 'porMetodo', 'creditoPendiente');
     }
 
+    public function getSparklines(): array
+    {
+        $rows = DB::table('ventas')
+            ->where('empresa_id', Filament::getTenant()->id)
+            ->where('estado', EstadoVenta::Completada->value)
+            ->whereDate('created_at', '>=', today()->subDays(6)->toDateString())
+            ->selectRaw("DATE(created_at) as dia, COUNT(*) as cantidad, COALESCE(SUM(monto_pagado),0) as total")
+            ->groupBy('dia')->orderBy('dia')->get()->keyBy('dia');
+        $qty = [];
+        $tot = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $d = today()->subDays($i)->toDateString();
+            $r = $rows->get($d);
+            $qty[] = (int)   ($r?->cantidad ?? 0);
+            $tot[] = (float) ($r?->total    ?? 0);
+        }
+        return ['cantidad' => $qty, 'total' => $tot];
+    }
+
     // ── Modal detalle ─────────────────────────────────────────────────────────
 
     public ?int $ventaModalId = null;
 
-    public function abrirDetalle(int $ventaId): void  { $this->ventaModalId = $ventaId; }
-    public function cerrarDetalle(): void              { $this->ventaModalId = null; }
+    public function abrirDetalle(int $ventaId): void
+    {
+        $this->ventaModalId = $ventaId;
+    }
+    public function cerrarDetalle(): void
+    {
+        $this->ventaModalId = null;
+    }
 
     public function getVentaModal(): ?Venta
     {
@@ -762,9 +822,9 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
         $empresaId   = Filament::getTenant()->id;
         $comprobante = ($venta->serie?->serie ?? '---') . '-' . $venta->correlativo;
         $sesion      = SesionCaja::where('empresa_id', $empresaId)
-                            ->where('user_id', auth()->id())
-                            ->where('estado', EstadoSesion::Abierta->value)
-                            ->latest()->first();
+            ->where('user_id', auth()->id())
+            ->where('estado', EstadoSesion::Abierta->value)
+            ->latest()->first();
         $revertir    = $this->revertirStock;
 
         try {
@@ -901,9 +961,9 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                                             $antes   = (float) $inv->stock_real;
                                             $despues = $antes + $cantComp;
                                             $inv->update([
-                                        'stock_real'    => $despues,
-                                        'stock_reserva' => max(0, (float) $inv->stock_reserva + ($despues - $antes)),
-                                    ]);
+                                                'stock_real'    => $despues,
+                                                'stock_reserva' => max(0, (float) $inv->stock_reserva + ($despues - $antes)),
+                                            ]);
                                             $kardex->registrar([
                                                 'empresa_id'        => $empresaId,
                                                 'user_id'           => auth()->id(),
@@ -934,9 +994,9 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                                             $antes   = (float) $inv->stock_real;
                                             $despues = $antes + $cantComp;
                                             $inv->update([
-                                        'stock_real'    => $despues,
-                                        'stock_reserva' => max(0, (float) $inv->stock_reserva + ($despues - $antes)),
-                                    ]);
+                                                'stock_real'    => $despues,
+                                                'stock_reserva' => max(0, (float) $inv->stock_reserva + ($despues - $antes)),
+                                            ]);
                                             $kardex->registrar([
                                                 'empresa_id'        => $empresaId,
                                                 'user_id'           => auth()->id(),

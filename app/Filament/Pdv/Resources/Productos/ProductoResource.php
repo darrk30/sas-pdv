@@ -33,7 +33,9 @@ class ProductoResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Productos';
 
-    protected static ?string $recordTitleAttribute = 'Producto';
+    protected static ?string $recordTitleAttribute = 'nombre';
+
+    protected static array $globalSearchAttributes = ['nombre', 'codigo_interno', 'codigo_barras'];
 
     public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('gestion_productos') && (auth()->user()?->can('productos.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('productos.crear') ?? false; }

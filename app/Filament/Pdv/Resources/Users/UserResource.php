@@ -32,7 +32,7 @@ class UserResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Usuarios';
 
-    protected static ?string $recordTitleAttribute = 'User';
+    protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?string $tenantOwnershipRelationshipName = 'empresas';
 

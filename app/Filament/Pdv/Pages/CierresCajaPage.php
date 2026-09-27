@@ -114,8 +114,8 @@ class CierresCajaPage extends Page implements HasTable
                         ->when($data['hasta'] ?? null, fn($q, $v) => $q->whereDate('fecha_apertura', '<=', $v)))
                     ->indicateUsing(function (array $data): array {
                         $i = [];
-                        if ($data['desde'] ?? null) $i[] = 'Apertura desde ' . $data['desde'];
-                        if ($data['hasta'] ?? null) $i[] = 'Apertura hasta ' . $data['hasta'];
+                        if ($data['desde'] ?? null) { $i[] = 'Apertura desde ' . $data['desde']; }
+                        if ($data['hasta'] ?? null) { $i[] = 'Apertura hasta ' . $data['hasta']; }
                         return $i;
                     }),
 
@@ -130,8 +130,8 @@ class CierresCajaPage extends Page implements HasTable
                         ->when($data['hasta'] ?? null, fn($q, $v) => $q->whereDate('fecha_cierre', '<=', $v)))
                     ->indicateUsing(function (array $data): array {
                         $i = [];
-                        if ($data['desde'] ?? null) $i[] = 'Cierre desde ' . $data['desde'];
-                        if ($data['hasta'] ?? null) $i[] = 'Cierre hasta ' . $data['hasta'];
+                        if ($data['desde'] ?? null) { $i[] = 'Cierre desde ' . $data['desde']; }
+                        if ($data['hasta'] ?? null) { $i[] = 'Cierre hasta ' . $data['hasta']; }
                         return $i;
                     }),
             ])

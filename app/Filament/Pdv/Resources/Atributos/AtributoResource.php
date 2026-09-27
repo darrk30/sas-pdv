@@ -32,7 +32,7 @@ class AtributoResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Atributos';
 
-    protected static ?string $recordTitleAttribute = 'Atributo';
+    protected static ?string $recordTitleAttribute = 'nombre';
 
     private static function tieneVariantes(): bool
     {

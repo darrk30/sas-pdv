@@ -1,166 +1,29 @@
 <x-filament-panels::page>
 <link rel="stylesheet" href="{{ asset('css/ventas-sesion.css') }}?v={{ filemtime(public_path('css/ventas-sesion.css')) }}">
-<link rel="stylesheet" href="{{ asset('css/reporte-ventas.css') }}?v={{ filemtime(public_path('css/reporte-ventas.css')) }}">
 
-@php
-    $resumen = $this->getResumen();
-@endphp
+@php $resumen = $this->getResumen(); @endphp
 
-<div class="vs-root">
+@if(! empty($resumen['porMetodo']))
+<div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-400">
+    <span class="font-medium text-gray-800 dark:text-gray-200">Por método de pago:</span>
+    @foreach($resumen['porMetodo'] as $m)
+        <span>{{ $m['nombre'] }} <strong class="text-gray-900 dark:text-white">S/ {{ number_format($m['total'], 2) }}</strong></span>
+    @endforeach
+</div>
+@endif
 
-    {{-- ══ TÍTULO ══ --}}
-    <div class="vs-title">
-        <div>
-            <h1>Reporte de Ventas</h1>
-            <p>Todas las ventas de la empresa</p>
+<div class="mb-3">
+    {{ $this->form }}
+    @if($this->hayFiltros())
+        <div class="mt-3 flex justify-end">
+            <x-filament::button wire:click="limpiarFiltros" color="gray" size="sm" icon="heroicon-m-x-mark" outlined>
+                Limpiar filtros
+            </x-filament::button>
         </div>
-    </div>
-
-    {{-- ══ TARJETAS RESUMEN ══ --}}
-    <div class="vs-cards">
-
-        <div class="vs-card vs-card--green">
-            <div class="vs-card__icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0c1.1.128 1.907 1.077 1.907 2.185Z"/>
-                </svg>
-            </div>
-            <div class="vs-card__body">
-                <span class="vs-card__label">Completadas</span>
-                <span class="vs-card__value">{{ $resumen['count'] }}</span>
-            </div>
-        </div>
-
-        <div class="vs-card vs-card--blue">
-            <div class="vs-card__icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                </svg>
-            </div>
-            <div class="vs-card__body">
-                <span class="vs-card__label">Total cobrado</span>
-                <span class="vs-card__value">S/ {{ number_format($resumen['total'], 2) }}</span>
-            </div>
-        </div>
-
-        @if(($resumen['descuentoTotal'] ?? 0) > 0)
-        <div class="vs-card vs-card--red">
-            <div class="vs-card__icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0c1.1.128 1.907 1.077 1.907 2.185ZM9.75 9.75c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75v-.008a.75.75 0 0 0-.75-.75H10.5a.75.75 0 0 0-.75.75v.008Zm4.5 4.5c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75v-.008a.75.75 0 0 0-.75-.75H15a.75.75 0 0 0-.75.75v.008Z"/>
-                </svg>
-            </div>
-            <div class="vs-card__body">
-                <span class="vs-card__label">Descuentos</span>
-                <span class="vs-card__value">- S/ {{ number_format($resumen['descuentoTotal'], 2) }}</span>
-            </div>
-        </div>
-        @endif
-
-        @if(($resumen['creditoPendiente'] ?? 0) > 0)
-        <div class="vs-card vs-card--amber">
-            <div class="vs-card__icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                </svg>
-            </div>
-            <div class="vs-card__body">
-                <span class="vs-card__label">Crédito pendiente</span>
-                <span class="vs-card__value">S/ {{ number_format($resumen['creditoPendiente'], 2) }}</span>
-            </div>
-        </div>
-        @endif
-
-        @if(($resumen['cortesias'] ?? 0) > 0)
-        <div class="vs-card vs-card--amber">
-            <div class="vs-card__icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
-                </svg>
-            </div>
-            <div class="vs-card__body">
-                <span class="vs-card__label">Cortesías</span>
-                <span class="vs-card__value">{{ $resumen['cortesias'] }} ventas</span>
-            </div>
-        </div>
-        @endif
-
-        @if($resumen['anuladas'] > 0)
-        <div class="vs-card vs-card--red">
-            <div class="vs-card__icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                </svg>
-            </div>
-            <div class="vs-card__body">
-                <span class="vs-card__label">Anuladas</span>
-                <span class="vs-card__value">{{ $resumen['anuladas'] }}</span>
-            </div>
-        </div>
-        @endif
-
-    </div>
-
-    {{-- ══ MÉTODOS DE PAGO ══ --}}
-    @if(! empty($resumen['porMetodo']))
-    <div class="vs-metodos">
-        <span class="vs-metodos__titulo">Por método de pago</span>
-        <div class="vs-metodos__lista">
-            @foreach($resumen['porMetodo'] as $m)
-                <div class="vs-metodo-item">
-                    <span class="vs-metodo-item__nombre">{{ $m['nombre'] }}</span>
-                    <span class="vs-metodo-item__monto">S/ {{ number_format($m['total'], 2) }}</span>
-                </div>
-            @endforeach
-        </div>
-    </div>
     @endif
+</div>
 
-    {{-- ══ FILTROS (componentes Filament) ══ --}}
-    <div class="rv-form-wrap" x-data="{ open: {{ $this->hayFiltros() ? 'true' : 'false' }} }">
-
-        {{-- Botón toggle solo visible en móvil --}}
-        <button type="button" class="rv-filtros-toggle" @click="open = !open">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                 stroke-width="1.5" stroke="currentColor" width="15" height="15">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75
-                         6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3
-                         0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0
-                         0 0-3 0m-9.75 0h9.75"/>
-            </svg>
-            <span>Filtros</span>
-            @if($this->hayFiltros())
-                <span class="rv-filtros-activo-dot" title="Hay filtros activos"></span>
-            @endif
-            <svg class="rv-filtros-chevron" :class="{ 'rv-filtros-chevron--open': open }"
-                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                 stroke-width="2" stroke="currentColor" width="14" height="14">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
-            </svg>
-        </button>
-
-        <div class="rv-filtros-body" :class="{ 'rv-filtros-body--open': open }">
-            {{ $this->form }}
-            @if($this->hayFiltros())
-                <div class="rv-form-limpiar">
-                    <button wire:click="limpiarFiltros" class="vs-filter-reset">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                             stroke-width="1.5" stroke="currentColor" width="14" height="14">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
-                        </svg>
-                        Limpiar filtros
-                    </button>
-                </div>
-            @endif
-        </div>
-
-    </div>
-
-    {{-- ══ TABLA (Filament) ══ --}}
-    {{ $this->table }}
-
-</div>{{-- /vs-root --}}
+{{ $this->table }}
 
 
 {{-- ══ MODAL DETALLE ══ --}}

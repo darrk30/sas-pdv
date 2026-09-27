@@ -10,13 +10,10 @@ use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
@@ -24,9 +21,8 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use UnitEnum;
 
-class ReporteVendedorVentasPage extends Page implements HasForms, HasTable
+class ReporteVendedorVentasPage extends Page implements HasTable
 {
-    use InteractsWithForms;
     use InteractsWithTable;
     use HasFullWidthPage;
 
@@ -48,56 +44,12 @@ class ReporteVendedorVentasPage extends Page implements HasForms, HasTable
     #[Url] public ?string $fechaDesde     = null;
     #[Url] public ?string $fechaHasta     = null;
 
-    public ?string $filtroSerie       = null;
-    public ?string $filtroCorrelativo = null;
-
-    public function mount(): void
-    {
-        $this->form->fill();
-    }
-
     public function getBreadcrumbs(): array
     {
         return [
             ReporteVendedoresPage::getUrl() => 'Vendedores',
             $this->vendedorNombre ?? 'Ventas',
         ];
-    }
-
-    // ── Filtros ───────────────────────────────────────────────────────────────
-
-    public function form(Schema $schema): Schema
-    {
-        return $schema->components([
-            Grid::make(['default' => 1, 'sm' => 2])->schema([
-
-                Select::make('filtroSerie')
-                    ->label('Serie')
-                    ->placeholder('Todas las series')
-                    ->options(fn() => Serie::where('empresa_id', Filament::getTenant()->id)
-                        ->orderBy('serie')->pluck('serie', 'serie')->toArray())
-                    ->native(false)->searchable()
-                    ->live(),
-
-                TextInput::make('filtroCorrelativo')
-                    ->label('Correlativo')
-                    ->placeholder('Ej: 00001')
-                    ->live(debounce: 400),
-
-            ]),
-        ]);
-    }
-
-    public function limpiarFiltros(): void
-    {
-        $this->filtroSerie       = null;
-        $this->filtroCorrelativo = null;
-        $this->form->fill();
-    }
-
-    public function hayFiltros(): bool
-    {
-        return ! empty($this->filtroSerie) || ! empty($this->filtroCorrelativo);
     }
 
     // ── Query ─────────────────────────────────────────────────────────────────
@@ -109,10 +61,10 @@ class ReporteVendedorVentasPage extends Page implements HasForms, HasTable
             ->where('v.empresa_id', Filament::getTenant()->id)
             ->where('v.estado', EstadoVenta::Completada->value)
             ->where('v.vendedor_id', $this->vendedorId)
-            ->when($this->fechaDesde,        fn($q) => $q->whereDate('v.created_at', '>=', $this->fechaDesde))
-            ->when($this->fechaHasta,        fn($q) => $q->whereDate('v.created_at', '<=', $this->fechaHasta))
-            ->when($this->filtroSerie,       fn($q) => $q->where('s.serie', $this->filtroSerie))
-            ->when($this->filtroCorrelativo, fn($q) => $q->where('v.correlativo', 'like', $this->filtroCorrelativo . '%'))
+            ->when($this->fechaDesde, fn($q) => $q->whereDate('v.created_at', '>=', $this->fechaDesde))
+            ->when($this->fechaHasta, fn($q) => $q->whereDate('v.created_at', '<=', $this->fechaHasta))
+            ->when($this->tableFilters['serie']['serie'] ?? null,       fn($q, $v) => $q->where('s.serie', $v))
+            ->when($this->tableFilters['correlativo']['correlativo'] ?? null, fn($q, $v) => $q->where('v.correlativo', 'like', $v . '%'))
             ->selectRaw("
                 v.id, s.serie, v.correlativo,
                 v.cliente_nombre, v.total, v.igv, v.costo_total,
@@ -168,11 +120,13 @@ class ReporteVendedorVentasPage extends Page implements HasForms, HasTable
         if ($this->fechaHasta) {
             $info['Hasta'] = \Carbon\Carbon::parse($this->fechaHasta)->format('d/m/Y');
         }
-        if (! empty($this->filtroSerie)) {
-            $info['Serie'] = $this->filtroSerie;
+        $filtroSerie       = $this->tableFilters['serie']['serie'] ?? null;
+        $filtroCorrelativo = $this->tableFilters['correlativo']['correlativo'] ?? null;
+        if ($filtroSerie) {
+            $info['Serie'] = $filtroSerie;
         }
-        if (! empty($this->filtroCorrelativo)) {
-            $info['Correlativo'] = $this->filtroCorrelativo;
+        if ($filtroCorrelativo) {
+            $info['Correlativo'] = $filtroCorrelativo;
         }
         return $info;
     }
@@ -227,6 +181,31 @@ class ReporteVendedorVentasPage extends Page implements HasForms, HasTable
             )
             ->toolbarActions($this->accionesExportacion())
             ->defaultSort('created_at', 'desc')
+            ->filters([
+                Filter::make('serie')
+                    ->form([
+                        \Filament\Forms\Components\Select::make('serie')
+                            ->label('Serie')
+                            ->placeholder('Todas las series')
+                            ->options(fn() => Serie::where('empresa_id', Filament::getTenant()->id)
+                                ->orderBy('serie')->pluck('serie', 'serie')->toArray())
+                            ->native(false)
+                            ->searchable(),
+                    ])
+                    ->indicateUsing(fn (array $data): ?string =>
+                        ($data['serie'] ?? null) ? 'Serie: ' . $data['serie'] : null
+                    ),
+
+                Filter::make('correlativo')
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('correlativo')
+                            ->label('Correlativo')
+                            ->placeholder('Ej: 00001'),
+                    ])
+                    ->indicateUsing(fn (array $data): ?string =>
+                        ($data['correlativo'] ?? null) ? 'Correlativo: ' . $data['correlativo'] : null
+                    ),
+            ])
             ->columns([
 
                 TextColumn::make('comprobante')

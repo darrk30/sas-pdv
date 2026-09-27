@@ -47,9 +47,14 @@ class AlertarCreditosVencidosCommand extends Command
 
         $notificadas = 0;
 
+        $empresaIds = $ventas->pluck('empresa_id')->unique()->values();
+        $empresas   = Empresa::whereIn('id', $empresaIds)
+            ->get(['id', 'slug'])
+            ->keyBy('id');
+
         foreach ($ventas->groupBy('empresa_id') as $empresaId => $ventasEmpresa) {
-            $empresa = Empresa::find($empresaId);
-            if (! $empresa) continue;
+            $empresa = $empresas->get($empresaId);
+            if (! $empresa) { continue; }
 
             // Administradores de la empresa (requiere team context de Spatie)
             app(PermissionRegistrar::class)->setPermissionsTeamId($empresaId);
@@ -63,7 +68,7 @@ class AlertarCreditosVencidosCommand extends Command
             $usuarioIds = $admins->merge($vendedoresIds)->unique();
             $usuarios   = User::whereIn('id', $usuarioIds)->get();
 
-            if ($usuarios->isEmpty()) continue;
+            if ($usuarios->isEmpty()) { continue; }
 
             foreach ($ventasEmpresa->groupBy(fn ($v) => $v->cliente_id ?? 'sc_' . $v->id) as $clienteKey => $ventasCliente) {
                 $primeraVenta  = $ventasCliente->first();

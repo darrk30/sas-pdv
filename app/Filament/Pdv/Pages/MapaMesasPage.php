@@ -287,7 +287,7 @@ class MapaMesasPage extends Page
     {
         abort_unless(auth()->user()?->can('restaurante.pedido.editar'), 403);
 
-        if (! $this->detalleOrdenId) return;
+        if (! $this->detalleOrdenId) { return; }
 
         $orden = Orden::where('empresa_id', Filament::getTenant()->id)->findOrFail($this->detalleOrdenId);
 
@@ -366,7 +366,7 @@ class MapaMesasPage extends Page
                 $itemsPorArea = [];
                 foreach ($orden->detalles as $d) {
                     $produccion = $d->producto?->produccion;
-                    if (! $produccion) continue;
+                    if (! $produccion) { continue; }
                     $key = 'a' . $produccion->id;
                     if (! isset($itemsPorArea[$key])) {
                         $itemsPorArea[$key] = ['nombre' => $produccion->nombre, 'nuevos' => [], 'cancelados' => []];

@@ -6,9 +6,12 @@ use App\Enums\EstadoPromocion;
 use App\Models\Categoria;
 use App\Models\Producto;
 use App\Models\Promocion;
+use App\Services\Pdv\BarcodeService;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
@@ -69,17 +72,10 @@ class ProductCatalog extends Component
     public function recibirBarcode(string $code): void
     {
         $empresaId = Filament::getTenant()->id;
+        $svc       = app(BarcodeService::class);
+        $result    = $svc->lookup($code, $empresaId);
 
-        $producto = Producto::where('empresa_id', $empresaId)
-            ->where('estado', 'activo')
-            ->where(function ($q) use ($code) {
-                $q->where('codigo_barras', $code)
-                  ->orWhere('codigo_interno', $code);
-            })
-            ->with(['inventario', 'variantesActivas', 'unidadMedida.dimension'])
-            ->first();
-
-        if (! $producto) {
+        if (! $result) {
             Notification::make()
                 ->title('Código no encontrado')
                 ->body("No hay producto activo con código: {$code}")
@@ -88,32 +84,70 @@ class ProductCatalog extends Component
             return;
         }
 
-        if ($producto->variantesActivas->isNotEmpty()) {
-            $this->busqueda = $code;
+        // Variante con código propio → agregar directamente al carrito
+        if ($result['type'] === 'variante') {
+            $variante = $result['data'];
+            $producto = $variante->producto;
+
+            $precioNormal = (float) $variante->precio_final;
+            $precio       = $precioNormal;
+            $esDecimal    = $producto->unidadMedida?->esContinua() ?? false;
+            $stockMax     = $producto->control_de_stock
+                ? (float) ($variante->inventario?->stock_reserva ?? 0)
+                : null;
+
+            $this->dispatch('product-selected', [
+                'tipo'            => 'variante',
+                'id'              => $variante->id,
+                'nombre'          => $producto->nombre . ' – ' . $variante->valores->map(fn ($pav) => $pav->valor?->nombre ?? '')->filter()->implode(' / '),
+                'precio'          => $precio,
+                'precio_normal'   => $precioNormal,
+                'es_cortesia'     => false,
+                'cantidad'        => 1,
+                'producto_id'     => $producto->id,
+                'puede_cortesia'  => (bool) $producto->es_cortesia,
+                'es_decimal'      => $esDecimal,
+                'stock_max'       => $stockMax,
+                'venta_sin_stock' => (bool) $producto->venta_sin_stock,
+            ]);
+            $this->skipRender();
             return;
         }
 
-        $precioNormal = (float) $producto->precio_venta;
-        $precio       = ($producto->porcentaje_descuento > 0 && $producto->precio_con_descuento)
-            ? (float) $producto->precio_con_descuento
-            : $precioNormal;
-        $esDecimal = $producto->unidadMedida?->esContinua() ?? false;
-        $stockMax  = $producto->control_de_stock ? (float) ($producto->inventario?->stock_reserva ?? 0) : null;
+        // Producto simple (sin variantes) → agregar directamente al carrito
+        $producto = $result['data'];
 
-        $this->dispatch('product-selected', [
-            'tipo'            => 'producto',
-            'id'              => $producto->id,
-            'nombre'          => $producto->nombre,
-            'precio'          => $precio,
-            'precio_normal'   => $precioNormal,
-            'es_cortesia'     => false,
-            'cantidad'        => 1,
-            'producto_id'     => $producto->id,
-            'puede_cortesia'  => (bool) $producto->es_cortesia,
-            'es_decimal'      => $esDecimal,
-            'stock_max'       => $stockMax,
-            'venta_sin_stock' => (bool) $producto->venta_sin_stock,
-        ]);
+        if ($producto->variantesActivas->isEmpty()) {
+            $precioNormal = (float) $producto->precio_venta;
+            $precio       = ($producto->porcentaje_descuento > 0 && $producto->precio_con_descuento)
+                ? (float) $producto->precio_con_descuento
+                : $precioNormal;
+            $esDecimal = $producto->unidadMedida?->esContinua() ?? false;
+            $stockMax  = $producto->control_de_stock
+                ? (float) ($producto->inventario?->stock_reserva ?? 0)
+                : null;
+
+            $this->dispatch('product-selected', [
+                'tipo'            => 'producto',
+                'id'              => $producto->id,
+                'nombre'          => $producto->nombre,
+                'precio'          => $precio,
+                'precio_normal'   => $precioNormal,
+                'es_cortesia'     => false,
+                'cantidad'        => 1,
+                'producto_id'     => $producto->id,
+                'puede_cortesia'  => (bool) $producto->es_cortesia,
+                'es_decimal'      => $esDecimal,
+                'stock_max'       => $stockMax,
+                'venta_sin_stock' => (bool) $producto->venta_sin_stock,
+            ]);
+            $this->skipRender();
+            return;
+        }
+
+        // Producto con variantes pero sin código en variante → abrir modal de variantes
+        $variantData = $svc->buildVariantData($producto);
+        $this->dispatch('pdv-abrir-variantes', data: $variantData, precioLista: null);
         $this->skipRender();
     }
 
@@ -133,9 +167,13 @@ class ProductCatalog extends Component
     {
         if (! ($this->showPromociones ?? false)) return false;
 
-        return Promocion::where('empresa_id', Filament::getTenant()->id)
-            ->where('estado', EstadoPromocion::Activo->value)
-            ->exists();
+        $empresaId = Filament::getTenant()->id;
+
+        return Cache::remember("pdv_hay_promociones_{$empresaId}", 300, fn () =>
+            Promocion::where('empresa_id', $empresaId)
+                ->where('estado', EstadoPromocion::Activo->value)
+                ->exists()
+        );
     }
 
     public function getPromociones(): Collection
@@ -248,35 +286,29 @@ class ProductCatalog extends Component
             $query->where('categoria_id', $this->categoriaId);
         }
 
+        // Agrega stock disponible por producto en un solo JOIN (en lugar de 3 subconsultas correlacionadas por fila)
+        $stockSub = DB::table('inventarios as i')
+            ->leftJoin('variantes as v', fn ($j) =>
+                $j->on('v.id', '=', 'i.variante_id')->where('v.estado', 'activo')
+            )
+            ->where('i.empresa_id', $empresaId)
+            ->where(fn ($q) => $q->whereNull('i.variante_id')->orWhereNotNull('v.id'))
+            ->selectRaw('COALESCE(v.producto_id, i.producto_id) AS p_id, SUM(i.stock_reserva) AS stk')
+            ->groupByRaw('COALESCE(v.producto_id, i.producto_id)');
+
         return $query
+            ->select('productos.*')
+            ->leftJoinSub($stockSub, '_stk', '_stk.p_id', '=', 'productos.id')
             ->orderByRaw("
                 CASE
                     WHEN productos.control_de_stock = 0 THEN 0
                     WHEN productos.venta_sin_stock  = 1 THEN 0
-                    WHEN EXISTS (
-                        SELECT 1 FROM variantes v
-                        WHERE v.producto_id = productos.id AND v.estado = ?
-                    ) THEN
-                        CASE WHEN (
-                            SELECT COALESCE(SUM(i.stock_reserva), 0)
-                            FROM inventarios i
-                            INNER JOIN variantes v ON i.variante_id = v.id
-                            WHERE v.producto_id = productos.id
-                              AND v.estado      = ?
-                              AND i.empresa_id  = productos.empresa_id
-                        ) > 0 THEN 0 ELSE 1 END
-                    ELSE
-                        CASE WHEN (
-                            SELECT COALESCE(SUM(i.stock_reserva), 0)
-                            FROM inventarios i
-                            WHERE i.producto_id = productos.id
-                              AND i.variante_id IS NULL
-                              AND i.empresa_id  = productos.empresa_id
-                        ) > 0 THEN 0 ELSE 1 END
+                    WHEN COALESCE(_stk.stk, 0) > 0   THEN 0
+                    ELSE 1
                 END ASC
-            ", ['activo', 'activo'])
-            ->orderBy('orden')
-            ->orderBy('nombre')
+            ")
+            ->orderBy('productos.orden')
+            ->orderBy('productos.nombre')
             ->take($this->perPage)
             ->get();
     }

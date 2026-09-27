@@ -1,10 +1,8 @@
 <x-filament-panels::page>
 <link rel="stylesheet" href="{{ asset('css/ventas-sesion.css') }}?v={{ filemtime(public_path('css/ventas-sesion.css')) }}">
-<link rel="stylesheet" href="{{ asset('css/reporte-ganancias.css') }}?v={{ filemtime(public_path('css/reporte-ganancias.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/reporte-compras.css') }}?v={{ filemtime(public_path('css/reporte-compras.css')) }}">
 
 @php
-    $resumen   = $this->getResumen();
     $labelTipo = fn(string $t) => match($t) {
         'factura'        => 'Factura',
         'boleta'         => 'Boleta',
@@ -14,82 +12,19 @@
     };
 @endphp
 
-<div class="vs-root">
-
-    {{-- ══ TÍTULO ══ --}}
-    <div class="vs-title">
-        <div>
-            <h1>Reporte de Compras</h1>
-            <p>Historial de compras registradas</p>
+<div>
+    {{ $this->form }}
+    @if($this->hayFiltros())
+        <div class="mt-3 flex justify-end">
+            <x-filament::button wire:click="limpiarFiltros" color="gray" size="sm" icon="heroicon-m-x-mark" outlined>
+                Limpiar filtros
+            </x-filament::button>
         </div>
-    </div>
+    @endif
+</div>
 
-    {{-- ══ KPIs ══ --}}
-    <div class="rg-kpis">
-        <div class="rg-kpi rg-kpi--gray">
-            <span class="rg-kpi__label">Compras</span>
-            <span class="rg-kpi__value">{{ number_format($resumen['cantidad']) }}</span>
-            <span class="rg-kpi__sub">en el período</span>
-        </div>
-        <div class="rg-kpi rg-kpi--blue">
-            <span class="rg-kpi__label">Total comprado</span>
-            <span class="rg-kpi__value">S/ {{ number_format($resumen['total'], 2) }}</span>
-            <span class="rg-kpi__sub">importe total</span>
-        </div>
-        <div class="rg-kpi rg-kpi--green">
-            <span class="rg-kpi__label">Total pagado</span>
-            <span class="rg-kpi__value">S/ {{ number_format($resumen['pagado'], 2) }}</span>
-            <span class="rg-kpi__sub">pagos registrados</span>
-        </div>
-        <div class="rg-kpi {{ $resumen['saldo'] > 0 ? 'rg-kpi--orange' : 'rg-kpi--teal' }}">
-            <span class="rg-kpi__label">Saldo pendiente</span>
-            <span class="rg-kpi__value">S/ {{ number_format($resumen['saldo'], 2) }}</span>
-            <span class="rg-kpi__sub">{{ $resumen['pendiente'] }} compras por pagar</span>
-        </div>
-    </div>
-
-    {{-- ══ FILTROS ══ --}}
-    <div class="rg-form-wrap" x-data="{ open: {{ $this->hayFiltros() ? 'true' : 'false' }} }">
-
-        {{-- Botón toggle solo visible en móvil --}}
-        <button type="button" class="rc-filtros-toggle" @click="open = !open">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                 stroke-width="1.5" stroke="currentColor" width="15" height="15">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"/>
-            </svg>
-            <span>Filtros</span>
-            @if($this->hayFiltros())
-                <span class="rc-filtros-activo-dot" title="Hay filtros activos"></span>
-            @endif
-            <svg class="rc-filtros-chevron" :class="{ 'rc-filtros-chevron--open': open }"
-                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                 stroke-width="2" stroke="currentColor" width="14" height="14">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
-            </svg>
-        </button>
-
-        <div class="rc-filtros-body" :class="{ 'rc-filtros-body--open': open }">
-            {{ $this->form }}
-            @if($this->hayFiltros())
-                <div class="rc-form-limpiar">
-                    <button wire:click="limpiarFiltros" class="vs-filter-reset">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                             stroke-width="1.5" stroke="currentColor" width="14" height="14">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
-                        </svg>
-                        Limpiar filtros
-                    </button>
-                </div>
-            @endif
-        </div>
-
-    </div>
-
-    {{-- ══ TABLA FILAMENT ══ --}}
-    {{ $this->table }}
-
-</div>{{-- /vs-root --}}
+{{-- Tabla Filament --}}
+{{ $this->table }}
 
 
 {{-- ══ MODAL DETALLE ══ --}}

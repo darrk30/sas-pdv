@@ -50,7 +50,7 @@ class DespachoPage extends Page implements HasTable
     public static function getNavigationBadge(): ?string
     {
         $empresaId = Filament::getTenant()?->id;
-        if (! $empresaId) return null;
+        if (! $empresaId) { return null; }
 
         $count = cache()->remember("badge_despachos_{$empresaId}", 30, fn () =>
             Venta::where('empresa_id', $empresaId)

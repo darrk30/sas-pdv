@@ -4,6 +4,9 @@
 
 html, body.fi-body { overflow: hidden; }
 
+/* Notificaciones Filament por encima del overlay de pedido y del carrito mobile */
+.fi-no { z-index: 10001 !important; }
+
 /* Atenúa el catálogo mientras se procesa el envío del pedido */
 .pdv-productos--sending {
     opacity: .4;

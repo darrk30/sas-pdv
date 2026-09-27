@@ -34,6 +34,8 @@ class ClienteResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'nombre';
 
+    protected static array $globalSearchAttributes = ['nombre', 'numero_documento'];
+
     public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('clientes') && (auth()->user()?->can('clientes.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('clientes.crear') ?? false; }
     public static function canEdit(Model $record): bool   { return auth()->user()?->can('clientes.editar') ?? false; }

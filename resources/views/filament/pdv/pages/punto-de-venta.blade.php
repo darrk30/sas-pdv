@@ -52,7 +52,137 @@
     ></iframe>
     @endif
 
-    <div class="pdv-wrap" x-data="{ carritoOpen: false }" @cerrar-carrito-mobile.window="carritoOpen = false">
+    <div class="pdv-wrap"
+         x-data="{
+             carrito: {},
+             carritoOpen: false,
+             _t: {},
+             get carritoVacio() { return Object.keys(this.carrito).length === 0; },
+             get itemCount()    { return Object.keys(this.carrito).length; },
+             get carritoTotal() {
+                 return Object.values(this.carrito).reduce(function(s,it){ return it.cortesia ? s : s + parseFloat(it.cantidad) * parseFloat(it.precio); }, 0);
+             },
+             init() {
+                 this._t = {};
+                 this.carrito = window.__pdvInitCarrito ?? {};
+                 this.syncResumen();
+             },
+             _clone() {
+                 const c = {};
+                 for (const k in this.carrito) {
+                     const e = this.carrito[k];
+                     c[k] = { key: k, tipo: e.tipo, id: e.id, nombre: e.nombre, precio: parseFloat(e.precio)||0, precio_normal: parseFloat(e.precio_normal)||0, cortesia: !!e.cortesia, puede_cortesia: !!e.puede_cortesia, cantidad: parseFloat(e.cantidad)||0, decimal: !!e.decimal, stock_max: e.stock_max??null, venta_sin_stock: !!e.venta_sin_stock, detalles_resumen: e.detalles_resumen||[] };
+                 }
+                 return c;
+             },
+             _qtyForBase(tipo, id) {
+                 let total = 0;
+                 for (const it of Object.values(this.carrito)) {
+                     if (it.tipo === tipo && it.id === id) total += parseFloat(it.cantidad)||0;
+                 }
+                 return total;
+             },
+             _resolveKey(c, baseKey, esCortesia, precio) {
+                 const matches = (it) => !!it.cortesia === esCortesia && (esCortesia || Math.abs((parseFloat(it.precio)||0) - precio) < 0.005);
+                 if (!c[baseKey]) return baseKey;
+                 if (matches(c[baseKey])) return baseKey;
+                 let i = 2;
+                 while (true) {
+                     const k = baseKey + '_' + i;
+                     if (!c[k]) return k;
+                     if (matches(c[k])) return k;
+                     i++;
+                 }
+             },
+             syncResumen() {
+                 const r = {};
+                 for (const it of Object.values(this.carrito)) {
+                     if (it.tipo === 'promocion') {
+                         const sk = 'promocion_' + it.id;
+                         r[sk] = (r[sk]||0) + parseFloat(it.cantidad);
+                         for (const d of (it.detalles_resumen||[])) {
+                             const dk = d.variante_id ? 'variante_'+d.variante_id : 'producto_'+d.producto_id;
+                             r[dk] = (r[dk]||0) + d.cantidad * parseFloat(it.cantidad);
+                         }
+                     } else {
+                         const sk2 = it.tipo + '_' + it.id;
+                         r[sk2] = (r[sk2]||0) + parseFloat(it.cantidad);
+                     }
+                 }
+                 Alpine.store('carritoResumen', r);
+             },
+             addToCart(p) {
+                 const esCortesia = !!p.es_cortesia;
+                 const precio     = parseFloat(p.precio) || 0;
+                 const addQty     = parseFloat(p.cantidad) || 1;
+                 const baseKey    = p.tipo + '_' + p.id;
+                 const stockMax   = p.stock_max ?? null;
+
+                 if (stockMax !== null && !(p.venta_sin_stock)) {
+                     const enCarrito = this._qtyForBase(p.tipo, p.id);
+                     if (enCarrito + addQty > stockMax) { this.$wire.notificarStockInsuficiente(stockMax); return; }
+                 }
+
+                 const c   = this._clone();
+                 const key = this._resolveKey(c, baseKey, esCortesia, precio);
+                 if (c[key]) {
+                     const it = c[key];
+                     c[key].cantidad = it.decimal ? Math.round((it.cantidad + addQty) * 1000)/1000 : it.cantidad + addQty;
+                 } else {
+                     c[key] = { key: key, tipo: p.tipo, id: p.id, nombre: p.nombre, precio: precio, precio_normal: parseFloat(p.precio_normal||p.precio)||0, cortesia: esCortesia, puede_cortesia: !!p.puede_cortesia, cantidad: addQty, decimal: !!p.es_decimal, stock_max: stockMax, venta_sin_stock: !!p.venta_sin_stock, detalles_resumen: p.detalles_resumen||[] };
+                 }
+                 this.carrito = c;
+                 this.syncResumen();
+             },
+             canInc(key) {
+                 const it = this.carrito[key];
+                 if (!it) return false;
+                 if (it.stock_max === null || it.venta_sin_stock) return true;
+                 return this._qtyForBase(it.tipo, it.id) < it.stock_max;
+             },
+             incItem(key) {
+                 if (!this.canInc(key)) { const it0 = this.carrito[key]; if (it0) this.$wire.notificarStockInsuficiente(it0.stock_max); return; }
+                 const c = this._clone(); const it = c[key]; if (!it) return;
+                 c[key].cantidad = it.decimal ? Math.round((it.cantidad+1)*1000)/1000 : it.cantidad+1;
+                 this.carrito = c; this.syncResumen(); this.scheduleSync(key);
+             },
+             decItem(key) {
+                 const c = this._clone(); const it = c[key]; if (!it) return;
+                 const next = it.decimal ? Math.round((it.cantidad-1)*1000)/1000 : it.cantidad-1;
+                 if (next <= 0) { this.delItem(key); return; }
+                 c[key].cantidad = next;
+                 this.carrito = c; this.syncResumen(); this.scheduleSync(key);
+             },
+             scheduleSync(key) {
+                 clearTimeout(this._t[key]);
+                 this._t[key] = setTimeout(() => {
+                     const it = this.carrito[key];
+                     if (it) { this.$wire.carrito = this._clone(); this.$wire.actualizarCantidad(key, Math.max(0.001, parseFloat(it.cantidad))); }
+                 }, 350);
+             },
+             delItem(key) {
+                 clearTimeout(this._t[key]); delete this._t[key];
+                 const c = this._clone(); delete c[key];
+                 this.carrito = c; this.syncResumen();
+             },
+             vaciar() {
+                 Object.values(this._t).forEach(clearTimeout); this._t = {};
+                 this.carrito = {}; this.syncResumen();
+             }
+         }"
+         @cerrar-carrito-mobile.window="carritoOpen = false"
+         @pdv-carrito-sync.window="
+            const _fr = $event.detail.carrito;
+            const _me = {};
+            for (const _k in _fr) {
+                _me[_k] = _t[_k]
+                    ? { ..._fr[_k], cantidad: carrito[_k]?.cantidad ?? _fr[_k].cantidad, precio: carrito[_k]?.precio ?? _fr[_k].precio }
+                    : _fr[_k];
+            }
+            carrito = _me;
+            Alpine.store('carritoResumen', $event.detail.resumen)"
+         @product-selected.window="addToCart($event.detail[0] ?? $event.detail)"
+         @pdv-abrir-variantes.window="Alpine.store('vm') && Alpine.store('vm').abrir($event.detail.data, $event.detail.precioLista)">
 
         {{-- ══ ÁREA DE PRODUCTOS (izquierda) ══ --}}
         <livewire:pdv.product-catalog
@@ -81,14 +211,10 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
                     </svg>
                     Carrito
-                    @if($this->getItemCount() > 0)
-                        <span class="pdv-carrito__count">{{ $this->getItemCount() }}</span>
-                    @endif
+                    <span class="pdv-carrito__count" x-show="itemCount > 0" x-text="itemCount" style="display:none"></span>
                 </div>
                 <div class="pdv-carrito__header-actions">
-                    @if(! empty($carrito))
-                        <button class="pdv-carrito__vaciar" wire:click="vaciarCarrito">Vaciar</button>
-                    @endif
+                    <button class="pdv-carrito__vaciar" x-show="!carritoVacio" @click="vaciar()" style="display:none" type="button">Vaciar</button>
                     <button class="pdv-carrito__cerrar-mobile" @click="carritoOpen = false" title="Cerrar">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
@@ -187,211 +313,143 @@
             </div>
 
             {{-- Items del carrito --}}
-            @if(empty($carrito))
-                <div class="pdv-carrito__empty">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
-                    </svg>
-                    <p>El carrito está vacío</p>
-                    <span>Selecciona productos para comenzar</span>
-                </div>
-            @else
-                <div class="pdv-carrito__lista">
-                    @foreach($carrito as $item)
-                        @php
-                            $esCortesia    = $item['cortesia'] ?? false;
-                            $puedeCortesia = $item['puede_cortesia'] ?? false;
-                        @endphp
-                        <div class="pdv-item {{ $esCortesia ? 'pdv-item--cortesia' : '' }}" wire:key="item-{{ $item['key'] }}">
+            <div class="pdv-carrito__empty" x-show="carritoVacio" style="display:none">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
+                </svg>
+                <p>El carrito está vacío</p>
+                <span>Selecciona productos para comenzar</span>
+            </div>
 
-                            {{-- Cabecera: badges + nombre + precio + botón eliminar --}}
-                            <div class="pdv-item__top">
-                                <div class="pdv-item__info">
-                                    <div class="pdv-item__badges">
-                                        @if($item['tipo'] === 'promocion')
-                                            <span class="pdv-item__badge-promo">PROMO</span>
-                                        @endif
-                                        @if($puedeCortesia)
-                                            <button
-                                                wire:click="toggleCortesia('{{ $item['key'] }}')"
-                                                class="pdv-item__badge-cortesia {{ $esCortesia ? 'pdv-item__badge-cortesia--on' : 'pdv-item__badge-cortesia--off' }}"
-                                                title="{{ $esCortesia ? 'Quitar cortesía' : 'Aplicar como cortesía (gratis)' }}"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="11" height="11">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
-                                                </svg>
-                                                {{ $esCortesia ? 'GRATIS' : 'Cortesía' }}
-                                            </button>
-                                        @endif
-                                    </div>
-                                    <p class="pdv-item__nombre">{{ $item['nombre'] }}</p>
-                                    <p class="pdv-item__precio-unit">
-                                        @if($esCortesia)
-                                            <span class="pdv-item__precio-gratis">Gratis</span>
-                                        @else
-                                            @php $tieneDescuento = isset($item['precio_normal']) && $item['precio_normal'] > $item['precio']; @endphp
-                                            @if($tieneDescuento)
-                                                <span class="pdv-item__precio-tachado">S/ {{ number_format($item['precio_normal'], 2) }}</span>
-                                            @endif
-                                            <span
-                                                x-data="{ editing: false, val: '{{ number_format($item['precio'], 2, '.', '') }}', saved: '{{ number_format($item['precio'], 2, '.', '') }}' }"
-                                                class="pdv-item__precio-editable"
-                                                wire:ignore
-                                                @pdv-price-fix.window="if ($event.detail.key === '{{ $item['key'] }}') { let p = $event.detail.precio.toFixed(2); saved = p; if (!editing) val = p; }"
-                                            >
-                                                <span
-                                                    x-show="!editing"
-                                                    @click="editing = true; $nextTick(() => $refs.inp_{{ $item['key'] }}.select())"
-                                                    class="pdv-item__precio-valor {{ $tieneDescuento ? 'pdv-item__precio-valor--oferta' : '' }}"
-                                                    title="Toca para editar el precio"
-                                                >S/ <span x-text="parseFloat(val).toFixed(2)"></span> c/u</span>
-                                                <input
-                                                    x-ref="inp_{{ $item['key'] }}"
-                                                    x-show="editing"
-                                                    x-model="val"
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.01"
-                                                    class="pdv-item__precio-input"
-                                                    @blur="editing = false; $wire.actualizarPrecio('{{ $item['key'] }}', parseFloat(val) || 0)"
-                                                    @keydown.enter="$el.blur()"
-                                                    @keydown.escape="editing = false; val = saved"
-                                                />
-                                            </span>
-                                        @endif
-                                    </p>
+            <div class="pdv-carrito__lista" x-show="!carritoVacio" style="display:none" wire:ignore>
+                <template x-for="[key, item] in Object.entries(carrito)" :key="key">
+                    <div class="pdv-item" :class="{'pdv-item--cortesia': item.cortesia}">
+
+                        {{-- Cabecera: badges + nombre + precio + botón eliminar --}}
+                        <div class="pdv-item__top">
+                            <div class="pdv-item__info">
+                                <div class="pdv-item__badges">
+                                    <span x-show="item.tipo === 'promocion'" class="pdv-item__badge-promo" style="display:none">PROMO</span>
+                                    <button
+                                        x-show="item.puede_cortesia"
+                                        @click="$wire.carrito = _clone(); $wire.toggleCortesia(key)"
+                                        :class="item.cortesia ? 'pdv-item__badge-cortesia pdv-item__badge-cortesia--on' : 'pdv-item__badge-cortesia pdv-item__badge-cortesia--off'"
+                                        :title="item.cortesia ? 'Quitar cortesía' : 'Aplicar como cortesía (gratis)'"
+                                        style="display:none"
+                                        type="button"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="11" height="11">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
+                                        </svg>
+                                        <span x-text="item.cortesia ? 'GRATIS' : 'Cortesía'"></span>
+                                    </button>
                                 </div>
-                                <button class="pdv-item__del" wire:click="eliminarItem('{{ $item['key'] }}')" title="Eliminar">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
-                                </button>
+                                <p class="pdv-item__nombre" x-text="item.nombre"></p>
+                                <p class="pdv-item__precio-unit">
+                                    <span x-show="item.cortesia" class="pdv-item__precio-gratis" style="display:none">Gratis</span>
+                                    <span
+                                        x-show="!item.cortesia"
+                                        x-data="{ editing: false, val: parseFloat(item.precio).toFixed(2), saved: parseFloat(item.precio).toFixed(2) }"
+                                        class="pdv-item__precio-editable"
+                                        @pdv-carrito-sync.window="if (!editing) { const _ev = $event.detail.carrito[key]; if (_ev) { val = parseFloat(_ev.precio).toFixed(2); saved = val; } }"
+                                        style="display:none"
+                                    >
+                                        <span x-show="item.precio_normal > item.precio" class="pdv-item__precio-tachado" style="display:none">
+                                            S/ <span x-text="parseFloat(item.precio_normal).toFixed(2)"></span>
+                                        </span>
+                                        <span
+                                            x-show="!editing"
+                                            @click="editing = true; $nextTick(() => $refs.priceInp?.select())"
+                                            :class="item.precio_normal > item.precio ? 'pdv-item__precio-valor pdv-item__precio-valor--oferta' : 'pdv-item__precio-valor'"
+                                            title="Toca para editar el precio"
+                                        >S/ <span x-text="parseFloat(val).toFixed(2)"></span> c/u</span>
+                                        <input
+                                            x-ref="priceInp"
+                                            x-show="editing"
+                                            x-model="val"
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            class="pdv-item__precio-input"
+                                            @blur="const _p = Math.max(0.01, parseFloat(val) || 0.01); val = _p.toFixed(2); editing = false; $wire.carrito = _clone(); $wire.actualizarPrecio(item.key, _p)"
+                                            @keydown.enter="$el.blur()"
+                                            @keydown.escape="editing = false; val = saved"
+                                        />
+                                    </span>
+                                </p>
                             </div>
+                            <button class="pdv-item__del" @click="delItem(key)" title="Eliminar" type="button">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                            </button>
+                        </div>
 
-                            {{-- Pie: controles de cantidad + subtotal (Alpine, wire:ignore) --}}
-                            <div class="pdv-item__controles"
-                                 wire:key="ctrl-{{ $item['key'] }}"
-                                 wire:ignore
-                                 x-data="{
-                                     qty: {{ ($item['decimal'] ?? false) ? (float)$item['cantidad'] : (int)$item['cantidad'] }},
-                                     precio: {{ (float)$item['precio'] }},
-                                     decimal: {{ ($item['decimal'] ?? false) ? 'true' : 'false' }},
-                                     sk: '{{ $item['tipo'] }}_{{ $item['id'] }}',
-                                     tk: '{{ $item['key'] }}',
-                                     detalles: @js($item['detalles_resumen'] ?? []),
-                                     stockMax: {{ isset($item['stock_max']) && $item['stock_max'] !== null ? (float)$item['stock_max'] : 'null' }},
-                                     ventaSinStock: {{ ($item['venta_sin_stock'] ?? false) ? 'true' : 'false' }},
-                                     t: null,
-                                     init() {
-                                         if (!Alpine.store('carritoTotal')) Alpine.store('carritoTotal', {});
-                                         const upd = () => { const n = parseFloat(this.qty); Alpine.store('carritoTotal')[this.tk] = isNaN(n) ? 0 : n * this.precio; };
-                                         upd();
-                                         this.$watch('qty', upd);
-                                         this.$watch('precio', upd);
-                                     },
-                                     destroy() { const s = Alpine.store('carritoTotal'); if (s) delete s[this.tk]; },
-                                     get canInc() { return this.stockMax === null || this.ventaSinStock || this.qty < this.stockMax; },
-                                     _updStore(delta) {
-                                         let s = Alpine.store('carritoResumen');
-                                         if (this.detalles.length) {
-                                             if (this.sk in s) s[this.sk] = Math.max(0, s[this.sk] + delta);
-                                             this.detalles.forEach(d => {
-                                                 let k = d.variante_id ? 'variante_'+d.variante_id : 'producto_'+d.producto_id;
-                                                 if (k in s) s[k] = Math.max(0, s[k] + d.cantidad * delta);
-                                             });
-                                         } else {
-                                             if (delta > 0) { if (this.sk in s) s[this.sk]++; }
-                                             else { if (this.sk in s && s[this.sk] > 0) s[this.sk]--; }
-                                         }
-                                     },
-                                     inc() {
-                                         if (!this.canInc) return;
-                                         if (this.decimal) {
-                                             this.qty = Math.round((this.qty + 1) * 1000) / 1000;
-                                         } else {
-                                             this.qty++;
-                                         }
-                                         this._updStore(1);
-                                         this.sync();
-                                     },
-                                     dec() {
-                                         if (this.decimal) {
-                                             let next = Math.round((this.qty - 1) * 1000) / 1000;
-                                             if (next <= 0) { clearTimeout(this.t); $wire.eliminarItem('{{ $item['key'] }}'); return; }
-                                             this.qty = next;
-                                         } else {
-                                             if (this.qty <= 1) { clearTimeout(this.t); $wire.eliminarItem('{{ $item['key'] }}'); return; }
-                                             this.qty--;
-                                         }
-                                         this._updStore(-1);
-                                         this.sync();
-                                     },
-                                     sync() { clearTimeout(this.t); this.t = setTimeout(() => $wire.actualizarCantidad('{{ $item['key'] }}', Math.max(0.001, this.qty)), 350); }
-                                 }"
-                                 @pdv-qty-fix.window="if ($event.detail.key === '{{ $item['key'] }}') qty = decimal ? $event.detail.qty : Math.round($event.detail.qty)"
-                                 @pdv-price-fix.window="if ($event.detail.key === '{{ $item['key'] }}') precio = $event.detail.precio"
-                            >
-                                <div class="pdv-item__foot">
-                                    @if($item['decimal'] ?? false)
-                                        <div class="pdv-qty pdv-qty--decimal">
-                                            <button class="pdv-qty__btn pdv-qty__btn--menos" @click="dec()">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
-                                            </button>
-                                            <input
-                                                type="text"
-                                                inputmode="decimal"
-                                                x-model="qty"
-                                                class="pdv-qty__decimal-input"
-                                                @keydown.enter="$el.blur()"
-                                                @keydown="if($event.key==='-'||$event.key==='e'||$event.key==='E')$event.preventDefault()"
-                                                @input="$event.target.value=$event.target.value.replace(/[^0-9.]/g,'').replace(/^(\d*\.?\d*).*$/,'$1')"
-                                                @blur="qty=Math.max(0.001,parseFloat($event.target.value)||0.001); $event.target.value=qty; sync()"
-                                            />
-                                            <button class="pdv-qty__btn pdv-qty__btn--mas" @click="inc()" :disabled="!canInc" :class="{'pdv-qty__btn--disabled': !canInc}">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                                            </button>
-                                        </div>
-                                    @else
-                                        <div class="pdv-qty">
-                                            <button class="pdv-qty__btn pdv-qty__btn--menos" @click="dec()">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
-                                            </button>
-                                            @if($item['tipo'] === 'promocion')
-                                                <input type="number" min="1" step="1" x-model.number="qty" class="pdv-qty__decimal-input"
-                                                    @blur="sync()"
-                                                    @keydown.enter="$el.blur()"
-                                                    @keydown="if($event.key==='-'||$event.key==='e'||$event.key==='E')$event.preventDefault()"
-                                                    @input="if(parseInt($event.target.value)<1)$event.target.value=1">
-                                            @else
-                                                <span class="pdv-qty__num" x-text="qty"></span>
-                                            @endif
-                                            <button class="pdv-qty__btn pdv-qty__btn--mas" @click="inc()" :disabled="!canInc" :class="{'pdv-qty__btn--disabled': !canInc}">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                                            </button>
-                                        </div>
-                                    @endif
-                                    <span class="pdv-item__subtotal {{ $esCortesia ? 'pdv-item__subtotal--gratis' : '' }}"
-                                          x-text="'S/ ' + (qty * precio).toFixed(2)"></span>
+                        {{-- Pie: controles de cantidad + subtotal --}}
+                        <div class="pdv-item__controles">
+                            <div class="pdv-item__foot">
+                                <div class="pdv-qty pdv-qty--decimal" x-show="item.decimal" style="display:none">
+                                    <button class="pdv-qty__btn pdv-qty__btn--menos" @click="decItem(key)" type="button">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
+                                    </button>
+                                    <input
+                                        type="text"
+                                        inputmode="decimal"
+                                        :value="item.cantidad"
+                                        class="pdv-qty__decimal-input"
+                                        @keydown.enter="$el.blur()"
+                                        @keydown="if($event.key==='-'||$event.key==='e'||$event.key==='E')$event.preventDefault()"
+                                        @input="$event.target.value=$event.target.value.replace(/[^0-9.]/g,'').replace(/^(\d*\.?\d*).*$/,'$1')"
+                                        @blur="carrito[key].cantidad=Math.max(0.001,parseFloat($event.target.value)||0.001); $event.target.value=carrito[key].cantidad; syncResumen(); scheduleSync(key)"
+                                    />
+                                    <button class="pdv-qty__btn pdv-qty__btn--mas" @click="incItem(key)" :disabled="!canInc(key)" :class="{'pdv-qty__btn--disabled': !canInc(key)}" type="button">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                                    </button>
                                 </div>
+                                <div class="pdv-qty" x-show="!item.decimal" style="display:none">
+                                    <button class="pdv-qty__btn pdv-qty__btn--menos" @click="decItem(key)" type="button">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
+                                    </button>
+                                    <input x-show="item.tipo === 'promocion'" type="number" min="1" step="1" :value="item.cantidad" class="pdv-qty__decimal-input"
+                                        @blur="carrito[key].cantidad = Math.max(1, parseInt($event.target.value)||1); syncResumen(); scheduleSync(key)"
+                                        @keydown.enter="$el.blur()"
+                                        @keydown="if($event.key==='-'||$event.key==='e'||$event.key==='E')$event.preventDefault()"
+                                        @input="if(parseInt($event.target.value)<1)$event.target.value=1"
+                                        style="display:none">
+                                    <span class="pdv-qty__num" x-show="item.tipo !== 'promocion'" x-text="Math.round(item.cantidad)" style="display:none"></span>
+                                    <button class="pdv-qty__btn pdv-qty__btn--mas" @click="incItem(key)" :disabled="!canInc(key)" :class="{'pdv-qty__btn--disabled': !canInc(key)}" type="button">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                                    </button>
+                                </div>
+                                <span class="pdv-item__subtotal" :class="{'pdv-item__subtotal--gratis': item.cortesia}"
+                                      x-text="'S/ ' + (parseFloat(item.cantidad) * parseFloat(item.precio)).toFixed(2)"></span>
                             </div>
-                        </div>
-                    @endforeach
-                </div>
-
-                <div class="pdv-carrito__footer"
-                     x-data="{ get total() { const s = Alpine.store('carritoTotal'); return s ? Object.values(s).reduce((a,v) => a+v, 0) : {{ (float)$this->getTotal() }}; } }"
-                >
-                    <div class="pdv-carrito__totales">
-                        <div class="pdv-carrito__fila">
-                            <span class="pdv-carrito__label">{{ $this->getItemCount() }} ítems</span>
-                            <span class="pdv-carrito__sublabel">Subtotal</span>
-                        </div>
-                        <div class="pdv-carrito__fila">
-                            <span class="pdv-carrito__total-label">Total</span>
-                            <span class="pdv-carrito__total-monto" x-text="'S/ ' + total.toFixed(2)"></span>
                         </div>
                     </div>
-                    <button class="pdv-btn-venta" wire:click="abrirModalPago">Procesar Venta</button>
+                </template>
+            </div>
+
+            <div class="pdv-carrito__footer" x-show="!carritoVacio" style="display:none">
+                <div class="pdv-carrito__totales">
+                    <div class="pdv-carrito__fila">
+                        <span class="pdv-carrito__label" x-text="itemCount + ' ítems'"></span>
+                        <span class="pdv-carrito__sublabel">Subtotal</span>
+                    </div>
+                    <div class="pdv-carrito__fila">
+                        <span class="pdv-carrito__total-label">Total</span>
+                        <span class="pdv-carrito__total-monto" x-text="'S/ ' + carritoTotal.toFixed(2)"></span>
+                    </div>
                 </div>
-            @endif
+                <button class="pdv-btn-venta" @click="$wire.carrito = _clone(); $wire.abrirModalPago()" type="button"
+                    wire:loading.attr="disabled" wire:target="abrirModalPago">
+                    <span wire:loading.remove wire:target="abrirModalPago">
+                        Procesar Venta
+                        <kbd class="pdv-kbd">Ctrl+↵</kbd>
+                    </span>
+                    <span wire:loading wire:target="abrirModalPago" style="display:none;align-items:center;gap:6px;">
+                        <svg class="pdv-spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" style="opacity:.25"/><path fill="currentColor" style="opacity:.75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        Cargando...
+                    </span>
+                </button>
+            </div>
 
         </div>{{-- /pdv-carrito --}}
 
@@ -400,9 +458,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
             </svg>
-            @if($this->getItemCount() > 0)
-                <span class="pdv-fab__badge">{{ $this->getItemCount() }}</span>
-            @endif
+            <span class="pdv-fab__badge" x-show="itemCount > 0" x-text="itemCount" style="display:none"></span>
         </button>
 
     </div>{{-- /pdv-wrap --}}
@@ -440,7 +496,6 @@
 
     {{-- ══ MODAL: pago ══ --}}
     @if($modalPago)
-        @php $metodoActivo = collect($metodosPagoDisponibles)->firstWhere('id', $metodoPagoId); @endphp
         <div class="pdv-overlay" wire:key="modal-pago">
             <div class="pdv-overlay__backdrop" wire:click="cerrarModalPago"></div>
             <div class="pdv-modal pdv-modal--pago"
@@ -451,7 +506,92 @@
                      despachoDireccion: '',
                      deliveryNombre: '{{ addslashes($clienteNombre ?? '') }}',
                      deliveryTelefono: '{{ addslashes($clienteTelefono ?? '') }}',
-                     deliveryRepartidor: ''
+                     deliveryRepartidor: '',
+
+                     metodosPago: {{ json_encode($metodosPagoDisponibles) }},
+                     metodoPagoId: {{ $metodoPagoId ?? 'null' }},
+                     montoPagoInput: '{{ $montoPagoInput ?? '' }}',
+                     pagoReferencia: '',
+                     pagosAgregados: {{ json_encode($pagosAgregados ?? []) }},
+                     descuentoInput: '{{ $descuentoInput ?? '0' }}',
+                     totalBase: {{ $this->getTotal() }},
+                     esTicket: {{ $tipoComprobante === 'ticket' ? 'true' : 'false' }},
+
+                     get metodoActivo() { return this.metodosPago.find(m => m.id === this.metodoPagoId) || null; },
+                     get descuento() {
+                         const d = parseFloat((this.descuentoInput + '').replace(',', '.') || '0');
+                         return Math.max(0, Math.min(d, this.totalBase));
+                     },
+                     get totalConDescuento() { return Math.round(Math.max(0, this.totalBase - this.descuento) * 100) / 100; },
+                     get totalPagado()       { return Math.round(this.pagosAgregados.reduce((s, p) => s + parseFloat(p.monto), 0) * 100) / 100; },
+                     get saldoRestante()     { return Math.round((this.totalConDescuento - this.totalPagado) * 100) / 100; },
+                     get totalEsCero()       { return this.totalConDescuento <= 0.01; },
+                     get listo()             { return (this.saldoRestante <= 0.01 && this.pagosAgregados.length > 0) || this.totalEsCero; },
+                     get opGravadas()        { return this.esTicket ? 0 : Math.round(this.totalConDescuento / 1.18 * 100) / 100; },
+                     get igv()               { return this.esTicket ? 0 : Math.round((this.totalConDescuento - this.opGravadas) * 100) / 100; },
+                     fmt(n) { return parseFloat(n).toFixed(2); },
+
+                     autoSeleccionarEfectivo() {
+                         if (this.metodoPagoId) return;
+                         const ef = this.metodosPago.find(m => m.nombre.toLowerCase() === 'efectivo');
+                         if (ef) { this.metodoPagoId = ef.id; this.pagoReferencia = ''; }
+                     },
+                     seleccionarMetodoPago(id) {
+                         this.metodoPagoId = id;
+                         this.pagoReferencia = '';
+                         const s = this.saldoRestante;
+                         this.montoPagoInput = s > 0 ? this.fmt(s) : '0.00';
+                     },
+                     agregarPago() {
+                         const monto = parseFloat((this.montoPagoInput + '').replace(',', '.') || '0');
+                         if (!this.metodoPagoId || monto <= 0) return;
+                         const metodo = this.metodosPago.find(m => m.id === this.metodoPagoId);
+                         if (metodo && metodo.requiere_referencia && !(this.pagoReferencia || '').trim()) return;
+                         const condicion = metodo ? metodo.condicion_pago : 'contado';
+                         const idx = this.pagosAgregados.findIndex(p => p.metodo_pago_id === this.metodoPagoId && (p.condicion_pago || 'contado') === condicion);
+                         if (idx !== -1) {
+                             this.pagosAgregados[idx].monto += monto;
+                             if (this.pagoReferencia) this.pagosAgregados[idx].referencia = this.pagoReferencia;
+                         } else {
+                             this.pagosAgregados.push({
+                                 metodo_pago_id: this.metodoPagoId,
+                                 nombre: metodo ? metodo.nombre : '',
+                                 imagen_url: metodo ? metodo.imagen_url : null,
+                                 monto,
+                                 referencia: this.pagoReferencia,
+                                 condicion_pago: condicion
+                             });
+                         }
+                         const s = this.saldoRestante;
+                         this.montoPagoInput = s > 0 ? this.fmt(s) : '0.00';
+                         this.pagoReferencia = '';
+                     },
+                     eliminarPago(idx) {
+                         this.pagosAgregados.splice(idx, 1);
+                         const s = this.saldoRestante;
+                         if (s > 0) this.montoPagoInput = this.fmt(s);
+                     },
+                     setMontoExacto() {
+                         this.autoSeleccionarEfectivo();
+                         this.montoPagoInput = this.fmt(Math.max(0, this.saldoRestante));
+                     },
+                     ajustarMonto(delta) {
+                         this.autoSeleccionarEfectivo();
+                         const actual = parseFloat((this.montoPagoInput + '').replace(',', '.') || '0');
+                         this.montoPagoInput = this.fmt(Math.max(0, actual + delta));
+                     },
+                     confirmarVenta() {
+                         if (!this.listo) return;
+                         $wire.deliveryActivo       = this.deliveryActivo;
+                         $wire.despachoRequerido    = this.despachoRequerido;
+                         $wire.despachoDireccion    = this.despachoDireccion;
+                         $wire.deliveryNombre       = this.deliveryActivo ? this.deliveryNombre    : '';
+                         $wire.deliveryTelefono     = this.deliveryActivo ? this.deliveryTelefono  : '';
+                         $wire.deliveryRepartidor   = this.deliveryActivo ? this.deliveryRepartidor : '';
+                         $wire.pagosAgregados       = this.pagosAgregados;
+                         $wire.descuentoInput       = this.descuentoInput;
+                         $wire.procesarVenta();
+                     }
                  }">
 
                 {{-- Header --}}
@@ -528,69 +668,46 @@
                         <div class="pdv-pago-col-izq">
                             <div class="pdv-pago-section">
                                 <p class="pdv-pago-section__label">Método de pago</p>
-                                @if(empty($metodosPagoDisponibles))
-                                    <p class="pdv-pago-empty">No hay métodos de pago configurados</p>
-                                @else
-                                    <div class="pdv-metodos-lista">
-                                        @foreach($metodosPagoDisponibles as $metodo)
-                                            <button
-                                                class="pdv-metodo-item {{ $metodoPagoId === $metodo['id'] ? 'pdv-metodo-item--activo' : '' }}"
-                                                wire:click="seleccionarMetodoPago({{ $metodo['id'] }})"
-                                            >
-                                                @if($metodo['imagen'])
-                                                    <img class="pdv-metodo-item__img" src="{{ \Illuminate\Support\Facades\Storage::url($metodo['imagen']) }}" alt="{{ $metodo['nombre'] }}"/>
-                                                @else
-                                                    <div class="pdv-metodo-item__avatar">{{ strtoupper(mb_substr($metodo['nombre'], 0, 1)) }}</div>
-                                                @endif
-                                                <span class="pdv-metodo-item__nombre">{{ $metodo['nombre'] }}</span>
-                                                @if($metodoPagoId === $metodo['id'])
-                                                    <svg class="pdv-metodo-item__check" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
-                                                    </svg>
-                                                @endif
-                                            </button>
-                                        @endforeach
+                                <p class="pdv-pago-empty" x-show="metodosPago.length === 0">No hay métodos de pago configurados</p>
+                                <div class="pdv-metodos-lista" x-show="metodosPago.length > 0">
+                                    <template x-for="(metodo, idx) in metodosPago" :key="metodo.id">
+                                        <button class="pdv-metodo-item" :class="{ 'pdv-metodo-item--activo': metodoPagoId === metodo.id }" @click="seleccionarMetodoPago(metodo.id)" type="button">
+                                            <template x-if="metodo.imagen_url">
+                                                <img class="pdv-metodo-item__img" :src="metodo.imagen_url" :alt="metodo.nombre"/>
+                                            </template>
+                                            <template x-if="!metodo.imagen_url">
+                                                <div class="pdv-metodo-item__avatar" x-text="metodo.nombre.charAt(0).toUpperCase()"></div>
+                                            </template>
+                                            <span class="pdv-metodo-item__nombre" x-text="metodo.nombre"></span>
+                                            <kbd class="pdv-kbd pdv-kbd--metodo" x-show="idx < 9" x-text="'Ctrl+' + (idx + 1)"></kbd>
+                                            <svg class="pdv-metodo-item__check" x-show="metodoPagoId === metodo.id" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
+                                            </svg>
+                                        </button>
+                                    </template>
+                                </div>
+
+                                {{-- Referencia --}}
+                                <div class="pdv-pago-referencia" x-show="metodoActivo && metodoActivo.requiere_referencia" style="display:none">
+                                    <input type="text" class="pdv-field__input" x-model="pagoReferencia" placeholder="Referencia / N° operación"/>
+                                </div>
+
+                                {{-- Crédito: fecha vencimiento --}}
+                                <div class="pdv-pago-referencia" x-show="metodoActivo && metodoActivo.condicion_pago === 'credito'" style="display:none">
+                                    <x-filament::input.wrapper label="Fecha de vencimiento" :prefix-icon="'heroicon-o-calendar-days'" style="--prefix-icon-size: .9rem;">
+                                        <x-filament::input type="date" wire:model.live="fechaVencimientoCredito" :min="now()->addDay()->toDateString()"/>
+                                    </x-filament::input.wrapper>
+                                    @if($fechaVencimientoCredito)
+                                        <p class="fi-fo-field-wrp-helper-text text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            Vence {{ \Carbon\Carbon::parse($fechaVencimientoCredito)->format('d/m/Y') }}
+                                            ({{ \Carbon\Carbon::parse($fechaVencimientoCredito)->diffForHumans() }})
+                                        </p>
+                                    @endif
+                                    <div x-show="!$wire.clienteId" style="display:flex;align-items:center;gap:.4rem;background:#fef3c7;border:1px solid #fcd34d;border-radius:.4rem;padding:.4rem .6rem;margin-top:.4rem;font-size:.73rem;color:#92400e;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.85rem;height:.85rem;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+                                        <span>Para crédito selecciona un cliente con DNI o RUC</span>
                                     </div>
-                                    @if($metodoActivo && $metodoActivo['requiere_referencia'])
-                                        <div class="pdv-pago-referencia">
-                                            <input
-                                                type="text"
-                                                class="pdv-field__input"
-                                                wire:model.live="pagoReferencia"
-                                                placeholder="Referencia / N° operación"
-                                            />
-                                        </div>
-                                    @endif
-
-                                    @if($metodoActivo && ($metodoActivo['condicion_pago'] ?? '') === 'credito')
-                                        <div class="pdv-pago-referencia">
-                                            <x-filament::input.wrapper
-                                                label="Fecha de vencimiento"
-                                                :prefix-icon="'heroicon-o-calendar-days'"
-                                                style="--prefix-icon-size: .9rem;"
-                                            >
-                                                <x-filament::input
-                                                    type="date"
-                                                    wire:model.live="fechaVencimientoCredito"
-                                                    :min="now()->addDay()->toDateString()"
-                                                />
-                                            </x-filament::input.wrapper>
-                                            @if($fechaVencimientoCredito)
-                                                <p class="fi-fo-field-wrp-helper-text text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                    Vence {{ \Carbon\Carbon::parse($fechaVencimientoCredito)->format('d/m/Y') }}
-                                                    ({{ \Carbon\Carbon::parse($fechaVencimientoCredito)->diffForHumans() }})
-                                                </p>
-                                            @endif
-                                        </div>
-
-                                        @if(! $clienteId)
-                                        <div style="display:flex;align-items:center;gap:.4rem;background:#fef3c7;border:1px solid #fcd34d;border-radius:.4rem;padding:.4rem .6rem;margin-top:.4rem;font-size:.73rem;color:#92400e;">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.85rem;height:.85rem;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
-                                            <span>Para crédito selecciona un cliente con DNI o RUC</span>
-                                        </div>
-                                        @endif
-                                    @endif
-                                @endif
+                                </div>
                             </div>
                         </div>
 
@@ -600,61 +717,49 @@
                             {{-- ── Monto y botones rápidos ── --}}
                             <div class="pdv-pago-section">
                                 <p class="pdv-pago-section__label">Monto a pagar</p>
-                                <div class="pdv-quick-btns">
-                                    <button class="pdv-quick-btn pdv-quick-btn--exacto" wire:click="setMontoExacto">Exacto</button>
-                                    <button class="pdv-quick-btn" wire:click="ajustarMonto(200)">+200</button>
-                                    <button class="pdv-quick-btn" wire:click="ajustarMonto(100)">+100</button>
-                                    <button class="pdv-quick-btn" wire:click="ajustarMonto(50)">+50</button>
-                                    <button class="pdv-quick-btn" wire:click="ajustarMonto(20)">+20</button>
-                                    <button class="pdv-quick-btn" wire:click="ajustarMonto(10)">+10</button>
-                                </div>
+
                                 <div class="pdv-pago-monto-row">
                                     <div class="pdv-pago-input-wrap" style="flex:1">
                                         <span class="pdv-pago-input-wrap__prefix">S/</span>
                                         <input
                                             type="number"
                                             class="pdv-pago-input"
-                                            wire:model.live="montoPagoInput"
+                                            x-model="montoPagoInput"
                                             min="0"
                                             step="0.10"
                                             placeholder="0.00"
                                         />
                                     </div>
-                                    <button class="pdv-btn-agregar-pago" wire:click="agregarPago">
+                                    <button class="pdv-btn-agregar-pago" @click="agregarPago()" type="button">
                                         Agregar
+                                        <kbd class="pdv-kbd">Ctrl+↵</kbd>
                                     </button>
                                 </div>
                             </div>
 
                             {{-- ── Pagos registrados ── --}}
-                            @if(! empty($pagosAgregados))
-                                <div class="pdv-pago-section">
-                                    <p class="pdv-pago-section__label">Pagos registrados</p>
-                                    <div class="pdv-pagos-lista">
-                                        @foreach($pagosAgregados as $idx => $pago)
-                                            <div class="pdv-pago-item" wire:key="pago-{{ $idx }}">
-                                                <div class="pdv-pago-item__info">
-                                                    <span class="pdv-pago-item__nombre">
-                                                        {{ $pago['nombre'] }}
-                                                        @if(($pago['condicion_pago'] ?? 'contado') === 'credito')
-                                                            <span class="pdv-credito-badge">Crédito</span>
-                                                        @endif
-                                                    </span>
-                                                    @if($pago['referencia'])
-                                                        <span class="pdv-pago-item__ref">{{ $pago['referencia'] }}</span>
-                                                    @endif
-                                                </div>
-                                                <span class="pdv-pago-item__monto">S/ {{ number_format($pago['monto'], 2) }}</span>
-                                                <button class="pdv-pago-item__del" wire:click="eliminarPago({{ $idx }})">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
-                                                    </svg>
-                                                </button>
+                            <div class="pdv-pago-section" x-show="pagosAgregados.length > 0" style="display:none">
+                                <p class="pdv-pago-section__label">Pagos registrados</p>
+                                <div class="pdv-pagos-lista">
+                                    <template x-for="(pago, idx) in pagosAgregados" :key="idx">
+                                        <div class="pdv-pago-item">
+                                            <div class="pdv-pago-item__info">
+                                                <span class="pdv-pago-item__nombre">
+                                                    <span x-text="pago.nombre"></span>
+                                                    <span class="pdv-credito-badge" x-show="pago.condicion_pago === 'credito'">Crédito</span>
+                                                </span>
+                                                <span class="pdv-pago-item__ref" x-show="pago.referencia" x-text="pago.referencia"></span>
                                             </div>
-                                        @endforeach
-                                    </div>
+                                            <span class="pdv-pago-item__monto" x-text="'S/ ' + fmt(pago.monto)"></span>
+                                            <button class="pdv-pago-item__del" @click="eliminarPago(idx)" type="button">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </template>
                                 </div>
-                            @endif
+                            </div>
 
                             {{-- ── Resumen + descuento + saldo ── --}}
                             <div class="pdv-pago-section pdv-pago-section--resumen">
@@ -673,19 +778,21 @@
                                             <span>Gratis</span>
                                         </div>
                                     @endif
-                                    @if($tipoComprobante !== 'ticket')
-                                        <div class="pdv-pago-resumen__fila">
-                                            <span>Op. Gravada</span>
-                                            <span>S/ {{ number_format($this->getOpGravadas(), 2) }}</span>
+                                    <template x-if="!esTicket">
+                                        <div>
+                                            <div class="pdv-pago-resumen__fila">
+                                                <span>Op. Gravada</span>
+                                                <span x-text="'S/ ' + fmt(opGravadas)"></span>
+                                            </div>
+                                            <div class="pdv-pago-resumen__fila">
+                                                <span>IGV (18%)</span>
+                                                <span x-text="'S/ ' + fmt(igv)"></span>
+                                            </div>
                                         </div>
-                                        <div class="pdv-pago-resumen__fila">
-                                            <span>IGV (18%)</span>
-                                            <span>S/ {{ number_format($this->getIgv(), 2) }}</span>
-                                        </div>
-                                    @endif
+                                    </template>
                                     <div class="pdv-pago-resumen__fila pdv-pago-resumen__fila--total">
                                         <span>Total</span>
-                                        <span>S/ {{ number_format($this->getTotalConDescuento(), 2) }}</span>
+                                        <span x-text="'S/ ' + fmt(totalConDescuento)"></span>
                                     </div>
                                 </div>
 
@@ -697,7 +804,7 @@
                                         <input
                                             type="number"
                                             class="pdv-pago-input"
-                                            wire:model.live="descuentoInput"
+                                            x-model="descuentoInput"
                                             min="0"
                                             step="0.10"
                                             placeholder="0.00"
@@ -706,25 +813,20 @@
                                 </div>
 
                                 {{-- Saldo / cambio --}}
-                                @if(! empty($pagosAgregados))
-                                    <div class="pdv-pago-saldo">
-                                        <div class="pdv-pago-saldo__fila">
-                                            <span>Pagado</span>
-                                            <span class="pdv-pago-saldo__ok">S/ {{ number_format($this->getTotalPagado(), 2) }}</span>
-                                        </div>
-                                        @if($this->getSaldoRestante() > 0)
-                                            <div class="pdv-pago-saldo__fila">
-                                                <span>Pendiente</span>
-                                                <span class="pdv-pago-saldo__pend">S/ {{ number_format($this->getSaldoRestante(), 2) }}</span>
-                                            </div>
-                                        @else
-                                            <div class="pdv-pago-saldo__fila">
-                                                <span>Cambio</span>
-                                                <span class="pdv-pago-saldo__cambio">S/ {{ number_format(abs($this->getSaldoRestante()), 2) }}</span>
-                                            </div>
-                                        @endif
+                                <div class="pdv-pago-saldo" x-show="pagosAgregados.length > 0" style="display:none">
+                                    <div class="pdv-pago-saldo__fila">
+                                        <span>Pagado</span>
+                                        <span class="pdv-pago-saldo__ok" x-text="'S/ ' + fmt(totalPagado)"></span>
                                     </div>
-                                @endif
+                                    <div class="pdv-pago-saldo__fila" x-show="saldoRestante > 0.001">
+                                        <span>Pendiente</span>
+                                        <span class="pdv-pago-saldo__pend" x-text="'S/ ' + fmt(saldoRestante)"></span>
+                                    </div>
+                                    <div class="pdv-pago-saldo__fila" x-show="saldoRestante <= 0.001">
+                                        <span>Cambio</span>
+                                        <span class="pdv-pago-saldo__cambio" x-text="'S/ ' + fmt(Math.abs(saldoRestante))"></span>
+                                    </div>
+                                </div>
                             </div>
 
                         </div>{{-- /col-der --}}
@@ -794,26 +896,22 @@
                 @endif
 
                 <div class="pdv-modal__footer">
-                    @php $listo = ($this->getSaldoRestante() <= 0.01 && ! empty($pagosAgregados)) || $this->totalEsCero(); @endphp
                     <button
-                        class="pdv-btn-confirmar {{ $listo ? 'pdv-btn-confirmar--venta' : '' }}"
-                        @click="
-                            $wire.deliveryActivo       = deliveryActivo;
-                            $wire.despachoRequerido    = despachoRequerido;
-                            $wire.despachoDireccion    = despachoDireccion;
-                            $wire.deliveryNombre       = deliveryActivo ? deliveryNombre    : '';
-                            $wire.deliveryTelefono     = deliveryActivo ? deliveryTelefono  : '';
-                            $wire.deliveryRepartidor   = deliveryActivo ? deliveryRepartidor : '';
-                            $wire.procesarVenta()
-                        "
-                        @if(! $listo) disabled @endif
+                        class="pdv-btn-confirmar"
+                        :class="{ 'pdv-btn-confirmar--venta': listo }"
+                        @click="confirmarVenta()"
+                        :disabled="!listo"
                         wire:loading.attr="disabled"
                         wire:target="procesarVenta"
                     >
-                        <span wire:loading.remove wire:target="procesarVenta">
-                            {{ $listo ? 'Confirmar Venta' : 'Completa el pago para continuar' }}
+                        <span wire:loading.remove wire:target="procesarVenta" style="display:contents">
+                            <span x-text="listo ? 'Confirmar Venta' : 'Completa el pago para continuar'"></span>
+                            <kbd class="pdv-kbd" x-show="listo">Ctrl+↵</kbd>
                         </span>
-                        <span wire:loading wire:target="procesarVenta">Procesando...</span>
+                        <span wire:loading wire:target="procesarVenta" style="display:none;align-items:center;gap:6px;">
+                            <svg class="pdv-spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" style="opacity:.25"/><path fill="currentColor" style="opacity:.75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Procesando...
+                        </span>
                     </button>
                 </div>
 
@@ -830,12 +928,154 @@
 
 <style>
 html, body.fi-body { overflow: hidden; }
+
+/* ── Badges de atajos de teclado ── */
+.pdv-kbd {
+    display: inline-flex;
+    align-items: center;
+    font-family: ui-monospace, 'Cascadia Code', monospace;
+    font-size: 0.62rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.15rem 0.35rem;
+    border-radius: 0.25rem;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: inherit;
+    opacity: 0.8;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+    pointer-events: none;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+.pdv-kbd--metodo {
+    background: rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 0, 0, 0.14);
+    color: #6b7280;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+.dark .pdv-kbd--metodo {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #9ca3af;
+}
+.pdv-spinner {
+    width: 1em;
+    height: 1em;
+    animation: pdv-spin .7s linear infinite;
+    flex-shrink: 0;
+}
+@keyframes pdv-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
 </style>
 
 <script>
+window.__pdvInitCarrito = @js($carrito);
 document.addEventListener('alpine:init', () => {
     Alpine.store('carritoResumen', @js($this->getCarritoResumen()));
 });
+
+// Atajo Ctrl+Enter: abrir modal → agregar pago → confirmar venta
+document.addEventListener('keydown', function(ev) {
+    if (!ev.ctrlKey || ev.key !== 'Enter') return;
+
+    // Ceder si el modal de venta completada está abierto (tiene sus propios atajos)
+    if (document.querySelector('.pdv-modal--impresion')) return;
+
+    var el = ev.target;
+    var tag = el.tagName.toLowerCase();
+
+    // No interceptar en textarea (delivery/despacho)
+    if (tag === 'textarea') return;
+
+    // No interceptar en controles de items del carrito (edición precio y cantidad)
+    if (el.closest('.pdv-item__top') || el.closest('.pdv-item__controles')) return;
+
+    // Prioridad 1: Confirmar venta — saldo cubierto, botón habilitado
+    var confirmar = document.querySelector('.pdv-btn-confirmar--venta:not([disabled])');
+    if (confirmar) {
+        ev.preventDefault();
+        confirmar.click();
+        return;
+    }
+
+    // Prioridad 2: Agregar pago — modal abierto
+    var agregar = document.querySelector('.pdv-btn-agregar-pago');
+    if (agregar) {
+        ev.preventDefault();
+        agregar.click();
+        return;
+    }
+
+    // Prioridad 3: Abrir modal de cobro — carrito con ítems
+    var procesar = document.querySelector('.pdv-btn-venta');
+    if (procesar) {
+        ev.preventDefault();
+        procesar.click();
+    }
+}, true);
+
+// Ctrl+1…9: seleccionar método de pago (solo cuando el modal está abierto)
+document.addEventListener('keydown', function(ev) {
+    if (!ev.ctrlKey) return;
+    var num = parseInt(ev.key);
+    if (isNaN(num) || num < 1 || num > 9) return;
+
+    var modal = document.querySelector('.pdv-modal--pago');
+    if (!modal) return;
+
+    var btns = modal.querySelectorAll('.pdv-metodo-item');
+    var btn = btns[num - 1];
+    if (btn) {
+        ev.preventDefault();
+        btn.click();
+    }
+}, true);
+
+// Lector de barras físico (USB/Bluetooth) — emula teclado rápido + Enter
+(function () {
+    var _buf = '';
+    var _last = 0;
+    // Umbral: si la pausa entre teclas es < 60ms se considera scanner, no usuario
+    var THRESHOLD = 60;
+
+    document.addEventListener('keydown', function (ev) {
+        // Ignorar si el foco está en un input de texto (evita interferir con búsquedas)
+        var tag = (ev.target || document.activeElement).tagName.toLowerCase();
+        var tipo = (ev.target || document.activeElement).type || '';
+        var isText = tag === 'textarea' || (tag === 'input' && tipo !== 'checkbox' && tipo !== 'radio');
+
+        var now = Date.now();
+        var gap = now - _last;
+        _last = now;
+
+        if (ev.key === 'Enter') {
+            var code = _buf.trim();
+            _buf = '';
+            // Solo procesar si acumulamos caracteres rápidos (scanner) y no estamos en input
+            if (code.length >= 3 && gap < THRESHOLD && !isText) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                window.Livewire.dispatch('pdv-barcode', { code: code });
+            }
+            return;
+        }
+
+        // Acumular solo si el último golpe fue rápido (scanner) o es el primer carácter
+        if (gap < THRESHOLD || _buf.length === 0) {
+            if (ev.key && ev.key.length === 1) {
+                _buf += ev.key;
+            }
+        } else {
+            // Pausa larga → resetear y tratar como escritura manual
+            _buf = (ev.key && ev.key.length === 1) ? ev.key : '';
+        }
+    }, true);
+}());
 </script>
 
 </x-filament-panels::page>

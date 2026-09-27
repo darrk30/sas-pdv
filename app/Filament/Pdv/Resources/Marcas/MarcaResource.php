@@ -32,7 +32,7 @@ class MarcaResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Marcas';
 
-    protected static ?string $recordTitleAttribute = 'Marca';
+    protected static ?string $recordTitleAttribute = 'nombre';
 
     public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('marcas') && (auth()->user()?->can('marcas.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('marcas.crear') ?? false; }

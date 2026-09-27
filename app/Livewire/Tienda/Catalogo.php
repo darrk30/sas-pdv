@@ -8,6 +8,8 @@ use App\Models\Marca;
 use App\Models\Producto;
 use App\Models\Promocion;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -77,44 +79,44 @@ class Catalogo extends Component
                 'inventario',
                 'variantes' => fn($q) => $q->where('estado', 'activo')->with(['valores', 'inventario']),
             ])
+            ->select('productos.*')
+            ->leftJoinSub(
+                DB::table('inventarios as i')
+                    ->leftJoin('variantes as v', fn ($j) =>
+                        $j->on('v.id', '=', 'i.variante_id')->where('v.estado', 'activo')
+                    )
+                    ->where('i.empresa_id', $this->empresaId)
+                    ->where(fn ($q) => $q->whereNull('i.variante_id')->orWhereNotNull('v.id'))
+                    ->selectRaw('COALESCE(v.producto_id, i.producto_id) AS p_id, SUM(i.stock_reserva) AS stk')
+                    ->groupByRaw('COALESCE(v.producto_id, i.producto_id)'),
+                '_stk',
+                '_stk.p_id',
+                '=',
+                'productos.id'
+            )
             ->orderByRaw('
                 CASE
                     WHEN productos.control_de_stock = 0 THEN 0
                     WHEN productos.venta_sin_stock  = 1 THEN 0
-                    WHEN EXISTS (
-                        SELECT 1 FROM variantes v
-                        WHERE v.producto_id = productos.id AND v.estado = ?
-                    ) THEN
-                        -- Producto con variantes: solo sumar stock de variantes activas
-                        CASE WHEN (
-                            SELECT COALESCE(SUM(i.stock_reserva), 0)
-                            FROM inventarios i
-                            INNER JOIN variantes v ON i.variante_id = v.id
-                            WHERE v.producto_id = productos.id
-                              AND v.estado      = ?
-                              AND i.empresa_id  = productos.empresa_id
-                        ) > 0 THEN 0 ELSE 1 END
-                    ELSE
-                        -- Producto simple: inventario base (sin variante)
-                        CASE WHEN (
-                            SELECT COALESCE(SUM(i.stock_reserva), 0)
-                            FROM inventarios i
-                            WHERE i.producto_id = productos.id
-                              AND i.variante_id IS NULL
-                              AND i.empresa_id  = productos.empresa_id
-                        ) > 0 THEN 0 ELSE 1 END
+                    WHEN COALESCE(_stk.stk, 0) > 0    THEN 0
+                    ELSE 1
                 END ASC
-            ', ['activo', 'activo'])
-            ->orderBy('orden')
-            ->orderBy('nombre')
+            ')
+            ->orderBy('productos.orden')
+            ->orderBy('productos.nombre')
             ->paginate(25);
 
-        $marcaActiva     = $this->marcaId     ? Marca::find($this->marcaId)?->nombre         : null;
-        $categoriaActiva = $this->categoriaId ? Categoria::find($this->categoriaId)?->nombre : null;
+        $marcaActiva = $this->marcaId
+            ? Cache::remember("tienda_marca_{$this->marcaId}", 600, fn () => Marca::find($this->marcaId)?->nombre)
+            : null;
 
-        $tieneCategorias = Categoria::where('empresa_id', $this->empresaId)
-            ->where('estado', true)
-            ->exists();
+        $categoriaActiva = $this->categoriaId
+            ? Cache::remember("tienda_cat_{$this->categoriaId}", 600, fn () => Categoria::find($this->categoriaId)?->nombre)
+            : null;
+
+        $tieneCategorias = Cache::remember("tienda_tiene_cats_{$this->empresaId}", 300, fn () =>
+            Categoria::where('empresa_id', $this->empresaId)->where('estado', true)->exists()
+        );
 
         // Promociones vigentes hoy (solo sin filtros activos para no confundir)
         $hoy = Carbon::today();

@@ -105,6 +105,11 @@ class PagosRelationManager extends RelationManager
                                 ->send();
                             $action->halt();
                         }
+                    })
+                    ->after(function ($record, $livewire) {
+                        if ($record->estado === 'aprobado') {
+                            static::aplicarAprobacion($record, $livewire->ownerRecord);
+                        }
                     }),
             ])
             ->recordActions([
@@ -210,7 +215,15 @@ class PagosRelationManager extends RelationManager
                     ->modalDescription('El cliente deberá registrar un nuevo comprobante.')
                     ->action(fn ($record) => $record->update(['estado' => 'rechazado'])),
 
-                EditAction::make()->modalHeading('Editar Pago'),
+                EditAction::make()
+                    ->modalHeading('Editar Pago')
+                    ->after(function ($record, $livewire) {
+                        // Solo aplicar si el estado fue cambiado A 'aprobado' en esta edición.
+                        // Si ya era aprobado y solo se editaron datos históricos, no tocamos la suscripción.
+                        if ($record->estado === 'aprobado' && $record->wasChanged('estado')) {
+                            static::aplicarAprobacion($record, $livewire->ownerRecord);
+                        }
+                    }),
                 DeleteAction::make()->modalHeading('Eliminar Pago'),
             ])
             ->toolbarActions([
@@ -232,6 +245,56 @@ class PagosRelationManager extends RelationManager
                 ]),
             ])
             ->defaultSort('fecha_pago', 'desc');
+    }
+
+    protected static function aplicarAprobacion($record, $empresa): void
+    {
+        $suscripcion = $empresa->suscripcion;
+        if (! $suscripcion) return;
+
+        $ciclo       = $record->ciclo ?? $suscripcion->ciclo ?? 'mensual';
+        $nuevoPlanId = $record->plan_id ?? $suscripcion->plan_id;
+        $nuevoPlan   = Plan::find($nuevoPlanId);
+
+        $finActual    = $suscripcion->fecha_fin;
+        $periodoDesde = ($finActual && $finActual->isFuture())
+            ? $finActual->copy()->addDay()->startOfDay()
+            : now()->startOfDay();
+        $periodoHasta = $ciclo === 'anual'
+            ? $periodoDesde->copy()->addYear()->subDay()
+            : $periodoDesde->copy()->addMonth()->subDay();
+
+        $record->updateQuietly([
+            'estado'        => 'aprobado',
+            'plan_id'       => $nuevoPlanId,
+            'ciclo'         => $ciclo,
+            'periodo_desde' => $periodoDesde,
+            'periodo_hasta' => $periodoHasta,
+        ]);
+
+        $suscripcion->pagos()
+            ->where('estado', 'pendiente')
+            ->where('id', '!=', $record->id)
+            ->update(['estado' => 'rechazado']);
+
+        $suscripcion->update([
+            'plan_id'            => $nuevoPlanId,
+            'estado'             => EstadoGeneral::Activo,
+            'fecha_inicio'       => $periodoDesde,
+            'fecha_fin'          => $periodoHasta,
+            'ciclo'              => $ciclo,
+            'precio_pagado'      => $record->monto,
+            'es_prueba_gratuita' => false,
+        ]);
+
+        $empresa->update([
+            'estado'                       => 'activo',
+            'suscripcion_proxima_a_vencer' => false,
+        ]);
+
+        if ($nuevoPlan?->modulos_activos) {
+            $empresa->update(['modulos_activos' => $nuevoPlan->modulos_activos]);
+        }
     }
 
     public function form(Schema $schema): Schema

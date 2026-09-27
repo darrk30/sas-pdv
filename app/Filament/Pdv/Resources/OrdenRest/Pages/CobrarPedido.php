@@ -12,6 +12,7 @@ use App\Events\VentaCompletada;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use App\Filament\Pdv\Pages\MapaMesasPage;
 use App\Filament\Pdv\Resources\OrdenRest\OrdenRestResource;
+use Filament\Actions\Action as FilamentAction;
 use App\Models\Cliente;
 use Livewire\Attributes\On;
 use App\Models\MetodoPago;
@@ -591,9 +592,34 @@ class CobrarPedido extends Page
         return ['record' => $this->orden];
     }
 
-    public function getHeading(): string
+    public function getHeading(): string|\Illuminate\Contracts\Support\Htmlable
     {
-        return '';
+        $num = $this->orden?->numero ?? '';
+        return "Cobrar Pedido #{$num}";
+    }
+
+    public function getSubheading(): string|\Illuminate\Contracts\Support\Htmlable|null
+    {
+        if (! $this->orden) return null;
+        $parts = [];
+        if ($this->orden->mesa) {
+            $parts[] = 'Mesa: ' . $this->orden->mesa->nombre;
+            if ($this->orden->mesa->piso) $parts[] = $this->orden->mesa->piso->nombre;
+        }
+        $parts[] = 'Total: S/ ' . number_format((float) $this->orden->total, 2);
+        return implode(' · ', $parts);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            FilamentAction::make('volver')
+                ->label('Volver al pedido')
+                ->icon('heroicon-o-arrow-left')
+                ->color('gray')
+                ->outlined()
+                ->action(fn () => $this->volverAlPedido()),
+        ];
     }
 
     public function getBreadcrumbs(): array

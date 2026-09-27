@@ -5,7 +5,7 @@ namespace App\Models;
 use App\Enums\EstadoGeneral;
 use App\Enums\EstadoStock;
 use App\Notifications\StockBajoNotification;
-use App\Services\EtiquetaStockService;
+use App\Jobs\SincronizarEtiquetaStockJob;
 use App\Traits\BelongsToEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -54,8 +54,7 @@ class Inventario extends Model
             }
 
             if ($inventario->producto_id) {
-                app(EtiquetaStockService::class)
-                    ->sincronizar($inventario->producto_id, $inventario->empresa_id);
+                SincronizarEtiquetaStockJob::dispatch($inventario->producto_id, $inventario->empresa_id);
             }
 
             // Solo notifica si hay control de stock y el estado cambió a uno crítico

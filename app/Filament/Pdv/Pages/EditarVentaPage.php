@@ -13,18 +13,25 @@ use App\Models\Producto;
 use App\Models\Serie;
 use App\Models\Variante;
 use App\Models\Venta;
+use App\Models\VentaDetalle;
 use App\Services\FacturadorService;
 use App\Services\VentaService;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Actions\Action as FilamentAction;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
-use UnitEnum;
 
-class EditarVentaPage extends Page
+class EditarVentaPage extends Page implements HasTable
 {
     use HasFullWidthPage;
+    use InteractsWithTable;
 
     protected string $view = 'filament.pdv.pages.editar-venta';
     protected static string|BackedEnum|null $navigationIcon = null;
@@ -196,7 +203,7 @@ class EditarVentaPage extends Page
                 'key'         => $key,
                 'tipo'        => $tipo,
                 'id'          => $tipo === 'variante' ? $det->variante_id : ($tipo === 'promocion' ? $det->promocion_id : $det->producto_id),
-                'nombre'      => $det->descripcion,
+                'nombre'      => str_replace(' (Cortesía)', '', $det->descripcion),
                 'precio'      => (float) $det->precio_unitario,
                 'cantidad'    => (float) $det->cantidad,
                 'costo'       => (float) $det->costo_unitario,
@@ -211,7 +218,7 @@ class EditarVentaPage extends Page
 
     public function updatedSerieId(): void
     {
-        if (! $this->serieId) return;
+        if (! $this->serieId) { return; }
 
         $serie = collect($this->seriesDisponibles)->firstWhere('id', $this->serieId);
         $tipoVal = $serie['tipo'] ?? null;
@@ -259,7 +266,7 @@ class EditarVentaPage extends Page
     public function seleccionarCliente(int $id): void
     {
         $c = Cliente::find($id);
-        if (! $c) return;
+        if (! $c) { return; }
         $this->clienteId       = $c->id;
         $this->clienteNombre   = $c->nombre_completo;
         $this->clienteBusqueda = $c->nombre_completo;
@@ -321,64 +328,94 @@ class EditarVentaPage extends Page
 
     public function agregarProducto(int $productoId, ?int $varianteId = null): void
     {
+        if (! $this->venta) { return; }
+
         if ($varianteId) {
             $variante = Variante::find($varianteId);
             $producto = $variante ? Producto::find($variante->producto_id) : null;
-            if (! $variante || ! $producto) return;
+            if (! $variante || ! $producto) { return; }
 
-            $key = "v:{$varianteId}";
-            if (isset($this->items[$key])) {
-                $items = $this->items;
-                $items[$key]['cantidad'] += 1;
-                $this->items = $items;
+            $existing = VentaDetalle::where('venta_id', $this->venta->id)
+                ->where('variante_id', $varianteId)->first();
+
+            if ($existing) {
+                $existing->update(['cantidad' => $existing->cantidad + 1]);
             } else {
-                $this->items[$key] = [
-                    'key'         => $key,
+                $this->crearDetalleEnDb([
                     'tipo'        => 'variante',
                     'id'          => $varianteId,
                     'nombre'      => $producto->nombre . ' — ' . ($variante->nombre ?? ''),
                     'precio'      => (float) ($variante->precio_final ?? $producto->precio_venta),
                     'cantidad'    => 1,
                     'costo'       => (float) ($variante->precio_costo ?? 0),
-                    'cortesia'    => false,
                     'producto_id' => $producto->id,
                     'variante_id' => $varianteId,
-                ];
+                ]);
             }
         } else {
             $producto = Producto::find($productoId);
-            if (! $producto) return;
+            if (! $producto) { return; }
 
-            $key = "p:{$productoId}";
-            if (isset($this->items[$key])) {
-                $items = $this->items;
-                $items[$key]['cantidad'] += 1;
-                $this->items = $items;
+            $existing = VentaDetalle::where('venta_id', $this->venta->id)
+                ->where('producto_id', $productoId)->whereNull('variante_id')->first();
+
+            if ($existing) {
+                $existing->update(['cantidad' => $existing->cantidad + 1]);
             } else {
-                $this->items[$key] = [
-                    'key'         => $key,
+                $this->crearDetalleEnDb([
                     'tipo'        => 'producto',
                     'id'          => $productoId,
                     'nombre'      => $producto->nombre,
                     'precio'      => (float) $producto->precio_venta,
                     'cantidad'    => 1,
                     'costo'       => (float) ($producto->precio_costo ?? 0),
-                    'cortesia'    => false,
                     'producto_id' => $productoId,
                     'variante_id' => null,
-                ];
+                ]);
             }
         }
 
+        $this->recargarItems();
         $this->busquedaProd   = '';
         $this->resultadosProd = [];
+    }
+
+    private function crearDetalleEnDb(array $item): void
+    {
+        $igvPct = (float) (Filament::getTenant()->igv_porcentaje ?? 18) / 100;
+        $calcs  = VentaDetalle::calcular(
+            (float) $item['cantidad'],
+            (float) $item['precio'],
+            (float) ($item['costo'] ?? 0),
+            0,
+            $igvPct
+        );
+        VentaDetalle::create([
+            'venta_id'        => $this->venta->id,
+            'tipo_item'       => $item['tipo'],
+            'producto_id'     => $item['producto_id'],
+            'variante_id'     => $item['variante_id'] ?? null,
+            'descripcion'     => $item['nombre'],
+            'cantidad'        => $item['cantidad'],
+            'precio_unitario' => $item['precio'],
+            'valor_unitario'  => $calcs['valorUnitario'],
+            'costo_unitario'  => $item['costo'] ?? 0,
+            'descuento'       => 0,
+            'subtotal'        => $calcs['subtotal'],
+            'valor_total'     => $calcs['valorTotal'],
+            'igv'             => $calcs['igv'],
+            'tip_afe_igv'     => '10',
+            'unidad'          => 'NIU',
+            'total'           => $calcs['total'],
+            'costo_total'     => $calcs['costoTotal'],
+        ]);
     }
 
     // ── Cantidad ──────────────────────────────────────────────────────────────
 
     public function incrementarCantidad(string $key): void
     {
-        if (! isset($this->items[$key])) return;
+        if (! isset($this->items[$key])) { return; }
         $items = $this->items;
         $items[$key]['cantidad'] = (float) $items[$key]['cantidad'] + 1;
         $this->items = $items;
@@ -386,7 +423,7 @@ class EditarVentaPage extends Page
 
     public function decrementarCantidad(string $key): void
     {
-        if (! isset($this->items[$key])) return;
+        if (! isset($this->items[$key])) { return; }
         $items = $this->items;
         $nueva = (float) $items[$key]['cantidad'] - 1;
         if ($nueva <= 0) {
@@ -400,7 +437,7 @@ class EditarVentaPage extends Page
     public function actualizarCantidad(string $key, string $val): void
     {
         $cant = max(0.001, round((float) $val, 3));
-        if (! isset($this->items[$key])) return;
+        if (! isset($this->items[$key])) { return; }
         $items = $this->items;
         $items[$key]['cantidad'] = $cant;
         $this->items = $items;
@@ -409,9 +446,21 @@ class EditarVentaPage extends Page
     public function actualizarPrecio(string $key, string $val): void
     {
         $precio = max(0, round((float) $val, 2));
-        if (! isset($this->items[$key])) return;
+        if (! isset($this->items[$key])) { return; }
         $items = $this->items;
         $items[$key]['precio'] = $precio;
+        // Si tenía precio 0 (cortesía) y se le pone un precio real, ya no es cortesía
+        if ($precio > 0 && ($items[$key]['cortesia'] ?? false)) {
+            $items[$key]['cortesia'] = false;
+        }
+        $this->items = $items;
+    }
+
+    public function quitarCortesia(string $key): void
+    {
+        if (! isset($this->items[$key])) { return; }
+        $items = $this->items;
+        $items[$key]['cortesia'] = false;
         $this->items = $items;
     }
 
@@ -451,7 +500,7 @@ class EditarVentaPage extends Page
     public function actualizarMetodoPago(int $idx, int $metodoPagoId): void
     {
         $metodo = collect($this->metodosPago)->firstWhere('id', $metodoPagoId);
-        if (! $metodo) return;
+        if (! $metodo) { return; }
 
         // Crédito solo para Ticket
         if (($metodo['condicion_pago'] ?? 'contado') === 'credito' && ! $this->esTiketActual()) {
@@ -507,7 +556,7 @@ class EditarVentaPage extends Page
 
     public function getOpGravadas(): float
     {
-        if ($this->esTiketActual()) return 0.0;
+        if ($this->esTiketActual()) { return 0.0; }
         $igvPct = (float) ($this->venta?->empresa?->igv_porcentaje ?? 18);
         $tasa   = $igvPct / 100;
         return round($this->getTotal() / (1 + $tasa), 2);
@@ -515,7 +564,7 @@ class EditarVentaPage extends Page
 
     public function getIgv(): float
     {
-        if ($this->esTiketActual()) return 0.0;
+        if ($this->esTiketActual()) { return 0.0; }
         return round($this->getTotal() - $this->getOpGravadas(), 2);
     }
 
@@ -533,7 +582,7 @@ class EditarVentaPage extends Page
             return;
         }
 
-        if (! $this->venta) return;
+        if (! $this->venta) { return; }
 
         // Verificar cobertura de pagos antes de proceder
         $total   = $this->getTotal();
@@ -568,7 +617,7 @@ class EditarVentaPage extends Page
 
     private function ejecutarGuardado(): void
     {
-        if (! $this->venta) return;
+        if (! $this->venta) { return; }
 
         $this->guardando = true;
 
@@ -693,6 +742,165 @@ class EditarVentaPage extends Page
                 'sunat_mensaje' => $e->getMessage(),
                 'estado_sunat'  => EstadoSunat::Error->value,
             ]);
+        }
+    }
+
+    // ── Tabla Filament de ítems ───────────────────────────────────────────────
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(fn () => VentaDetalle::query()->where('venta_id', $this->venta?->id ?? 0))
+            ->columns([
+                TextColumn::make('descripcion')
+                    ->label('Producto')
+                    ->formatStateUsing(fn ($state) => str_replace(' (Cortesía)', '', $state))
+                    ->description(function (VentaDetalle $record) {
+                        $key = $this->itemKey($record);
+                        $esCortesia = $this->items[$key]['cortesia'] ?? str_contains($record->descripcion, '(Cortesía)');
+                        return $esCortesia
+                            ? new \Illuminate\Support\HtmlString('<span class="ev-cortesia-badge">🎁 Cortesía &nbsp;<button wire:click="quitarCortesiaDetalle('.$record->id.')" class="ev-cortesia-badge__remove" title="Quitar cortesía">×</button></span>')
+                            : null;
+                    })
+                    ->wrap()
+                    ->grow()
+                    ->extraCellAttributes(['style' => 'min-width:370px']),
+
+                TextInputColumn::make('precio_unitario')
+                    ->label('Precio')
+                    ->type('number')
+                    ->step('0.01')
+                    ->getStateUsing(function (VentaDetalle $record) {
+                        $key = $this->itemKey($record);
+                        $precio = (float) ($this->items[$key]['precio'] ?? $record->precio_unitario);
+                        return number_format($precio, 2, '.', '');
+                    })
+                    ->extraInputAttributes(['style' => 'text-align:center;'])
+                    ->updateStateUsing(function (VentaDetalle $record, $state) {
+                        $key = $this->itemKey($record);
+                        if (! isset($this->items[$key])) { return; }
+                        $precio = max(0.01, round((float) $state, 2));
+                        $items = $this->items;
+                        $items[$key]['precio'] = $precio;
+                        if ($precio > 0 && ($items[$key]['cortesia'] ?? false)) {
+                            $items[$key]['cortesia'] = false;
+                        }
+                        $this->items = $items;
+                    }),
+
+                TextInputColumn::make('cantidad')
+                    ->label('Cantidad')
+                    ->type('number')
+                    ->step('1')
+                    ->getStateUsing(function (VentaDetalle $record) {
+                        $key = $this->itemKey($record);
+                        $cantidad = (float) ($this->items[$key]['cantidad'] ?? $record->cantidad);
+                        return $cantidad == (int) $cantidad
+                            ? (string) (int) $cantidad
+                            : rtrim(number_format($cantidad, 3, '.', ''), '0');
+                    })
+                    ->extraInputAttributes(['style' => 'text-align:center;'])
+                    ->updateStateUsing(function (VentaDetalle $record, $state) {
+                        $key = $this->itemKey($record);
+                        if (! isset($this->items[$key])) { return; }
+                        $items = $this->items;
+                        $items[$key]['cantidad'] = max(0.001, round((float) $state, 3));
+                        $this->items = $items;
+                    }),
+
+                TextColumn::make('total_calculado')
+                    ->label('Subtotal')
+                    ->getStateUsing(function (VentaDetalle $record) {
+                        $key = $this->itemKey($record);
+                        $precio   = (float) ($this->items[$key]['precio']   ?? $record->precio_unitario);
+                        $cantidad = (float) ($this->items[$key]['cantidad'] ?? $record->cantidad);
+                        return number_format($precio * $cantidad, 2);
+                    })
+                    ->prefix('S/ ')
+                    ->alignEnd()
+                    ->fontFamily('mono'),
+            ])
+            ->recordActions([
+                FilamentAction::make('eliminar')
+                    ->icon('heroicon-m-trash')
+                    ->color('danger')
+                    ->iconButton()
+                    ->requiresConfirmation(false)
+                    ->action(function (VentaDetalle $record) {
+                        $record->delete();
+                        $this->recargarItems();
+                    }),
+            ])
+            ->paginated(false)
+            ->striped(false)
+            ->emptyStateHeading('Sin productos')
+            ->emptyStateDescription('Usa el buscador de arriba para agregar productos.')
+            ->emptyStateIcon('heroicon-o-inbox');
+    }
+
+    private function itemKey(VentaDetalle $det): string
+    {
+        $tipo = $det->tipo_item instanceof \App\Enums\TipoItem
+            ? $det->tipo_item->value
+            : (string) $det->tipo_item;
+        return match ($tipo) {
+            'variante'  => "v:{$det->variante_id}",
+            'promocion' => "promo:{$det->promocion_id}",
+            default     => "p:{$det->producto_id}",
+        };
+    }
+
+    public function recargarItems(): void
+    {
+        if (! $this->venta) { return; }
+
+        $this->items = [];
+        foreach (VentaDetalle::where('venta_id', $this->venta->id)->get() as $det) {
+            $tipo = $det->tipo_item instanceof \App\Enums\TipoItem
+                ? $det->tipo_item->value
+                : (string) $det->tipo_item;
+            $key = match ($tipo) {
+                'variante'  => "v:{$det->variante_id}",
+                'promocion' => "promo:{$det->promocion_id}",
+                default     => "p:{$det->producto_id}",
+            };
+            $this->items[$key] = [
+                'key'         => $key,
+                'tipo'        => $tipo,
+                'id'          => $tipo === 'variante' ? $det->variante_id : ($tipo === 'promocion' ? $det->promocion_id : $det->producto_id),
+                'nombre'      => str_replace(' (Cortesía)', '', $det->descripcion),
+                'precio'      => (float) $det->precio_unitario,
+                'cantidad'    => (float) $det->cantidad,
+                'costo'       => (float) $det->costo_unitario,
+                'cortesia'    => str_contains($det->descripcion, '(Cortesía)'),
+                'producto_id' => $det->producto_id,
+                'variante_id' => $det->variante_id,
+            ];
+        }
+    }
+
+    public function quitarCortesiaDetalle(int $detalleId): void
+    {
+        $det = VentaDetalle::find($detalleId);
+        if (! $det) { return; }
+
+        $tipo = $det->tipo_item instanceof \App\Enums\TipoItem
+            ? $det->tipo_item->value
+            : (string) $det->tipo_item;
+
+        $precioRestaurado = match ($tipo) {
+            'variante' => (float) (\App\Models\Variante::find($det->variante_id)?->precio_final ?? $det->precio_unitario),
+            default    => (float) (\App\Models\Producto::find($det->producto_id)?->precio_venta ?? $det->precio_unitario),
+        };
+
+        $precioFinal = max(0.01, $precioRestaurado);
+
+        $key = $this->itemKey($det);
+        if (isset($this->items[$key])) {
+            $items = $this->items;
+            $items[$key]['cortesia'] = false;
+            $items[$key]['precio']   = $precioFinal;
+            $this->items = $items;
         }
     }
 

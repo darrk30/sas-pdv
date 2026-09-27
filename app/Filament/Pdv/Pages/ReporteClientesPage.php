@@ -4,6 +4,7 @@ namespace App\Filament\Pdv\Pages;
 
 use App\Enums\EstadoVenta;
 use BackedEnum;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -15,29 +16,46 @@ use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use Livewire\WithPagination;
 use UnitEnum;
 
-class ReporteClientesPage extends Page implements HasForms
+class ReporteClientesPage extends Page implements HasForms, HasTable
 {
     use InteractsWithForms;
-    use WithPagination;
+    use InteractsWithTable;
     use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.reporte-clientes';
     protected static bool $shouldRegisterNavigation = false;
     protected static ?string $title = 'Reporte de Clientes';
 
+    public function getHeading(): string { return static::$title ?? ''; }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [\App\Filament\Pdv\Widgets\ReporteClientesStatsWidget::class];
+    }
+
+    public function getWidgetData(): array
+    {
+        return [
+            'statsData' => $this->getResumen(),
+        ];
+    }
+
     public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('clientes') && (auth()->user()?->can('reportes.clientes') ?? false); }
 
-
-    public ?string $filtroRango          = 'hoy';
-    public ?string $filtroFechaDesde     = null;
-    public ?string $filtroFechaHasta     = null;
-    public ?string $filtroBuscarCliente  = null;
+    public ?string $filtroRango         = 'hoy';
+    public ?string $filtroFechaDesde    = null;
+    public ?string $filtroFechaHasta    = null;
+    public ?string $filtroBuscarCliente = null;
 
     public function mount(): void
     {
@@ -54,14 +72,20 @@ class ReporteClientesPage extends Page implements HasForms
     public function form(Schema $schema): Schema
     {
         return $schema->components([
-            Grid::make(['default' => 1, 'sm' => 2, 'md' => 5])->schema([
+            Section::make('Filtros')
+                ->description('Filtra los clientes por período o nombre.')
+                ->columns(1)
+                ->collapsible()
+                ->collapsed(true)
+                ->schema([
+                    Grid::make(['default' => 1, 'sm' => 2, 'md' => 5])->schema([
 
                 Select::make('filtroRango')
                     ->label('Período')
                     ->options([
-                        'hoy'         => 'Hoy',
-                        'semana'      => 'Esta semana',
-                        'mes'         => 'Este mes',
+                        'hoy'           => 'Hoy',
+                        'semana'        => 'Esta semana',
+                        'mes'           => 'Este mes',
                         'personalizado' => 'Personalizado',
                     ])
                     ->native(false)
@@ -94,6 +118,7 @@ class ReporteClientesPage extends Page implements HasForms
                         ->action(fn() => $this->limpiarFiltros()),
                 ])->verticallyAlignEnd(),
 
+            ]),
             ]),
         ]);
     }
@@ -180,20 +205,76 @@ class ReporteClientesPage extends Page implements HasForms
         ];
     }
 
-    public function getClientes(): LengthAwarePaginator
+    public function table(Table $table): Table
     {
-        return (clone $this->baseQuery())
-            ->selectRaw("
-                v.cliente_nombre                  AS cliente,
-                v.cliente_num_doc                 AS num_doc,
-                v.cliente_tipo_doc                AS tipo_doc,
-                COUNT(*)                              AS compras,
-                COALESCE(SUM(v.total), 0)             AS total_gastado,
-                COALESCE(SUM(v.saldo_pendiente), 0)   AS credito_pendiente,
-                MAX(v.created_at)                     AS ultima_compra
-            ")
-            ->groupBy('v.cliente_nombre', 'v.cliente_num_doc', 'v.cliente_tipo_doc')
-            ->orderByDesc('total_gastado')
-            ->paginate(25);
+        return $table
+            ->records(function (int $page, int|string|null $recordsPerPage): LengthAwarePaginator {
+                $perPage = is_int($recordsPerPage) ? $recordsPerPage : 25;
+
+                return (clone $this->baseQuery())
+                    ->selectRaw("
+                        v.cliente_nombre                       AS cliente,
+                        v.cliente_num_doc                      AS num_doc,
+                        v.cliente_tipo_doc                     AS tipo_doc,
+                        COUNT(*)                               AS compras,
+                        COALESCE(SUM(v.total), 0)              AS total_gastado,
+                        COALESCE(SUM(v.saldo_pendiente), 0)    AS credito_pendiente,
+                        MAX(v.created_at)                      AS ultima_compra
+                    ")
+                    ->groupBy('v.cliente_nombre', 'v.cliente_num_doc', 'v.cliente_tipo_doc')
+                    ->orderByDesc('total_gastado')
+                    ->paginate($perPage, ['*'], 'page', $page)
+                    ->through(fn($row) => (array) $row);
+            })
+            ->columns([
+                TextColumn::make('cliente')
+                    ->label('Cliente')
+                    ->weight('semibold')
+                    ->searchable()
+                    ->url(fn($record): string => ReporteClienteComprasPage::getUrl([
+                        'clienteNombre' => $record['cliente'],
+                        'clienteNumDoc' => $record['num_doc'] ?? '',
+                    ]))
+                    ->color('primary'),
+
+                TextColumn::make('num_doc')
+                    ->label('Documento')
+                    ->formatStateUsing(fn($state, $record): string =>
+                        $state ? strtoupper($record['tipo_doc'] ?? '') . ' ' . $state : '—'
+                    )
+                    ->fontFamily('mono')
+                    ->color('gray'),
+
+                TextColumn::make('compras')
+                    ->label('N° Compras')
+                    ->numeric()
+                    ->alignRight(),
+
+                TextColumn::make('total_gastado')
+                    ->label('Total facturado')
+                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->alignRight()
+                    ->color('success'),
+
+                TextColumn::make('credito_pendiente')
+                    ->label('Crédito pend.')
+                    ->formatStateUsing(fn($state): string =>
+                        (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—'
+                    )
+                    ->alignRight()
+                    ->color(fn($state): string => (float) $state > 0 ? 'warning' : 'gray'),
+
+                TextColumn::make('ultima_compra')
+                    ->label('Última compra')
+                    ->formatStateUsing(fn($state): string =>
+                        $state ? Carbon::parse($state)->format('d/m/Y') : '—'
+                    )
+                    ->alignRight()
+                    ->color('gray'),
+            ])
+            ->paginated([25, 50, 100])
+            ->emptyStateHeading('Sin clientes')
+            ->emptyStateDescription('No hay ventas con cliente identificado en el período seleccionado.')
+            ->emptyStateIcon('heroicon-o-users');
     }
 }
