@@ -286,31 +286,32 @@ class ProductCatalog extends Component
             $query->where('categoria_id', $this->categoriaId);
         }
 
-        // Agrega stock disponible por producto en un solo JOIN (en lugar de 3 subconsultas correlacionadas por fila)
-        $stockSub = DB::table('inventarios as i')
-            ->leftJoin('variantes as v', fn ($j) =>
-                $j->on('v.id', '=', 'i.variante_id')->where('v.estado', 'activo')
-            )
-            ->where('i.empresa_id', $empresaId)
-            ->where(fn ($q) => $q->whereNull('i.variante_id')->orWhereNotNull('v.id'))
-            ->selectRaw('COALESCE(v.producto_id, i.producto_id) AS p_id, SUM(i.stock_reserva) AS stk')
-            ->groupByRaw('COALESCE(v.producto_id, i.producto_id)');
+        // Stock cacheado 30s por empresa — se guarda como array para compatibilidad con Redis
+        $stockMap = Cache::remember("catalog_stock_{$empresaId}", 30, fn () =>
+            DB::table('inventarios as i')
+                ->leftJoin('variantes as v', fn ($j) =>
+                    $j->on('v.id', '=', 'i.variante_id')->where('v.estado', 'activo')
+                )
+                ->where('i.empresa_id', $empresaId)
+                ->where(fn ($q) => $q->whereNull('i.variante_id')->orWhereNotNull('v.id'))
+                ->selectRaw('COALESCE(v.producto_id, i.producto_id) AS p_id, SUM(i.stock_reserva) AS stk')
+                ->groupByRaw('COALESCE(v.producto_id, i.producto_id)')
+                ->pluck('stk', 'p_id')
+                ->toArray()
+        );
 
-        return $query
+        $productos = $query
             ->select('productos.*')
-            ->leftJoinSub($stockSub, '_stk', '_stk.p_id', '=', 'productos.id')
-            ->orderByRaw("
-                CASE
-                    WHEN productos.control_de_stock = 0 THEN 0
-                    WHEN productos.venta_sin_stock  = 1 THEN 0
-                    WHEN COALESCE(_stk.stk, 0) > 0   THEN 0
-                    ELSE 1
-                END ASC
-            ")
             ->orderBy('productos.orden')
             ->orderBy('productos.nombre')
             ->take($this->perPage)
             ->get();
+
+        // Ordenar en PHP: sin stock al fondo (igual que el ORDER BY anterior)
+        return $productos->sortBy(function ($p) use ($stockMap) {
+            if (! $p->control_de_stock || $p->venta_sin_stock) return 0;
+            return (($stockMap[$p->id] ?? 0) > 0) ? 0 : 1;
+        })->values();
     }
 
     public function render()
