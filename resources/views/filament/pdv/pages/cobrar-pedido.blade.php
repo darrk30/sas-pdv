@@ -1,333 +1,415 @@
 <x-filament-panels::page>
-
-<link rel="stylesheet" href="{{ asset('css/punto-de-venta.css') }}?v={{ filemtime(public_path('css/punto-de-venta.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/cobrar-pedido.css') }}?v={{ filemtime(public_path('css/cobrar-pedido.css')) }}">
 
 @php
-    $orden    = $record->load(['detalles', 'mesa.piso', 'vendedor']);
-    $mesa     = $orden->mesa;
-    $series   = $this->getSeries();
-    $metodos  = $this->getMetodosPago();
-    $totalDesc = $this->getTotalConDescuento();
+    $orden       = $record->load(['detalles', 'mesa.piso', 'vendedor']);
+    $series      = $this->getSeries();
+    $metodos     = $this->getMetodosPago();
+    $totalBase   = (float) $orden->total;
+    $descuento   = $this->getDescuento();
+    $totalDesc   = $this->getTotalConDescuento();
     $totalPagado = collect($pagosAgregados)->sum('monto');
     $vuelto      = max(0, $totalPagado - $totalDesc);
-    $metodoActual   = $metodos->firstWhere('id', $metodoPagoId);
-    $requiereRef    = (bool) ($metodoActual?->requiere_referencia ?? false);
-    $esCortesiaTotal = $totalDesc <= 0;
-    $puedeConfirmar  = $esCortesiaTotal || (! empty($pagosAgregados) && $metodos->isNotEmpty());
-    $empresa  = \Filament\Facades\Filament::getTenant();
-    $tieneFE  = $empresa->tieneFacturacionElectronica();
+    $empresa     = \Filament\Facades\Filament::getTenant();
+    $tieneFE     = $empresa->tieneFacturacionElectronica();
+    $igvPct      = (float) ($empresa->igv_porcentaje ?? 18);
+    $esFE        = in_array($tipoComprobante, ['boleta', 'factura']);
+    $baseImpon   = $esFE ? round($totalDesc / (1 + $igvPct / 100), 2) : 0;
+    $igvMonto    = $esFE ? round($totalDesc - $baseImpon, 2) : 0;
+
+    $metodoActual  = $metodos->firstWhere('id', $metodoPagoId);
+    $esCredito     = $metodoActual?->condicion_pago === \App\Enums\CondicionPago::Credito;
+    $puedeConfirmar = $totalDesc <= 0 || ! empty($pagosAgregados);
+
+    $iconoPorNombre = function (string $nombre): string {
+        $n = mb_strtolower($nombre);
+        if (str_contains($n, 'efectivo') || str_contains($n, 'cash'))
+            return 'heroicon-o-banknotes';
+        if (str_contains($n, 'tarjeta') || str_contains($n, 'visa') || str_contains($n, 'master') || str_contains($n, 'débito'))
+            return 'heroicon-o-credit-card';
+        if (str_contains($n, 'yape') || str_contains($n, 'plin') || str_contains($n, 'lukita') || str_contains($n, 'qr'))
+            return 'heroicon-o-device-phone-mobile';
+        if (str_contains($n, 'transf') || str_contains($n, 'banco') || str_contains($n, 'deposit'))
+            return 'heroicon-o-building-library';
+        return 'heroicon-o-currency-dollar';
+    };
+
+    $comprobantes = [
+        ['tipo' => 'boleta',  'label' => 'Boleta',  'desc' => 'Venta al consumidor final', 'icon' => 'heroicon-o-document-text',  'soloFE' => true],
+        ['tipo' => 'factura', 'label' => 'Factura', 'desc' => 'Con RUC',                   'icon' => 'heroicon-o-document-check', 'soloFE' => true],
+        ['tipo' => 'ticket',  'label' => 'Ticket',  'desc' => 'Uso interno',               'icon' => 'heroicon-o-ticket',         'soloFE' => false],
+    ];
 @endphp
 
-{{-- Modal nuevo cliente (componente compartido con PDV) --}}
 <livewire:pdv.nuevo-cliente-modal wire:key="nuevo-cliente-modal" />
-
-{{-- Modal venta completada / impresión (componente compartido con PDV) --}}
 <livewire:pdv.venta-completada-modal wire:key="venta-completada-modal" />
 
-<div class="cobrar-root">
+<div class="cp-layout">
 
-    {{-- Header --}}
-    <div class="pdv-header">
-        <div class="pdv-header__left">
-            <p class="pdv-header__titulo">Cobrar Pedido #{{ $orden->numero }}</p>
-            <p class="pdv-header__sub">
-                @if($mesa)Mesa: <strong>{{ $mesa->nombre }}</strong>@if($mesa->piso) · {{ $mesa->piso->nombre }}@endif &nbsp;·&nbsp;@endif
-                Total: <strong>S/ {{ number_format($orden->total, 2) }}</strong>
-            </p>
-        </div>
-        <div class="pdv-header__right">
-            <button wire:click="volverAlPedido" class="mm-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:.9rem;height:.9rem;flex-shrink:0;" aria-hidden="true"><path fill-rule="evenodd" d="M11.03 3.97a.75.75 0 0 1 0 1.06l-6.22 6.22H21a.75.75 0 0 1 0 1.5H4.81l6.22 6.22a.75.75 0 1 1-1.06 1.06l-7.5-7.5a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
-                Volver al pedido
-            </button>
-        </div>
-    </div>
+    {{-- ═══════════════════ COLUMNA IZQUIERDA ═══════════════════ --}}
+    <div class="cp-left">
 
-    <div class="cobrar-wrap">
-
-        {{-- ── Columna izquierda: resumen + descuento ── --}}
-        <div class="cobrar-left">
-            <div class="cobrar-card">
-                <p class="cobrar-sec-title">Detalle del pedido</p>
-                <div class="cobrar-items">
-                    @foreach($orden->detalles as $det)
-                    <div class="cobrar-item">
-                        <span class="cobrar-item__cant">{{ (int) $det->cantidad }}×</span>
-                        <span class="cobrar-item__nombre">{{ $det->descripcion }}</span>
-                        <span class="cobrar-item__total">S/ {{ number_format($det->total, 2) }}</span>
-                    </div>
-                    @endforeach
-                </div>
-
-                <div class="cobrar-total-row">
-                    <span>Subtotal</span>
-                    <span>S/ {{ number_format($orden->subtotal, 2) }}</span>
-                </div>
-
-                {{-- Descuento inline --}}
-                <div class="cobrar-desc-row">
-                    <label class="cobrar-desc-label">Descuento S/</label>
-                    <input
-                        type="number"
-                        wire:model.live.debounce.500ms="descuentoInput"
-                        class="cobrar-desc-input"
-                        min="0"
-                        max="{{ $orden->total }}"
-                        step="0.01"
-                        placeholder="0.00"
-                    />
-                </div>
-
-                @if($this->getDescuento() > 0)
-                <div class="cobrar-total-row cobrar-total-row--descuento">
-                    <span>Descuento</span>
-                    <span>−S/ {{ number_format($this->getDescuento(), 2) }}</span>
-                </div>
-                @endif
-
-                <div class="cobrar-total-row cobrar-total-row--final">
-                    <span>Total a cobrar</span>
-                    <span>S/ {{ number_format($totalDesc, 2) }}</span>
-                </div>
+        {{-- 1. Tipo de comprobante --}}
+        <div class="cp-section">
+            <div class="cp-section__head">
+                <x-filament::icon icon="heroicon-o-document-duplicate" class="cp-section__icon" />
+                <span class="cp-section__title">Tipo de comprobante</span>
+                <span class="cp-section__hint">Selecciona el tipo de comprobante para la venta</span>
+            </div>
+            <div class="cp-comp-grid">
+                @foreach($comprobantes as $c)
+                    @if($c['soloFE'] && ! $tieneFE) @continue @endif
+                    @php $serie = $series->firstWhere('tipo.value', $c['tipo']); @endphp
+                    @if(! $serie) @continue @endif
+                    @php $activo = $tipoComprobante === $c['tipo']; @endphp
+                    <button
+                        class="cp-comp-card {{ $activo ? 'cp-comp-card--activo' : '' }}"
+                        wire:click="seleccionarComprobante('{{ $c['tipo'] }}')"
+                    >
+                        <x-filament::icon icon="{{ $c['icon'] }}" class="cp-comp-card__icon {{ $activo ? 'cp-comp-card__icon--activo' : '' }}" />
+                        <div class="cp-comp-card__info">
+                            <span class="cp-comp-card__label">{{ $c['label'] }}</span>
+                            <span class="cp-comp-card__desc">
+                                @if($activo && $c['tipo'] === 'factura' && $clienteTipoDoc !== 'ruc')
+                                    <span style="color:#dc2626;">Requiere RUC</span>
+                                @else
+                                    {{ $c['desc'] }}
+                                @endif
+                            </span>
+                        </div>
+                        <div class="cp-comp-card__radio {{ $activo ? 'cp-comp-card__radio--activo' : '' }}">
+                            @if($activo)<div class="cp-comp-card__radio-dot"></div>@endif
+                        </div>
+                    </button>
+                @endforeach
             </div>
         </div>
 
-        {{-- ── Columna derecha: comprobante + cliente + pago ── --}}
-        <div class="cobrar-right">
-            <div class="cobrar-card">
+        {{-- 2. Cliente --}}
+        <div class="cp-section">
+            <div class="cp-section__head">
+                <x-filament::icon icon="heroicon-o-user" class="cp-section__icon" />
+                <span class="cp-section__title">Cliente</span>
+                <button class="cp-link" wire:click="abrirModalNuevoCliente">
+                    <x-filament::icon icon="heroicon-m-plus" style="width:.8rem;height:.8rem;" />
+                    Nuevo cliente
+                </button>
+            </div>
 
-                {{-- ── Comprobante ── --}}
-                <p class="cobrar-sec-title">Comprobante</p>
-                <div class="pdv-comprobante" style="margin-bottom:.75rem;">
-                    @foreach([
-                        ['tipo' => 'factura', 'label' => 'Factura',  'color' => 'info',    'soloFE' => true],
-                        ['tipo' => 'boleta',  'label' => 'Boleta',   'color' => 'success', 'soloFE' => true],
-                        ['tipo' => 'ticket',  'label' => 'Ticket',   'color' => 'warning', 'soloFE' => false],
-                    ] as $c)
-                        @if($c['soloFE'] && ! $tieneFE) @continue @endif
-                        @php
-                            $serieTipo = $series->firstWhere('tipo.value', $c['tipo']);
-                            $activo    = $tipoComprobante === $c['tipo'];
-                            $invalido  = $activo && $c['tipo'] === 'factura' && $clienteTipoDoc !== 'ruc';
-                        @endphp
-                        @if(! $serieTipo) @continue @endif
-                        <button
-                            class="pdv-comp-btn pdv-comp-btn--{{ $c['color'] }} {{ $activo ? 'pdv-comp-btn--activo' : '' }}"
-                            wire:click="seleccionarComprobante('{{ $c['tipo'] }}')"
-                        >
-                            <span class="pdv-comp-btn__label">{{ $c['label'] }}</span>
-                            <span class="pdv-comp-btn__serie">{{ $serieTipo->serie }}</span>
-                            @if($invalido)
-                                <span class="pdv-comp-btn__alerta">Requiere RUC</span>
-                            @endif
-                        </button>
-                    @endforeach
+            @if($clienteId)
+            <div class="cp-cliente-card">
+                <div class="cp-cliente-card__avatar">
+                    <x-filament::icon icon="heroicon-o-user-circle" style="width:1.6rem;height:1.6rem;color:#6b7280;" />
                 </div>
-
-                <div class="cobrar-divider"></div>
-
-                {{-- ── Cliente ── --}}
-                <p class="cobrar-sec-title" style="margin-top:.75rem;">
-                    Cliente <span style="font-weight:400;font-size:.73rem;color:var(--pdv-text-muted,#64748b);">(opcional)</span>
-                </p>
-                <div class="pdv-cliente" style="margin-bottom:.75rem;">
-                    <div class="pdv-cliente__row">
-                        <div class="pdv-cliente__search-wrap">
-                            <svg class="pdv-cliente__icono" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
-                            </svg>
-                            <input
-                                type="text"
-                                class="pdv-cliente__input"
-                                wire:model.live.debounce.300ms="clienteBusqueda"
-                                placeholder="Buscar por nombre o documento..."
-                            />
-                            @if($clienteId)
-                                <button class="pdv-cliente__clear" wire:click="limpiarCliente">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
-                                </button>
-                            @endif
-                        </div>
-                        <button class="pdv-cliente__nuevo-btn" wire:click="abrirModalNuevoCliente"
-                                wire:loading.attr="disabled" wire:target="abrirModalNuevoCliente"
-                                title="Nuevo cliente">
-                            <svg wire:loading.remove wire:target="abrirModalNuevoCliente"
-                                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                            <svg wire:loading wire:target="abrirModalNuevoCliente"
-                                 class="pdv-spinner" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-dasharray="28 56" stroke-linecap="round"/>
-                            </svg>
-                        </button>
-                    </div>
-
-                    @if($mostrarSugerencias)
-                        @php $sugeridos = $this->getClientesSugeridos(); @endphp
-                        @if($sugeridos->isNotEmpty())
-                            <div class="pdv-cliente__dropdown">
-                                @foreach($sugeridos as $c)
-                                    <button class="pdv-cliente__opcion" wire:click="seleccionarCliente({{ $c->id }})">
-                                        <span class="pdv-cliente__opcion-nombre">{{ $c->nombre_completo }}</span>
-                                        <span class="pdv-cliente__opcion-doc">{{ strtoupper($c->tipo_documento->value) }} {{ $c->numero_documento }}</span>
-                                    </button>
-                                @endforeach
-                            </div>
-                        @else
-                            <div class="pdv-cliente__dropdown">
-                                <p class="pdv-cliente__no-result">Sin resultados</p>
-                            </div>
-                        @endif
-                    @endif
-
-                    @if($clienteId)
-                    <div class="pdv-cliente__seleccionado">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:.9rem;height:.9rem;flex-shrink:0;color:#16a34a;" aria-hidden="true"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd"/></svg>
-                        {{ $clienteNombre }} ({{ strtoupper($clienteTipoDoc) }})
-                    </div>
+                <div class="cp-cliente-card__info">
+                    <span class="cp-cliente-card__nombre">{{ $clienteNombre }}</span>
+                    @if($clienteTipoDoc && $clienteId)
+                        @php $cl = \App\Models\Cliente::find($clienteId); @endphp
+                        <span class="cp-cliente-card__doc">{{ strtoupper($clienteTipoDoc) }}: {{ $cl?->numero_documento ?? '—' }}</span>
                     @endif
                 </div>
-
-                <div class="cobrar-divider"></div>
-
-                {{-- Aviso: cliente requerido cuando se usa crédito --}}
-                @if($tipoComprobante === 'ticket' && $metodoActual?->condicion_pago === \App\Enums\CondicionPago::Credito && ! $clienteId)
-                <div style="display:flex;align-items:center;gap:.5rem;background:#fef3c7;border:1px solid #fcd34d;border-radius:.5rem;padding:.5rem .75rem;margin-bottom:.5rem;font-size:.78rem;color:#92400e;">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1rem;height:1rem;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
-                    <span>Para crédito debes seleccionar un cliente con DNI o RUC</span>
-                </div>
-                @endif
-
-                {{-- ── Pago ── --}}
-                <p class="cobrar-sec-title" style="margin-top:.75rem;">Método de pago</p>
-
-                {{-- Fila: método | monto | botón agregar --}}
-                <div class="cobrar-pago-row">
-                    <select wire:model.live="metodoPagoId" class="pdv-form-input cobrar-pago-metodo">
-                        @foreach($metodos as $m)
-                            {{-- Solo mostrar métodos de crédito cuando el comprobante sea ticket --}}
-                            @if($tipoComprobante !== 'ticket' && $m->condicion_pago === \App\Enums\CondicionPago::Credito)
-                                @continue
-                            @endif
-                            <option value="{{ $m->id }}">{{ $m->nombre }}</option>
-                        @endforeach
-                    </select>
-                    <input
-                        type="number"
-                        wire:model.live.debounce.300ms="montoPagoInput"
-                        class="pdv-form-input cobrar-pago-monto"
-                        min="0"
-                        step="0.01"
-                        placeholder="{{ number_format($totalDesc, 2) }}"
+                <button class="cp-cliente-card__cambiar" wire:click="limpiarCliente">
+                    <x-filament::icon icon="heroicon-m-arrows-right-left" style="width:.8rem;height:.8rem;" />
+                    Cambiar
+                </button>
+            </div>
+            @else
+            <div class="cp-search-wrap">
+                <x-filament::input.wrapper prefix-icon="heroicon-m-magnifying-glass">
+                    <x-filament::input
+                        type="text"
+                        placeholder="Buscar por nombre, DNI o RUC…"
+                        wire:model.live.debounce.300ms="clienteBusqueda"
+                        autocomplete="off"
                     />
-                    <button wire:click="agregarPago" class="cobrar-pago-agregar" title="Agregar pago">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width:.95rem;height:.95rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                        Agregar
-                    </button>
+                </x-filament::input.wrapper>
+            </div>
+            @if($mostrarSugerencias)
+            <div class="cp-sug-list">
+                @forelse($this->getClientesSugeridos() as $c)
+                <div class="cp-sug-item" wire:click="seleccionarCliente({{ $c->id }})">
+                    <x-filament::icon icon="heroicon-m-user" style="width:.8rem;height:.8rem;color:#9ca3af;flex-shrink:0;" />
+                    <span>{{ $c->nombre_completo }}</span>
+                    @if($c->numero_documento)
+                    <span class="cp-sug-doc">{{ strtoupper($c->tipo_documento->value) }} {{ $c->numero_documento }}</span>
+                    @endif
                 </div>
+                @empty
+                <p class="cp-sug-empty">Sin resultados</p>
+                @endforelse
+            </div>
+            @endif
+            @endif
 
-                @if(empty($pagosAgregados))
-                <p class="cobrar-pago-hint">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:.8rem;height:.8rem;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
-                    Haz clic en <strong>Agregar</strong> para registrar el pago antes de confirmar
-                </p>
-                @endif
+            @if($esCredito && ! $clienteId)
+            <div class="cp-aviso">
+                <x-filament::icon icon="heroicon-o-exclamation-triangle" style="width:.85rem;height:.85rem;" />
+                <span>Crédito requiere un cliente con DNI o RUC</span>
+            </div>
+            @endif
+        </div>
 
-                @if($requiereRef)
-                <div style="margin-top:.5rem;">
-                    <input type="text" wire:model="pagoReferencia" class="pdv-form-input" placeholder="Referencia / N° operación" />
-                </div>
-                @endif
+        {{-- 3. Resumen de productos --}}
+        <div class="cp-section">
+            <div class="cp-section__head">
+                <x-filament::icon icon="heroicon-o-shopping-bag" class="cp-section__icon" />
+                <span class="cp-section__title">Resumen de productos</span>
+            </div>
+            <table class="cp-table">
+                <thead>
+                    <tr>
+                        <th class="cp-th cp-th--num">#</th>
+                        <th class="cp-th">Producto</th>
+                        <th class="cp-th cp-th--center">Cant.</th>
+                        <th class="cp-th cp-th--right">Precio (S/)</th>
+                        <th class="cp-th cp-th--right">Subtotal (S/)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($orden->detalles as $idx => $det)
+                    <tr class="cp-tr">
+                        <td class="cp-td cp-td--num">{{ $idx + 1 }}</td>
+                        <td class="cp-td">
+                            <span class="cp-prod-nombre">{{ $det->descripcion }}</span>
+                        </td>
+                        <td class="cp-td cp-td--center">
+                            <span class="cp-cant">{{ (float)$det->cantidad == (int)$det->cantidad ? (int)$det->cantidad : $det->cantidad }}</span>
+                        </td>
+                        <td class="cp-td cp-td--right">S/ {{ number_format($det->precio_unitario, 2) }}</td>
+                        <td class="cp-td cp-td--right cp-td--bold">S/ {{ number_format($det->total, 2) }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
 
-                {{-- Fecha de vencimiento: opcional, solo cuando el método es crédito y el comprobante es ticket --}}
-                @if($tipoComprobante === 'ticket' && $metodoActual?->condicion_pago === \App\Enums\CondicionPago::Credito)
-                <div style="margin-top:.5rem;">
-                    <x-filament::input.wrapper
-                        label="Fecha de vencimiento"
-                        :prefix-icon="'heroicon-o-calendar-days'"
-                        style="--prefix-icon-size: .9rem;"
+        {{-- 4. Métodos de pago --}}
+        <div class="cp-section">
+            <div class="cp-section__head">
+                <x-filament::icon icon="heroicon-o-credit-card" class="cp-section__icon" />
+                <span class="cp-section__title">Métodos de pago</span>
+                <span class="cp-section__hint">Selecciona un método de pago y completa los datos</span>
+            </div>
+
+            <div class="cp-metodos-grid">
+                @foreach($metodos as $m)
+                    @if($tipoComprobante !== 'ticket' && $m->condicion_pago === \App\Enums\CondicionPago::Credito)
+                        @continue
+                    @endif
+                    @php $mActivo = $metodoPagoId === $m->id; @endphp
+                    <button
+                        class="cp-metodo-card {{ $mActivo ? 'cp-metodo-card--activo' : '' }}"
+                        wire:click="$set('metodoPagoId', {{ $m->id }})"
                     >
+                        @if($m->imagen)
+                            <img src="{{ asset('storage/' . $m->imagen) }}" alt="{{ $m->nombre }}" class="cp-metodo-card__img" />
+                        @else
+                            <x-filament::icon icon="{{ $iconoPorNombre($m->nombre) }}" class="cp-metodo-card__icon {{ $mActivo ? 'cp-metodo-card__icon--activo' : '' }}" />
+                        @endif
+                        <span class="cp-metodo-card__label">{{ $m->nombre }}</span>
+                        <div class="cp-metodo-card__radio {{ $mActivo ? 'cp-metodo-card__radio--activo' : '' }}">
+                            @if($mActivo)<div class="cp-metodo-card__radio-dot"></div>@endif
+                        </div>
+                    </button>
+                @endforeach
+            </div>
+
+            @if($tipoComprobante === 'ticket' && $esCredito)
+            <div class="cp-field-group">
+                <div class="cp-field-label">Fecha de vencimiento</div>
+                <x-filament::input.wrapper prefix-icon="heroicon-o-calendar-days">
+                    <x-filament::input type="date" wire:model.live="fechaVencimientoCredito" :min="now()->addDay()->toDateString()" />
+                </x-filament::input.wrapper>
+                @if($fechaVencimientoCredito)
+                <p class="cp-hint-text">Vence {{ \Carbon\Carbon::parse($fechaVencimientoCredito)->format('d/m/Y') }} ({{ \Carbon\Carbon::parse($fechaVencimientoCredito)->diffForHumans() }})</p>
+                @endif
+            </div>
+            @endif
+
+            @if($metodoActual?->requiere_referencia)
+            <div class="cp-field-group">
+                <div class="cp-field-label">N° operación / referencia</div>
+                <x-filament::input.wrapper>
+                    <x-filament::input type="text" wire:model="pagoReferencia" placeholder="Código, N° operación…" />
+                </x-filament::input.wrapper>
+            </div>
+            @endif
+
+            {{-- Monto + Vuelto preview --}}
+            <div class="cp-pago-fila">
+                <div class="cp-field-group" style="flex:1;min-width:0;">
+                    <div class="cp-field-label">Monto recibido (S/)</div>
+                    <x-filament::input.wrapper prefix="S/">
                         <x-filament::input
-                            type="date"
-                            wire:model.live="fechaVencimientoCredito"
-                            :min="now()->addDay()->toDateString()"
+                            type="number"
+                            wire:model.live.debounce.300ms="montoPagoInput"
+                            min="0" step="0.01"
+                            placeholder="{{ number_format($totalDesc, 2) }}"
                         />
                     </x-filament::input.wrapper>
-                    @if($fechaVencimientoCredito)
-                    <p class="fi-fo-field-wrp-helper-text text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Vence {{ \Carbon\Carbon::parse($fechaVencimientoCredito)->format('d/m/Y') }}
-                        ({{ \Carbon\Carbon::parse($fechaVencimientoCredito)->diffForHumans() }})
-                    </p>
-                    @endif
+                </div>
+                @if($vuelto > 0.005)
+                <div class="cp-vuelto-preview">
+                    <div class="cp-vuelto-preview__label">Vuelto (S/)</div>
+                    <div class="cp-vuelto-preview__valor">S/ {{ number_format($vuelto, 2) }}</div>
                 </div>
                 @endif
+            </div>
 
-                {{-- Pagos agregados DEBAJO del input --}}
-                @if(! empty($pagosAgregados))
-                <div class="cobrar-pagos-lista">
-                    @foreach($pagosAgregados as $i => $pago)
-                    <div class="cobrar-pago-item">
-                        <span class="cobrar-pago-item__nombre">
-                            {{ $pago['nombre'] }}
-                            @if(($pago['condicion_pago'] ?? 'contado') === 'credito')
-                                <span style="font-size:.65rem;background:#fef3c7;color:#92400e;padding:.1rem .35rem;border-radius:.25rem;margin-left:.3rem;font-weight:600;">CRÉDITO</span>
-                            @endif
-                        </span>
-                        <span class="cobrar-pago-item__monto">S/ {{ number_format($pago['monto'], 2) }}</span>
-                        <button wire:click="eliminarPago({{ $i }})" class="cobrar-pago-del" title="Eliminar">×</button>
-                    </div>
-                    @endforeach
-                </div>
-                @endif
-
-                {{-- Resumen de pago --}}
-                <div class="cobrar-resumen">
-                    @if(! empty($pagosAgregados))
-                    <div class="cobrar-resumen__fila">
-                        <span>Pagado</span>
-                        <span>S/ {{ number_format($totalPagado, 2) }}</span>
-                    </div>
-                    @endif
-
-                    <div class="cobrar-totales-row">
-                        @if($vuelto > 0.005)
-                        <div class="cobrar-vuelto-box">
-                            <div class="cobrar-vuelto-box__label">Vuelto</div>
-                            <div class="cobrar-vuelto-box__valor">S/ {{ number_format($vuelto, 2) }}</div>
-                        </div>
-                        @endif
-                        <div class="cobrar-total-box {{ $vuelto <= 0.005 ? 'cobrar-total-box--solo' : '' }}">
-                            <div class="cobrar-total-box__label">Total a cobrar</div>
-                            <div class="cobrar-total-box__valor">S/ {{ number_format($totalDesc, 2) }}</div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>{{-- /cobrar-card --}}
-
-            {{-- Botón confirmar --}}
-            @can('restaurante.pedido.cobrar')
-            <button
-                class="pdv-btn-cobrar"
-                wire:click="procesarCobro"
-                wire:loading.attr="disabled"
-                @if(! $puedeConfirmar) disabled @endif
-                style="{{ ! $puedeConfirmar ? 'opacity:.45;cursor:not-allowed;' : '' }}"
+            <x-filament::button
+                wire:click="agregarPago"
+                icon="heroicon-m-plus"
+                color="primary"
+                size="sm"
+                style="margin-top:.4rem;"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.1rem;height:1.1rem;flex-shrink:0;" aria-hidden="true"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd"/></svg>
-                <span wire:loading.remove wire:target="procesarCobro">Confirmar cobro — S/ {{ number_format($totalDesc, 2) }}</span>
-                <span wire:loading wire:target="procesarCobro">Procesando…</span>
-            </button>
-            @endcan
+                Agregar pago
+            </x-filament::button>
 
-        </div>{{-- /cobrar-right --}}
-    </div>{{-- /cobrar-wrap --}}
-</div>{{-- /cobrar-root --}}
+            @if(! empty($pagosAgregados))
+            <div class="cp-pagos-lista">
+                @foreach($pagosAgregados as $i => $pago)
+                <div class="cp-pago-item">
+                    <span class="cp-pago-item__nombre">
+                        {{ $pago['nombre'] }}
+                        @if(($pago['condicion_pago'] ?? '') === 'credito')
+                        <x-filament::badge color="warning" size="xs">CRÉDITO</x-filament::badge>
+                        @endif
+                    </span>
+                    <span class="cp-pago-item__monto">S/ {{ number_format($pago['monto'], 2) }}</span>
+                    <button class="cp-pago-del" wire:click="eliminarPago({{ $i }})" title="Eliminar">
+                        <x-filament::icon icon="heroicon-m-x-mark" style="width:.8rem;height:.8rem;" />
+                    </button>
+                </div>
+                @endforeach
+            </div>
+            @endif
+        </div>
 
-<link rel="stylesheet" href="{{ asset('css/cobrar-pedido.css') }}?v={{ filemtime(public_path('css/cobrar-pedido.css')) }}">
+    </div>{{-- /cp-left --}}
 
-{{-- Navegar al mapa en el mismo round-trip que cierra el modal (sin segundo viaje al servidor) --}}
+    {{-- ═══════════════════ COLUMNA DERECHA: RESUMEN ═══════════════════ --}}
+    <div class="cp-right">
+        <div class="cp-resumen-card">
+
+            <div class="cp-resumen-head">
+                <div class="cp-resumen-head__left">
+                    <x-filament::icon icon="heroicon-o-calculator" style="width:1rem;height:1rem;color:#6b7280;" />
+                    <span class="cp-resumen-head__title">Resumen de pago</span>
+                </div>
+                @if($orden->numero)
+                <span class="cp-resumen-head__num">Pedido #{{ $orden->numero }}</span>
+                @endif
+            </div>
+
+            <div class="cp-resumen-filas">
+                @if($esFE)
+                <div class="cp-rf">
+                    <span>Op. gravada</span>
+                    <span>S/ {{ number_format($baseImpon, 2) }}</span>
+                </div>
+                <div class="cp-rf">
+                    <span>IGV ({{ (int)$igvPct }}%)</span>
+                    <span>S/ {{ number_format($igvMonto, 2) }}</span>
+                </div>
+                @else
+                <div class="cp-rf">
+                    <span>Subtotal</span>
+                    <span>S/ {{ number_format($totalBase, 2) }}</span>
+                </div>
+                @endif
+
+                <div class="cp-rf {{ $descuento > 0 ? 'cp-rf--desc-activo' : '' }}">
+                    <div style="display:flex;align-items:center;gap:.4rem;">
+                        <span>Descuento</span>
+                        <x-filament::input.wrapper style="width:72px;">
+                            <x-filament::input
+                                type="number"
+                                wire:model.live.debounce.500ms="descuentoInput"
+                                min="0" :max="$totalBase" step="0.01"
+                                placeholder="0.00"
+                            />
+                        </x-filament::input.wrapper>
+                    </div>
+                    <span class="{{ $descuento > 0 ? 'cp-rf__desc-valor' : '' }}">
+                        {{ $descuento > 0 ? '- S/ ' . number_format($descuento, 2) : 'S/ 0.00' }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="cp-resumen-sep"></div>
+
+            @if($esFE)
+            <div class="cp-rf cp-rf--sub">
+                <span>Subtotal</span>
+                <span>S/ {{ number_format($baseImpon, 2) }}</span>
+            </div>
+            @endif
+
+            <div class="cp-total-bloque">
+                <span class="cp-total-bloque__label">Total a pagar</span>
+                <span class="cp-total-bloque__valor">S/ {{ number_format($totalDesc, 2) }}</span>
+            </div>
+
+            @if(! empty($pagosAgregados))
+            <div class="cp-resumen-sep"></div>
+            <div class="cp-rf">
+                <span>Monto recibido</span>
+                <span>S/ {{ number_format($totalPagado, 2) }}</span>
+            </div>
+            @if($vuelto > 0.005)
+            <div class="cp-rf cp-rf--vuelto">
+                <span>Vuelto</span>
+                <span>S/ {{ number_format($vuelto, 2) }}</span>
+            </div>
+            <div class="cp-vuelto-nota">
+                <x-filament::icon icon="heroicon-o-information-circle" style="width:.85rem;height:.85rem;flex-shrink:0;" />
+                <span>El cambio a entregar es S/ {{ number_format($vuelto, 2) }}</span>
+            </div>
+            @endif
+            @endif
+
+            @if(empty($pagosAgregados) && $totalDesc > 0)
+            <div class="cp-aviso-info">
+                <x-filament::icon icon="heroicon-o-information-circle" style="width:.85rem;height:.85rem;flex-shrink:0;" />
+                <span>Agrega el pago antes de confirmar</span>
+            </div>
+            @endif
+
+            <div class="cp-acciones">
+                <x-filament::button
+                    color="gray"
+                    outlined
+                    wire:click="volverAlPedido"
+                    style="flex:1;justify-content:center;"
+                >
+                    Cancelar
+                </x-filament::button>
+
+                @can('restaurante.pedido.cobrar')
+                <x-filament::button
+                    color="primary"
+                    icon="heroicon-m-check-circle"
+                    wire:click="procesarCobro"
+                    wire:loading.attr="disabled"
+                    wire:target="procesarCobro"
+                    :disabled="! $puedeConfirmar"
+                    style="flex:2;justify-content:center;"
+                >
+                    <span wire:loading.remove wire:target="procesarCobro">✓ Completar venta</span>
+                    <span wire:loading wire:target="procesarCobro">Procesando…</span>
+                </x-filament::button>
+                @endcan
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
 <script>
 (function () {
-    var mesasUrl = @js(\App\Filament\Pdv\Pages\MapaMesasPage::getUrl(tenant: \Filament\Facades\Filament::getTenant()));
+    var mesasUrl = '{{ \App\Filament\Pdv\Pages\MapaMesasPage::getUrl(tenant: \Filament\Facades\Filament::getTenant()) }}';
     window.addEventListener('modal-impresion-cerrada', function () {
         if (window.Livewire && typeof Livewire.navigate === 'function') {
             Livewire.navigate(mesasUrl);

@@ -16,6 +16,7 @@ use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -37,6 +38,21 @@ class ReporteComprasPage extends Page implements HasForms, HasTable
     protected static string|UnitEnum|null $navigationGroup = 'Reportes';
     protected static ?int $navigationSort = 6;
     protected static ?string $title = 'Reporte de Compras';
+
+    public function getHeading(): string { return static::$title ?? ''; }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [\App\Filament\Pdv\Widgets\ReporteComprasStatsWidget::class];
+    }
+
+    public function getWidgetData(): array
+    {
+        return [
+            'statsData'  => $this->getResumen(),
+            'sparksData' => $this->getSparklines(),
+        ];
+    }
 
     public static function canAccess(): bool
     {
@@ -76,7 +92,13 @@ class ReporteComprasPage extends Page implements HasForms, HasTable
     public function form(Schema $schema): Schema
     {
         return $schema->components([
-            Grid::make(['default' => 1, 'sm' => 2, 'md' => 4])->schema([
+            Section::make('Filtros')
+                ->description('Filtra las compras según los criterios seleccionados.')
+                ->columns(1)
+                ->collapsible()
+                ->collapsed(true)
+                ->schema([
+                    Grid::make(['default' => 1, 'sm' => 2, 'md' => 4])->schema([
 
                 Select::make('filtroRango')
                     ->label('Período')
@@ -146,6 +168,7 @@ class ReporteComprasPage extends Page implements HasForms, HasTable
                         ->action(fn () => $this->limpiarFiltros()),
                 ])->verticallyAlignEnd(),
 
+            ]),
             ]),
         ]);
     }
@@ -248,6 +271,23 @@ class ReporteComprasPage extends Page implements HasForms, HasTable
             'pagado'    => $pagado,
             'saldo'     => round($total - $pagado, 2),
         ];
+    }
+
+    public function getSparklines(): array
+    {
+        $rows = DB::table('compras')
+            ->where('empresa_id', Filament::getTenant()->id)
+            ->where('estado', '!=', 'anulado')
+            ->whereDate('fecha_compra', '>=', today()->subDays(6)->toDateString())
+            ->selectRaw("DATE(fecha_compra) as dia, COUNT(*) as cantidad, COALESCE(SUM(total),0) as total")
+            ->groupBy('dia')->orderBy('dia')->get()->keyBy('dia');
+        $qty = []; $tot = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $d = today()->subDays($i)->toDateString(); $r = $rows->get($d);
+            $qty[] = (int)   ($r?->cantidad ?? 0);
+            $tot[] = (float) ($r?->total    ?? 0);
+        }
+        return ['cantidad' => $qty, 'total' => $tot];
     }
 
     // ── Exportación ───────────────────────────────────────────────────────────

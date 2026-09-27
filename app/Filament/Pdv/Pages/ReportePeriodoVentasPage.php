@@ -4,27 +4,26 @@ namespace App\Filament\Pdv\Pages;
 
 use App\Enums\EstadoVenta;
 use App\Models\Serie;
+use App\Models\Venta;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Schema;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Url;
-use Livewire\WithPagination;
 use UnitEnum;
 
-class ReportePeriodoVentasPage extends Page implements HasForms
+class ReportePeriodoVentasPage extends Page implements HasTable
 {
-    use InteractsWithForms;
-    use WithPagination;
+    use InteractsWithTable;
     use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.reporte-periodo-ventas';
@@ -36,19 +35,22 @@ class ReportePeriodoVentasPage extends Page implements HasForms
 
     public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('reporte_ventas') && (auth()->user()?->can('reportes.ventas_periodo') ?? false); }
 
+    protected function getHeaderWidgets(): array
+    {
+        return [\App\Filament\Pdv\Widgets\ReportePeriodoVentasStatsWidget::class];
+    }
+
+    public function getWidgetData(): array
+    {
+        $resumen = $this->getResumen();
+        $resumen['periodoLabel'] = $this->getPeriodoLabel();
+        return ['statsData' => $resumen];
+    }
 
     #[Url]
     public ?string $periodo = null;
     #[Url]
     public ?string $agrupacion = 'dia';
-
-    public ?string $filtroSerie       = null;
-    public ?string $filtroCorrelativo = null;
-
-    public function mount(): void
-    {
-        $this->form->fill();
-    }
 
     public function getBreadcrumbs(): array
     {
@@ -75,86 +77,25 @@ class ReportePeriodoVentasPage extends Page implements HasForms
         return Carbon::parse($this->periodo)->format('d/m/Y');
     }
 
-    public function form(Schema $schema): Schema
+    public function getResumen(): array
     {
-        return $schema->components([
-            Grid::make(['default' => 1, 'sm' => 2])->schema([
-
-                Select::make('filtroSerie')
-                    ->label('Serie')
-                    ->placeholder('Todas las series')
-                    ->options(fn() => Serie::where('empresa_id', Filament::getTenant()->id)
-                        ->orderBy('serie')->pluck('serie', 'serie')->toArray())
-                    ->native(false)->searchable()
-                    ->live()->afterStateUpdated(fn() => $this->resetPage()),
-
-                TextInput::make('filtroCorrelativo')
-                    ->label('Correlativo')
-                    ->placeholder('Ej: 00001')
-                    ->live(debounce: 400)
-                    ->afterStateUpdated(fn() => $this->resetPage()),
-
-            ]),
-        ]);
-    }
-
-    public function limpiarFiltros(): void
-    {
-        $this->filtroSerie       = null;
-        $this->filtroCorrelativo = null;
-        $this->form->fill();
-        $this->resetPage();
-    }
-
-    public function hayFiltros(): bool
-    {
-        return !empty($this->filtroSerie) || !empty($this->filtroCorrelativo);
-    }
-
-    private function baseQuery(): \Illuminate\Database\Query\Builder
-    {
-        $q = DB::table('ventas as v')
-            ->join('series as s', 'v.serie_id', '=', 's.id')
-            ->join('users as u', 'v.vendedor_id', '=', 'u.id')
-            ->where('v.empresa_id', Filament::getTenant()->id)
-            ->where('v.estado', EstadoVenta::Completada->value);
+        $q = Venta::query()
+            ->where('empresa_id', Filament::getTenant()->id)
+            ->where('estado', EstadoVenta::Completada->value);
 
         if ($this->periodo) {
             if ($this->agrupacion === 'mes') {
-                $q->whereRaw("DATE_FORMAT(v.created_at, '%Y-%m') = ?", [$this->periodo]);
+                $q->whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$this->periodo]);
             } else {
-                $q->whereDate('v.created_at', $this->periodo);
+                $q->whereDate('created_at', $this->periodo);
             }
         }
 
-        return $q;
-    }
-
-    public function getVentas(): LengthAwarePaginator
-    {
-        return (clone $this->baseQuery())
-            ->when($this->filtroSerie,       fn($q) => $q->where('s.serie', $this->filtroSerie))
-            ->when($this->filtroCorrelativo, fn($q) => $q->where('v.correlativo', 'like', $this->filtroCorrelativo . '%'))
-            ->selectRaw("
-                v.id, s.serie, v.correlativo,
-                v.cliente_nombre, v.total, v.igv, v.costo_total,
-                v.monto_pagado, v.saldo_pendiente, v.estado_pago,
-                v.total - v.igv - v.costo_total AS utilidad,
-                u.name AS vendedor,
-                v.created_at
-            ")
-            ->orderByDesc('v.created_at')
-            ->paginate(25);
-    }
-
-    public function getResumen(): array
-    {
-        $row = (clone $this->baseQuery())
-            ->selectRaw("
+        $row = $q->selectRaw("
                 COUNT(*) AS cantidad,
-                COALESCE(SUM(v.monto_pagado), 0)                  AS cobrado,
-                COALESCE(SUM(v.saldo_pendiente), 0)               AS credito_pendiente,
-                COALESCE(SUM(v.total - v.igv - v.costo_total), 0) AS utilidad
+                COALESCE(SUM(monto_pagado), 0)                  AS cobrado,
+                COALESCE(SUM(saldo_pendiente), 0)               AS credito_pendiente,
+                COALESCE(SUM(total - igv - costo_total), 0)     AS utilidad
             ")
             ->first();
 
@@ -164,5 +105,147 @@ class ReportePeriodoVentasPage extends Page implements HasForms
             'creditoPendiente' => (float) ($row->credito_pendiente ?? 0),
             'utilidad'         => (float) ($row->utilidad ?? 0),
         ];
+    }
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(fn(): Builder => $this->buildVentasQuery())
+            ->filters([
+                Filter::make('serie')
+                    ->form([
+                        \Filament\Forms\Components\Select::make('serie')
+                            ->label('Serie')
+                            ->placeholder('Todas las series')
+                            ->options(fn() => \App\Models\Serie::where('empresa_id', \Filament\Facades\Filament::getTenant()->id)
+                                ->orderBy('serie')->pluck('serie', 'serie')->toArray())
+                            ->native(false)
+                            ->searchable(),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder =>
+                        $query->when($data['serie'] ?? null, fn($q, $v) => $q->where('s.serie', $v))
+                    )
+                    ->indicateUsing(fn (array $data): ?string =>
+                        ($data['serie'] ?? null) ? 'Serie: ' . $data['serie'] : null
+                    ),
+
+                Filter::make('correlativo')
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('correlativo')
+                            ->label('Correlativo')
+                            ->placeholder('Ej: 00001'),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder =>
+                        $query->when($data['correlativo'] ?? null, fn($q, $v) => $q->where('ventas.correlativo', 'like', $v . '%'))
+                    )
+                    ->indicateUsing(fn (array $data): ?string =>
+                        ($data['correlativo'] ?? null) ? 'Correlativo: ' . $data['correlativo'] : null
+                    ),
+            ])
+            ->columns([
+                TextColumn::make('serie')
+                    ->label('Comprobante')
+                    ->formatStateUsing(fn($state, $record): string => "{$state}-{$record->correlativo}")
+                    ->fontFamily('mono')
+                    ->weight('semibold'),
+
+                TextColumn::make('created_at')
+                    ->label('Fecha / Hora')
+                    ->formatStateUsing(fn($state): string =>
+                        Carbon::parse($state)->format('d/m/Y') . "\n" . Carbon::parse($state)->format('H:i')
+                    )
+                    ->wrap(),
+
+                TextColumn::make('cliente_nombre')
+                    ->label('Cliente')
+                    ->formatStateUsing(fn($state): string => $state ?: '—')
+                    ->wrap()
+                    ->limit(30),
+
+                TextColumn::make('vendedor')
+                    ->label('Vendedor')
+                    ->color('gray')
+                    ->limit(20),
+
+                TextColumn::make('estado_pago')
+                    ->label('Pago')
+                    ->badge()
+                    ->color(fn($state): string => match((string) $state) {
+                        'pendiente' => 'warning',
+                        'parcial'   => 'info',
+                        default     => 'success',
+                    })
+                    ->formatStateUsing(fn($state): string => match((string) $state) {
+                        'pendiente' => 'Crédito',
+                        'parcial'   => 'Parcial',
+                        default     => 'Contado',
+                    })
+                    ->description(fn($record): ?string =>
+                        in_array($record->estado_pago, ['pendiente', 'parcial'])
+                            ? 'S/ ' . number_format((float) $record->saldo_pendiente, 2)
+                            : null
+                    ),
+
+                TextColumn::make('total')
+                    ->label('Total')
+                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->alignRight(),
+
+                TextColumn::make('igv')
+                    ->label('IGV')
+                    ->formatStateUsing(fn($state): string =>
+                        (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—'
+                    )
+                    ->alignRight()
+                    ->color('gray'),
+
+                TextColumn::make('costo_total')
+                    ->label('Costo')
+                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->alignRight()
+                    ->color('warning'),
+
+                TextColumn::make('utilidad')
+                    ->label('Utilidad')
+                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->alignRight()
+                    ->color(fn($state): string => (float) $state >= 0 ? 'success' : 'danger'),
+            ])
+            ->paginated([25, 50, 100])
+            ->emptyStateHeading('Sin ventas')
+            ->emptyStateDescription('No se encontraron ventas con los filtros seleccionados.')
+            ->emptyStateIcon('heroicon-o-shopping-cart');
+    }
+
+    private function buildVentasQuery(): Builder
+    {
+        return Venta::query()
+            ->join('series as s', 'ventas.serie_id', '=', 's.id')
+            ->join('users as u', 'ventas.vendedor_id', '=', 'u.id')
+            ->selectRaw("
+                ventas.id,
+                s.serie,
+                ventas.correlativo,
+                ventas.cliente_nombre,
+                ventas.total,
+                ventas.igv,
+                ventas.costo_total,
+                ventas.monto_pagado,
+                ventas.saldo_pendiente,
+                ventas.estado_pago,
+                ventas.total - ventas.igv - ventas.costo_total AS utilidad,
+                u.name AS vendedor,
+                ventas.created_at
+            ")
+            ->where('ventas.empresa_id', Filament::getTenant()->id)
+            ->where('ventas.estado', EstadoVenta::Completada->value)
+            ->when($this->periodo, function ($q) {
+                if ($this->agrupacion === 'mes') {
+                    $q->whereRaw("DATE_FORMAT(ventas.created_at, '%Y-%m') = ?", [$this->periodo]);
+                } else {
+                    $q->whereDate('ventas.created_at', $this->periodo);
+                }
+            })
+            ->orderByDesc('ventas.created_at');
     }
 }

@@ -33,7 +33,7 @@ class ConfiguracionTukipuPage extends Page implements HasForms
     public static function canAccess(): bool
     {
         $user = auth()->user();
-        if (! $user) return false;
+        if (! $user) { return false; }
         // Solo Super Administrador o quien tenga permiso de empresas admin
         return is_null($user->empresa_id) || $user->can('admin.empresas.editar');
     }

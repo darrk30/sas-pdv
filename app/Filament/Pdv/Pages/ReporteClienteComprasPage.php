@@ -6,27 +6,28 @@ use App\Enums\EstadoVenta;
 use App\Filament\Pdv\Concerns\HasVentaDetalleModal;
 use App\Filament\Pdv\Resources\Clientes\ClienteResource;
 use App\Models\Serie;
+use App\Models\Venta;
 use BackedEnum;
+use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Schema;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
+use Filament\Actions\Action as TableAction;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Url;
-use Livewire\WithPagination;
 use UnitEnum;
 
-class ReporteClienteComprasPage extends Page implements HasForms
+class ReporteClienteComprasPage extends Page implements HasTable
 {
     use HasVentaDetalleModal;
-    use InteractsWithForms;
-    use WithPagination;
+    use InteractsWithTable;
     use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.reporte-cliente-compras';
@@ -38,6 +39,17 @@ class ReporteClienteComprasPage extends Page implements HasForms
 
     public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('clientes') && (auth()->user()?->can('reportes.clientes') ?? false); }
 
+    protected function getHeaderWidgets(): array
+    {
+        return [\App\Filament\Pdv\Widgets\ReporteClienteComprasStatsWidget::class];
+    }
+
+    public function getWidgetData(): array
+    {
+        $resumen = $this->getResumen();
+        $resumen['clienteNombre'] = $this->clienteNombre;
+        return ['statsData' => $resumen];
+    }
 
     #[Url]
     public ?int    $clienteId     = null;
@@ -45,14 +57,6 @@ class ReporteClienteComprasPage extends Page implements HasForms
     public ?string $clienteNombre = null;
     #[Url]
     public ?string $clienteNumDoc = null;
-
-    public ?string $filtroSerie       = null;
-    public ?string $filtroCorrelativo = null;
-
-    public function mount(): void
-    {
-        $this->form->fill();
-    }
 
     public function getBreadcrumbs(): array
     {
@@ -62,98 +66,28 @@ class ReporteClienteComprasPage extends Page implements HasForms
         ];
     }
 
-    public function form(Schema $schema): Schema
-    {
-        return $schema->components([
-            Grid::make(['default' => 1, 'sm' => 2])->schema([
-
-                Select::make('filtroSerie')
-                    ->label('Serie')
-                    ->placeholder('Todas las series')
-                    ->options(fn() => Serie::where('empresa_id', Filament::getTenant()->id)
-                        ->orderBy('serie')->pluck('serie', 'serie')->toArray())
-                    ->native(false)->searchable()
-                    ->live()->afterStateUpdated(fn() => $this->resetPage()),
-
-                TextInput::make('filtroCorrelativo')
-                    ->label('Correlativo')
-                    ->placeholder('Ej: 00001')
-                    ->live(debounce: 400)
-                    ->afterStateUpdated(fn() => $this->resetPage()),
-
-            ]),
-        ]);
-    }
-
-    public function limpiarFiltros(): void
-    {
-        $this->filtroSerie       = null;
-        $this->filtroCorrelativo = null;
-        $this->form->fill();
-        $this->resetPage();
-    }
-
-    public function hayFiltros(): bool
-    {
-        return !empty($this->filtroSerie) || !empty($this->filtroCorrelativo);
-    }
-
-    public function getCompras(): LengthAwarePaginator
-    {
-        return DB::table('ventas as v')
-            ->join('series as s', 'v.serie_id', '=', 's.id')
-            ->join('users as u', 'v.vendedor_id', '=', 'u.id')
-            ->where('v.empresa_id', Filament::getTenant()->id)
-            ->where('v.estado', EstadoVenta::Completada->value)
-            ->where(function ($q) {
-                if ($this->clienteId) {
-                    $q->where('v.cliente_id', $this->clienteId)
-                      ->orWhere(function ($sub) {
-                          $sub->whereNull('v.cliente_id')
-                              ->where('v.cliente_nombre', $this->clienteNombre ?? '')
-                              ->when($this->clienteNumDoc, fn($s) => $s->where('v.cliente_num_doc', $this->clienteNumDoc));
-                      });
-                } else {
-                    $q->where('v.cliente_nombre', $this->clienteNombre ?? '')
-                      ->when($this->clienteNumDoc, fn($s) => $s->where('v.cliente_num_doc', $this->clienteNumDoc));
-                }
-            })
-            ->when($this->filtroSerie,       fn($q) => $q->where('s.serie', $this->filtroSerie))
-            ->when($this->filtroCorrelativo, fn($q) => $q->where('v.correlativo', 'like', $this->filtroCorrelativo . '%'))
-            ->selectRaw("
-                v.id, s.serie, v.correlativo,
-                v.total, v.igv, v.costo_total,
-                v.monto_pagado, v.saldo_pendiente, v.estado_pago,
-                v.total - v.igv - v.costo_total AS utilidad,
-                u.name AS vendedor,
-                v.created_at
-            ")
-            ->orderByDesc('v.created_at')
-            ->paginate(25);
-    }
-
     public function getResumen(): array
     {
-        $row = DB::table('ventas as v')
-            ->where('v.empresa_id', Filament::getTenant()->id)
-            ->where('v.estado', EstadoVenta::Completada->value)
+        $row = Venta::query()
+            ->where('empresa_id', Filament::getTenant()->id)
+            ->where('estado', EstadoVenta::Completada->value)
             ->where(function ($q) {
                 if ($this->clienteId) {
-                    $q->where('v.cliente_id', $this->clienteId)
+                    $q->where('cliente_id', $this->clienteId)
                       ->orWhere(function ($sub) {
-                          $sub->whereNull('v.cliente_id')
-                              ->where('v.cliente_nombre', $this->clienteNombre ?? '')
-                              ->when($this->clienteNumDoc, fn($s) => $s->where('v.cliente_num_doc', $this->clienteNumDoc));
+                          $sub->whereNull('cliente_id')
+                              ->where('cliente_nombre', $this->clienteNombre ?? '')
+                              ->when($this->clienteNumDoc, fn($s) => $s->where('cliente_num_doc', $this->clienteNumDoc));
                       });
                 } else {
-                    $q->where('v.cliente_nombre', $this->clienteNombre ?? '')
-                      ->when($this->clienteNumDoc, fn($s) => $s->where('v.cliente_num_doc', $this->clienteNumDoc));
+                    $q->where('cliente_nombre', $this->clienteNombre ?? '')
+                      ->when($this->clienteNumDoc, fn($s) => $s->where('cliente_num_doc', $this->clienteNumDoc));
                 }
             })
             ->selectRaw("
                 COUNT(*) AS cantidad,
-                COALESCE(SUM(v.total), 0)           AS total_gastado,
-                COALESCE(SUM(v.saldo_pendiente), 0) AS credito_pendiente
+                COALESCE(SUM(total), 0)           AS total_gastado,
+                COALESCE(SUM(saldo_pendiente), 0) AS credito_pendiente
             ")
             ->first();
 
@@ -162,5 +96,153 @@ class ReporteClienteComprasPage extends Page implements HasForms
             'totalGastado'     => (float) ($row->total_gastado ?? 0),
             'creditoPendiente' => (float) ($row->credito_pendiente ?? 0),
         ];
+    }
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(fn(): Builder => $this->buildComprasQuery())
+            ->filters([
+                Filter::make('serie')
+                    ->form([
+                        \Filament\Forms\Components\Select::make('serie')
+                            ->label('Serie')
+                            ->placeholder('Todas las series')
+                            ->options(fn() => \App\Models\Serie::where('empresa_id', \Filament\Facades\Filament::getTenant()->id)
+                                ->orderBy('serie')->pluck('serie', 'serie')->toArray())
+                            ->native(false)
+                            ->searchable(),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder =>
+                        $query->when($data['serie'] ?? null, fn($q, $v) => $q->where('s.serie', $v))
+                    )
+                    ->indicateUsing(fn (array $data): ?string =>
+                        ($data['serie'] ?? null) ? 'Serie: ' . $data['serie'] : null
+                    ),
+
+                Filter::make('correlativo')
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('correlativo')
+                            ->label('Correlativo')
+                            ->placeholder('Ej: 00001'),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder =>
+                        $query->when($data['correlativo'] ?? null, fn($q, $v) => $q->where('ventas.correlativo', 'like', $v . '%'))
+                    )
+                    ->indicateUsing(fn (array $data): ?string =>
+                        ($data['correlativo'] ?? null) ? 'Correlativo: ' . $data['correlativo'] : null
+                    ),
+            ])
+            ->columns([
+                TextColumn::make('serie')
+                    ->label('Comprobante')
+                    ->formatStateUsing(fn($state, $record): string => "{$state}-{$record->correlativo}")
+                    ->fontFamily('mono')
+                    ->weight('semibold'),
+
+                TextColumn::make('created_at')
+                    ->label('Fecha')
+                    ->formatStateUsing(fn($state): string =>
+                        Carbon::parse($state)->format('d/m/Y') . "\n" . Carbon::parse($state)->format('H:i')
+                    )
+                    ->wrap(),
+
+                TextColumn::make('vendedor')
+                    ->label('Vendedor')
+                    ->color('gray')
+                    ->limit(20),
+
+                TextColumn::make('estado_pago')
+                    ->label('Pago')
+                    ->badge()
+                    ->color(fn($state): string => match((string) $state) {
+                        'pendiente' => 'warning',
+                        'parcial'   => 'info',
+                        default     => 'success',
+                    })
+                    ->formatStateUsing(fn($state): string => match((string) $state) {
+                        'pendiente' => 'Crédito',
+                        'parcial'   => 'Parcial',
+                        default     => 'Contado',
+                    })
+                    ->description(fn($record): ?string =>
+                        in_array($record->estado_pago, ['pendiente', 'parcial'])
+                            ? 'pend. S/ ' . number_format((float) $record->saldo_pendiente, 2)
+                            : null
+                    ),
+
+                TextColumn::make('total')
+                    ->label('Total')
+                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->alignRight(),
+
+                TextColumn::make('igv')
+                    ->label('IGV')
+                    ->formatStateUsing(fn($state): string =>
+                        (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—'
+                    )
+                    ->alignRight()
+                    ->color('gray'),
+
+                TextColumn::make('costo_total')
+                    ->label('Costo')
+                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->alignRight()
+                    ->color('warning'),
+
+                TextColumn::make('utilidad')
+                    ->label('Utilidad')
+                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->alignRight()
+                    ->color(fn($state): string => (float) $state >= 0 ? 'success' : 'danger'),
+            ])
+            ->actions([
+                TableAction::make('verDetalle')
+                    ->label('Ver')
+                    ->icon('heroicon-m-eye')
+                    ->size('sm')
+                    ->action(fn(Venta $record) => $this->abrirModalDetalle($record->id)),
+            ])
+            ->paginated([25, 50, 100])
+            ->emptyStateHeading('Sin compras')
+            ->emptyStateDescription('No se encontraron compras con los filtros seleccionados.')
+            ->emptyStateIcon('heroicon-o-shopping-bag');
+    }
+
+    private function buildComprasQuery(): Builder
+    {
+        return Venta::query()
+            ->join('series as s', 'ventas.serie_id', '=', 's.id')
+            ->join('users as u', 'ventas.vendedor_id', '=', 'u.id')
+            ->selectRaw("
+                ventas.id,
+                s.serie,
+                ventas.correlativo,
+                ventas.total,
+                ventas.igv,
+                ventas.costo_total,
+                ventas.monto_pagado,
+                ventas.saldo_pendiente,
+                ventas.estado_pago,
+                ventas.total - ventas.igv - ventas.costo_total AS utilidad,
+                u.name AS vendedor,
+                ventas.created_at
+            ")
+            ->where('ventas.empresa_id', Filament::getTenant()->id)
+            ->where('ventas.estado', EstadoVenta::Completada->value)
+            ->where(function ($q) {
+                if ($this->clienteId) {
+                    $q->where('ventas.cliente_id', $this->clienteId)
+                      ->orWhere(function ($sub) {
+                          $sub->whereNull('ventas.cliente_id')
+                              ->where('ventas.cliente_nombre', $this->clienteNombre ?? '')
+                              ->when($this->clienteNumDoc, fn($s) => $s->where('ventas.cliente_num_doc', $this->clienteNumDoc));
+                      });
+                } else {
+                    $q->where('ventas.cliente_nombre', $this->clienteNombre ?? '')
+                      ->when($this->clienteNumDoc, fn($s) => $s->where('ventas.cliente_num_doc', $this->clienteNumDoc));
+                }
+            })
+            ->orderByDesc('ventas.created_at');
     }
 }

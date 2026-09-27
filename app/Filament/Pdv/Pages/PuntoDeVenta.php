@@ -133,16 +133,16 @@ class PuntoDeVenta extends Page
 
     public function getNumeroPreview(): string
     {
-        if (! $this->serieId) return '---';
+        if (! $this->serieId) { return '---'; }
         $serie = Serie::find($this->serieId);
-        if (! $serie) return '---';
+        if (! $serie) { return '---'; }
         return $serie->serie . '-' . str_pad($serie->numero + 1, 8, '0', STR_PAD_LEFT);
     }
 
     public function seleccionarComprobante(string $tipo): void
     {
         $serie = $this->getSerieParaTipo($tipo);
-        if (! $serie) return;
+        if (! $serie) { return; }
         $this->tipoComprobante = $tipo;
         $this->serieId = $serie->id;
     }
@@ -165,7 +165,7 @@ class PuntoDeVenta extends Page
             ->where('numero_documento', '99999999')
             ->first();
 
-        if (! $cliente) return;
+        if (! $cliente) { return; }
 
         $this->clienteId      = $cliente->id;
         $this->clienteNombre  = $cliente->nombre_completo;
@@ -188,7 +188,7 @@ class PuntoDeVenta extends Page
 
     public function getClientesSugeridos(): Collection
     {
-        if (strlen($this->clienteBusqueda) < 2) return collect();
+        if (strlen($this->clienteBusqueda) < 2) { return collect(); }
 
         return Cliente::where('empresa_id', Filament::getTenant()->id)
             ->where(function ($q) {
@@ -203,7 +203,7 @@ class PuntoDeVenta extends Page
     public function seleccionarCliente(int $id): void
     {
         $cliente = Cliente::find($id);
-        if (! $cliente) return;
+        if (! $cliente) { return; }
 
         $this->clienteId       = $id;
         $this->clienteNombre   = $cliente->nombre_completo;
@@ -292,13 +292,16 @@ class PuntoDeVenta extends Page
 
     private function syncAlpineStore(): void
     {
-        $this->js('Alpine.store("carritoResumen",' . json_encode($this->getCarritoResumen()) . ')');
-        $this->js('window.dispatchEvent(new CustomEvent("pdv-total-recalc",{detail:{total:' . $this->getTotal() . '}}))');
+        $carritoJson = json_encode($this->carrito);
+        $resumenJson = json_encode($this->getCarritoResumen());
+        $total       = $this->getTotal();
+        $this->js(
+            "window.dispatchEvent(new CustomEvent('pdv-carrito-sync',{detail:{carrito:{$carritoJson},resumen:{$resumenJson},total:{$total}}}))"
+        );
     }
 
     // ── Carrito: agregar desde ProductCatalog ─────────────────────────────────
 
-    #[On('product-selected')]
     public function agregarAlCarrito(array $payload): void
     {
         $tipo          = $payload['tipo'];
@@ -319,41 +322,29 @@ class PuntoDeVenta extends Page
         $baseKey    = "{$tipo}_{$id}";
         $stockExtra = [];
 
-        if ($tipo === 'producto') {
-            $prod = Producto::with('inventario')->find($id);
-            if (! $prod) return;
-            $stockReal    = (float) ($prod->inventario?->stock_real    ?? 0);
-            $stockReserva = (float) ($prod->inventario?->stock_reserva ?? 0);
+        if ($tipo === 'producto' || $tipo === 'variante') {
+            // El payload ya trae stock_max (= stock_reserva) y venta_sin_stock desde el catálogo,
+            // por lo que no es necesario consultar la BD aquí.
+            $stockMax      = isset($payload['stock_max']) && $payload['stock_max'] !== null
+                                ? (float) $payload['stock_max'] : null;
+            $ventaSinStock = (bool) ($payload['venta_sin_stock'] ?? false);
+            $controlStock  = $stockMax !== null;
+
             $stockExtra = [
-                'control_stock'   => (bool) $prod->control_de_stock,
-                'venta_sin_stock' => (bool) $prod->venta_sin_stock,
-                'stock_real'      => $stockReal,
-                'stock_max'       => $prod->control_de_stock ? $stockReserva : null,
+                'control_stock'   => $controlStock,
+                'venta_sin_stock' => $ventaSinStock,
+                'stock_real'      => $stockMax ?? 0,
+                'stock_max'       => $stockMax,
             ];
-            if ($prod->control_de_stock && ! $prod->venta_sin_stock) {
+
+            if ($controlStock && ! $ventaSinStock) {
                 $enCarrito = $this->cantidadEnCarritoPorBase($baseKey);
-                if ($enCarrito + $cantidad > $stockReal) {
-                    Notification::make()->title('Stock insuficiente')->body("Disponible: {$stockReal}.")->warning()->send();
-                    return;
-                }
-            }
-        } elseif ($tipo === 'variante') {
-            $var = Variante::with('producto')->find($id);
-            if (! $var) return;
-            $prod         = $var->producto;
-            $inv          = Inventario::where('variante_id', $id)->first();
-            $stockReal    = (float) ($inv?->stock_real    ?? 0);
-            $stockReserva = (float) ($inv?->stock_reserva ?? 0);
-            $stockExtra = [
-                'control_stock'   => (bool) ($prod?->control_de_stock ?? false),
-                'venta_sin_stock' => (bool) ($prod?->venta_sin_stock  ?? false),
-                'stock_real'      => $stockReal,
-                'stock_max'       => ($prod?->control_de_stock) ? $stockReserva : null,
-            ];
-            if ($prod?->control_de_stock && ! $prod?->venta_sin_stock) {
-                $enCarrito = $this->cantidadEnCarritoPorBase($baseKey);
-                if ($enCarrito + $cantidad > $stockReal) {
-                    Notification::make()->title('Stock insuficiente')->body("Disponible: {$stockReal}.")->warning()->send();
+                if ($enCarrito + $cantidad > ($stockMax ?? 0)) {
+                    Notification::make()
+                        ->title('Stock insuficiente')
+                        ->body('Disponible: ' . ($stockMax ?? 0) . '.')
+                        ->warning()
+                        ->send();
                     return;
                 }
             }
@@ -412,15 +403,15 @@ class PuntoDeVenta extends Page
     public function toggleCortesia(string $key): void
     {
         $carrito = $this->carrito;
-        if (! isset($carrito[$key])) return;
-        if (! ($carrito[$key]['puede_cortesia'] ?? false)) return;
+        if (! isset($carrito[$key])) { return; }
+        if (! ($carrito[$key]['puede_cortesia'] ?? false)) { return; }
 
         $item       = $carrito[$key];
         $turningOn  = ! ($item['cortesia'] ?? false);
 
         foreach ($carrito as $k => $other) {
-            if ($k === $key) continue;
-            if ($other['tipo'] !== $item['tipo'] || $other['id'] !== $item['id']) continue;
+            if ($k === $key) { continue; }
+            if ($other['tipo'] !== $item['tipo'] || $other['id'] !== $item['id']) { continue; }
 
             $otherEsCortesia = (bool) ($other['cortesia'] ?? false);
 
@@ -428,6 +419,7 @@ class PuntoDeVenta extends Page
                 $carrito[$k]['cantidad'] += $item['cantidad'];
                 unset($carrito[$key]);
                 $this->carrito = $carrito;
+                $this->syncAlpineStore();
                 return;
             }
 
@@ -435,6 +427,7 @@ class PuntoDeVenta extends Page
                 $carrito[$k]['cantidad'] += $item['cantidad'];
                 unset($carrito[$key]);
                 $this->carrito = $carrito;
+                $this->syncAlpineStore();
                 return;
             }
         }
@@ -442,12 +435,13 @@ class PuntoDeVenta extends Page
         $carrito[$key]['cortesia'] = $turningOn;
         $carrito[$key]['precio']   = $turningOn ? 0.0 : (float) ($item['precio_normal'] ?? 0);
         $this->carrito = $carrito;
+        $this->syncAlpineStore();
     }
 
     public function aumentarCantidad(string $key): void
     {
         $carrito = $this->carrito;
-        if (! isset($carrito[$key])) return;
+        if (! isset($carrito[$key])) { return; }
 
         $item = $carrito[$key];
 
@@ -466,7 +460,7 @@ class PuntoDeVenta extends Page
     public function disminuirCantidad(string $key): void
     {
         $carrito = $this->carrito;
-        if (! isset($carrito[$key])) return;
+        if (! isset($carrito[$key])) { return; }
         if ($carrito[$key]['cantidad'] > 1) {
             $carrito[$key]['cantidad']--;
         } else {
@@ -477,17 +471,25 @@ class PuntoDeVenta extends Page
 
     public function actualizarPrecio(string $key, float $precio): void
     {
-        if (! isset($this->carrito[$key])) return;
+        if (! isset($this->carrito[$key])) { return; }
         $carrito = $this->carrito;
-        $carrito[$key]['precio'] = round(max(0, $precio), 2);
+        $carrito[$key]['precio'] = round(max(0.01, $precio), 2);
         $this->carrito = $carrito;
-        $nuevoPrecio = $carrito[$key]['precio'];
-        $this->js('window.dispatchEvent(new CustomEvent("pdv-price-fix",{detail:{key:' . json_encode($key) . ',precio:' . $nuevoPrecio . '}}))');
+        $this->syncAlpineStore();
+    }
+
+    public function notificarStockInsuficiente(float $disponible): void
+    {
+        Notification::make()
+            ->title('Stock insuficiente')
+            ->body("Disponible: {$disponible}.")
+            ->warning()
+            ->send();
     }
 
     public function actualizarCantidad(string $key, float $cant): void
     {
-        if (! isset($this->carrito[$key])) return;
+        if (! isset($this->carrito[$key])) { return; }
         $cant     = max(0.001, round($cant, 3));
         $original = $cant;
         $item     = $this->carrito[$key];
@@ -639,6 +641,7 @@ class PuntoDeVenta extends Page
                 'id'                  => $m->id,
                 'nombre'              => $m->nombre,
                 'imagen'              => $m->imagen,
+                'imagen_url'          => $m->imagen ? \Illuminate\Support\Facades\Storage::url($m->imagen) : null,
                 'requiere_referencia' => (bool) $m->requiere_referencia,
                 'condicion_pago'      => $m->condicion_pago->value,
             ])
@@ -713,7 +716,7 @@ class PuntoDeVenta extends Page
 
     private function autoSeleccionarEfectivo(): void
     {
-        if ($this->metodoPagoId) return;
+        if ($this->metodoPagoId) { return; }
 
         $efectivo = collect($this->metodosPagoDisponibles)
             ->first(fn($m) => mb_strtolower($m['nombre']) === 'efectivo');
@@ -807,13 +810,13 @@ class PuntoDeVenta extends Page
 
     public function getOpGravadas(): float
     {
-        if ($this->esTicket()) return 0.0;
+        if ($this->esTicket()) { return 0.0; }
         return round($this->getTotalConDescuento() / 1.18, 2);
     }
 
     public function getIgv(): float
     {
-        if ($this->esTicket()) return 0.0;
+        if ($this->esTicket()) { return 0.0; }
         return round($this->getTotalConDescuento() - $this->getOpGravadas(), 2);
     }
 
@@ -1315,6 +1318,7 @@ class PuntoDeVenta extends Page
         }
 
         $this->carrito = [];
+        $this->syncAlpineStore();
         $this->cerrarModalPago();
         $this->autoSeleccionarComprobante();
         $this->autoSeleccionarClienteGeneral();

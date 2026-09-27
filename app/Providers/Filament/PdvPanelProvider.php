@@ -83,6 +83,7 @@ class PdvPanelProvider extends PanelProvider
         return $panel
             ->id('pdv')
             ->path('pdv')
+            ->viteTheme('resources/css/filament/pdv/theme.css')
             ->profile(isSimple: false)
             ->colors([
                 'primary' => '#1d5194',
@@ -140,12 +141,8 @@ class PdvPanelProvider extends PanelProvider
                 Css::make('pdv-punto-de-venta',    asset('css/punto-de-venta.css')),
                 Css::make('pdv-ventas-sesion',     asset('css/ventas-sesion.css')),
                 Css::make('pdv-cierres-caja',      asset('css/cierres-caja.css')),
-                Css::make('pdv-reporte-ventas',    asset('css/reporte-ventas.css')),
                 Css::make('pdv-reporte-ganancias', asset('css/reporte-ganancias.css')),
-                Css::make('pdv-reporte-productos', asset('css/reporte-productos.css')),
                 Css::make('pdv-reporte-compras',   asset('css/reporte-compras.css')),
-                Css::make('pdv-kardex',            asset('css/kardex.css')),
-                Css::make('pdv-despacho',          asset('css/despacho.css')),
                 Css::make('pdv-venta-detalle',     asset('css/venta-detalle-modal.css')),
                 Css::make('pdv-cuentas-cobrar',    asset('css/cuentas-por-cobrar.css')),
                 Css::make('pdv-editar-venta',      asset('css/editar-venta.css')),

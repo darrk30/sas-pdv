@@ -32,7 +32,7 @@ class ProduccionResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Áreas';
 
-    protected static ?string $recordTitleAttribute = 'Produccion';
+    protected static ?string $recordTitleAttribute = 'nombre';
 
     public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('produccion') && (auth()->user()?->can('produccion.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('produccion.crear') ?? false; }

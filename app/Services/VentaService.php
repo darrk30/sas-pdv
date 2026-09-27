@@ -145,6 +145,37 @@ class VentaService
                 'despacho_direccion' => $despachoRequerido && $despachoDireccion !== '' ? $despachoDireccion : null,
             ]);
 
+            // ── Precargar costos y producto_id de variantes en un solo query ──────
+            // Evita N+1: antes eran 1-2 queries por ítem dentro de la transacción.
+
+            $varianteIds = collect($items)
+                ->where('tipo', 'variante')
+                ->whereNull('costo')   // solo los que no traen costo precalculado
+                ->pluck('id')
+                ->unique()
+                ->values();
+
+            $productoIds = collect($items)
+                ->where('tipo', 'producto')
+                ->whereNull('costo')
+                ->pluck('id')
+                ->unique()
+                ->values();
+
+            // keyBy('id') permite lookup O(1) dentro del loop
+            $variantesMap = $varianteIds->isNotEmpty()
+                ? Variante::with('producto:id,precio_costo')
+                    ->whereIn('id', $varianteIds)
+                    ->get(['id', 'producto_id', 'precio_costo'])
+                    ->keyBy('id')
+                : collect();
+
+            $productosMap = $productoIds->isNotEmpty()
+                ? Producto::whereIn('id', $productoIds)
+                    ->get(['id', 'precio_costo'])
+                    ->keyBy('id')
+                : collect();
+
             // ── VentaDetalles ─────────────────────────────────────────────────
 
             $costoTotalVenta = 0.0;
@@ -157,10 +188,10 @@ class VentaService
                 if (isset($item['costo'])) {
                     $costoUnitario = (float) $item['costo'];
                 } elseif ($tipo === 'variante') {
-                    $v             = Variante::with('producto')->find($item['id']);
+                    $v             = $variantesMap->get($item['id']);
                     $costoUnitario = (float) ($v?->precio_costo ?? $v?->producto?->precio_costo ?? 0);
                 } elseif ($tipo === 'producto') {
-                    $costoUnitario = (float) (Producto::find($item['id'])?->precio_costo ?? 0);
+                    $costoUnitario = (float) ($productosMap->get($item['id'])?->precio_costo ?? 0);
                 } else {
                     $costoUnitario = 0.0;
                 }
@@ -199,7 +230,8 @@ class VentaService
                     $dd['producto_id'] = $item['id'];
                 } elseif ($tipo === 'variante') {
                     $dd['variante_id'] = $item['id'];
-                    $dd['producto_id'] = $item['producto_id'] ?? Variante::find($item['id'])?->producto_id;
+                    // producto_id viene del item (ya enviado por el PDV) o del mapa precargado
+                    $dd['producto_id'] = $item['producto_id'] ?? $variantesMap->get($item['id'])?->producto_id;
                 } elseif ($tipo === 'promocion') {
                     $dd['promocion_id'] = $item['id'];
                 }

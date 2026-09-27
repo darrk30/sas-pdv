@@ -33,7 +33,7 @@ class DimensionResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Dimensiones';
 
-    protected static ?string $recordTitleAttribute = 'Dimension';
+    protected static ?string $recordTitleAttribute = 'nombre';
 
     public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('dimensiones') && (auth()->user()?->can('dimensiones.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('dimensiones.crear') ?? false; }

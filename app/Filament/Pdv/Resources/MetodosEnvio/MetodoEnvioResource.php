@@ -34,6 +34,8 @@ class MetodoEnvioResource extends Resource
 
     protected static ?string $slug = 'metodos-envio';
 
+    protected static ?string $recordTitleAttribute = 'nombre';
+
     public static function canAccess(): bool              { return Filament::getTenant()->tieneModulo('metodos_envio') && (auth()->user()?->can('metodos_envio.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('metodos_envio.crear') ?? false; }
     public static function canEdit(Model $record): bool   { return auth()->user()?->can('metodos_envio.editar') ?? false; }

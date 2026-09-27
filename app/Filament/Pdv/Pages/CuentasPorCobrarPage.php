@@ -57,7 +57,7 @@ class CuentasPorCobrarPage extends Page implements HasTable
     public static function getNavigationBadge(): ?string
     {
         $empresaId = Filament::getTenant()?->id;
-        if (! $empresaId) return null;
+        if (! $empresaId) { return null; }
 
         $count = cache()->remember("badge_creditos_vencidos_{$empresaId}", 60, fn () =>
             \App\Models\Venta::where('empresa_id', $empresaId)

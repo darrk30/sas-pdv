@@ -146,12 +146,8 @@
           <li><a href="#planes">Planes</a></li>
         </ul>
         <div class="nav-r">
-          <a href="{{ $waNavUrl }}" target="_blank" rel="noopener" class="btn btn-or">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-              <path d="M11.999 0C5.373 0 0 5.373 0 12c0 2.117.549 4.099 1.514 5.82L.057 23.455a.5.5 0 0 0 .597.665l5.82-1.514A11.946 11.946 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0h-.001zm.001 21.818a9.818 9.818 0 0 1-5.018-1.374l-.36-.213-3.727.978.978-3.605-.234-.375A9.818 9.818 0 0 1 2.181 12c0-5.422 4.396-9.818 9.818-9.818 5.423 0 9.819 4.396 9.819 9.818 0 5.423-4.396 9.818-9.818 9.818z" />
-            </svg>
-            Solicita tu demo
+          <a href="{{ route('registro.publico') }}" class="btn btn-or">
+            Regístrate
           </a>
           <button class="hamburger" onclick="document.getElementById('mn').classList.add('open')" aria-label="Abrir menú">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
@@ -173,7 +169,7 @@
       <a href="#industrias" onclick="document.getElementById('mn').classList.remove('open')">Para quién</a>
       <a href="#como-funciona" onclick="document.getElementById('mn').classList.remove('open')">Cómo funciona</a>
       <a href="#planes" onclick="document.getElementById('mn').classList.remove('open')">Planes</a>
-      <a href="{{ $waNavUrl }}" target="_blank" rel="noopener" class="btn btn-or" style="margin-top:1rem;justify-content:center">Solicita tu demo</a>
+      <a href="{{ route('registro.publico') }}" class="btn btn-or" style="margin-top:1rem;justify-content:center">Regístrate</a>
     </nav>
   </div>
 
@@ -202,7 +198,7 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
-                Solicitar demo gratis
+                Inicia tu prueba gratis
               </a>
               <a href="#como-funciona" class="btn-ghost">Ver cómo funciona</a>
             </div>

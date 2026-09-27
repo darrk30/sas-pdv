@@ -38,7 +38,7 @@ class NotasPage extends Page implements HasTable
     public static function canAccess(): bool
     {
         $empresa = Filament::getTenant();
-        if (! $empresa) return false;
+        if (! $empresa) { return false; }
         return $empresa->tieneFacturacionElectronica()
             && (auth()->user()?->can('caja.notas') ?? false);
     }

@@ -55,7 +55,7 @@ trait HasConvertirComprobante
     public function abrirConvertir(int $ventaId): void
     {
         $venta = Venta::with('serie')->find($ventaId);
-        if (! $venta) return;
+        if (! $venta) { return; }
 
         $igvPct  = (float) (Filament::getTenant()->igv_porcentaje ?? 18);
         $total   = (float) $venta->total;
@@ -108,7 +108,7 @@ trait HasConvertirComprobante
 
     public function getConvertirSugeridos(): Collection
     {
-        if (strlen($this->convertirBusqueda) < 2) return collect();
+        if (strlen($this->convertirBusqueda) < 2) { return collect(); }
 
         return Cliente::where('empresa_id', Filament::getTenant()->id)
             ->where(function ($q) {
@@ -123,7 +123,7 @@ trait HasConvertirComprobante
     public function seleccionarConvertirCliente(int $id): void
     {
         $cliente = Cliente::find($id);
-        if (! $cliente) return;
+        if (! $cliente) { return; }
 
         $this->convertirClienteId      = $id;
         $this->convertirClienteNombre  = $cliente->nombre_completo;
@@ -149,7 +149,7 @@ trait HasConvertirComprobante
 
     public function confirmarConvertir(): void
     {
-        if (! $this->convertirVentaId) return;
+        if (! $this->convertirVentaId) { return; }
 
         $venta = Venta::with(['serie', 'detalles.producto'])->find($this->convertirVentaId);
 

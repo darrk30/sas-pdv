@@ -11,13 +11,10 @@ use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Schema;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
@@ -25,9 +22,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use UnitEnum;
 
-class ReporteGananciasPage extends Page implements HasForms, HasTable
+class ReporteGananciasPage extends Page implements HasTable
 {
-    use InteractsWithForms;
     use InteractsWithTable;
     use HasFullWidthPage;
 
@@ -38,80 +34,37 @@ class ReporteGananciasPage extends Page implements HasForms, HasTable
     protected static ?int $navigationSort = 3;
     protected static ?string $title = 'Ganancias por Venta';
 
+    public function getHeading(): string { return static::$title ?? ''; }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [\App\Filament\Pdv\Widgets\ReporteGananciasStatsWidget::class];
+    }
+
+    public function getWidgetData(): array
+    {
+        return [
+            'statsData'  => $this->getResumen(),
+            'sparksData' => $this->getSparklines(),
+        ];
+    }
+
     public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('reporte_ganancias') && (auth()->user()?->can('caja.reporte_ganancias') ?? false); }
-
-    public ?string $filtroFechaDesde = null;
-    public ?string $filtroFechaHasta = null;
-    public ?string $filtroVendedor   = null;
-
-    public function mount(): void
-    {
-        $this->form->fill();
-    }
-
-    public function form(Schema $schema): Schema
-    {
-        return $schema->components([
-            Grid::make(['default' => 1, 'sm' => 3])->schema([
-
-                DateTimePicker::make('filtroFechaDesde')
-                    ->label('Desde')
-                    ->displayFormat('d/m/Y H:i')
-                    ->format('Y-m-d H:i:s')
-                    ->seconds(false)
-                    ->live(),
-
-                DateTimePicker::make('filtroFechaHasta')
-                    ->label('Hasta')
-                    ->displayFormat('d/m/Y H:i')
-                    ->format('Y-m-d H:i:s')
-                    ->seconds(false)
-                    ->live(),
-
-                Select::make('filtroVendedor')
-                    ->label('Vendedor')
-                    ->placeholder('Todos los vendedores')
-                    ->options(fn() => User::whereHas('empresas', fn($q) => $q->where('empresa_id', Filament::getTenant()->id))
-                        ->orderBy('name')->pluck('name', 'id')->toArray())
-                    ->native(false)
-                    ->searchable()
-                    ->live(),
-
-            ]),
-        ]);
-    }
-
-    public function hayFiltros(): bool
-    {
-        return ! empty($this->filtroFechaDesde)
-            || ! empty($this->filtroFechaHasta)
-            || ! empty($this->filtroVendedor);
-    }
-
-    public function limpiarFiltros(): void
-    {
-        $this->filtroFechaDesde = null;
-        $this->filtroFechaHasta = null;
-        $this->filtroVendedor   = null;
-        $this->form->fill();
-    }
 
     // ── Query base ────────────────────────────────────────────────────────────
 
     private function baseQuery(): Builder
     {
+        $desde    = $this->tableFilters['desde']['desde'] ?? null;
+        $hasta    = $this->tableFilters['hasta']['hasta'] ?? null;
+        $vendedor = $this->tableFilters['vendedor']['vendedor'] ?? null;
+
         $q = Venta::where('empresa_id', Filament::getTenant()->id)
             ->where('estado', EstadoVenta::Completada->value);
 
-        if (! empty($this->filtroFechaDesde)) {
-            $q->where('created_at', '>=', $this->filtroFechaDesde);
-        }
-        if (! empty($this->filtroFechaHasta)) {
-            $q->where('created_at', '<=', $this->filtroFechaHasta);
-        }
-        if (! empty($this->filtroVendedor)) {
-            $q->where('vendedor_id', $this->filtroVendedor);
-        }
+        if (! empty($desde))    { $q->where('created_at', '>=', $desde); }
+        if (! empty($hasta))    { $q->where('created_at', '<=', $hasta); }
+        if (! empty($vendedor)) { $q->where('vendedor_id', $vendedor); }
 
         return $q;
     }
@@ -148,6 +101,27 @@ class ReporteGananciasPage extends Page implements HasForms, HasTable
             'utilidadBruta', 'utilidadRealizada', 'creditoPendiente', 'utilidadEnRiesgo',
             'margenPct'
         );
+    }
+
+    public function getSparklines(): array
+    {
+        $q = DB::table('ventas as v')
+            ->where('v.empresa_id', Filament::getTenant()->id)
+            ->where('v.estado', EstadoVenta::Completada->value)
+            ->whereDate('v.created_at', '>=', today()->subDays(6)->toDateString());
+        $vendedor = $this->tableFilters['vendedor']['vendedor'] ?? null;
+        if (!empty($vendedor)) {
+            $q->where('v.vendedor_id', $vendedor);
+        }
+        $rows = $q->selectRaw("DATE(v.created_at) as dia, COALESCE(SUM(v.total),0) as ingresos, COALESCE(SUM(v.total-v.igv-v.costo_total),0) as utilidad")
+            ->groupBy('dia')->orderBy('dia')->get()->keyBy('dia');
+        $ing = []; $utl = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $d = today()->subDays($i)->toDateString(); $r = $rows->get($d);
+            $ing[] = (float) ($r?->ingresos  ?? 0);
+            $utl[] = (float) ($r?->utilidad  ?? 0);
+        }
+        return ['ingresos' => $ing, 'utilidad' => $utl];
     }
 
     // ── Helpers de utilidad por fila ──────────────────────────────────────────
@@ -227,15 +201,12 @@ class ReporteGananciasPage extends Page implements HasForms, HasTable
     private function getFiltrosInfo(): array
     {
         $info = [];
-        if (! empty($this->filtroFechaDesde)) {
-            $info['Desde'] = \Illuminate\Support\Carbon::parse($this->filtroFechaDesde)->format('d/m/Y H:i');
-        }
-        if (! empty($this->filtroFechaHasta)) {
-            $info['Hasta'] = \Illuminate\Support\Carbon::parse($this->filtroFechaHasta)->format('d/m/Y H:i');
-        }
-        if (! empty($this->filtroVendedor)) {
-            $info['Vendedor'] = User::find($this->filtroVendedor)?->name ?? $this->filtroVendedor;
-        }
+        $desde    = $this->tableFilters['desde']['desde'] ?? null;
+        $hasta    = $this->tableFilters['hasta']['hasta'] ?? null;
+        $vendedor = $this->tableFilters['vendedor']['vendedor'] ?? null;
+        if (! empty($desde))    { $info['Desde']   = \Illuminate\Support\Carbon::parse($desde)->format('d/m/Y H:i'); }
+        if (! empty($hasta))    { $info['Hasta']   = \Illuminate\Support\Carbon::parse($hasta)->format('d/m/Y H:i'); }
+        if (! empty($vendedor)) { $info['Vendedor'] = User::find($vendedor)?->name ?? $vendedor; }
         return $info;
     }
 
@@ -271,6 +242,45 @@ class ReporteGananciasPage extends Page implements HasForms, HasTable
             )
             ->defaultSort('created_at', 'desc')
             ->toolbarActions($this->accionesExportacion())
+            ->filters([
+                Filter::make('desde')
+                    ->form([
+                        DateTimePicker::make('desde')
+                            ->label('Desde')
+                            ->displayFormat('d/m/Y H:i')
+                            ->format('Y-m-d H:i:s')
+                            ->seconds(false),
+                    ])
+                    ->indicateUsing(fn (array $data): ?string =>
+                        ($data['desde'] ?? null) ? 'Desde: ' . \Carbon\Carbon::parse($data['desde'])->format('d/m/Y H:i') : null
+                    ),
+
+                Filter::make('hasta')
+                    ->form([
+                        DateTimePicker::make('hasta')
+                            ->label('Hasta')
+                            ->displayFormat('d/m/Y H:i')
+                            ->format('Y-m-d H:i:s')
+                            ->seconds(false),
+                    ])
+                    ->indicateUsing(fn (array $data): ?string =>
+                        ($data['hasta'] ?? null) ? 'Hasta: ' . \Carbon\Carbon::parse($data['hasta'])->format('d/m/Y H:i') : null
+                    ),
+
+                Filter::make('vendedor')
+                    ->form([
+                        Select::make('vendedor')
+                            ->label('Vendedor')
+                            ->placeholder('Todos los vendedores')
+                            ->options(fn() => User::whereHas('empresas', fn($q) => $q->where('empresa_id', Filament::getTenant()->id))
+                                ->orderBy('name')->pluck('name', 'id')->toArray())
+                            ->native(false)
+                            ->searchable(),
+                    ])
+                    ->indicateUsing(fn (array $data): ?string =>
+                        ($data['vendedor'] ?? null) ? 'Vendedor: ' . (User::find($data['vendedor'])?->name ?? $data['vendedor']) : null
+                    ),
+            ])
             ->columns([
 
                 TextColumn::make('comprobante')

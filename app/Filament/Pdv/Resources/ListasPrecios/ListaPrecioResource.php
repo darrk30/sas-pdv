@@ -39,6 +39,8 @@ class ListaPrecioResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Listas de precios';
 
+    protected static ?string $recordTitleAttribute = 'nombre';
+
     public static function canAccess(): bool
     {
         $empresa = Filament::getTenant();

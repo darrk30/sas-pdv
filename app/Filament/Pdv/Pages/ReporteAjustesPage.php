@@ -15,16 +15,20 @@ use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Livewire\WithPagination;
 use UnitEnum;
 
-class ReporteAjustesPage extends Page implements HasForms
+class ReporteAjustesPage extends Page implements HasForms, HasTable
 {
     use InteractsWithForms;
-    use WithPagination;
+    use InteractsWithTable;
     use HasFullWidthPage;
 
     protected string $view = 'filament.pdv.pages.reporte-ajustes';
@@ -33,6 +37,20 @@ class ReporteAjustesPage extends Page implements HasForms
     protected static string|UnitEnum|null $navigationGroup = 'Reportes';
     protected static ?int $navigationSort = 8;
     protected static ?string $title = 'Reporte de Ajustes de Stock';
+
+    public function getHeading(): string { return static::$title ?? ''; }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [\App\Filament\Pdv\Widgets\ReporteAjustesStatsWidget::class];
+    }
+
+    public function getWidgetData(): array
+    {
+        return [
+            'statsData' => $this->getResumen(),
+        ];
+    }
 
     public static function canAccess(): bool { return Filament::getTenant()->tieneModulo('reporte_ajustes') && (auth()->user()?->can('ajustes.reporte') ?? false); }
 
@@ -66,7 +84,13 @@ class ReporteAjustesPage extends Page implements HasForms
     public function form(Schema $schema): Schema
     {
         return $schema->components([
-            Grid::make(['default' => 1, 'sm' => 2, 'md' => 4])->schema([
+            Section::make('Filtros')
+                ->description('Filtra los ajustes de inventario según los criterios seleccionados.')
+                ->columns(1)
+                ->collapsible()
+                ->collapsed(true)
+                ->schema([
+                    Grid::make(['default' => 1, 'sm' => 2, 'md' => 4])->schema([
 
                 Select::make('filtroRango')
                     ->label('Período')
@@ -83,35 +107,35 @@ class ReporteAjustesPage extends Page implements HasForms
                         ->distinct()->orderBy('users.name')
                         ->pluck('users.name', 'users.id')->toArray())
                     ->native(false)->searchable()
-                    ->live()->afterStateUpdated(fn() => $this->resetPage()),
+                    ->live()->afterStateUpdated(fn() => null),
 
                 Select::make('filtroTipo')
                     ->label('Tipo')
                     ->placeholder('Todos')
                     ->options(['entrada' => 'Entrada', 'salida' => 'Salida'])
                     ->native(false)
-                    ->live()->afterStateUpdated(fn() => $this->resetPage()),
+                    ->live()->afterStateUpdated(fn() => null),
 
                 Select::make('filtroEstado')
                     ->label('Estado')
                     ->placeholder('Todos')
                     ->options(['borrador' => 'Borrador', 'confirmado' => 'Confirmado'])
                     ->native(false)
-                    ->live()->afterStateUpdated(fn() => $this->resetPage()),
+                    ->live()->afterStateUpdated(fn() => null),
 
                 TextInput::make('filtroCodigo')
                     ->label('Código')
                     ->placeholder('Ej: AJ-0001')
-                    ->live(debounce: 400)->afterStateUpdated(fn() => $this->resetPage()),
+                    ->live(debounce: 400)->afterStateUpdated(fn() => null),
 
                 DatePicker::make('filtroFechaDesde')
                     ->label('Desde')->displayFormat('d/m/Y')
-                    ->live()->afterStateUpdated(fn() => $this->resetPage())
+                    ->live()->afterStateUpdated(fn() => null)
                     ->hidden(fn() => $this->filtroRango !== 'personalizado'),
 
                 DatePicker::make('filtroFechaHasta')
                     ->label('Hasta')->displayFormat('d/m/Y')
-                    ->live()->afterStateUpdated(fn() => $this->resetPage())
+                    ->live()->afterStateUpdated(fn() => null)
                     ->hidden(fn() => $this->filtroRango !== 'personalizado'),
 
                 Actions::make([
@@ -123,6 +147,7 @@ class ReporteAjustesPage extends Page implements HasForms
                         ->action(fn() => $this->limpiarFiltros()),
                 ])->verticallyAlignEnd(),
 
+            ]),
             ]),
         ]);
     }
@@ -140,8 +165,6 @@ class ReporteAjustesPage extends Page implements HasForms
             $this->filtroFechaHasta = $hasta;
             $this->form->fill(['filtroFechaDesde' => $desde, 'filtroFechaHasta' => $hasta]);
         }
-
-        $this->resetPage();
     }
 
     public function hayFiltros(): bool
@@ -167,7 +190,6 @@ class ReporteAjustesPage extends Page implements HasForms
             'filtroRango' => 'hoy', 'filtroFechaDesde' => $hoy, 'filtroFechaHasta' => $hoy,
             'filtroUsuario' => null, 'filtroTipo' => null, 'filtroEstado' => null, 'filtroCodigo' => null,
         ]);
-        $this->resetPage();
     }
 
     // ── Query base ────────────────────────────────────────────────────────────
@@ -196,18 +218,70 @@ class ReporteAjustesPage extends Page implements HasForms
         }
     }
 
-    // ── Listado paginado ──────────────────────────────────────────────────────
+    // ── Tabla Filament ────────────────────────────────────────────────────────
 
-    public function getAjustes(): LengthAwarePaginator
+    public function table(Table $table): Table
     {
-        $q = Ajuste::with(['responsable:id,name'])
-            ->withCount('detalles')
-            ->orderByDesc('created_at')
-            ->orderByDesc('id');
+        return $table
+            ->query(function (): Builder {
+                $q = Ajuste::with(['responsable:id,name'])
+                    ->withCount('detalles')
+                    ->orderByDesc('created_at')
+                    ->orderByDesc('id');
+                $this->aplicarFiltros($q);
+                return $q;
+            })
+            ->columns([
+                TextColumn::make('codigo')
+                    ->label('Código')
+                    ->searchable()
+                    ->sortable(),
 
-        $this->aplicarFiltros($q);
+                TextColumn::make('created_at')
+                    ->label('Fecha')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
 
-        return $q->paginate(25);
+                TextColumn::make('tipo')
+                    ->label('Tipo')
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'entrada' ? 'success' : 'warning')
+                    ->formatStateUsing(fn (string $state): string => $state === 'entrada' ? 'Entrada' : 'Salida'),
+
+                TextColumn::make('motivo')
+                    ->label('Motivo')
+                    ->limit(40)
+                    ->tooltip(fn (TextColumn $column): ?string => strlen($column->getState() ?? '') > 40 ? $column->getState() : null),
+
+                TextColumn::make('responsable.name')
+                    ->label('Responsable')
+                    ->default('—'),
+
+                TextColumn::make('estado')
+                    ->label('Estado')
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'confirmado' ? 'success' : 'gray')
+                    ->formatStateUsing(fn (string $state): string => $state === 'confirmado' ? 'Confirmado' : 'Borrador'),
+
+                TextColumn::make('detalles_count')
+                    ->label('Ítems')
+                    ->numeric()
+                    ->alignEnd(),
+
+                TextColumn::make('valor_total')
+                    ->label('Valor total')
+                    ->money('PEN')
+                    ->alignEnd(),
+            ])
+            ->actions([
+                Action::make('verDetalle')
+                    ->label('Ver detalle')
+                    ->icon('heroicon-m-eye')
+                    ->action(fn (Ajuste $record) => $this->abrirDetalle($record->id)),
+            ])
+            ->paginated([25, 50, 100])
+            ->emptyStateHeading('Sin ajustes')
+            ->emptyStateIcon('heroicon-o-wrench-screwdriver');
     }
 
     // ── Resumen ───────────────────────────────────────────────────────────────
@@ -217,11 +291,18 @@ class ReporteAjustesPage extends Page implements HasForms
         $q = Ajuste::query();
         $this->aplicarFiltros($q);
 
+        $row = $q->selectRaw("
+            COUNT(*)                                       AS cantidad,
+            SUM(tipo = 'entrada')                          AS entradas,
+            SUM(tipo = 'salida')                           AS salidas,
+            COALESCE(SUM(valor_total), 0)                  AS valor_total
+        ")->first();
+
         return [
-            'cantidad'  => (clone $q)->count(),
-            'entradas'  => (clone $q)->where('tipo', 'entrada')->count(),
-            'salidas'   => (clone $q)->where('tipo', 'salida')->count(),
-            'valorTotal' => (float) (clone $q)->sum('valor_total'),
+            'cantidad'   => (int)   ($row->cantidad   ?? 0),
+            'entradas'   => (int)   ($row->entradas   ?? 0),
+            'salidas'    => (int)   ($row->salidas     ?? 0),
+            'valorTotal' => (float) ($row->valor_total ?? 0),
         ];
     }
 
@@ -232,7 +313,7 @@ class ReporteAjustesPage extends Page implements HasForms
 
     public function getAjusteDetalle(): ?Ajuste
     {
-        if (!$this->ajusteDetalleId) return null;
+        if (!$this->ajusteDetalleId) { return null; }
 
         return Ajuste::with([
             'responsable:id,name',

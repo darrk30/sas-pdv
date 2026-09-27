@@ -32,7 +32,7 @@ class ImpresoraResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Impresoras';
 
-    protected static ?string $recordTitleAttribute = 'Impresora';
+    protected static ?string $recordTitleAttribute = 'nombre';
 
     public static function canAccess(): bool              { return Filament::getTenant()->tieneImpresionDirecta() && Filament::getTenant()->tieneModulo('impresoras') && (auth()->user()?->can('impresoras.ver') ?? false); }
     public static function canCreate(): bool              { return auth()->user()?->can('impresoras.crear') ?? false; }
