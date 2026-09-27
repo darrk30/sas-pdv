@@ -21,6 +21,7 @@ use App\Models\Variante;
 use App\Models\Venta;
 use App\Models\VentaDetalle;
 use App\Models\VentaPago;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class VentaService
@@ -318,6 +319,9 @@ class VentaService
                 }
             }
         });
+
+        // Invalidar cache de stock del catálogo PDV para que la próxima carga refleje el stock real
+        Cache::forget("catalog_stock_{$empresaId}");
 
         return $venta;
     }
