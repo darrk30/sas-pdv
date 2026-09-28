@@ -52,19 +52,24 @@ class VentaService
         array   $items,
         array   $pagos,
         float   $descuento          = 0.0,
-        bool    $despachoRequerido  = false,
-        string  $despachoDireccion  = '',
-        string  $conceptoPrefix     = '',
+        bool    $despachoRequerido      = false,
+        string  $despachoDireccion     = '',
+        string  $despachoDepartamento  = '',
+        string  $despachoProvincia     = '',
+        string  $despachoDistrito      = '',
+        string  $conceptoPrefix        = '',
         float   $igvPct             = 18.0,
         bool    $stockYaReservado   = false,
         ?string $fechaVencimiento   = null,
+        ?string $notas              = null,
     ): Venta {
         $venta = null;
 
         DB::transaction(function () use (
             $empresaId, $serieId, $clienteId, $clienteNombre, $clienteTipoDoc,
             $items, $pagos, $descuento, $despachoRequerido, $despachoDireccion,
-            $conceptoPrefix, $igvPct, $stockYaReservado, $fechaVencimiento, &$venta
+            $despachoDepartamento, $despachoProvincia, $despachoDistrito,
+            $conceptoPrefix, $igvPct, $stockYaReservado, $fechaVencimiento, $notas, &$venta
         ) {
             // ── Serie / correlativo ───────────────────────────────────────────
 
@@ -142,8 +147,12 @@ class VentaService
                 'saldo_pendiente'    => $saldoPendiente,
                 'estado_pago'        => $estadoPago,
                 'estado'             => EstadoVenta::Completada,
-                'estado_despacho'    => $despachoRequerido ? 'pendiente_envio' : null,
-                'despacho_direccion' => $despachoRequerido && $despachoDireccion !== '' ? $despachoDireccion : null,
+                'estado_despacho'       => $despachoRequerido ? 'pendiente_envio' : null,
+                'despacho_direccion'    => $despachoRequerido && $despachoDireccion    !== '' ? $despachoDireccion    : null,
+                'despacho_departamento' => $despachoRequerido && $despachoDepartamento !== '' ? $despachoDepartamento : null,
+                'despacho_provincia'    => $despachoRequerido && $despachoProvincia    !== '' ? $despachoProvincia    : null,
+                'despacho_distrito'     => $despachoRequerido && $despachoDistrito     !== '' ? $despachoDistrito     : null,
+                'notas'              => $notas,
             ]);
 
             // ── Precargar costos y producto_id de variantes en un solo query ──────

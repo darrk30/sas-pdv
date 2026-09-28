@@ -503,7 +503,10 @@
                      activeTab: 'pagos',
                      deliveryActivo: false,
                      despachoRequerido: false,
-                     despachoDireccion: '',
+                     despachoDireccion: '{{ addslashes($despachoDireccion ?? '') }}',
+                     despachoDepartamento: '{{ addslashes($despachoDepartamento ?? '') }}',
+                     despachoProvincia: '{{ addslashes($despachoProvincia ?? '') }}',
+                     despachoDistrito: '{{ addslashes($despachoDistrito ?? '') }}',
                      deliveryNombre: '{{ addslashes($clienteNombre ?? '') }}',
                      deliveryTelefono: '{{ addslashes($clienteTelefono ?? '') }}',
                      deliveryRepartidor: '',
@@ -516,6 +519,7 @@
                      descuentoInput: '{{ $descuentoInput ?? '0' }}',
                      totalBase: {{ $this->getTotal() }},
                      esTicket: {{ $tipoComprobante === 'ticket' ? 'true' : 'false' }},
+                     esFactura: {{ $tipoComprobante === 'factura' ? 'true' : 'false' }},
 
                      get metodoActivo() { return this.metodosPago.find(m => m.id === this.metodoPagoId) || null; },
                      get descuento() {
@@ -526,7 +530,8 @@
                      get totalPagado()       { return Math.round(this.pagosAgregados.reduce((s, p) => s + parseFloat(p.monto), 0) * 100) / 100; },
                      get saldoRestante()     { return Math.round((this.totalConDescuento - this.totalPagado) * 100) / 100; },
                      get totalEsCero()       { return this.totalConDescuento <= 0.01; },
-                     get listo()             { return (this.saldoRestante <= 0.01 && this.pagosAgregados.length > 0) || this.totalEsCero; },
+                     get facturaValida()     { return !this.esFactura || ($wire.clienteTipoDoc || '').toLowerCase() === 'ruc'; },
+                     get listo()             { return ((this.saldoRestante <= 0.01 && this.pagosAgregados.length > 0) || this.totalEsCero) && this.facturaValida; },
                      get opGravadas()        { return this.esTicket ? 0 : Math.round(this.totalConDescuento / 1.18 * 100) / 100; },
                      get igv()               { return this.esTicket ? 0 : Math.round((this.totalConDescuento - this.opGravadas) * 100) / 100; },
                      fmt(n) { return parseFloat(n).toFixed(2); },
@@ -582,14 +587,17 @@
                      },
                      confirmarVenta() {
                          if (!this.listo) return;
-                         $wire.deliveryActivo       = this.deliveryActivo;
-                         $wire.despachoRequerido    = this.despachoRequerido;
-                         $wire.despachoDireccion    = this.despachoDireccion;
-                         $wire.deliveryNombre       = this.deliveryActivo ? this.deliveryNombre    : '';
-                         $wire.deliveryTelefono     = this.deliveryActivo ? this.deliveryTelefono  : '';
-                         $wire.deliveryRepartidor   = this.deliveryActivo ? this.deliveryRepartidor : '';
-                         $wire.pagosAgregados       = this.pagosAgregados;
-                         $wire.descuentoInput       = this.descuentoInput;
+                         $wire.deliveryActivo         = this.deliveryActivo;
+                         $wire.despachoRequerido      = this.despachoRequerido;
+                         $wire.despachoDireccion      = this.despachoDireccion;
+                         $wire.despachoDepartamento   = this.despachoRequerido ? this.despachoDepartamento : '';
+                         $wire.despachoProvincia      = this.despachoRequerido ? this.despachoProvincia    : '';
+                         $wire.despachoDistrito       = this.despachoRequerido ? this.despachoDistrito     : '';
+                         $wire.deliveryNombre         = this.deliveryActivo ? this.deliveryNombre     : '';
+                         $wire.deliveryTelefono       = this.deliveryActivo ? this.deliveryTelefono   : '';
+                         $wire.deliveryRepartidor     = this.deliveryActivo ? this.deliveryRepartidor  : '';
+                         $wire.pagosAgregados         = this.pagosAgregados;
+                         $wire.descuentoInput         = this.descuentoInput;
                          $wire.procesarVenta();
                      }
                  }">
@@ -600,7 +608,7 @@
                         <h3 class="pdv-modal__titulo">Procesar Venta</h3>
                         <p class="pdv-modal__subtitulo">Selecciona método y completa el pago</p>
                     </div>
-                    @if(\Filament\Facades\Filament::getTenant()->tieneModulo('despacho') && auth()->user()?->can('tienda.ver'))
+                    {{-- Toggles: Delivery siempre visible; Despacho solo con módulo+permiso --}}
                     <div class="pdv-pago-toggles">
                         <label class="pdv-pago-toggle">
                             <input type="checkbox" class="pdv-pago-toggle__check"
@@ -612,6 +620,7 @@
                             </svg>
                             <span>Delivery</span>
                         </label>
+                        @if(\Filament\Facades\Filament::getTenant()->tieneModulo('despacho') && auth()->user()?->can('ordenes.despacho'))
                         <label class="pdv-pago-toggle">
                             <input type="checkbox" class="pdv-pago-toggle__check"
                                 x-model="despachoRequerido"
@@ -622,8 +631,8 @@
                             </svg>
                             <span>Despacho</span>
                         </label>
+                        @endif
                     </div>
-                    @endif
                     <button class="pdv-modal__cerrar" wire:click="cerrarModalPago">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
@@ -631,8 +640,7 @@
                     </button>
                 </div>
 
-                {{-- Tabs --}}
-                @if(\Filament\Facades\Filament::getTenant()->tieneModulo('despacho') && auth()->user()?->can('tienda.ver'))
+                {{-- Tabs: Delivery siempre; Despacho solo con módulo+permiso --}}
                 <div class="pdv-pago-tabs">
                     <button class="pdv-pago-tab" :class="{ 'pdv-pago-tab--active': activeTab === 'pagos' }"
                         @click="activeTab = 'pagos'" type="button">
@@ -649,6 +657,7 @@
                         </svg>
                         Delivery
                     </button>
+                    @if(\Filament\Facades\Filament::getTenant()->tieneModulo('despacho') && auth()->user()?->can('ordenes.despacho'))
                     <button class="pdv-pago-tab" :class="{ 'pdv-pago-tab--active': activeTab === 'despacho' }"
                         x-show="despachoRequerido" style="display:none"
                         @click="activeTab = 'despacho'" type="button">
@@ -657,8 +666,8 @@
                         </svg>
                         Despacho
                     </button>
+                    @endif
                 </div>
-                @endif
 
                 {{-- Body: layout 2 columnas en PC --}}
                 <div class="pdv-modal__body pdv-pago-body" x-show="activeTab === 'pagos'">
@@ -834,7 +843,7 @@
                 </div>{{-- /body pagos --}}
 
                 {{-- Tab Delivery --}}
-                @if(\Filament\Facades\Filament::getTenant()->tieneModulo('despacho') && auth()->user()?->can('tienda.ver'))
+                @if(\Filament\Facades\Filament::getTenant()->tieneModulo('despacho'))
                 <div class="pdv-pago-section" x-show="activeTab === 'delivery'" style="display:none">
                     <div class="pdv-delivery-form__fields">
                         <div class="pdv-delivery-field">
@@ -880,17 +889,45 @@
                     </div>
                 </div>
 
+                @endif
+
                 {{-- Tab Despacho --}}
+                @if(\Filament\Facades\Filament::getTenant()->tieneModulo('despacho') && auth()->user()?->can('ordenes.despacho'))
                 <div class="pdv-pago-section" x-show="activeTab === 'despacho'" style="display:none">
-                    <div class="pdv-despacho-wrap-tab">
-                        <p class="pdv-despacho-wrap-tab__hint">Indica la dirección o lugar de envío para esta orden de despacho.</p>
-                        <textarea
-                            class="pdv-despacho-direccion"
-                            x-model="despachoDireccion"
-                            placeholder="Dirección o lugar (ej: Agencia Olva, Jr. Lima 123)"
-                            maxlength="500"
-                            rows="4"
-                        ></textarea>
+                    <div class="pdv-delivery-form__fields">
+
+                        {{-- Aviso: cliente requerido (no Público en General) --}}
+                        <div class="pdv-delivery-field pdv-delivery-field--full"
+                             x-show="!$wire.clienteId || $wire.clienteNumDoc === '99999999'"
+                             style="display:none">
+                            <div style="display:flex;align-items:center;gap:.4rem;background:#fef3c7;border:1px solid #fcd34d;border-radius:.4rem;padding:.5rem .7rem;font-size:.78rem;color:#92400e;">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.9rem;height:.9rem;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+                                <span>Para despacho selecciona un cliente real con DNI o RUC (no "Público en General")</span>
+                            </div>
+                        </div>
+
+                        <div class="pdv-delivery-field">
+                            <label class="pdv-delivery-label">Departamento</label>
+                            <input type="text" class="pdv-delivery-input" x-model="despachoDepartamento"
+                                placeholder="Ej: Lima" maxlength="100" />
+                        </div>
+                        <div class="pdv-delivery-field">
+                            <label class="pdv-delivery-label">Provincia</label>
+                            <input type="text" class="pdv-delivery-input" x-model="despachoProvincia"
+                                placeholder="Ej: Lima" maxlength="100" />
+                        </div>
+                        <div class="pdv-delivery-field">
+                            <label class="pdv-delivery-label">Distrito</label>
+                            <input type="text" class="pdv-delivery-input" x-model="despachoDistrito"
+                                placeholder="Ej: Miraflores" maxlength="100" />
+                        </div>
+                        <div class="pdv-delivery-field pdv-delivery-field--full">
+                            <label class="pdv-delivery-label">Dirección</label>
+                            <textarea class="pdv-delivery-input" x-model="despachoDireccion"
+                                placeholder="Dirección o lugar de envío (ej: Agencia Olva, Jr. Lima 123)"
+                                maxlength="500" rows="3"></textarea>
+                        </div>
+
                     </div>
                 </div>
                 @endif
@@ -905,7 +942,7 @@
                         wire:target="procesarVenta"
                     >
                         <span wire:loading.remove wire:target="procesarVenta" style="display:contents">
-                            <span x-text="listo ? 'Confirmar Venta' : 'Completa el pago para continuar'"></span>
+                            <span x-text="listo ? 'Confirmar Venta' : (!facturaValida ? 'Factura requiere cliente con RUC' : 'Completa el pago para continuar')"></span>
                             <kbd class="pdv-kbd" x-show="listo">Ctrl+↵</kbd>
                         </span>
                         <span wire:loading wire:target="procesarVenta" style="display:none;align-items:center;gap:6px;">

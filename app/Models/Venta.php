@@ -60,6 +60,9 @@ class Venta extends Model
         'estado',
         'estado_despacho',
         'despacho_direccion',
+        'despacho_departamento',
+        'despacho_provincia',
+        'despacho_distrito',
         'notas',
     ];
 

@@ -47,6 +47,9 @@
                     @else
                         <span class="vs-badge vs-badge--ok">Completada</span>
                     @endif
+                    @if($vm->notas && str_starts_with($vm->notas, 'Delivery'))
+                        <span class="vs-badge vs-badge--despacho">Delivery</span>
+                    @endif
                     @if($vm->estado_despacho === \App\Enums\EstadoVenta::PendienteEnvio)
                         <span class="vs-badge vs-badge--despacho">Pendiente de envío</span>
                     @endif
@@ -66,6 +69,36 @@
             </div>
 
             <div class="vs-modal__body">
+
+                @if($vm->notas && str_starts_with($vm->notas, 'Delivery'))
+                @php
+                    $rvDp = [];
+                    foreach (explode(' | ', $vm->notas) as $p) {
+                        if (str_contains($p, ': ')) { [$k,$v] = explode(': ', $p, 2); $rvDp[trim($k)] = trim($v); }
+                    }
+                @endphp
+                <p class="vs-modal__section-label">Datos delivery</p>
+                <div class="vd-delivery-datos" style="margin-bottom:.75rem">
+                    @if(isset($rvDp['Cliente']))    <span><strong>Cliente:</strong> {{ $rvDp['Cliente'] }}</span>         @endif
+                    @if(isset($rvDp['Tel']))        <span><strong>Tel:</strong> {{ $rvDp['Tel'] }}</span>                 @endif
+                    @if(isset($rvDp['Dir']))        <span><strong>Dir:</strong> {{ $rvDp['Dir'] }}</span>                 @endif
+                    @if(isset($rvDp['Repartidor']))<span><strong>Repartidor:</strong> {{ $rvDp['Repartidor'] }}</span>   @endif
+                </div>
+                @endif
+
+                @if($vm->despacho_direccion || $vm->despacho_departamento || $vm->despacho_provincia || $vm->despacho_distrito)
+                <p class="vs-modal__section-label">Datos de despacho</p>
+                <div class="vd-delivery-datos" style="margin-bottom:.75rem">
+                    @if($vm->despacho_departamento || $vm->despacho_provincia || $vm->despacho_distrito)
+                    <span><strong>Ubicación:</strong>
+                        {{ implode(' / ', array_filter([$vm->despacho_departamento, $vm->despacho_provincia, $vm->despacho_distrito])) }}
+                    </span>
+                    @endif
+                    @if($vm->despacho_direccion)
+                    <span><strong>Dirección:</strong> {{ $vm->despacho_direccion }}</span>
+                    @endif
+                </div>
+                @endif
 
                 <p class="vs-modal__section-label">Ítems</p>
                 <div class="vs-modal__table-wrap">

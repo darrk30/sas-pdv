@@ -245,6 +245,9 @@ class VentasSesionPage extends Page implements HasTable
                 TextColumn::make('tipo')
                     ->label('Origen')
                     ->badge()
+                    ->state(fn (Venta $record): ?string =>
+                        $record->tipo ?? (str_starts_with($record->notas ?? '', 'Delivery') ? 'delivery' : null)
+                    )
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
                         'pdv'         => 'PDV',
                         'restaurante' => 'Mesa',
