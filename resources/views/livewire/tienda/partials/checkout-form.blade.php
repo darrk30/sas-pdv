@@ -105,6 +105,11 @@
                             <span class="chk__metodo-check {{ $chkMetodoEnvioId === $metodo->id ? 'chk__metodo-check--sel' : '' }}"></span>
                             <span class="chk__envio-info">
                                 <span class="chk__envio-nombre">{{ $metodo->nombre }}</span>
+                                @if ($metodo->tipo === 'provincial')
+                                    <span class="chk__envio-tag chk__envio-tag--provincial">Provincial</span>
+                                @else
+                                    <span class="chk__envio-tag chk__envio-tag--local">Local</span>
+                                @endif
                                 @if ($metodo->descripcion)
                                     <span class="chk__envio-desc">{!! $metodo->descripcion !!}</span>
                                 @endif
@@ -121,41 +126,70 @@
                         <span class="chk__error chk__error--block">{{ $message }}</span>
                     @enderror
 
-                    {{-- Dirección de entrega (solo si el método lo requiere) --}}
-                    @if ($requiereDireccion)
+                    {{-- ── DELIVERY: solo dirección de entrega ── --}}
+                    @if ($metodoTipo === 'delivery')
                         <div class="chk__field chk__field--full chk__dir-envio">
-                            <label class="chk__label">Dirección de la agencia <span class="chk__req">*</span></label>
+                            <label class="chk__label">Dirección de entrega <span class="chk__req">*</span></label>
                             <input type="text"
                                    class="chk__input @error('chkDireccion') chk__input--error @enderror"
                                    wire:model="chkDireccion"
-                                   placeholder="Av. Ejemplo 123">
+                                   placeholder="Ej: Av. Los Girasoles 210, La Victoria">
                             @error('chkDireccion')<span class="chk__error">{{ $message }}</span>@enderror
                         </div>
+                    @endif
 
-                        <div class="chk__campo-grid">
+                    {{-- ── PROVINCIAL: ubigeo + dirección de agencia ── --}}
+                    @if ($metodoTipo === 'provincial')
+                        <div class="chk__campo-grid chk__campo-grid--3">
                             <div class="chk__field">
                                 <label class="chk__label">Departamento <span class="chk__req">*</span></label>
                                 <input type="text"
                                        class="chk__input @error('chkDepartamento') chk__input--error @enderror"
-                                       wire:model="chkDepartamento" placeholder="Ej. Lima">
+                                       wire:model="chkDepartamento" placeholder="Ej: La Libertad">
                                 @error('chkDepartamento')<span class="chk__error">{{ $message }}</span>@enderror
                             </div>
                             <div class="chk__field">
                                 <label class="chk__label">Provincia <span class="chk__req">*</span></label>
                                 <input type="text"
                                        class="chk__input @error('chkProvincia') chk__input--error @enderror"
-                                       wire:model="chkProvincia" placeholder="Ej. Lima">
+                                       wire:model="chkProvincia" placeholder="Ej: Trujillo">
                                 @error('chkProvincia')<span class="chk__error">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="chk__field">
+                                <label class="chk__label">Distrito <span class="chk__req">*</span></label>
+                                <input type="text"
+                                       class="chk__input @error('chkDistrito') chk__input--error @enderror"
+                                       wire:model="chkDistrito" placeholder="Ej: Víctor Larco">
+                                @error('chkDistrito')<span class="chk__error">{{ $message }}</span>@enderror
                             </div>
                         </div>
 
-                        <div class="chk__field chk__field--full">
-                            <label class="chk__label">Distrito <span class="chk__req">*</span></label>
+                        <div class="chk__field chk__field--full chk__dir-envio">
+                            <label class="chk__label">¿A qué agencia lo enviamos? <span class="chk__req">*</span></label>
                             <input type="text"
-                                   class="chk__input @error('chkDistrito') chk__input--error @enderror"
-                                   wire:model="chkDistrito" placeholder="Ej. Miraflores">
-                            @error('chkDistrito')<span class="chk__error">{{ $message }}</span>@enderror
+                                   class="chk__input @error('chkDireccion') chk__input--error @enderror"
+                                   wire:model="chkDireccion"
+                                   placeholder="Ej: Av. España 1234, Trujillo">
+                            @error('chkDireccion')<span class="chk__error">{{ $message }}</span>@enderror
                         </div>
+                    @endif
+
+                    {{-- ── RETIRO: mostrar dónde recoger (solo informativo) ── --}}
+                    @if ($metodoTipo === 'retiro')
+                        @php $dirRetiro = $metodoEnvioSel?->direccion_retiro ?? null; @endphp
+                        @if ($dirRetiro)
+                            <div class="chk__retiro-info">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2" width="16" height="16" style="flex-shrink:0;color:#6b7280">
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                    <polyline points="9 22 9 12 15 12 15 22"/>
+                                </svg>
+                                <div>
+                                    <span class="chk__retiro-label">Dirección de recojo</span>
+                                    <span class="chk__retiro-dir">{{ $dirRetiro }}</span>
+                                </div>
+                            </div>
+                        @endif
                     @endif
 
                 </div>

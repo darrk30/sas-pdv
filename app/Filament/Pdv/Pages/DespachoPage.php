@@ -250,6 +250,16 @@ class DespachoPage extends Page implements HasTable
                     ->url(fn (Venta $record) => route('pdv.ticket.despacho', $record->id))
                     ->openUrlInNewTab(),
 
+                TableAction::make('membrete')
+                    ->label('')
+                    ->icon('heroicon-o-tag')
+                    ->color('gray')
+                    ->button()
+                    ->size('sm')
+                    ->tooltip('Imprimir membrete de envío')
+                    ->url(fn (Venta $record) => route('pdv.ticket.membrete', $record->id))
+                    ->openUrlInNewTab(),
+
                 TableActionGroup::make([
                     TableAction::make('a_en_preparacion')
                         ->label('En preparación')

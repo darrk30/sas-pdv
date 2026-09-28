@@ -451,6 +451,8 @@
         'disponibilidad'    => $disponibilidad,
         'items'             => $items,
         'requiereDireccion' => $requiereDireccion,
+        'metodoTipo'        => $metodoTipo,
+        'metodoEnvioSel'    => $metodoEnvioSel,
         'esGuest'           => $esGuest,
     ])
 @endif
@@ -461,7 +463,8 @@
     $metodoEnvioSel = $metodosEnvio->firstWhere('id', $chkMetodoEnvioId);
     $metodoPagoSel  = $metodosPago->firstWhere('id', $chkMetodoPagoId);
     $nombreCompleto = trim($chkNombre . ' ' . $chkApellidos);
-    $geo            = array_filter([$chkDepartamento, $chkProvincia, $chkDistrito]);
+    $tipoConf       = $metodoEnvioSel?->tipo ?? null;
+    $geo            = array_filter([$chkDepartamento ?? '', $chkProvincia ?? '', $chkDistrito ?? '']);
 @endphp
 <div class="conf-overlay" wire:click.self="cerrarConfirmacion">
     <div class="conf-modal">
@@ -504,16 +507,21 @@
                 <span class="conf-dato__label">Envío</span>
                 <span class="conf-dato__valor">{{ $metodoEnvioSel?->nombre ?? '—' }}</span>
             </div>
-            @if ($chkDireccion)
+            @if ($tipoConf === 'retiro')
             <div class="conf-dato">
-                <span class="conf-dato__label">Dirección</span>
-                <span class="conf-dato__valor">{{ $chkDireccion }}</span>
+                <span class="conf-dato__label">Recojo en</span>
+                <span class="conf-dato__valor">{{ $metodoEnvioSel?->direccion_retiro ?: $metodoEnvioSel?->nombre }}</span>
+            </div>
+            @elseif ($tipoConf === 'provincial' && count($geo))
+            <div class="conf-dato">
+                <span class="conf-dato__label">Destino</span>
+                <span class="conf-dato__valor">{{ implode(', ', $geo) }}</span>
             </div>
             @endif
-            @if (count($geo))
+            @if ($chkDireccion && $tipoConf !== 'retiro')
             <div class="conf-dato">
-                <span class="conf-dato__label">Ubicación</span>
-                <span class="conf-dato__valor">{{ implode(', ', $geo) }}</span>
+                <span class="conf-dato__label">{{ $tipoConf === 'provincial' ? 'Agencia' : 'Dirección entrega' }}</span>
+                <span class="conf-dato__valor">{{ $chkDireccion }}</span>
             </div>
             @endif
             <hr class="conf-modal__sep">

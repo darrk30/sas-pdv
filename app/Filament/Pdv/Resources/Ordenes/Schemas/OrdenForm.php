@@ -242,20 +242,73 @@ class OrdenForm
                                 self::recalcularTotales($get, $set, false);
                             }),
 
-                        TextInput::make('ubicacion_cliente')
-                            ->label('Depto / Provincia / Distrito')
-                            ->readOnly()
-                            ->placeholder('—')
-                            ->columnSpanFull()
-                            ->visible(fn(Get $get): bool => $get('tipo_entrega') === 'envio'),
-
+                        // ── Dirección de entrega (delivery) o agencia (provincial) ──
                         TextInput::make('direccion_agencia')
-                            ->label('Dirección de la agencia')
-                            ->placeholder('Ej: Jr. Tacna 123, Cercado de Lima')
+                            ->label(fn(Get $get): string =>
+                                self::tipoMetodo($get('metodo_envio_id')) === 'provincial'
+                                    ? 'Dirección de la agencia'
+                                    : 'Dirección de entrega'
+                            )
+                            ->placeholder(fn(Get $get): string =>
+                                self::tipoMetodo($get('metodo_envio_id')) === 'provincial'
+                                    ? 'Ej: Jr. Tacna 123, Cercado de Lima'
+                                    : 'Ej: Av. Los Pinos 210, La Victoria'
+                            )
                             ->nullable()
                             ->maxLength(255)
-                            ->visible(fn(Get $get): bool => $get('tipo_entrega') === 'envio'),
+                            ->columnSpanFull()
+                            ->visible(fn(Get $get): bool =>
+                                $get('tipo_entrega') === 'envio' &&
+                                in_array(self::tipoMetodo($get('metodo_envio_id')), ['delivery', 'provincial'])
+                            ),
 
+                        // ── Campos provinciales ───────────────────────────────
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('orden_departamento')
+                                    ->label('Departamento')
+                                    ->nullable()
+                                    ->maxLength(100),
+
+                                TextInput::make('orden_provincia')
+                                    ->label('Provincia')
+                                    ->nullable()
+                                    ->maxLength(100),
+
+                                TextInput::make('orden_distrito')
+                                    ->label('Distrito')
+                                    ->nullable()
+                                    ->maxLength(100),
+                            ])
+                            ->columnSpanFull()
+                            ->visible(fn(Get $get): bool =>
+                                $get('tipo_entrega') === 'envio' &&
+                                self::tipoMetodo($get('metodo_envio_id')) === 'provincial'
+                            ),
+
+                        // ── Tracking y clave (solo admin, solo provincial) ────
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('tracking_code')
+                                    ->label('Código de rastreo')
+                                    ->placeholder('Ej: SH-2025-00123')
+                                    ->nullable()
+                                    ->maxLength(100),
+
+                                TextInput::make('codigo_retiro')
+                                    ->label('Clave de recojo')
+                                    ->placeholder('Ej: DNI del destinatario')
+                                    ->nullable()
+                                    ->maxLength(100)
+                                    ->helperText('Clave o documento que pide la agencia para entregar.'),
+                            ])
+                            ->columnSpanFull()
+                            ->visible(fn(Get $get): bool =>
+                                $get('tipo_entrega') === 'envio' &&
+                                self::tipoMetodo($get('metodo_envio_id')) === 'provincial'
+                            ),
+
+                        // ── Costo (siempre visible cuando hay envío) ──────────
                         TextInput::make('costo_envio')
                             ->label('Costo de envío')
                             ->numeric()
@@ -593,5 +646,11 @@ class OrdenForm
         }
 
         return $data;
+    }
+
+    private static function tipoMetodo(?int $metodoId): ?string
+    {
+        if (! $metodoId) return null;
+        return MetodoEnvio::find($metodoId)?->tipo;
     }
 }
