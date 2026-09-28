@@ -7,6 +7,7 @@ use App\Http\Controllers\Pdv\ProductoExcelController;
 use App\Http\Controllers\Pdv\ProveedorExcelController;
 use App\Http\Controllers\Pdv\PushSubscriptionController;
 use App\Http\Controllers\Pdv\TicketDespachoController;
+use App\Http\Controllers\Pdv\TicketMembreteController;
 use App\Http\Controllers\Pdv\TicketVentaController;
 use App\Http\Controllers\Tienda\CarritoController;
 use App\Http\Middleware\TiendaEmpresa;
@@ -61,6 +62,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/ticket/despacho/{id}', [TicketDespachoController::class, 'show'])
         ->name('pdv.ticket.despacho')
+        ->where('id', '[0-9]+');
+
+    Route::get('/ticket/membrete/{id}', [TicketMembreteController::class, 'show'])
+        ->name('pdv.ticket.membrete')
         ->where('id', '[0-9]+');
 
     Route::get('/ticket/comanda/{ordenId}', function (int $ordenId) {

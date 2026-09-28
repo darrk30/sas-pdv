@@ -47,11 +47,28 @@ class MetodoEnvioForm
                             ->default('activo')
                             ->required(),
 
-                        Toggle::make('con_direccion')
-                            ->label('Requiere dirección de entrega')
-                            ->helperText('Al activar, el checkout mostrará un campo para ingresar la dirección de envío.')
-                            ->default(true)
+                        Select::make('tipo')
+                            ->label('Tipo de envío')
+                            ->options([
+                                'delivery'   => 'Delivery (entrega en domicilio del cliente)',
+                                'provincial' => 'Provincial (envío a agencia de transporte)',
+                                'retiro'     => 'Retiro en tienda (el cliente recoge)',
+                            ])
+                            ->native(false)
+                            ->default('delivery')
+                            ->required()
+                            ->live()
+                            ->helperText('Delivery: el repartidor lleva el pedido. Provincial: el cliente recoge en agencia. Retiro: el cliente viene a la tienda.')
                             ->columnSpanFull(),
+
+                        TextInput::make('direccion_retiro')
+                            ->label('Dirección de recojo')
+                            ->placeholder('Ej: Av. Principal 123, Piso 2 — preguntar por almacén')
+                            ->nullable()
+                            ->maxLength(255)
+                            ->helperText('Esta dirección se mostrará al cliente cuando seleccione este método.')
+                            ->columnSpanFull()
+                            ->visible(fn (\Filament\Schemas\Components\Utilities\Get $get): bool => $get('tipo') === 'retiro'),
 
                     ]),
             ]);

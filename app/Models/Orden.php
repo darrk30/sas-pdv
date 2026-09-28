@@ -49,6 +49,11 @@ class Orden extends Model
         'venta_id',
         'notas',
         'notas_internas',
+        'orden_departamento',
+        'orden_provincia',
+        'orden_distrito',
+        'tracking_code',
+        'codigo_retiro',
     ];
 
     protected $casts = [

@@ -18,6 +18,8 @@ class MetodoEnvio extends Model
         'descripcion',
         'costo',
         'con_direccion',
+        'tipo',
+        'direccion_retiro',
         'estado',
     ];
 

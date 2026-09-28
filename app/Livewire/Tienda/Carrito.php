@@ -46,9 +46,9 @@ class Carrito extends Component
     public string $chkDepartamento = '';
     public string $chkProvincia    = '';
     public string $chkDistrito     = '';
-    public ?int   $chkMetodoEnvioId = null;
-    public string $chkDireccion    = '';
-    public ?int   $chkMetodoPagoId  = null;
+    public ?int   $chkMetodoEnvioId  = null;
+    public string $chkDireccion      = '';
+    public ?int   $chkMetodoPagoId   = null;
 
     // ── Modal de confirmación ─────────────────────────────────────
     public bool   $modalConfirmacion  = false;
@@ -62,8 +62,10 @@ class Carrito extends Component
 
     protected function rules(): array
     {
-        $metodo            = $this->chkMetodoEnvioId ? MetodoEnvio::find($this->chkMetodoEnvioId) : null;
-        $requiereDireccion = $metodo?->con_direccion ?? false;
+        $metodo       = $this->chkMetodoEnvioId ? MetodoEnvio::find($this->chkMetodoEnvioId) : null;
+        $tipo         = $metodo?->tipo ?? null;
+        $esDelivery   = $tipo === 'delivery';
+        $esProvincial = $tipo === 'provincial';
 
         return [
             'chkNombre'        => 'required|string|min:2',
@@ -72,11 +74,11 @@ class Carrito extends Component
             'chkNumDoc'        => 'required|string|min:8|max:8',
             'chkTelefono'      => 'required|string|min:9|max:9',
             'chkEmail'         => 'nullable|email',
-            'chkDepartamento'  => $requiereDireccion ? 'required|string|min:2' : 'nullable|string',
-            'chkProvincia'     => $requiereDireccion ? 'required|string|min:2' : 'nullable|string',
-            'chkDistrito'      => $requiereDireccion ? 'required|string|min:2' : 'nullable|string',
+            'chkDireccion'     => ($esDelivery || $esProvincial) ? 'required|string|min:5' : 'nullable|string',
+            'chkDepartamento'  => $esProvincial ? 'required|string|min:2' : 'nullable|string',
+            'chkProvincia'     => $esProvincial ? 'required|string|min:2' : 'nullable|string',
+            'chkDistrito'      => $esProvincial ? 'required|string|min:2' : 'nullable|string',
             'chkMetodoEnvioId' => 'required|integer',
-            'chkDireccion'     => $requiereDireccion ? 'required|string|min:5' : 'nullable|string',
             'chkMetodoPagoId'  => 'required|integer',
         ];
     }
@@ -301,16 +303,15 @@ class Carrito extends Component
         $cliente = Auth::guard('cliente')->user();
 
         if ($cliente && empty($this->chkNombre)) {
-            $this->chkNombre       = $cliente->nombre ?? '';
-            $this->chkApellidos    = $cliente->apellidos ?? '';
-            $this->chkTipoDoc      = $cliente->tipo_documento?->value ?? 'dni';
-            $this->chkNumDoc       = $cliente->numero_documento ?? '';
-            $this->chkTelefono     = $cliente->telefono ?? '';
-            $this->chkEmail        = $cliente->correo ?? '';
-            $this->chkDepartamento = $cliente->departamento ?? '';
-            $this->chkProvincia    = $cliente->provincia ?? '';
-            $this->chkDistrito     = $cliente->distrito ?? '';
-            $this->chkDireccion    = $cliente->direccion ?? '';
+            $this->chkNombre    = $cliente->nombre ?? '';
+            $this->chkApellidos = $cliente->apellidos ?? '';
+            $this->chkTipoDoc   = $cliente->tipo_documento?->value ?? 'dni';
+            $this->chkNumDoc    = $cliente->numero_documento ?? '';
+            $this->chkTelefono  = $cliente->telefono ?? '';
+            $this->chkEmail     = $cliente->correo ?? '';
+            // Pre-llenar dirección del cliente como punto de partida para entrega local
+            // Dept/prov/dist se dejan vacíos: son datos de la orden, no del perfil
+            $this->chkDireccion = $cliente->direccion ?? '';
         }
 
         $metodosEnvio = $this->cargarMetodosEnvio();
@@ -337,7 +338,21 @@ class Carrito extends Component
         $this->chkMetodoEnvioId = $metodoId;
 
         $metodo = MetodoEnvio::find($metodoId);
-        if (! ($metodo?->con_direccion ?? false)) {
+        $tipo   = $metodo?->tipo ?? null;
+
+        if ($tipo === 'delivery') {
+            // Delivery: solo dirección de entrega — limpiar ubigeo
+            $this->chkDepartamento = '';
+            $this->chkProvincia    = '';
+            $this->chkDistrito     = '';
+        } elseif ($tipo === 'retiro') {
+            // Retiro: el cliente no llena ninguna dirección
+            $this->chkDireccion    = '';
+            $this->chkDepartamento = '';
+            $this->chkProvincia    = '';
+            $this->chkDistrito     = '';
+        } elseif ($tipo !== 'provincial') {
+            // Sin tipo conocido: limpiar todo
             $this->chkDireccion    = '';
             $this->chkDepartamento = '';
             $this->chkProvincia    = '';
@@ -507,13 +522,14 @@ class Carrito extends Component
 
         $metodoEnvioSel    = $this->chkMetodoEnvioId ? $metodosEnvio->firstWhere('id', $this->chkMetodoEnvioId) : null;
         $costoEnvio        = (float) ($metodoEnvioSel?->costo ?? 0);
-        $requiereDireccion = $metodoEnvioSel?->con_direccion ?? false;
+        $metodoTipo        = $metodoEnvioSel?->tipo ?? null; // 'delivery' | 'provincial' | 'retiro' | null
+        $requiereDireccion = in_array($metodoTipo, ['delivery', 'provincial']);
         $total             = $subtotal + $costoEnvio;
 
         return view('livewire.tienda.carrito', compact(
             'items', 'subtotal', 'disponibilidad', 'puedeIncrementar', 'esGuest',
             'metodosEnvio', 'metodosPago',
-            'costoEnvio', 'total', 'requiereDireccion'
+            'costoEnvio', 'total', 'requiereDireccion', 'metodoTipo', 'metodoEnvioSel'
         ));
     }
 
@@ -558,42 +574,39 @@ class Carrito extends Component
 
         try {
         $orden = DB::transaction(function () use ($items, $metodoEnvio, $metodoPago, $userId, $costoEnvio, $subtotal, $total) {
-            $geoPartes = array_filter([
-                $this->chkDepartamento ?: null,
-                $this->chkProvincia    ?: null,
-                $this->chkDistrito     ?: null,
-            ]);
+            $tipoMetodo   = $metodoEnvio?->tipo ?? null;
+            $esProvincial = $tipoMetodo === 'provincial';
+            $esRetiro     = $tipoMetodo === 'retiro';
+
             $orden = Orden::create([
-                'empresa_id'       => $this->empresaId,
-                'cliente_id'       => $userId,
-                'cliente_nombre'   => trim("{$this->chkNombre} {$this->chkApellidos}"),
-                'cliente_tipo_doc' => $this->chkTipoDoc,
-                'cliente_num_doc'  => $this->chkNumDoc,
-                'cliente_telefono' => $this->chkTelefono,
-                'cliente_direccion'=> $this->chkDireccion ?: null,
-                'tipo_entrega'     => 'envio',
-                'metodo_envio_id'  => $metodoEnvio?->id,
-                'direccion_agencia'=> ($metodoEnvio?->con_direccion && $this->chkDireccion) ? $this->chkDireccion : null,
-                'costo_envio'      => $costoEnvio,
-                'subtotal'         => $subtotal,
-                'igv'              => 0,
-                'total'            => $total,
-                'metodo_pago_id'   => $metodoPago?->id,
-                'notas_internas'   => $geoPartes ? implode(' / ', $geoPartes) : null,
+                'empresa_id'         => $this->empresaId,
+                'cliente_id'         => $userId,
+                'cliente_nombre'     => trim("{$this->chkNombre} {$this->chkApellidos}"),
+                'cliente_tipo_doc'   => $this->chkTipoDoc,
+                'cliente_num_doc'    => $this->chkNumDoc,
+                'cliente_telefono'   => $this->chkTelefono,
+                'cliente_direccion'  => null,
+                'tipo_entrega'       => $esRetiro ? 'retiro' : 'envio',
+                'metodo_envio_id'    => $metodoEnvio?->id,
+                'direccion_agencia'  => $esRetiro ? null : ($this->chkDireccion ?: null),
+                'orden_departamento' => $esProvincial ? ($this->chkDepartamento ?: null) : null,
+                'orden_provincia'    => $esProvincial ? ($this->chkProvincia    ?: null) : null,
+                'orden_distrito'     => $esProvincial ? ($this->chkDistrito     ?: null) : null,
+                'costo_envio'        => $costoEnvio,
+                'subtotal'           => $subtotal,
+                'igv'                => 0,
+                'total'              => $total,
+                'metodo_pago_id'     => $metodoPago?->id,
             ]);
 
-            // Sincronizar perfil del cliente autenticado con los datos del formulario
+            // Solo sincronizar nombre, teléfono y correo — no el geo (es de la orden, no del cliente)
             $clienteAuth = Auth::guard('cliente')->user();
             if ($clienteAuth) {
                 $clienteAuth->fill([
-                    'nombre'       => $this->chkNombre,
-                    'apellidos'    => $this->chkApellidos,
-                    'telefono'     => $this->chkTelefono,
-                    'correo'       => $this->chkEmail ?: $clienteAuth->correo,
-                    'direccion'    => $this->chkDireccion ?: $clienteAuth->direccion,
-                    'departamento' => $this->chkDepartamento ?: $clienteAuth->departamento,
-                    'provincia'    => $this->chkProvincia ?: $clienteAuth->provincia,
-                    'distrito'     => $this->chkDistrito ?: $clienteAuth->distrito,
+                    'nombre'    => $this->chkNombre,
+                    'apellidos' => $this->chkApellidos,
+                    'telefono'  => $this->chkTelefono,
+                    'correo'    => $this->chkEmail ?: $clienteAuth->correo,
                 ])->save();
             }
 
@@ -681,14 +694,10 @@ class Carrito extends Component
 
         if ($cliente) {
             $cliente->fill([
-                'nombre'      => $this->chkNombre,
-                'apellidos'   => $this->chkApellidos,
-                'telefono'    => $this->chkTelefono,
-                'correo'      => $this->chkEmail ?: $cliente->correo,
-                'direccion'   => $this->chkDireccion ?: $cliente->direccion,
-                'departamento'=> $this->chkDepartamento ?: $cliente->departamento,
-                'provincia'   => $this->chkProvincia ?: $cliente->provincia,
-                'distrito'    => $this->chkDistrito ?: $cliente->distrito,
+                'nombre'    => $this->chkNombre,
+                'apellidos' => $this->chkApellidos,
+                'telefono'  => $this->chkTelefono,
+                'correo'    => $this->chkEmail ?: $cliente->correo,
             ])->save();
         } else {
             $cliente = Cliente::create([
@@ -699,37 +708,34 @@ class Carrito extends Component
                 'apellidos'        => $this->chkApellidos,
                 'telefono'         => $this->chkTelefono,
                 'correo'           => $this->chkEmail ?: null,
-                'direccion'        => $this->chkDireccion ?: null,
-                'departamento'     => $this->chkDepartamento ?: null,
-                'provincia'        => $this->chkProvincia ?: null,
-                'distrito'         => $this->chkDistrito ?: null,
             ]);
         }
 
         try {
         $orden = DB::transaction(function () use ($rawItems, $metodoEnvio, $metodoPago, $cliente, $costoEnvio, $subtotal, $total) {
-            $geoPartes = array_filter([
-                $this->chkDepartamento ?: null,
-                $this->chkProvincia    ?: null,
-                $this->chkDistrito     ?: null,
-            ]);
+            $tipoMetodo   = $metodoEnvio?->tipo ?? null;
+            $esProvincial = $tipoMetodo === 'provincial';
+            $esRetiro     = $tipoMetodo === 'retiro';
+
             $orden = Orden::create([
-                'empresa_id'       => $this->empresaId,
-                'cliente_id'       => $cliente->id,
-                'cliente_nombre'   => trim("{$this->chkNombre} {$this->chkApellidos}"),
-                'cliente_tipo_doc' => $this->chkTipoDoc,
-                'cliente_num_doc'  => $this->chkNumDoc,
-                'cliente_telefono' => $this->chkTelefono,
-                'cliente_direccion'=> $this->chkDireccion ?: null,
-                'tipo_entrega'     => 'envio',
-                'metodo_envio_id'  => $metodoEnvio?->id,
-                'direccion_agencia'=> ($metodoEnvio?->con_direccion && $this->chkDireccion) ? $this->chkDireccion : null,
-                'costo_envio'      => $costoEnvio,
-                'subtotal'         => $subtotal,
-                'igv'              => 0,
-                'total'            => $total,
-                'metodo_pago_id'   => $metodoPago?->id,
-                'notas_internas'   => $geoPartes ? implode(' / ', $geoPartes) : null,
+                'empresa_id'         => $this->empresaId,
+                'cliente_id'         => $cliente->id,
+                'cliente_nombre'     => trim("{$this->chkNombre} {$this->chkApellidos}"),
+                'cliente_tipo_doc'   => $this->chkTipoDoc,
+                'cliente_num_doc'    => $this->chkNumDoc,
+                'cliente_telefono'   => $this->chkTelefono,
+                'cliente_direccion'  => null,
+                'tipo_entrega'       => $esRetiro ? 'retiro' : 'envio',
+                'metodo_envio_id'    => $metodoEnvio?->id,
+                'direccion_agencia'  => $esRetiro ? null : ($this->chkDireccion ?: null),
+                'orden_departamento' => $esProvincial ? ($this->chkDepartamento ?: null) : null,
+                'orden_provincia'    => $esProvincial ? ($this->chkProvincia    ?: null) : null,
+                'orden_distrito'     => $esProvincial ? ($this->chkDistrito     ?: null) : null,
+                'costo_envio'        => $costoEnvio,
+                'subtotal'           => $subtotal,
+                'igv'                => 0,
+                'total'              => $total,
+                'metodo_pago_id'     => $metodoPago?->id,
             ]);
 
             // Pre-cargar en batch para evitar N+1 dentro del loop de detalles

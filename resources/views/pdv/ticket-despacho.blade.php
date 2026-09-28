@@ -114,9 +114,40 @@ body {
     $clienteTipoDoc = strtoupper($orden?->cliente_tipo_doc ?: $venta->cliente_tipo_doc ?: 'Doc');
     $clienteTel     = $orden?->cliente_telefono ?: $venta->cliente?->telefono;
 
-    $depPrvDst       = $orden?->notas_internas;
-    $dirAgencia      = $orden?->direccion_agencia;
+    // Geo: nuevas columnas primero, fallback a notas_internas para órdenes antiguas
+    $dept = $orden?->orden_departamento;
+    $prov = $orden?->orden_provincia;
+    $dist = $orden?->orden_distrito;
+    if ($dept || $prov || $dist) {
+        $geoTexto = implode(' / ', array_filter([$dept, $prov, $dist]));
+    } elseif ($orden?->notas_internas) {
+        $geoTexto = $orden->notas_internas;
+    } else {
+        $geoTexto = null;
+    }
+
+    $dirAgencia        = $orden?->direccion_agencia;
+    $trackingCode      = $orden?->tracking_code;
+    $codigoRetiro      = $orden?->codigo_retiro;
     $despachoDireccion = $venta->despacho_direccion;
+
+    $metodoTipo = $orden?->metodoEnvio?->tipo; // 'delivery' | 'provincial' | 'retiro' | null
+
+    $seccionEnvio = match($metodoTipo) {
+        'delivery'   => 'Envío · Delivery',
+        'provincial' => 'Envío Provincial',
+        'retiro'     => 'Retiro en tienda',
+        default      => 'Datos de envío',
+    };
+    $dirLabel = match($metodoTipo) {
+        'delivery'   => 'Dirección de entrega',
+        'provincial' => 'Agencia',
+        'retiro'     => 'Punto de retiro',
+        default      => 'Dirección',
+    };
+    $dirRetiro = ($metodoTipo === 'retiro') ? ($orden?->metodoEnvio?->direccion_retiro) : null;
+
+    $hayEnvio = $geoTexto || $dirAgencia || $dirRetiro || $trackingCode || $codigoRetiro || $despachoDireccion;
 @endphp
 <div class="wrap">
 {{-- ══ TÍTULO ══ --}}
@@ -151,24 +182,42 @@ body {
     @endif
 </table>
 
-@if ($depPrvDst || $dirAgencia || $despachoDireccion)
+@if ($hayEnvio)
 <div style="margin:2mm 0"></div>
 
 {{-- ══ DATOS DE ENVÍO ══ --}}
-<div class="seccion-titulo">Datos de envío</div>
-@if ($depPrvDst)
+<div class="seccion-titulo">{{ $seccionEnvio }}</div>
+@if ($geoTexto)
 <div class="envio-campo">
     <div class="envio-label">Dep / Prov / Dist:</div>
-    <div class="envio-valor">{{ $depPrvDst }}</div>
+    <div class="envio-valor">{{ $geoTexto }}</div>
 </div>
 @endif
 @if ($dirAgencia)
 <div class="envio-campo">
-    <div class="envio-label">Agencia:</div>
+    <div class="envio-label">{{ $dirLabel }}:</div>
     <div class="envio-valor">{{ $dirAgencia }}</div>
 </div>
 @endif
-@if ($despachoDireccion && !$depPrvDst && !$dirAgencia)
+@if ($dirRetiro && !$dirAgencia)
+<div class="envio-campo">
+    <div class="envio-label">Dirección de retiro:</div>
+    <div class="envio-valor">{{ $dirRetiro }}</div>
+</div>
+@endif
+@if ($trackingCode)
+<div class="envio-campo">
+    <div class="envio-label">Código de rastreo:</div>
+    <div class="envio-valor">{{ $trackingCode }}</div>
+</div>
+@endif
+@if ($codigoRetiro)
+<div class="envio-campo">
+    <div class="envio-label">Clave de recojo:</div>
+    <div class="envio-valor">{{ $codigoRetiro }}</div>
+</div>
+@endif
+@if ($despachoDireccion && !$dirAgencia && !$dirRetiro)
 <div class="envio-campo">
     <div class="envio-label">Dirección / Lugar:</div>
     <div class="envio-valor">{{ $despachoDireccion }}</div>
