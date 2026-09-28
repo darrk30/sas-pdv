@@ -28,6 +28,7 @@ use App\Models\VentaPago;
 use App\Events\VentaCompletada;
 use App\Services\ImpresionDirectaService;
 use App\Services\KardexService;
+use App\Services\VentaService;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
@@ -63,6 +64,7 @@ class PuntoDeVenta extends Page
     public ?int $clienteId = null;
     public ?string $clienteNombre = null;
     public ?string $clienteTipoDoc = null;
+    public ?string $clienteNumDoc = null;
     public ?string $clienteTelefono = null;
     public string $clienteBusqueda = '';
     public bool $mostrarSugerencias = false;
@@ -78,12 +80,15 @@ class PuntoDeVenta extends Page
     public array   $pagosAgregados          = [];
     public string  $descuentoInput          = '0';
     public ?string $fechaVencimientoCredito = null;
-    public bool $deliveryActivo       = false;
-    public bool $despachoRequerido    = false;
-    public string $despachoDireccion  = '';
-    public string $deliveryNombre     = '';
-    public string $deliveryTelefono   = '';
-    public string $deliveryRepartidor = '';
+    public bool $deliveryActivo            = false;
+    public bool $despachoRequerido         = false;
+    public string $despachoDireccion       = '';
+    public string $despachoDepartamento    = '';
+    public string $despachoProvincia       = '';
+    public string $despachoDistrito        = '';
+    public string $deliveryNombre          = '';
+    public string $deliveryTelefono        = '';
+    public string $deliveryRepartidor      = '';
 
     // ── Reimpresión del último ticket (para el botón de reimprimir) ───────────
 
@@ -170,7 +175,13 @@ class PuntoDeVenta extends Page
         $this->clienteId      = $cliente->id;
         $this->clienteNombre  = $cliente->nombre_completo;
         $this->clienteTipoDoc = $cliente->tipo_documento->value;
+        $this->clienteNumDoc  = $cliente->numero_documento;
         $this->clienteBusqueda = $cliente->nombre_completo;
+        // Público en general no tiene dirección útil
+        $this->despachoDireccion    = '';
+        $this->despachoDepartamento = '';
+        $this->despachoProvincia    = '';
+        $this->despachoDistrito     = '';
     }
 
     // ── Cliente ───────────────────────────────────────────────────────────────
@@ -182,6 +193,7 @@ class PuntoDeVenta extends Page
             $this->clienteId       = null;
             $this->clienteNombre   = null;
             $this->clienteTipoDoc  = null;
+            $this->clienteNumDoc   = null;
             $this->clienteTelefono = null;
         }
     }
@@ -208,9 +220,16 @@ class PuntoDeVenta extends Page
         $this->clienteId       = $id;
         $this->clienteNombre   = $cliente->nombre_completo;
         $this->clienteTipoDoc  = $cliente->tipo_documento->value;
+        $this->clienteNumDoc   = $cliente->numero_documento;
         $this->clienteTelefono = $cliente->telefono;
         $this->clienteBusqueda = $cliente->nombre_completo;
         $this->mostrarSugerencias = false;
+
+        // Auto-rellenar datos de despacho desde el cliente
+        $this->despachoDireccion    = $cliente->direccion     ?? '';
+        $this->despachoDepartamento = $cliente->departamento  ?? '';
+        $this->despachoProvincia    = $cliente->provincia     ?? '';
+        $this->despachoDistrito     = $cliente->distrito      ?? '';
 
         if ($cliente->tipo_documento === TipoDocumento::RUC) {
             $this->seleccionarComprobante(TipoComprobante::Factura->value);
@@ -222,9 +241,14 @@ class PuntoDeVenta extends Page
         $this->clienteId        = null;
         $this->clienteNombre    = null;
         $this->clienteTipoDoc   = null;
+        $this->clienteNumDoc    = null;
         $this->clienteTelefono  = null;
         $this->clienteBusqueda  = '';
         $this->mostrarSugerencias = false;
+        $this->despachoDireccion    = '';
+        $this->despachoDepartamento = '';
+        $this->despachoProvincia    = '';
+        $this->despachoDistrito     = '';
     }
 
     // ── Modal: nuevo cliente rápido (delegado a NuevoClienteModal) ───────────
@@ -655,12 +679,19 @@ class PuntoDeVenta extends Page
         $this->descuentoInput          = '0';
         $this->fechaVencimientoCredito = null;
         $this->deliveryActivo          = false;
-        $this->despachoRequerido  = false;
-        $this->despachoDireccion  = '';
-        $this->deliveryNombre     = '';
-        $this->deliveryTelefono   = '';
-        $this->deliveryRepartidor = '';
-        $this->modalPago          = true;
+        $this->despachoRequerido       = false;
+        // Los campos de despacho ya vienen rellenos por seleccionarCliente().
+        // Solo se resetean si no hay cliente real seleccionado.
+        if (! $this->clienteId || $this->clienteNumDoc === '99999999') {
+            $this->despachoDireccion    = '';
+            $this->despachoDepartamento = '';
+            $this->despachoProvincia    = '';
+            $this->despachoDistrito     = '';
+        }
+        $this->deliveryNombre       = $this->clienteNombre  ?? '';
+        $this->deliveryTelefono     = $this->clienteTelefono ?? '';
+        $this->deliveryRepartidor   = '';
+        $this->modalPago            = true;
 
         $this->autoSeleccionarEfectivo();
         if ($this->metodoPagoId) {
@@ -682,11 +713,14 @@ class PuntoDeVenta extends Page
         $this->pagoReferencia         = '';
         $this->pagosAgregados         = [];
         $this->descuentoInput         = '0';
-        $this->deliveryActivo         = false;
-        $this->despachoRequerido      = false;
-        $this->despachoDireccion      = '';
-        $this->deliveryNombre         = '';
-        $this->deliveryTelefono       = '';
+        $this->deliveryActivo       = false;
+        $this->despachoRequerido    = false;
+        $this->despachoDireccion    = '';
+        $this->despachoDepartamento = '';
+        $this->despachoProvincia    = '';
+        $this->despachoDistrito     = '';
+        $this->deliveryNombre       = '';
+        $this->deliveryTelefono     = '';
         $this->deliveryRepartidor     = '';
     }
 
@@ -842,6 +876,17 @@ class PuntoDeVenta extends Page
             return;
         }
 
+        // Factura requiere cliente con RUC
+        if ($this->tipoComprobante === TipoComprobante::Factura->value &&
+            strtolower($this->clienteTipoDoc ?? '') !== 'ruc') {
+            Notification::make()
+                ->title('Factura requiere RUC')
+                ->body('Selecciona un cliente con RUC para emitir una Factura Electrónica.')
+                ->warning()
+                ->send();
+            return;
+        }
+
         if (empty($this->pagosAgregados) && ! $this->totalEsCero()) {
             Notification::make()->title('Agrega al menos un pago')->warning()->send();
             return;
@@ -865,34 +910,9 @@ class PuntoDeVenta extends Page
             return;
         }
 
-        $descuento         = $this->getDescuento();
-        $totalConDescuento = $this->getTotalConDescuento();
-        $pagosAgregados    = $this->pagosAgregados;
-        $carrito           = $this->carrito;
-        $clienteId         = $this->clienteId;
-        $clienteNombre     = $this->clienteNombre;
-        $clienteTipoDoc    = $this->clienteTipoDoc;
-        $serieId           = $this->serieId;
-        $deliveryActivo     = $this->deliveryActivo;
-        $despachoRequerido  = $this->despachoRequerido;
-        $despachoDireccion  = trim($this->despachoDireccion);
-        $deliveryNombre     = trim($this->deliveryNombre);
-        $deliveryTelefono   = trim($this->deliveryTelefono);
-        $deliveryRepartidor = trim($this->deliveryRepartidor);
-
-        $esTicket    = $this->esTicket();
-        $tasaIgv     = $esTicket ? 0.0 : 0.18;
-        $opGravadas  = $esTicket ? 0.0 : $this->getOpGravadas();
-        $opInafectas = 0.0;
-        $igv         = $esTicket ? 0.0 : $this->getIgv();
-
-        $pagosContado  = array_values(array_filter($pagosAgregados, fn($p) => ($p['condicion_pago'] ?? 'contado') !== 'credito'));
-        $pagosCredito  = array_values(array_filter($pagosAgregados, fn($p) => ($p['condicion_pago'] ?? 'contado') === 'credito'));
-        $montoContado  = round(array_sum(array_column($pagosContado, 'monto')), 2);
-        $montoPagado   = min($montoContado, $totalConDescuento);
-        $saldoPendiente = round(max(0.0, $totalConDescuento - $montoPagado), 2);
+        $pagosCredito  = array_values(array_filter($this->pagosAgregados, fn($p) => ($p['condicion_pago'] ?? 'contado') === 'credito'));
         $tipoPagoVenta = count($pagosCredito) > 0 ? TipoPago::Credito : TipoPago::Contado;
-        $estadoPago    = $saldoPendiente > 0.01 ? 'pendiente' : 'pagado';
+        $esTicket      = $this->esTicket();
 
         // ── Validaciones de crédito ──────────────────────────────────────────
         if ($tipoPagoVenta === TipoPago::Credito) {
@@ -915,390 +935,52 @@ class PuntoDeVenta extends Page
             }
         }
 
+        // ── Validación despacho ──────────────────────────────────────────────
+        if ($this->despachoRequerido) {
+            if (! $this->clienteId || $this->clienteNumDoc === '99999999') {
+                Notification::make()
+                    ->title('Cliente requerido para despacho')
+                    ->body('Selecciona un cliente real con DNI o RUC — no se puede despachar a "Público en General".')
+                    ->warning()
+                    ->send();
+                return;
+            }
+        }
+
         $fechaVencimiento = $tipoPagoVenta === TipoPago::Credito ? $this->fechaVencimientoCredito : null;
+
+        $notas = null;
+        if ($this->deliveryActivo) {
+            $notas = implode(' | ', array_filter([
+                'Delivery',
+                trim($this->deliveryNombre)     !== '' ? 'Cliente: '    . trim($this->deliveryNombre)     : null,
+                trim($this->deliveryTelefono)   !== '' ? 'Tel: '        . trim($this->deliveryTelefono)   : null,
+                trim($this->despachoDireccion)  !== '' ? 'Dir: '        . trim($this->despachoDireccion)  : null,
+                trim($this->deliveryRepartidor) !== '' ? 'Repartidor: ' . trim($this->deliveryRepartidor) : null,
+            ])) ?: null;
+        }
 
         $venta = null;
 
         try {
-            DB::transaction(function () use (
-                $empresaId, $descuento, $totalConDescuento,
-                $opGravadas, $opInafectas, $igv, $tasaIgv,
-                $montoPagado, $saldoPendiente, $tipoPagoVenta, $estadoPago,
-                $pagosContado, $pagosCredito, $carrito,
-                $clienteId, $clienteNombre, $clienteTipoDoc, $serieId,
-                $deliveryActivo, $despachoRequerido, $despachoDireccion,
-                $deliveryNombre, $deliveryTelefono, $deliveryRepartidor,
-                $fechaVencimiento, &$venta
-            ) {
-                $serie = Serie::lockForUpdate()->findOrFail($serieId);
-                $nuevoNumero = $serie->numero + 1;
-                $serie->update(['numero' => $nuevoNumero]);
-                $correlativo = str_pad($nuevoNumero, 8, '0', STR_PAD_LEFT);
-
-                $sesionCaja = SesionCaja::where('empresa_id', $empresaId)
-                    ->where('user_id', auth()->id())
-                    ->where('estado', EstadoSesion::Abierta->value)
-                    ->latest()
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $sesionCaja) {
-                    throw new \RuntimeException('__SIN_SESION__');
-                }
-
-                $cliente             = $clienteId ? Cliente::find($clienteId) : null;
-                $clienteNombreFinal  = $cliente?->nombre_completo ?? $clienteNombre;
-                $clienteTipoDocFinal = $cliente?->tipo_documento?->value ?? $clienteTipoDoc;
-                $clienteNumDoc       = $cliente?->numero_documento ?? null;
-
-                $venta = Venta::create([
-                    'empresa_id'       => $empresaId,
-                    'sesion_caja_id'   => $sesionCaja->id,
-                    'cliente_id'       => $clienteId,
-                    'cliente_nombre'   => $clienteNombreFinal,
-                    'cliente_tipo_doc' => $clienteTipoDocFinal,
-                    'cliente_num_doc'  => $clienteNumDoc,
-                    'serie_id'         => $serieId,
-                    'correlativo'      => $correlativo,
-                    'tipo_pago'        => $tipoPagoVenta,
-                    'fecha_vencimiento'=> $fechaVencimiento,
-                    'op_gravadas'      => $opGravadas,
-                    'op_exoneradas'    => 0,
-                    'op_inafectas'     => $opInafectas,
-                    'descuento_total'  => $descuento,
-                    'igv'              => $igv,
-                    'total'            => $totalConDescuento,
-                    'costo_total'      => 0,
-                    'monto_pagado'     => $montoPagado,
-                    'saldo_pendiente'  => $saldoPendiente,
-                    'estado_pago'      => $estadoPago,
-                    'estado'              => EstadoVenta::Completada,
-                    'estado_despacho'     => $despachoRequerido ? 'pendiente_envio' : null,
-                    'despacho_direccion'  => $despachoRequerido && $despachoDireccion !== '' ? $despachoDireccion : null,
-                    'notas'               => $deliveryActivo ? implode(' | ', array_filter([
-                        'Delivery',
-                        $deliveryNombre     !== '' ? 'Cliente: '    . $deliveryNombre     : null,
-                        $deliveryTelefono   !== '' ? 'Tel: '        . $deliveryTelefono   : null,
-                        $despachoDireccion  !== '' ? 'Dir: '        . $despachoDireccion  : null,
-                        $deliveryRepartidor !== '' ? 'Repartidor: ' . $deliveryRepartidor : null,
-                    ])) ?: null : null,
-                ]);
-
-                // Pre-cargar productos y variantes en batch para evitar N+1 dentro del loop
-                $productoIds = collect($carrito)->where('tipo', 'producto')->pluck('id')->unique()->all();
-                $varianteIds = collect($carrito)->where('tipo', 'variante')->pluck('id')->unique()->all();
-
-                $productosMap = $productoIds
-                    ? Producto::with('unidadMedida')->whereIn('id', $productoIds)->get()->keyBy('id')
-                    : collect();
-                $variantesMap = $varianteIds
-                    ? Variante::with('producto.unidadMedida')->whereIn('id', $varianteIds)->get()->keyBy('id')
-                    : collect();
-
-                $costoTotalVenta = 0.0;
-
-                foreach ($carrito as $item) {
-                    $variante = $item['tipo'] === 'variante'
-                        ? $variantesMap->get($item['id'])
-                        : null;
-
-                    $costoUnitario = match ($item['tipo']) {
-                        'producto' => (float) ($productosMap->get($item['id'])?->precio_costo ?? 0),
-                        'variante' => (float) ($variante?->precio_costo ?? $variante?->producto?->precio_costo ?? 0),
-                        default    => 0.0,
-                    };
-
-                    $calc = VentaDetalle::calcular(
-                        cantidad: (float) $item['cantidad'],
-                        precioUnitario: (float) $item['precio'],
-                        costoUnitario: $costoUnitario,
-                        tasaIgv: $tasaIgv,
-                    );
-
-                    $tipoItem = match ($item['tipo']) {
-                        'variante'  => TipoItem::Variante,
-                        'promocion' => TipoItem::Promocion,
-                        default     => TipoItem::Producto,
-                    };
-
-                    $esCortesiaItem = $item['cortesia'] ?? false;
-
-                    $detalleData = [
-                        'venta_id'        => $venta->id,
-                        'tipo_item'       => $tipoItem,
-                        'descripcion'     => $esCortesiaItem ? $item['nombre'] . ' (Cortesía)' : $item['nombre'],
-                        'cantidad'        => $item['cantidad'],
-                        'precio_unitario' => $item['precio'],
-                        'valor_unitario'  => $calc['valorUnitario'],
-                        'costo_unitario'  => $costoUnitario,
-                        'descuento'       => 0,
-                        'subtotal'        => $calc['subtotal'],
-                        'valor_total'     => $calc['valorTotal'],
-                        'igv'             => $calc['igv'],
-                        'total'           => $calc['total'],
-                        'costo_total'     => $calc['costoTotal'],
-                    ];
-
-                    if ($item['tipo'] === 'producto') {
-                        $detalleData['producto_id'] = $item['id'];
-                    } elseif ($item['tipo'] === 'variante') {
-                        $detalleData['variante_id'] = $item['id'];
-                        $detalleData['producto_id'] = $variante?->producto_id;
-                    } elseif ($item['tipo'] === 'promocion') {
-                        $detalleData['promocion_id'] = $item['id'];
-                    }
-
-                    VentaDetalle::create($detalleData);
-                    $costoTotalVenta += $calc['costoTotal'];
-                }
-
-                $venta->update(['costo_total' => round($costoTotalVenta, 2)]);
-
-                foreach ($pagosContado as $pago) {
-                    VentaPago::create([
-                        'venta_id'       => $venta->id,
-                        'sesion_caja_id' => $sesionCaja->id,
-                        'metodo_pago_id' => $pago['metodo_pago_id'],
-                        'monto'          => $pago['monto'],
-                        'referencia'     => $pago['referencia'] ?: null,
-                    ]);
-
-                    Transaccion::create([
-                        'empresa_id'           => $empresaId,
-                        'sesion_caja_id'       => $sesionCaja->id,
-                        'transaccionable_type' => Venta::class,
-                        'transaccionable_id'   => $venta->id,
-                        'tipo'                 => TipoMovimiento::Ingreso,
-                        'concepto'             => "Venta {$serie->serie}-{$correlativo}",
-                        'monto'                => $pago['monto'],
-                        'metodo_pago_id'       => $pago['metodo_pago_id'],
-                        'estado'               => EstadoMovimiento::Aprobado,
-                        'fecha'                => now(),
-                    ]);
-                }
-
-                foreach ($pagosCredito as $pago) {
-                    VentaPago::create([
-                        'venta_id'       => $venta->id,
-                        'sesion_caja_id' => $sesionCaja->id,
-                        'metodo_pago_id' => $pago['metodo_pago_id'],
-                        'monto'          => $pago['monto'],
-                        'referencia'     => $pago['referencia'] ?: null,
-                    ]);
-
-                    Transaccion::create([
-                        'empresa_id'           => $empresaId,
-                        'sesion_caja_id'       => $sesionCaja->id,
-                        'transaccionable_type' => Venta::class,
-                        'transaccionable_id'   => $venta->id,
-                        'tipo'                 => TipoMovimiento::Ingreso,
-                        'concepto'             => "Crédito {$serie->serie}-{$correlativo}",
-                        'monto'                => $pago['monto'],
-                        'metodo_pago_id'       => $pago['metodo_pago_id'],
-                        'estado'               => EstadoMovimiento::PorCobrar,
-                        'fecha'                => now(),
-                    ]);
-                }
-
-                $kardex  = app(KardexService::class);
-                $concepto = $serie->serie . '-' . $correlativo;
-
-                // Batch-cargar inventarios con lockForUpdate antes del loop para evitar N+1
-                // Los locks se adquieren aquí, dentro de la transacción, de forma segura
-                $inventariosProducto = $productoIds
-                    ? Inventario::where('empresa_id', $empresaId)
-                        ->whereIn('producto_id', $productoIds)
-                        ->whereNull('variante_id')
-                        ->lockForUpdate()
-                        ->get()
-                        ->keyBy('producto_id')
-                    : collect();
-                $inventariosVariante = $varianteIds
-                    ? Inventario::where('empresa_id', $empresaId)
-                        ->whereIn('variante_id', $varianteIds)
-                        ->lockForUpdate()
-                        ->get()
-                        ->keyBy('variante_id')
-                    : collect();
-
-                foreach ($carrito as $item) {
-                    $cantidad = (float) $item['cantidad'];
-
-                    if ($item['tipo'] === 'producto') {
-                        $producto = $productosMap->get($item['id']);
-                        if ($producto?->control_de_stock) {
-                            $inv = $inventariosProducto->get($item['id']);
-                            if ($inv) {
-                                $stockAntes = (float) $inv->stock_real;
-                                if (! $producto->venta_sin_stock && $stockAntes < $cantidad) {
-                                    throw new \RuntimeException(
-                                        "Stock insuficiente para \"{$item['nombre']}\": disponible {$stockAntes}, solicitado {$cantidad}."
-                                    );
-                                }
-                                $stockDespues = $producto->venta_sin_stock
-                                    ? $stockAntes - $cantidad
-                                    : max(0, $stockAntes - $cantidad);
-                                $inv->update([
-                                    'stock_real'    => $stockDespues,
-                                    'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
-                                ]);
-                                $kardex->registrar([
-                                    'empresa_id'        => $empresaId,
-                                    'user_id'           => auth()->id(),
-                                    'movible'           => $venta,
-                                    'producto_id'       => $item['id'],
-                                    'variante_id'       => null,
-                                    'producto_nombre'   => $item['nombre'],
-                                    'tipo'              => 'salida',
-                                    'concepto'          => $concepto,
-                                    'cantidad'          => $cantidad,
-                                    'unidad'            => $producto->unidadMedida?->nombre ?? 'unidad',
-                                    'factor_conversion' => 1,
-                                    'cantidad_base'     => $cantidad,
-                                    'precio_unitario'   => $item['precio'],
-                                    'precio_total'      => $item['precio'] * $cantidad,
-                                    'stock_antes'       => $stockAntes,
-                                    'stock_despues'     => $stockDespues,
-                                ]);
-                            }
-                        }
-                    } elseif ($item['tipo'] === 'variante') {
-                        $variante = $variantesMap->get($item['id']);
-                        if ($variante) {
-                            $prodVariante = $variante->producto;
-                            if ($prodVariante?->control_de_stock) {
-                                $inv = $inventariosVariante->get($item['id']);
-                                if ($inv) {
-                                    $stockAntes = (float) $inv->stock_real;
-                                    if (! $prodVariante->venta_sin_stock && $stockAntes < $cantidad) {
-                                        throw new \RuntimeException(
-                                            "Stock insuficiente para \"{$item['nombre']}\": disponible {$stockAntes}, solicitado {$cantidad}."
-                                        );
-                                    }
-                                    $stockDespues = $prodVariante->venta_sin_stock
-                                        ? $stockAntes - $cantidad
-                                        : max(0, $stockAntes - $cantidad);
-                                    $inv->update([
-                                        'stock_real'    => $stockDespues,
-                                        'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
-                                    ]);
-                                    $kardex->registrar([
-                                        'empresa_id'        => $empresaId,
-                                        'user_id'           => auth()->id(),
-                                        'movible'           => $venta,
-                                        'producto_id'       => $variante->producto_id,
-                                        'variante_id'       => $item['id'],
-                                        'producto_nombre'   => $item['nombre'],
-                                        'tipo'              => 'salida',
-                                        'concepto'          => $concepto,
-                                        'cantidad'          => $cantidad,
-                                        'unidad'            => $prodVariante->unidadMedida?->nombre ?? 'unidad',
-                                        'factor_conversion' => 1,
-                                        'cantidad_base'     => $cantidad,
-                                        'precio_unitario'   => $item['precio'],
-                                        'precio_total'      => $item['precio'] * $cantidad,
-                                        'stock_antes'       => $stockAntes,
-                                        'stock_despues'     => $stockDespues,
-                                    ]);
-                                }
-                            }
-                        }
-                    } elseif ($item['tipo'] === 'promocion') {
-                        Promocion::where('id', $item['id'])->increment('usos_actuales', (int) $cantidad);
-
-                        $promo = Promocion::with([
-                            'detalles.producto.unidadMedida',
-                            'detalles.variante.producto.unidadMedida',
-                        ])->find($item['id']);
-
-                        if ($promo) {
-                            foreach ($promo->detalles as $detalle) {
-                                $cantidadDetalle = $cantidad * (float) $detalle->cantidad;
-
-                                if ($detalle->variante_id) {
-                                    $varianteDetalle = $detalle->variante;
-                                    $prodDetalle     = $varianteDetalle?->producto;
-                                    if ($prodDetalle?->control_de_stock) {
-                                        $inv = Inventario::where('empresa_id', $empresaId)
-                                            ->where('variante_id', $detalle->variante_id)
-                                            ->lockForUpdate()->first();
-                                        if ($inv) {
-                                            $stockAntes = (float) $inv->stock_real;
-                                            if (! ($prodDetalle->venta_sin_stock ?? false) && $stockAntes < $cantidadDetalle) {
-                                                throw new \RuntimeException(
-                                                    "Stock insuficiente en combo \"{$item['nombre']}\": disponible {$stockAntes}, solicitado {$cantidadDetalle}."
-                                                );
-                                            }
-                                            $stockDespues = ($prodDetalle->venta_sin_stock ?? false)
-                                                ? $stockAntes - $cantidadDetalle
-                                                : max(0, $stockAntes - $cantidadDetalle);
-                                            $inv->update([
-                                                'stock_real'    => $stockDespues,
-                                                'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
-                                            ]);
-                                            $kardex->registrar([
-                                                'empresa_id'        => $empresaId,
-                                                'user_id'           => auth()->id(),
-                                                'movible'           => $venta,
-                                                'producto_id'       => $varianteDetalle->producto_id,
-                                                'variante_id'       => $detalle->variante_id,
-                                                'tipo'              => 'salida',
-                                                'concepto'          => $concepto,
-                                                'notas'             => "Promo: {$item['nombre']}",
-                                                'cantidad'          => $cantidadDetalle,
-                                                'unidad'            => $prodDetalle?->unidadMedida?->nombre ?? 'unidad',
-                                                'factor_conversion' => 1,
-                                                'cantidad_base'     => $cantidadDetalle,
-                                                'stock_antes'       => $stockAntes,
-                                                'stock_despues'     => $stockDespues,
-                                            ]);
-                                        }
-                                    }
-                                } elseif ($detalle->producto_id) {
-                                    $prodDetalle = $detalle->producto;
-                                    if ($prodDetalle?->control_de_stock) {
-                                        $inv = Inventario::where('empresa_id', $empresaId)
-                                            ->where('producto_id', $detalle->producto_id)
-                                            ->whereNull('variante_id')
-                                            ->lockForUpdate()->first();
-                                        if ($inv) {
-                                            $stockAntes = (float) $inv->stock_real;
-                                            if (! ($prodDetalle->venta_sin_stock ?? false) && $stockAntes < $cantidadDetalle) {
-                                                throw new \RuntimeException(
-                                                    "Stock insuficiente en combo \"{$item['nombre']}\": disponible {$stockAntes}, solicitado {$cantidadDetalle}."
-                                                );
-                                            }
-                                            $stockDespues = ($prodDetalle->venta_sin_stock ?? false)
-                                                ? $stockAntes - $cantidadDetalle
-                                                : max(0, $stockAntes - $cantidadDetalle);
-                                            $inv->update([
-                                                'stock_real'    => $stockDespues,
-                                                'stock_reserva' => max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues)),
-                                            ]);
-                                            $kardex->registrar([
-                                                'empresa_id'        => $empresaId,
-                                                'user_id'           => auth()->id(),
-                                                'movible'           => $venta,
-                                                'producto_id'       => $detalle->producto_id,
-                                                'variante_id'       => null,
-                                                'tipo'              => 'salida',
-                                                'concepto'          => $concepto,
-                                                'notas'             => "Promo: {$item['nombre']}",
-                                                'cantidad'          => $cantidadDetalle,
-                                                'unidad'            => $prodDetalle?->unidadMedida?->nombre ?? 'unidad',
-                                                'factor_conversion' => 1,
-                                                'cantidad_base'     => $cantidadDetalle,
-                                                'stock_antes'       => $stockAntes,
-                                                'stock_despues'     => $stockDespues,
-                                            ]);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            $venta = app(VentaService::class)->procesar(
+                empresaId:         $empresaId,
+                serieId:           $this->serieId,
+                clienteId:         $this->clienteId,
+                clienteNombre:     $this->clienteNombre,
+                clienteTipoDoc:    $this->clienteTipoDoc,
+                items:             array_values($this->carrito),
+                pagos:             $this->pagosAgregados,
+                descuento:         $this->getDescuento(),
+                despachoRequerido:     $this->despachoRequerido,
+                despachoDireccion:     trim($this->despachoDireccion),
+                despachoDepartamento:  trim($this->despachoDepartamento),
+                despachoProvincia:     trim($this->despachoProvincia),
+                despachoDistrito:      trim($this->despachoDistrito),
+                igvPct:                18.0,
+                fechaVencimiento:  $fechaVencimiento,
+                notas:             $notas,
+            );
         } catch (\Exception $e) {
             if ($e->getMessage() === '__SIN_SESION__') {
                 $this->cerrarModalPago();

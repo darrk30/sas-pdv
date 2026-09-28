@@ -1588,6 +1588,8 @@ html.dark .vs-card--amber .vs-card__value { color: #fef3c7; }
 .vd-cliente span { color: #6b7280; font-size: .8rem; }
 .vd-direccion { color: #6b7280; font-size: .8rem; }
 
+.vd-delivery-datos { display: flex; flex-wrap: wrap; gap: .2rem .75rem; font-size: .82rem; color: #374151; }
+
 .vd-section-label { margin: 0 0 .4rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #9ca3af; }
 
 .vd-table-wrap { overflow-x: auto; border-radius: .5rem; border: 1px solid #e5e7eb; }
@@ -1617,6 +1619,7 @@ html.dark .vs-card--amber .vs-card__value { color: #fef3c7; }
 /* dark */
 .dark .vd-fecha, .dark .vd-cliente span, .dark .vd-direccion { color: #9ca3af; }
 .dark .vd-cliente { color: #e5e7eb; }
+.dark .vd-delivery-datos { color: #d1d5db; }
 .dark .vd-badge--ok      { background: #14532d; color: #86efac; }
 .dark .vd-badge--anulada { background: #450a0a; color: #fca5a5; }
 .dark .vd-badge--despacho{ background: #451a03; color: #fcd34d; }

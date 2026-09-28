@@ -112,17 +112,32 @@ body {
 
     $orden       = $venta->relationLoaded('orden') ? $venta->orden : null;
     $ordenNumero = $orden?->numero ? 'ORD-' . (int) $orden->numero : null;
+
+    // Delivery desde PDV: parsear datos guardados en venta->notas
+    $esDeliveryPdv  = $venta->notas && str_starts_with($venta->notas, 'Delivery');
+    $deliveryParsed = [];
+    if ($esDeliveryPdv) {
+        foreach (explode(' | ', $venta->notas) as $p) {
+            if (str_contains($p, ': ')) {
+                [$k, $v] = explode(': ', $p, 2);
+                $deliveryParsed[trim($k)] = trim($v);
+            }
+        }
+    }
+    $deliveryNombreExtra = $deliveryParsed['Cliente']    ?? null;
+    $deliveryRepartidor  = $deliveryParsed['Repartidor'] ?? null;
+
     $tipoAtencionLabel = match($venta->tipo ?? '') {
         'llevar'      => 'LLEVAR',
         'delivery'    => 'DELIVERY',
         'restaurante' => 'MESA',
-        default       => null,
+        default       => $esDeliveryPdv ? 'DELIVERY' : null,
     };
     $vendedorOrden     = $orden?->vendedor;
     $responsableNombre = $vendedorOrden?->name ?? $cajero;
     $responsableRol    = $vendedorOrden?->roles?->first()?->name ?? null;
-    $ordenDir = $orden?->cliente_direccion ?: ($venta->cliente?->direccion ?? null);
-    $ordenTel = $orden?->cliente_telefono  ?: ($venta->cliente?->telefono  ?? null);
+    $ordenDir = $orden?->cliente_direccion ?: ($deliveryParsed['Dir'] ?? ($venta->cliente?->direccion ?? null));
+    $ordenTel = $orden?->cliente_telefono  ?: ($deliveryParsed['Tel'] ?? ($venta->cliente?->telefono ?? null));
 
     $logoBase64 = $logoBase64 ?? null;
     $logoTukipu = public_path('img/logotukipu.webp');
@@ -167,11 +182,27 @@ body {
     <tr><td class="lbl">FECHA DE EMISION:</td><td>{{ $fechaEmision }}</td></tr>
     <tr><td class="lbl">CLIENTE:</td><td>{{ $clienteNombre }}</td></tr>
     <tr><td class="lbl">{{ $clienteTipoDocLabel }}:</td><td>{{ $clienteDoc }}</td></tr>
+    @if($esDeliveryPdv && $deliveryNombreExtra && $deliveryNombreExtra !== $clienteNombre)
+    <tr><td class="lbl">Destinatario:</td><td>{{ $deliveryNombreExtra }}</td></tr>
+    @endif
     @if($ordenDir)
     <tr><td class="lbl">Dir.:</td><td>{{ $ordenDir }}</td></tr>
     @endif
     @if($ordenTel)
     <tr><td class="lbl">Telf.:</td><td>{{ $ordenTel }}</td></tr>
+    @endif
+    @php
+        $despachoGeo = implode(' / ', array_filter([
+            $venta->despacho_departamento ?? null,
+            $venta->despacho_provincia    ?? null,
+            $venta->despacho_distrito     ?? null,
+        ]));
+    @endphp
+    @if($despachoGeo)
+    <tr><td class="lbl">Ubic.:</td><td>{{ $despachoGeo }}</td></tr>
+    @endif
+    @if($venta->despacho_direccion ?? null)
+    <tr><td class="lbl">Dir. envío:</td><td>{{ $venta->despacho_direccion }}</td></tr>
     @endif
 </table>
 </div>
@@ -285,6 +316,9 @@ body {
         <td class="lbl">{{ $responsableRol ? strtoupper($responsableRol) : 'CAJERO' }}:</td>
         <td>{{ $responsableNombre }}</td>
     </tr>
+    @endif
+    @if($deliveryRepartidor ?? false)
+    <tr><td class="lbl">REPARTIDOR:</td><td>{{ $deliveryRepartidor }}</td></tr>
     @endif
 </table>
 </div>

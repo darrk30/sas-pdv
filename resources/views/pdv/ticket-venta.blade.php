@@ -144,11 +144,26 @@ html, body {
     // Orden relacionada
     $orden       = $venta->orden;
     $ordenNumero = $orden?->numero ? 'ORD-' . (int) $orden->numero : null;
+
+    // Delivery desde PDV: parsear datos guardados en venta->notas
+    $esDeliveryPdv  = $venta->notas && str_starts_with($venta->notas, 'Delivery');
+    $deliveryParsed = [];
+    if ($esDeliveryPdv) {
+        foreach (explode(' | ', $venta->notas) as $p) {
+            if (str_contains($p, ': ')) {
+                [$k, $v] = explode(': ', $p, 2);
+                $deliveryParsed[trim($k)] = trim($v);
+            }
+        }
+    }
+    $deliveryNombreExtra = $deliveryParsed['Cliente']    ?? null;
+    $deliveryRepartidor  = $deliveryParsed['Repartidor'] ?? null;
+
     $tipoAtencionLabel = match($venta->tipo ?? '') {
         'llevar'      => 'LLEVAR',
         'delivery'    => 'DELIVERY',
         'restaurante' => 'MESA',
-        default       => null,
+        default       => $esDeliveryPdv ? 'DELIVERY' : null,
     };
 
     // Responsable: usar el nombre del rol asignado en Spatie
@@ -199,14 +214,28 @@ html, body {
         <div class="tk-datos-fila"><span class="tk-datos-label">CLIENTE:</span><span>{{ $clienteNombre }}</span></div>
         <div class="tk-datos-fila"><span class="tk-datos-label">{{ $clienteTipoDocLabel }}:</span><span>{{ $clienteDoc }}</span></div>
         @php
-            $ordenDir = $orden?->cliente_direccion ?: ($clienteDir !== '—' ? $clienteDir : null);
-            $ordenTel = $orden?->cliente_telefono  ?: ($clienteTel !== '—' ? $clienteTel : null);
+            $ordenDir = $orden?->cliente_direccion ?: ($deliveryParsed['Dir'] ?? ($clienteDir !== '—' ? $clienteDir : null));
+            $ordenTel = $orden?->cliente_telefono  ?: ($deliveryParsed['Tel'] ?? ($clienteTel !== '—' ? $clienteTel : null));
+            $despachoGeo = implode(' / ', array_filter([
+                $venta->despacho_departamento ?? null,
+                $venta->despacho_provincia    ?? null,
+                $venta->despacho_distrito     ?? null,
+            ]));
         @endphp
+        @if($esDeliveryPdv && $deliveryNombreExtra && $deliveryNombreExtra !== $clienteNombre)
+        <div class="tk-datos-fila"><span class="tk-datos-label">Destinatario:</span><span>{{ $deliveryNombreExtra }}</span></div>
+        @endif
         @if($ordenDir)
         <div class="tk-datos-fila"><span class="tk-datos-label">Dir.:</span><span>{{ $ordenDir }}</span></div>
         @endif
         @if($ordenTel)
         <div class="tk-datos-fila"><span class="tk-datos-label">Telf.:</span><span>{{ $ordenTel }}</span></div>
+        @endif
+        @if($despachoGeo)
+        <div class="tk-datos-fila"><span class="tk-datos-label">Ubic.:</span><span>{{ $despachoGeo }}</span></div>
+        @endif
+        @if($venta->despacho_direccion ?? null)
+        <div class="tk-datos-fila"><span class="tk-datos-label">Dir. envío:</span><span>{{ $venta->despacho_direccion }}</span></div>
         @endif
     </div>
 
@@ -314,6 +343,9 @@ html, body {
             <span class="tk-datos-label">{{ $responsableRol ? strtoupper($responsableRol) : 'CAJERO' }}:</span>
             <span>{{ $responsableNombre }}</span>
         </div>
+        @endif
+        @if($deliveryRepartidor ?? false)
+        <div class="tk-datos-fila"><span class="tk-datos-label">REPARTIDOR:</span><span>{{ $deliveryRepartidor }}</span></div>
         @endif
     </div>
     @endif

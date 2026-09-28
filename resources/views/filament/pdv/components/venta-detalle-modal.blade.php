@@ -10,6 +10,9 @@
         @if($venta->estado_despacho === \App\Enums\EstadoVenta::PendienteEnvio)
             <span class="vd-badge vd-badge--despacho">Pendiente de envío</span>
         @endif
+        @if($venta->notas && str_starts_with($venta->notas, 'Delivery'))
+            <span class="vd-badge vd-badge--despacho">Delivery</span>
+        @endif
         <span class="vd-fecha">{{ $venta->created_at->format('d/m/Y H:i') }}</span>
     </div>
 
@@ -19,8 +22,39 @@
         <span>{{ strtoupper($venta->cliente_tipo_doc ?? '') }} {{ $venta->cliente_num_doc }}</span>
     </div>
 
-    @if($venta->despacho_direccion)
-    <div class="vd-direccion">📍 {{ $venta->despacho_direccion }}</div>
+    @if($venta->despacho_direccion || $venta->despacho_departamento || $venta->despacho_provincia || $venta->despacho_distrito)
+    <p class="vd-section-label">Datos de despacho</p>
+    <div class="vd-delivery-datos">
+        @if($venta->despacho_departamento || $venta->despacho_provincia || $venta->despacho_distrito)
+        <span><strong>Ubicación:</strong>
+            {{ implode(' / ', array_filter([
+                $venta->despacho_departamento,
+                $venta->despacho_provincia,
+                $venta->despacho_distrito,
+            ])) }}
+        </span>
+        @endif
+        @if($venta->despacho_direccion)
+        <span><strong>Dirección:</strong> {{ $venta->despacho_direccion }}</span>
+        @endif
+    </div>
+    @endif
+
+    {{-- Datos delivery --}}
+    @if($venta->notas && str_starts_with($venta->notas, 'Delivery'))
+    @php
+        $vdDp = [];
+        foreach (explode(' | ', $venta->notas) as $p) {
+            if (str_contains($p, ': ')) { [$k,$v] = explode(': ', $p, 2); $vdDp[trim($k)] = trim($v); }
+        }
+    @endphp
+    <p class="vd-section-label">Datos delivery</p>
+    <div class="vd-delivery-datos">
+        @if(isset($vdDp['Cliente']))    <span><strong>Cliente:</strong> {{ $vdDp['Cliente'] }}</span>         @endif
+        @if(isset($vdDp['Tel']))        <span><strong>Tel:</strong> {{ $vdDp['Tel'] }}</span>                 @endif
+        @if(isset($vdDp['Dir']))        <span><strong>Dir:</strong> {{ $vdDp['Dir'] }}</span>                 @endif
+        @if(isset($vdDp['Repartidor']))<span><strong>Repartidor:</strong> {{ $vdDp['Repartidor'] }}</span>   @endif
+    </div>
     @endif
 
     {{-- Ítems --}}

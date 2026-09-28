@@ -293,8 +293,14 @@ class ProductCatalog extends Component
                     $j->on('v.id', '=', 'i.variante_id')->where('v.estado', 'activo')
                 )
                 ->where('i.empresa_id', $empresaId)
-                ->where(fn ($q) => $q->whereNull('i.variante_id')->orWhereNotNull('v.id'))
-                ->selectRaw('COALESCE(v.producto_id, i.producto_id) AS p_id, SUM(i.stock_reserva) AS stk')
+                ->selectRaw('
+                    COALESCE(v.producto_id, i.producto_id) AS p_id,
+                    CASE
+                        WHEN MAX(CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END) = 1
+                        THEN SUM(CASE WHEN v.id IS NOT NULL THEN i.stock_reserva ELSE 0 END)
+                        ELSE SUM(CASE WHEN i.variante_id IS NULL THEN i.stock_reserva ELSE 0 END)
+                    END AS stk
+                ')
                 ->groupByRaw('COALESCE(v.producto_id, i.producto_id)')
                 ->pluck('stk', 'p_id')
                 ->toArray()
