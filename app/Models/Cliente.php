@@ -30,6 +30,7 @@ class Cliente extends Model implements AuthenticatableContract
         'distrito',
         'codigo_postal',
         'pais',
+        'puntos_acumulado',
     ];
 
     protected $hidden = [

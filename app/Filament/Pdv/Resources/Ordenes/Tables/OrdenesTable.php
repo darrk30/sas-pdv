@@ -3,6 +3,7 @@
 namespace App\Filament\Pdv\Resources\Ordenes\Tables;
 
 use App\Enums\EstadoOrden;
+use App\Models\Cupon;
 use App\Models\Orden;
 use App\Models\Venta;
 use Filament\Actions\Action;
@@ -17,11 +18,13 @@ class OrdenesTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->addSelect([
-                'saldo_venta' => Venta::selectRaw('saldo_pendiente')
-                    ->whereColumn('id', 'ordenes.venta_id')
-                    ->limit(1),
-            ]))
+            ->modifyQueryUsing(fn ($query) => $query
+                ->with('cupon')
+                ->addSelect([
+                    'saldo_venta' => Venta::selectRaw('saldo_pendiente')
+                        ->whereColumn('id', 'ordenes.venta_id')
+                        ->limit(1),
+                ]))
             ->columns([
 
                 TextColumn::make('codigo')
@@ -72,6 +75,21 @@ class OrdenesTable
                 TextColumn::make('subtotal')
                     ->label('Subtotal')
                     ->money('PEN')
+                    ->alignEnd()
+                    ->toggleable(),
+
+                TextColumn::make('descuento_cupon')
+                    ->label('Descuento')
+                    ->formatStateUsing(function ($state, Orden $record): string {
+                        if ((float) $state <= 0) return '';
+                        $etiqueta = $record->cupon_id
+                            ? ($record->cupon?->codigo ?? 'Cupón')
+                            : 'Manual';
+                        return '−S/ ' . number_format((float) $state, 2) . '  ' . $etiqueta;
+                    })
+                    ->badge()
+                    ->color('success')
+                    ->placeholder('')
                     ->alignEnd()
                     ->toggleable(),
 

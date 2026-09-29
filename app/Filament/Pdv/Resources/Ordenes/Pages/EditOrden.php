@@ -315,7 +315,10 @@ class EditOrden extends EditRecord
                             'op_gravadas'      => $opGravadas,
                             'op_exoneradas'    => 0,
                             'op_inafectas'     => 0,
-                            'descuento_total'  => $orden->descuento_total,
+                            'descuento_total'  => (float) $orden->descuento_cupon > 0
+                                                    ? $orden->descuento_cupon
+                                                    : $orden->descuento_total,
+                            'cupon_id'         => $orden->cupon_id,
                             'igv'              => $igv,
                             'total'            => $total,
                             'costo_total'      => $costoTotalOrden,

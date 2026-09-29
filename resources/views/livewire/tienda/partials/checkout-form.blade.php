@@ -361,6 +361,18 @@
                     <span class="chk__resumen-valor">S/ {{ number_format($costoEnvio, 2) }}</span>
                 </div>
             @endif
+            @php $chkCuponDesc = isset($cuponDescuento) ? (float) $cuponDescuento : 0.0; @endphp
+            @if ($chkCuponDesc > 0)
+                <div class="chk__resumen-linea">
+                    <span class="chk__resumen-label" style="color:#15803d">
+                        Descuento
+                        @if (!empty($cuponCodigo))
+                            <small class="cr-cupon-badge-tag">{{ $cuponCodigo }}</small>
+                        @endif
+                    </span>
+                    <span class="chk__resumen-valor" style="color:#16a34a">−S/ {{ number_format($chkCuponDesc, 2) }}</span>
+                </div>
+            @endif
 
             <div class="chk__resumen-sep"></div>
 

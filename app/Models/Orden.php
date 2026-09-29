@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Cupon;
 use App\Models\MetodoPago;
 use App\Models\Promocion;
 use Illuminate\Support\Facades\DB;
@@ -54,6 +55,8 @@ class Orden extends Model
         'orden_distrito',
         'tracking_code',
         'codigo_retiro',
+        'cupon_id',
+        'descuento_cupon',
     ];
 
     protected $casts = [
@@ -61,7 +64,8 @@ class Orden extends Model
         'estado'          => EstadoOrden::class,
         'tipo_origen'     => TipoOrigenOrden::class,
         'costo_envio'     => 'decimal:2',
-        'descuento_total' => 'decimal:2',
+        'descuento_total'  => 'decimal:2',
+        'descuento_cupon'  => 'decimal:2',
         'igv'             => 'decimal:2',
         'subtotal'        => 'decimal:2',
         'total'           => 'decimal:2',
@@ -102,6 +106,11 @@ class Orden extends Model
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    public function cupon(): BelongsTo
+    {
+        return $this->belongsTo(Cupon::class);
     }
 
     public function metodoEnvio(): BelongsTo

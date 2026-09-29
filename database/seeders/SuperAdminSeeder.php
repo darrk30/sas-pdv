@@ -98,6 +98,10 @@ class SuperAdminSeeder extends Seeder
         ['module' => 'tienda', 'module_label' => 'Pedidos Web / Tienda', 'name' => 'promociones.crear',     'description' => 'Crear promociones de la tienda'],
         ['module' => 'tienda', 'module_label' => 'Pedidos Web / Tienda', 'name' => 'promociones.editar',    'description' => 'Editar promociones de la tienda'],
         ['module' => 'tienda', 'module_label' => 'Pedidos Web / Tienda', 'name' => 'promociones.eliminar',  'description' => 'Eliminar promociones de la tienda'],
+        ['module' => 'tienda', 'module_label' => 'Pedidos Web / Tienda', 'name' => 'cupones.ver',           'description' => 'Ver y listar cupones de descuento'],
+        ['module' => 'tienda', 'module_label' => 'Pedidos Web / Tienda', 'name' => 'cupones.crear',         'description' => 'Crear cupones de descuento'],
+        ['module' => 'tienda', 'module_label' => 'Pedidos Web / Tienda', 'name' => 'cupones.editar',        'description' => 'Editar cupones de descuento'],
+        ['module' => 'tienda', 'module_label' => 'Pedidos Web / Tienda', 'name' => 'cupones.eliminar',      'description' => 'Eliminar cupones de descuento'],
 
         // ── Compras / Proveedores ──────────────────────────────────────────────
         ['module' => 'compras', 'module_label' => 'Compras / Proveedores', 'name' => 'compras.ver',           'description' => 'Ver listado de compras'],

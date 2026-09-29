@@ -42,6 +42,8 @@ class Producto extends Model
         'precio_con_descuento',
         'es_oferta',
         'stock_minimo',
+        'puntos_por_compra',
+        'puntos_para_canjear',
     ];
 
     protected $casts = [

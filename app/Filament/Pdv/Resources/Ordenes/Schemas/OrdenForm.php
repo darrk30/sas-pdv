@@ -7,6 +7,7 @@ use App\Enums\EstadoPromocion;
 use App\Enums\TipoDocumento;
 use App\Enums\TipoItem;
 use App\Models\AjusteDetalle;
+use App\Models\Cupon;
 use App\Models\Promocion;
 use App\Models\Cliente;
 use App\Models\MetodoEnvio;
@@ -498,6 +499,65 @@ class OrdenForm
                             ->defaultItems(1),
                     ])->columnSpanFull(),
 
+                // ── Descuento ─────────────────────────────────────────────
+                Section::make('Descuento')
+                    ->columnSpanFull()
+                    ->collapsible()
+                    ->collapsed(fn(?Model $record): bool => (float)($record?->descuento_cupon ?? 0) <= 0)
+                    ->schema([
+                        Grid::make(['default' => 1, 'md' => 3])->schema([
+
+                            Select::make('cupon_id')
+                                ->label('Cupón')
+                                ->placeholder('Buscar por código o descripción...')
+                                ->searchable()
+                                ->nullable()
+                                ->live()
+                                ->columnSpan(2)
+                                ->options(function (): array {
+                                    $empresa = Filament::getTenant();
+                                    return Cupon::where('empresa_id', $empresa->id)
+                                        ->where('activo', true)
+                                        ->orderBy('codigo')
+                                        ->get()
+                                        ->mapWithKeys(fn(Cupon $c) => [
+                                            $c->id => $c->codigo
+                                                . ($c->descripcion ? " — {$c->descripcion}" : '')
+                                                . ($c->tipo_descuento === 'porcentaje'
+                                                    ? " ({$c->valor}%)"
+                                                    : " (S/ {$c->valor})"),
+                                        ])
+                                        ->all();
+                                })
+                                ->getOptionLabelUsing(fn($value): ?string => Cupon::find($value)?->codigo)
+                                ->afterStateUpdated(function (?int $state, Set $set, Get $get): void {
+                                    if (! $state) {
+                                        $set('descuento_cupon', 0);
+                                        self::recalcularTotales($get, $set, false);
+                                        return;
+                                    }
+                                    $cupon    = Cupon::find($state);
+                                    $subtotal = (float) ($get('subtotal') ?? 0);
+                                    $cant     = self::contarItems($get);
+                                    $descuento = $cupon ? $cupon->calcularDescuento($subtotal, $cant) : 0;
+                                    $set('descuento_cupon', round($descuento, 2));
+                                    self::recalcularTotales($get, $set, false);
+                                })
+                                ->helperText('Selecciona un cupón para calcular el descuento automáticamente, o ingresa el monto manualmente.'),
+
+                            TextInput::make('descuento_cupon')
+                                ->label('Monto descuento')
+                                ->prefix('S/')
+                                ->numeric()
+                                ->default(0)
+                                ->minValue(0)
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn(Get $get, Set $set) => self::recalcularTotales($get, $set, false))
+                                ->helperText('Puedes ajustarlo manualmente.'),
+
+                        ]),
+                    ]),
+
                 // ── Totales ───────────────────────────────────────────────
                 Section::make('Totales')
                     ->columnSpanFull()
@@ -524,6 +584,18 @@ class OrdenForm
                                 ->numeric()
                                 ->default(0)
                                 ->visible(fn(Get $get): bool => $get('tipo_entrega') === 'envio'),
+
+                            TextInput::make('descuento_cupon')
+                                ->label(fn(Get $get): string => $get('cupon_id')
+                                    ? 'Descuento (' . (Cupon::find($get('cupon_id'))?->codigo ?? 'Cupón') . ')'
+                                    : 'Descuento manual'
+                                )
+                                ->prefix('−S/')
+                                ->readOnly()
+                                ->numeric()
+                                ->default(0)
+                                ->visible(fn(Get $get): bool => (float)($get('descuento_cupon') ?? 0) > 0)
+                                ->extraAttributes(['class' => 'text-green-700 dark:text-green-400']),
 
                             TextInput::make('total')
                                 ->label('Total')
@@ -601,12 +673,19 @@ class OrdenForm
             }
         }
 
-        $prefix     = $isInsideRepeater ? '../../' : '';
-        $costoEnvio = (float) ($isInsideRepeater ? $get('../../costo_envio') : $get('costo_envio'));
+        $prefix          = $isInsideRepeater ? '../../' : '';
+        $costoEnvio      = (float) ($isInsideRepeater ? $get('../../costo_envio') : $get('costo_envio'));
+        $descuentoCupon  = (float) ($isInsideRepeater ? $get('../../descuento_cupon') : $get('descuento_cupon'));
 
         $set($prefix . 'subtotal', round($sumaItems, 2));
         $set($prefix . 'igv', round($sumaIgv, 2));
-        $set($prefix . 'total', round($sumaItems + $costoEnvio, 2));
+        $set($prefix . 'total', round(max(0, $sumaItems - $descuentoCupon) + $costoEnvio, 2));
+    }
+
+    private static function contarItems(Get $get): int
+    {
+        $detalles = $get('detalles') ?? [];
+        return (int) collect($detalles)->sum(fn($d) => (float) ($d['cantidad'] ?? 0));
     }
 
     private static function prepararDetalle(array $data): array
