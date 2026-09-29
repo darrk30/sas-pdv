@@ -27,8 +27,9 @@ class ClientesTable
 {
     public static function configure(Table $table): Table
     {
-        $empresa      = Filament::getTenant();
-        $tieneCuentas = $empresa && $empresa->tieneFeature('cuentas');
+        $empresa         = Filament::getTenant();
+        $tieneCuentas    = $empresa && $empresa->tieneFeature('cuentas');
+        $tieneListaDeseos = $empresa && $empresa->tieneFeature('catalogo_web');
 
         return $table
             ->modifyQueryUsing(fn ($query) => $query->addSelect([
@@ -120,7 +121,8 @@ class ClientesTable
                     ->badge()
                     ->color(fn ($state) => $state > 0 ? 'warning' : 'gray')
                     ->formatStateUsing(fn ($state) => $state > 0 ? "♥ {$state}" : '—')
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible($tieneListaDeseos),
             ])
             ->filters([
                 SelectFilter::make('tipo_documento')
@@ -175,7 +177,7 @@ class ClientesTable
                         ->label('Lista de deseos')
                         ->icon('heroicon-o-heart')
                         ->color('danger')
-                        ->visible(fn (Cliente $record) => (int) ($record->lista_deseos_count ?? 0) > 0)
+                        ->visible(fn (Cliente $record) => $tieneListaDeseos && (int) ($record->lista_deseos_count ?? 0) > 0)
                         ->url(fn (Cliente $record) =>
                             ListaDeseosClientePage::getUrl() . '?' . http_build_query([
                                 'clienteId'       => $record->id,
