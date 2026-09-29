@@ -43,6 +43,8 @@ trait HasVentaDetalleModal
             'igv'              => (float) $venta->igv,
             'descuento_total'  => (float) $venta->descuento_total,
             'cupon_codigo'     => $this->resolverCuponCodigo($venta),
+            'costo_envio'      => (float) ($venta->costo_envio ?? 0),
+            'envio_facturado'  => (bool) ($venta->envio_facturado ?? false),
             'total'            => (float) $venta->total,
             'monto_pagado'     => (float) $venta->monto_pagado,
             'saldo_pendiente'  => (float) $venta->saldo_pendiente,

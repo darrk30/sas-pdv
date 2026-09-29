@@ -27,6 +27,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\DB;
@@ -231,7 +232,8 @@ class EditOrden extends EditRecord
                                 ->all();
                         })
                         ->required()
-                        ->native(false),
+                        ->native(false)
+                        ->live(),
 
                     Repeater::make('pagos')
                         ->label('Pagos recibidos')
@@ -269,14 +271,22 @@ class EditOrden extends EditRecord
                                 ->maxLength(100),
                         ]),
 
+                    Toggle::make('facturar_envio')
+                        ->label('Incluir costo de envío en la venta (S/ ' . number_format((float) ($this->record->costo_envio ?? 0), 2) . ')')
+                        ->helperText('Activo: el envío se suma al total como ítem "Delivery" y aparece en el comprobante. Inactivo: queda como concepto informativo, no afecta el total ni la facturación.')
+                        ->default(false)
+                        ->hidden((float) ($this->record->costo_envio ?? 0) <= 0),
+
                     Toggle::make('listo_para_despachar')
                         ->label('Por entregar')
                         ->helperText('Aparecerá en la página de Despacho para gestionar el envío.')
                         ->default(true),
                 ])
                 ->action(function (array $data): void {
-                    $venta = null;
-                    DB::transaction(function () use ($data, &$venta): void {
+                    $venta      = null;
+                    $esTicket   = false;
+                    $costoEnvio = 0.0;
+                    DB::transaction(function () use ($data, &$venta, &$esTicket, &$costoEnvio): void {
                         $orden   = $this->record->load('detalles');
                         $empresa = Filament::getTenant();
 
@@ -291,8 +301,17 @@ class EditOrden extends EditRecord
                             TipoComprobante::SinComprobante,
                         ]);
                         $tasaIgv   = $esTicket ? 0.0 : 0.18;
-                        $total     = (float) $orden->total;
-                        $igv       = $esTicket ? 0.0 : round($total / 1.18 * 0.18, 2);
+
+                        // facturar_envio=true  → el envío se suma al total como ítem; cuadra en comprobante.
+                        // facturar_envio=false → el envío queda como concepto informativo; el total solo
+                        //                        refleja los productos. Aplica a ticket, boleta y factura.
+                        $costoEnvio    = (float) ($orden->costo_envio ?? 0);
+                        $facturarEnvio = (bool) ($data['facturar_envio'] ?? false);
+                        $total         = $facturarEnvio
+                            ? (float) $orden->total
+                            : max(0, (float) $orden->total - $costoEnvio);
+
+                        $igv        = $esTicket ? 0.0 : round($total / 1.18 * 0.18, 2);
                         $opGravadas = $esTicket ? 0.0 : round($total / 1.18, 2);
 
                         $montoPagado     = collect($data['pagos'])->sum('monto');
@@ -321,6 +340,8 @@ class EditOrden extends EditRecord
                             'cupon_id'         => $orden->cupon_id,
                             'igv'              => $igv,
                             'total'            => $total,
+                            'costo_envio'      => $costoEnvio > 0 ? $costoEnvio : null,
+                            'envio_facturado'  => $costoEnvio > 0 ? $facturarEnvio : null,
                             'costo_total'      => $costoTotalOrden,
                             'monto_pagado'     => $montoPagado,
                             'saldo_pendiente'  => max(0, $saldo),
@@ -362,6 +383,29 @@ class EditOrden extends EditRecord
                             ]);
                         }
 
+                        // Delivery como ítem si se eligió facturar el costo de envío (aplica a todos los tipos)
+                        if ($facturarEnvio && $costoEnvio > 0) {
+                            $calcEnvio = VentaDetalle::calcular(1, $costoEnvio, 0, 0, $tasaIgv);
+                            VentaDetalle::create([
+                                'venta_id'        => $venta->id,
+                                'tipo_item'       => 'producto',
+                                'producto_id'     => null,
+                                'variante_id'     => null,
+                                'promocion_id'    => null,
+                                'descripcion'     => 'Delivery / Costo de envío',
+                                'cantidad'        => 1,
+                                'precio_unitario' => $costoEnvio,
+                                'valor_unitario'  => $calcEnvio['valorUnitario'],
+                                'costo_unitario'  => 0,
+                                'descuento'       => 0,
+                                'subtotal'        => $calcEnvio['subtotal'],
+                                'valor_total'     => $calcEnvio['valorTotal'],
+                                'igv'             => $calcEnvio['igv'],
+                                'total'           => $calcEnvio['total'],
+                                'costo_total'     => 0,
+                            ]);
+                        }
+
                         foreach ($data['pagos'] as $pago) {
                             VentaPago::create([
                                 'venta_id'       => $venta->id,
@@ -391,6 +435,7 @@ class EditOrden extends EditRecord
                         ->title('Pago confirmado')
                         ->body('La venta fue generada y vinculada a la orden.')
                         ->send();
+
 
                     $this->redirect(static::getResource()::getUrl('view', ['record' => $this->record]));
                 }),

@@ -117,6 +117,12 @@
                     </span>
                 </div>
                 @endif
+                @if(($detalleVenta['costo_envio'] ?? 0) > 0 && !($detalleVenta['envio_facturado'] ?? false))
+                <div class="vdm-totales__fila" style="color:var(--fi-color-gray-500);font-style:italic;">
+                    <span>Costo de envío <span style="font-size:0.7em;background:var(--fi-color-gray-100);color:var(--fi-color-gray-500);padding:1px 5px;border-radius:4px;font-style:normal;">concepto</span></span>
+                    <span>S/ {{ number_format($detalleVenta['costo_envio'], 2) }}</span>
+                </div>
+                @endif
                 <div class="vdm-totales__fila vdm-totales__fila--total">
                     <span>Total</span>
                     <span>S/ {{ number_format($detalleVenta['total'], 2) }}</span>

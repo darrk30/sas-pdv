@@ -131,7 +131,14 @@ class FacturadorService
             'estado'             => $estado,
             'clienteTipo'        => $this->mapTipoDocCliente($venta->cliente_tipo_doc),
             'clienteNro'         => $venta->cliente_num_doc ?? '-',
-            'total'              => (float) $venta->total,
+            // Total facturable = suma de operaciones + IGV (excluye montos internos como envío no facturado)
+            'total'              => round(
+                (float) ($venta->op_gravadas   ?? 0) +
+                (float) ($venta->op_exoneradas ?? 0) +
+                (float) ($venta->op_inafectas  ?? 0) +
+                (float) ($venta->igv           ?? 0),
+                2
+            ),
             'mtoOperGravadas'    => (float) ($venta->op_gravadas ?? 0),
             'mtoOperExoneradas'  => (float) ($venta->op_exoneradas ?? 0),
             'mtoOperInafectas'   => (float) ($venta->op_inafectas ?? 0),
