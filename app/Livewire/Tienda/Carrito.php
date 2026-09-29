@@ -8,6 +8,8 @@ use App\Enums\TipoItem;
 use App\Models\Carrito as CarritoModel;
 use App\Models\CarritoItem;
 use App\Models\Cliente;
+use App\Models\Cupon;
+use App\Models\CuponUso;
 use App\Models\Empresa;
 use App\Models\Inventario;
 use App\Models\MetodoEnvio;
@@ -52,6 +54,13 @@ class Carrito extends Component
 
     // ── Modal de confirmación ─────────────────────────────────────
     public bool   $modalConfirmacion  = false;
+
+    // ── Cupón ─────────────────────────────────────────────────────
+    public string $chkCupon       = '';
+    public ?int   $cuponId        = null;
+    public string $cuponCodigo    = '';
+    public float  $cuponDescuento = 0.0;
+    public string $cuponError     = '';
 
     // ── Modal de éxito ────────────────────────────────────────────
     public bool   $mostrarModalExito  = false;
@@ -378,6 +387,25 @@ class Carrito extends Component
         $this->modalConfirmacion = false;
         $this->validate();
 
+        // Re-validar cupón si está aplicado
+        if ($this->cuponId) {
+            $cupon = Cupon::find($this->cuponId);
+            if (! $cupon || ! $cupon->estaVigente()) {
+                $this->cuponId = null; $this->cuponCodigo = ''; $this->cuponDescuento = 0.0;
+                $this->dispatch('toast', mensaje: 'El cupón ya no está disponible. Revisa el total actualizado.', tipo: 'warning');
+                return;
+            }
+            // Re-check conditions with current cart
+            $userId = Auth::guard('cliente')->id();
+            [$subtotalActual, $cantActual] = $this->computarSubtotalCantidad($userId);
+            if (! $cupon->cumpleCondiciones($subtotalActual, $cantActual)) {
+                $this->cuponId = null; $this->cuponCodigo = ''; $this->cuponDescuento = 0.0;
+                $this->dispatch('toast', mensaje: 'El carrito ya no cumple las condiciones del cupón. El descuento fue removido.', tipo: 'warning');
+                return;
+            }
+            $this->cuponDescuento = $cupon->calcularDescuento($subtotalActual, $cantActual);
+        }
+
         $userId  = Auth::guard('cliente')->id();
         $empresa = Empresa::find($this->empresaId);
 
@@ -396,6 +424,64 @@ class Carrito extends Component
     {
         $this->mostrarModalExito = false;
         $this->redirect(route('tienda.catalogo'), navigate: true);
+    }
+
+    // ── Cupón ─────────────────────────────────────────────────────
+
+    public function aplicarCupon(): void
+    {
+        $this->cuponError = '';
+        $codigo = strtoupper(trim($this->chkCupon));
+
+        if (! $codigo) return;
+
+        $cupon = Cupon::where('empresa_id', $this->empresaId)
+            ->where('codigo', $codigo)
+            ->first();
+
+        if (! $cupon) {
+            $this->cuponError = 'Cupón no encontrado.';
+            return;
+        }
+
+        if (! $cupon->estaVigente()) {
+            $this->cuponError = 'Este cupón está vencido o sin usos disponibles.';
+            return;
+        }
+
+        $userId = Auth::guard('cliente')->id();
+        [$subtotal, $cantItems] = $this->computarSubtotalCantidad($userId);
+
+        if ($subtotal <= 0) {
+            $this->cuponError = 'Agrega productos al carrito primero.';
+            return;
+        }
+
+        if (! $cupon->cumpleCondiciones($subtotal, $cantItems)) {
+            $msgs = [];
+            if ($cupon->monto_minimo && $subtotal < (float) $cupon->monto_minimo) {
+                $msgs[] = 'monto mínimo S/ ' . number_format((float) $cupon->monto_minimo, 2);
+            }
+            if ($cupon->cantidad_minima && $cantItems < (int) $cupon->cantidad_minima) {
+                $msgs[] = 'mínimo ' . $cupon->cantidad_minima . ' ' . ($cupon->cantidad_minima === 1 ? 'producto' : 'productos');
+            }
+            $this->cuponError = 'No cumple las condiciones: ' . implode(' y ', $msgs) . '.';
+            return;
+        }
+
+        $this->cuponId        = $cupon->id;
+        $this->cuponCodigo    = $cupon->codigo;
+        $this->cuponDescuento = $cupon->calcularDescuento($subtotal, $cantItems);
+        $this->chkCupon       = '';
+    }
+
+    public function quitarCupon(): void
+    {
+        $this->cuponId        = null;
+        $this->cuponCodigo    = '';
+        $this->cuponDescuento = 0.0;
+        $this->cuponError     = '';
+        $this->chkCupon       = '';
     }
 
     // ── Render ────────────────────────────────────────────────────
@@ -524,13 +610,41 @@ class Carrito extends Component
         $costoEnvio        = (float) ($metodoEnvioSel?->costo ?? 0);
         $metodoTipo        = $metodoEnvioSel?->tipo ?? null; // 'delivery' | 'provincial' | 'retiro' | null
         $requiereDireccion = in_array($metodoTipo, ['delivery', 'provincial']);
-        $total             = $subtotal + $costoEnvio;
+        $cuponDescuento    = $this->cuponId ? (float) $this->cuponDescuento : 0.0;
+        $total             = max(0.0, $subtotal - $cuponDescuento) + $costoEnvio;
 
         return view('livewire.tienda.carrito', compact(
             'items', 'subtotal', 'disponibilidad', 'puedeIncrementar', 'esGuest',
             'metodosEnvio', 'metodosPago',
-            'costoEnvio', 'total', 'requiereDireccion', 'metodoTipo', 'metodoEnvioSel'
+            'costoEnvio', 'cuponDescuento', 'total', 'requiereDireccion', 'metodoTipo', 'metodoEnvioSel'
         ));
+    }
+
+    // ── Helpers de cupón ──────────────────────────────────────────
+
+    private function computarSubtotalCantidad(?int $userId): array
+    {
+        if ($userId) {
+            $items = CarritoItem::whereHas('carrito', fn($q) =>
+                $q->where('empresa_id', $this->empresaId)->where('user_id', $userId))
+                ->with(['producto.inventario', 'variante.inventario'])
+                ->get()
+                ->filter(fn($i) => $this->esDisponibleItem($i));
+
+            return [
+                (float) $items->sum(fn($i) => (float) $i->precio_unitario * (int) $i->cantidad),
+                (int) $items->sum('cantidad'),
+            ];
+        }
+
+        $rawItems = collect($this->guestItems)->filter(fn($i) =>
+            (!empty($i['producto_id']) || !empty($i['promocion_id'])) && ($i['cantidad'] ?? 0) > 0
+        );
+
+        return [
+            (float) $rawItems->sum(fn($i) => (float) $i['precio_unitario'] * (int) $i['cantidad']),
+            (int) $rawItems->sum('cantidad'),
+        ];
     }
 
     // ── Helpers de orden ──────────────────────────────────────────
@@ -558,8 +672,9 @@ class Carrito extends Component
             return;
         }
 
-        $subtotal = $items->sum(fn($i) => $i->precio_unitario * $i->cantidad);
-        $total    = $subtotal + $costoEnvio;
+        $subtotal       = $items->sum(fn($i) => $i->precio_unitario * $i->cantidad);
+        $descuentoCupon = $this->cuponId ? min((float) $this->cuponDescuento, $subtotal) : 0.0;
+        $total          = max(0.0, $subtotal - $descuentoCupon) + $costoEnvio;
 
         // ── Validar precios contra BD (previene manipulación por inspector) ──
         foreach ($items as $item) {
@@ -573,10 +688,24 @@ class Carrito extends Component
         }
 
         try {
-        $orden = DB::transaction(function () use ($items, $metodoEnvio, $metodoPago, $userId, $costoEnvio, $subtotal, $total) {
+        $orden = DB::transaction(function () use ($items, $metodoEnvio, $metodoPago, $userId, $costoEnvio, $subtotal, $descuentoCupon, $total) {
             $tipoMetodo   = $metodoEnvio?->tipo ?? null;
             $esProvincial = $tipoMetodo === 'provincial';
             $esRetiro     = $tipoMetodo === 'retiro';
+
+            // Validar cupón con lock antes de crear la orden
+            $cuponModel = null;
+            if ($this->cuponId) {
+                $cuponModel = Cupon::lockForUpdate()->find($this->cuponId);
+                if (! $cuponModel || ! $cuponModel->estaVigente()) {
+                    throw new \RuntimeException('El cupón ya no está disponible.');
+                }
+                $usosCliente = CuponUso::where('cupon_id', $cuponModel->id)
+                    ->where('cliente_id', $userId)->count();
+                if ($usosCliente >= $cuponModel->usos_por_cliente) {
+                    throw new \RuntimeException('Ya alcanzaste el límite de usos de este cupón.');
+                }
+            }
 
             $orden = Orden::create([
                 'empresa_id'         => $this->empresaId,
@@ -594,6 +723,9 @@ class Carrito extends Component
                 'orden_distrito'     => $esProvincial ? ($this->chkDistrito     ?: null) : null,
                 'costo_envio'        => $costoEnvio,
                 'subtotal'           => $subtotal,
+                'descuento_total'    => $descuentoCupon,
+                'descuento_cupon'    => $descuentoCupon,
+                'cupon_id'           => $this->cuponId,
                 'igv'                => 0,
                 'total'              => $total,
                 'metodo_pago_id'     => $metodoPago?->id,
@@ -644,6 +776,16 @@ class Carrito extends Component
                 'nombre'       => $i->promocion?->nombre ?? $i->producto?->nombre ?? 'Producto',
             ]));
 
+            if ($cuponModel) {
+                $cuponModel->increment('usos');
+                CuponUso::create([
+                    'empresa_id' => $this->empresaId,
+                    'cupon_id'   => $cuponModel->id,
+                    'cliente_id' => $userId,
+                    'orden_id'   => $orden->id,
+                ]);
+            }
+
             return $orden;
         });
         } catch (\RuntimeException $e) {
@@ -651,6 +793,7 @@ class Carrito extends Component
             return;
         }
 
+        $this->cuponId = null; $this->cuponCodigo = ''; $this->cuponDescuento = 0.0;
         $this->actualizarBadge();
         $this->finalizarOrden($orden, $items->map(function ($i) {
             [, $desc] = $this->resolverDetalleItem($i);
@@ -673,8 +816,9 @@ class Carrito extends Component
             return;
         }
 
-        $subtotal = $rawItems->sum(fn($i) => (float) $i['precio_unitario'] * (int) $i['cantidad']);
-        $total    = $subtotal + $costoEnvio;
+        $subtotal       = $rawItems->sum(fn($i) => (float) $i['precio_unitario'] * (int) $i['cantidad']);
+        $descuentoCupon = $this->cuponId ? min((float) $this->cuponDescuento, $subtotal) : 0.0;
+        $total          = max(0.0, $subtotal - $descuentoCupon) + $costoEnvio;
 
         // ── Validar precios contra BD ──────────────────────────────────────
         foreach ($rawItems as $raw) {
@@ -712,10 +856,24 @@ class Carrito extends Component
         }
 
         try {
-        $orden = DB::transaction(function () use ($rawItems, $metodoEnvio, $metodoPago, $cliente, $costoEnvio, $subtotal, $total) {
+        $orden = DB::transaction(function () use ($rawItems, $metodoEnvio, $metodoPago, $cliente, $costoEnvio, $subtotal, $descuentoCupon, $total) {
             $tipoMetodo   = $metodoEnvio?->tipo ?? null;
             $esProvincial = $tipoMetodo === 'provincial';
             $esRetiro     = $tipoMetodo === 'retiro';
+
+            // Validar cupón con lock antes de crear la orden
+            $cuponModel = null;
+            if ($this->cuponId) {
+                $cuponModel = Cupon::lockForUpdate()->find($this->cuponId);
+                if (! $cuponModel || ! $cuponModel->estaVigente()) {
+                    throw new \RuntimeException('El cupón ya no está disponible.');
+                }
+                $usosCliente = CuponUso::where('cupon_id', $cuponModel->id)
+                    ->where('cliente_id', $cliente->id)->count();
+                if ($usosCliente >= $cuponModel->usos_por_cliente) {
+                    throw new \RuntimeException('Ya alcanzaste el límite de usos de este cupón.');
+                }
+            }
 
             $orden = Orden::create([
                 'empresa_id'         => $this->empresaId,
@@ -733,6 +891,9 @@ class Carrito extends Component
                 'orden_distrito'     => $esProvincial ? ($this->chkDistrito     ?: null) : null,
                 'costo_envio'        => $costoEnvio,
                 'subtotal'           => $subtotal,
+                'descuento_total'    => $descuentoCupon,
+                'descuento_cupon'    => $descuentoCupon,
+                'cupon_id'           => $this->cuponId,
                 'igv'                => 0,
                 'total'              => $total,
                 'metodo_pago_id'     => $metodoPago?->id,
@@ -793,6 +954,16 @@ class Carrito extends Component
                 'nombre'       => $raw['nombre'] ?? 'Producto',
             ]));
 
+            if ($cuponModel) {
+                $cuponModel->increment('usos');
+                CuponUso::create([
+                    'empresa_id' => $this->empresaId,
+                    'cupon_id'   => $cuponModel->id,
+                    'cliente_id' => $cliente->id,
+                    'orden_id'   => $orden->id,
+                ]);
+            }
+
             return $orden;
         });
         } catch (\RuntimeException $e) {
@@ -800,6 +971,7 @@ class Carrito extends Component
             return;
         }
 
+        $this->cuponId = null; $this->cuponCodigo = ''; $this->cuponDescuento = 0.0;
         // Limpiar carrito invitado
         $this->guestItems = [];
         $this->dispatch('carrito-limpiar-local');

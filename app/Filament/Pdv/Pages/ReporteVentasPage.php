@@ -282,7 +282,14 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
         return $table
             ->query(function (): Builder {
                 $q = Venta::where('empresa_id', Filament::getTenant()->id)
-                    ->with(['serie', 'pagos.metodoPago'])
+                    ->with(['serie', 'pagos.metodoPago', 'cupon'])
+                    ->addSelect([
+                        'ventas.*',
+                        'cupon_codigo_orden' => \App\Models\Orden::select('cupones.codigo')
+                            ->join('cupones', 'cupones.id', '=', 'ordenes.cupon_id')
+                            ->whereColumn('ordenes.venta_id', 'ventas.id')
+                            ->limit(1),
+                    ])
                     ->withCount([
                         'detalles',
                         'notas',
@@ -353,10 +360,18 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('descuento_total')
                     ->label('Descuento')
-                    ->money('PEN')
                     ->alignEnd()
-                    ->color('danger')
-                    ->formatStateUsing(fn($state): string => $state > 0 ? '- ' . number_format((float) $state, 2) : '—')
+                    ->html()
+                    ->formatStateUsing(function ($state, Venta $record): string {
+                        if ((float) $state <= 0) return '<span style="color:var(--fi-color-gray-400)">—</span>';
+                        $monto = '<span style="color:#dc2626;font-weight:600">−S/ ' . number_format((float) $state, 2) . '</span>';
+                        $codigo = $record->cupon?->codigo ?? $record->cupon_codigo_orden;
+                        if (! $codigo) return $monto;
+                        $badge = '<br><span style="display:inline-block;font-size:.6rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:.25rem;padding:.1rem .35rem">'
+                            . e($codigo)
+                            . '</span>';
+                        return $monto . $badge;
+                    })
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('total')
@@ -732,12 +747,23 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
     {
         if (! $this->ventaModalId) return null;
 
-        return Venta::with([
+        $venta = Venta::with([
             'serie',
             'detalles.producto.unidadMedida:id,simbolo',
             'detalles.variante.producto.unidadMedida:id,simbolo',
             'pagos.metodoPago',
+            'cupon',
         ])->find($this->ventaModalId);
+
+        // Fallback: buscar cupón desde la orden relacionada (ventas antes del campo cupon_id)
+        if ($venta && ! $venta->cupon && (float) $venta->descuento_total > 0) {
+            $orden = \App\Models\Orden::where('venta_id', $venta->id)
+                ->with('cupon:id,codigo')
+                ->first();
+            $venta->setRelation('cupon', $orden?->cupon);
+        }
+
+        return $venta;
     }
 
     // ── Modal anular ──────────────────────────────────────────────────────────

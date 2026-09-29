@@ -231,17 +231,23 @@
                     </span>
                     <span class="cr-resumen-valor">S/ {{ number_format($subtotal, 2) }}</span>
                 </div>
-                <div class="cr-cupon">
-                    <label class="cr-cupon-label">¿Tienes un código de descuento?</label>
-                    <div class="cr-cupon-row">
-                        <input type="text" class="cr-cupon-input" placeholder="Ingresa tu código" maxlength="30">
-                        <button type="button" class="cr-cupon-btn" disabled>Aplicar</button>
-                    </div>
-                </div>
+                @include('livewire.tienda.partials.cupon-box', ['cuponDescuento' => $cuponDescuento])
                 <div class="cr-resumen-divider"></div>
+                @if ($cuponDescuento > 0)
+                <div class="cr-resumen-linea cr-resumen-linea--descuento">
+                    <span class="cr-resumen-label">Descuento <small class="cr-cupon-badge-tag">{{ $cuponCodigo }}</small></span>
+                    <span class="cr-resumen-valor cr-resumen-valor--verde">−S/ {{ number_format($cuponDescuento, 2) }}</span>
+                </div>
+                @endif
+                @if ($costoEnvio > 0)
+                <div class="cr-resumen-linea">
+                    <span class="cr-resumen-label">Envío</span>
+                    <span class="cr-resumen-valor">S/ {{ number_format($costoEnvio, 2) }}</span>
+                </div>
+                @endif
                 <div class="cr-resumen-total">
                     <span class="cr-resumen-total-label">Total</span>
-                    <span class="cr-resumen-total-valor">S/ {{ number_format($subtotal, 2) }}</span>
+                    <span class="cr-resumen-total-valor">S/ {{ number_format($total, 2) }}</span>
                 </div>
                 @php $hayDisponibles = collect($disponibilidad)->contains(true); @endphp
                 <button type="button"
@@ -408,10 +414,17 @@
                     </span>
                     <span class="cr-resumen-valor">S/ {{ number_format($subtotal, 2) }}</span>
                 </div>
+                @include('livewire.tienda.partials.cupon-box', ['cuponDescuento' => $cuponDescuento])
                 <div class="cr-resumen-divider"></div>
+                @if ($cuponDescuento > 0)
+                <div class="cr-resumen-linea cr-resumen-linea--descuento">
+                    <span class="cr-resumen-label">Descuento <small class="cr-cupon-badge-tag">{{ $cuponCodigo }}</small></span>
+                    <span class="cr-resumen-valor cr-resumen-valor--verde">−S/ {{ number_format($cuponDescuento, 2) }}</span>
+                </div>
+                @endif
                 <div class="cr-resumen-total">
                     <span class="cr-resumen-total-label">Total</span>
-                    <span class="cr-resumen-total-valor">S/ {{ number_format($subtotal, 2) }}</span>
+                    <span class="cr-resumen-total-valor">S/ {{ number_format($total, 2) }}</span>
                 </div>
                 <button type="button"
                         class="cr-btn-orden {{ $hayDisponiblesGuest ? 'cr-btn-orden--activo' : '' }}"
@@ -531,6 +544,12 @@
             </div>
         </div>
 
+        @if ($cuponDescuento > 0)
+        <div class="conf-modal__descuento">
+            <span>Descuento <small class="cr-cupon-badge-tag">{{ $cuponCodigo }}</small></span>
+            <span style="color:#16a34a;font-weight:600">−S/ {{ number_format($cuponDescuento, 2) }}</span>
+        </div>
+        @endif
         <div class="conf-modal__total">
             <span>Total a pagar</span>
             <span class="conf-modal__total-valor">S/ {{ number_format($total, 2) }}</span>

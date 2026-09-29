@@ -38,6 +38,7 @@ class Venta extends Model
         'op_exoneradas',
         'op_inafectas',
         'descuento_total',
+        'cupon_id',
         'igv',
         'total',
         'costo_total',
@@ -119,6 +120,11 @@ class Venta extends Model
     public function serie(): BelongsTo
     {
         return $this->belongsTo(Serie::class);
+    }
+
+    public function cupon(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Cupon::class);
     }
 
     public function orden(): HasOne

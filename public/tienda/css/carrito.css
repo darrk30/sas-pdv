@@ -423,17 +423,78 @@
 
 .cr-cupon-btn {
     padding: 0.45rem 0.8rem;
-    border: 1.5px solid #e5e7eb;
+    border: 1.5px solid #d1d5db;
     border-radius: 7px;
     background: #f3f4f6;
     font-size: 0.75rem;
     font-weight: 600;
     font-family: var(--font);
-    color: #6b7280;
-    cursor: not-allowed;
-    transition: background .15s;
+    color: #374151;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
     white-space: nowrap;
     flex-shrink: 0;
+}
+.cr-cupon-btn:hover { background: #e9ebf0; border-color: #9ca3af; }
+.cr-cupon-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.cr-cupon-error {
+    font-size: 0.7375rem;
+    color: #dc2626;
+    margin: 0.35rem 0 0;
+}
+
+/* Estado: cupón aplicado */
+.cr-cupon-aplicado {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f0fdf4;
+    border: 1.5px solid #bbf7d0;
+    border-radius: 7px;
+    padding: 0.45rem 0.65rem;
+}
+.cr-cupon-aplicado__info {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.cr-cupon-aplicado__codigo {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #15803d;
+    font-family: monospace;
+    letter-spacing: .02em;
+}
+.cr-cupon-aplicado__desc {
+    font-size: 0.75rem;
+    color: #16a34a;
+}
+.cr-cupon-aplicado__quitar {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0.15rem;
+    line-height: 1;
+    display: flex;
+}
+.cr-cupon-aplicado__quitar:hover { color: #dc2626; }
+
+/* Línea de descuento en el resumen */
+.cr-resumen-linea--descuento .cr-resumen-label { color: #15803d; }
+.cr-resumen-valor--verde { color: #16a34a !important; }
+.cr-cupon-badge-tag {
+    display: inline-block;
+    background: #dcfce7;
+    color: #15803d;
+    border-radius: 4px;
+    padding: 0 0.35rem;
+    font-size: 0.65rem;
+    font-family: monospace;
+    font-weight: 700;
+    letter-spacing: .02em;
+    margin-left: 0.1rem;
 }
 
 /* Divisor */

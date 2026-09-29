@@ -5,8 +5,10 @@ namespace App\Filament\Pdv\Resources\Clientes\Tables;
 use App\Enums\TipoDocumento;
 use App\Enums\TipoPago;
 use App\Filament\Pdv\Pages\CuentasPorCobrarPage;
+use App\Filament\Pdv\Pages\ListaDeseosClientePage;
 use App\Filament\Pdv\Pages\ReporteClienteComprasPage;
 use App\Models\Cliente;
+use App\Models\ListaDeseo;
 use App\Models\Venta;
 use Filament\Facades\Filament;
 use Filament\Actions\Action;
@@ -25,8 +27,9 @@ class ClientesTable
 {
     public static function configure(Table $table): Table
     {
-        $empresa      = Filament::getTenant();
-        $tieneCuentas = $empresa && $empresa->tieneFeature('cuentas');
+        $empresa         = Filament::getTenant();
+        $tieneCuentas    = $empresa && $empresa->tieneFeature('cuentas');
+        $tieneListaDeseos = $empresa && $empresa->tieneFeature('catalogo_web');
 
         return $table
             ->modifyQueryUsing(fn ($query) => $query->addSelect([
@@ -49,8 +52,19 @@ class ClientesTable
                     ->whereColumn('empresa_id', 'clientes.empresa_id')
                     ->where('estado', 'completada')
                     ->where('tipo_pago', TipoPago::Credito),
+
+                // Subquery: productos en lista de deseos
+                'lista_deseos_count' => ListaDeseo::selectRaw('COUNT(*)')
+                    ->whereColumn('user_id', 'clientes.id')
+                    ->whereColumn('empresa_id', 'clientes.empresa_id'),
             ]))
             ->columns([
+                TextColumn::make('index')
+                    ->label('#')
+                    ->rowIndex()
+                    ->alignCenter()
+                    ->width('50px'),
+
                 TextColumn::make('nombre')
                     ->label('Nombre')
                     ->searchable()
@@ -100,6 +114,15 @@ class ClientesTable
                     ->placeholder('—')
                     ->toggleable()
                     ->visible($tieneCuentas),
+
+                TextColumn::make('lista_deseos_count')
+                    ->label('Lista deseos')
+                    ->alignCenter()
+                    ->badge()
+                    ->color(fn ($state) => $state > 0 ? 'warning' : 'gray')
+                    ->formatStateUsing(fn ($state) => $state > 0 ? "♥ {$state}" : '—')
+                    ->toggleable()
+                    ->visible($tieneListaDeseos),
             ])
             ->filters([
                 SelectFilter::make('tipo_documento')
@@ -150,6 +173,20 @@ class ClientesTable
                             ])
                         ),
 
+                    Action::make('lista_deseos')
+                        ->label('Lista de deseos')
+                        ->icon('heroicon-o-heart')
+                        ->color('danger')
+                        ->visible(fn (Cliente $record) => $tieneListaDeseos && (int) ($record->lista_deseos_count ?? 0) > 0)
+                        ->url(fn (Cliente $record) =>
+                            ListaDeseosClientePage::getUrl() . '?' . http_build_query([
+                                'clienteId'       => $record->id,
+                                'clienteNombre'   => $record->nombre_completo,
+                                'clienteEmail'    => $record->email ?? $record->correo,
+                                'clienteTelefono' => $record->telefono,
+                            ])
+                        ),
+
                     EditAction::make()
                         ->hidden(fn (Cliente $record) => $record->numero_documento === '99999999'),
 
@@ -162,7 +199,7 @@ class ClientesTable
                     //DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('nombre')
+            ->defaultSort('created_at', 'desc')
             ->striped()
             ->paginated([10, 25, 50]);
     }

@@ -140,9 +140,14 @@
 
                 <div class="vs-modal__totales">
                     @if($vm->descuento_total > 0)
-                        <div class="vs-modal__total-fila">
+                        <div class="vs-modal__total-fila vs-modal__total-fila--descuento">
                             <span>Descuento</span>
-                            <span>- S/ {{ number_format($vm->descuento_total, 2) }}</span>
+                            <span class="vs-descuento-col">
+                                <span>−S/ {{ number_format($vm->descuento_total, 2) }}</span>
+                                @if($vm->cupon)
+                                    <span class="vs-cupon-badge">{{ $vm->cupon->codigo }}</span>
+                                @endif
+                            </span>
                         </div>
                     @endif
                     @if($vm->op_gravadas > 0)

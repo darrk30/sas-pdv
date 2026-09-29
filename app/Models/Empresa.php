@@ -119,7 +119,8 @@ class Empresa extends Model
             'facturacion_electronica' => (bool) ($plan?->facturacion_electronica ?? false),
             'impresion_directa'       => (bool) ($plan?->tiene_impresion_directa ?? false),
             'lista_precios'           => (bool) ($plan?->tiene_lista_precios     ?? false),
-            'cuentas'                 => (bool) ($plan?->tiene_cuentas ?? false),
+            'cuentas'                 => (bool) ($plan?->tiene_cuentas  ?? false),
+            'cupones'                 => (bool) ($plan?->tiene_cupones  ?? false),
             default                   => false,
         };
     }
@@ -164,6 +165,7 @@ class Empresa extends Model
             'clientes'            => true,
             'promociones'         => true,
             'despacho'            => true,
+            'cupones'             => false,
             // Compras
             'compras'             => true,
             'gestion_compras'     => true,
@@ -223,6 +225,7 @@ class Empresa extends Model
         'clientes'            => 'pedidos_web',
         'promociones'         => 'pedidos_web',
         'despacho'            => 'pedidos_web',
+        'cupones'             => 'pedidos_web',
         // Compras
         'gestion_compras'     => 'compras',
         'proveedores'         => 'compras',

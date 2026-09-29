@@ -3,12 +3,14 @@
 namespace App\Providers;
 
 use App\Models\Anuncio;
+use App\Models\Cupon;
 use App\Models\Empresa;
 use App\Models\Mesa;
 use App\Models\Plan;
 use App\Models\TareaProgramada;
 use App\Observers\MesaObserver;
 use App\Policies\AnuncioPolicy;
+use App\Policies\CuponPolicy;
 use App\Policies\EmpresaPolicy;
 use App\Policies\PlanPolicy;
 use App\Policies\TareaProgramadaPolicy;
@@ -40,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Plan::class, PlanPolicy::class);
         Gate::policy(Anuncio::class, AnuncioPolicy::class);
         Gate::policy(TareaProgramada::class, TareaProgramadaPolicy::class);
+        Gate::policy(Cupon::class, CuponPolicy::class);
 
         Event::listen(VentaCompletada::class, EmitirComprobanteElectronico::class);
 

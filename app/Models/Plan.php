@@ -27,6 +27,7 @@ class Plan extends Model
         'tiene_impresion_directa',
         'tiene_lista_precios',
         'tiene_cuentas',
+        'tiene_cupones',
         'estado',
     ];
 
@@ -43,6 +44,7 @@ class Plan extends Model
             'tiene_impresion_directa' => 'boolean',
             'tiene_lista_precios'     => 'boolean',
             'tiene_cuentas'           => 'boolean',
+            'tiene_cupones'           => 'boolean',
             'estado'                  => EstadoGeneral::class,
         ];
     }

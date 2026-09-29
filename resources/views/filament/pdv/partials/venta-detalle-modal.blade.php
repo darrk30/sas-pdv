@@ -106,6 +106,17 @@
                     <span>S/ {{ number_format($detalleVenta['igv'], 2) }}</span>
                 </div>
                 @endif
+                @if(($detalleVenta['descuento_total'] ?? 0) > 0)
+                <div class="vdm-totales__fila vdm-totales__fila--descuento">
+                    <span>Descuento</span>
+                    <span class="vdm-descuento-col">
+                        <span>−S/ {{ number_format($detalleVenta['descuento_total'], 2) }}</span>
+                        @if(!empty($detalleVenta['cupon_codigo']))
+                            <span class="vdm-cupon-badge">{{ $detalleVenta['cupon_codigo'] }}</span>
+                        @endif
+                    </span>
+                </div>
+                @endif
                 <div class="vdm-totales__fila vdm-totales__fila--total">
                     <span>Total</span>
                     <span>S/ {{ number_format($detalleVenta['total'], 2) }}</span>

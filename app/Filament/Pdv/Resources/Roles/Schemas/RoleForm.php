@@ -18,6 +18,7 @@ class RoleForm
         $empresa        = Filament::getTenant();
         $empresaId      = $empresa?->id;
         $tieneTienda        = ($empresa?->tieneFeature('catalogo_web') ?? false) && ($empresa?->tieneModulo('pedidos_web') ?? true);
+        $tieneCupones       = $empresa?->tieneModulo('cupones') ?? false;
         $tieneVariantes     = $empresa?->tieneFeature('variantes') ?? false;
         $tieneFE            = $empresa?->tieneFacturacionElectronica() ?? false;
         $tieneListaPrecios  = $empresa?->tieneFeature('lista_precios') ?? false;
@@ -65,6 +66,9 @@ class RoleForm
             ]))
             ->when(! $tieneListaPrecios, fn ($q) => $q->whereNotIn('name', [
                 'listas_precios.ver', 'listas_precios.crear', 'listas_precios.editar', 'listas_precios.eliminar',
+            ]))
+            ->when(! $tieneCupones, fn ($q) => $q->whereNotIn('name', [
+                'cupones.ver', 'cupones.crear', 'cupones.editar', 'cupones.eliminar',
             ]))
             ->orderBy('module_label')
             ->orderBy('description')

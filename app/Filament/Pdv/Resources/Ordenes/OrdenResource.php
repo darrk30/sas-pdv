@@ -29,7 +29,7 @@ class OrdenResource extends Resource
     protected static ?string $navigationLabel = 'Órdenes';
 
     protected static string|UnitEnum|null $navigationGroup = 'Pedidos Web';
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 10;
 
     protected static ?string $modelLabel = 'Orden';
 

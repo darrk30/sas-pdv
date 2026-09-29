@@ -175,6 +175,13 @@ class PlanForm
                             ->onColor('success')
                             ->default(false)
                             ->columnSpan(1),
+
+                        Toggle::make('tiene_cupones')
+                            ->label('Cupones de Descuento')
+                            ->helperText('Permite crear y gestionar cupones de descuento para la tienda')
+                            ->onColor('success')
+                            ->default(false)
+                            ->columnSpan(1),
                     ])->columnSpanFull(),
 
                 Section::make('Módulos del Plan')
@@ -241,19 +248,21 @@ class PlanForm
                                 Toggle::make('modulos_activos.pedidos_web')
                                     ->label('Activar módulo completo')->onColor('success')->live()->default(false)->columnSpanFull()
                                     ->afterStateUpdated(function (bool $state, Set $set) {
-                                        foreach (['ordenes_web','clientes','promociones','despacho'] as $s) {
+                                        foreach (['ordenes_web','clientes','promociones','despacho','cupones'] as $s) {
                                             $set("modulos_activos.$s", $state);
                                         }
                                     }),
                                 Grid::make(2)->schema([
                                     Toggle::make('modulos_activos.ordenes_web')->label('Órdenes')->default(false)->live()
-                                        ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho'], $get, $set)),
+                                        ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho','cupones'], $get, $set)),
                                     Toggle::make('modulos_activos.clientes')->label('Clientes')->default(false)->live()
-                                        ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho'], $get, $set)),
+                                        ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho','cupones'], $get, $set)),
                                     Toggle::make('modulos_activos.promociones')->label('Promociones')->default(false)->live()
-                                        ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho'], $get, $set)),
+                                        ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho','cupones'], $get, $set)),
                                     Toggle::make('modulos_activos.despacho')->label('Despachos')->default(false)->live()
-                                        ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho'], $get, $set)),
+                                        ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho','cupones'], $get, $set)),
+                                    Toggle::make('modulos_activos.cupones')->label('Cupones')->default(false)->live()
+                                        ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('pedidos_web', ['ordenes_web','clientes','promociones','despacho','cupones'], $get, $set)),
                                 ])->columnSpanFull(),
                             ]),
 

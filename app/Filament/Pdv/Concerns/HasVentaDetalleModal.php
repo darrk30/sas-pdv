@@ -22,6 +22,7 @@ trait HasVentaDetalleModal
             'detalles.producto:id,codigo_interno,logo',
             'pagos.metodoPago',
             'vendedor',
+            'cupon',
         ])
             ->where('empresa_id', Filament::getTenant()->id)
             ->findOrFail($ventaId);
@@ -40,6 +41,8 @@ trait HasVentaDetalleModal
             'estado_pago'      => $venta->estado_pago,
             'fecha_vencimiento'=> $venta->fecha_vencimiento?->format('d/m/Y'),
             'igv'              => (float) $venta->igv,
+            'descuento_total'  => (float) $venta->descuento_total,
+            'cupon_codigo'     => $this->resolverCuponCodigo($venta),
             'total'            => (float) $venta->total,
             'monto_pagado'     => (float) $venta->monto_pagado,
             'saldo_pendiente'  => (float) $venta->saldo_pendiente,
@@ -75,6 +78,18 @@ trait HasVentaDetalleModal
             ])->values()->toArray();
 
         $this->modalDetalle = true;
+    }
+
+    private function resolverCuponCodigo(\App\Models\Venta $venta): ?string
+    {
+        if ($venta->cupon) {
+            return $venta->cupon->codigo;
+        }
+
+        // Fallback para ventas creadas antes de agregar cupon_id a ventas
+        return \App\Models\Orden::where('venta_id', $venta->id)
+            ->with('cupon:id,codigo')
+            ->first()?->cupon?->codigo;
     }
 
     public function cerrarModalDetalle(): void

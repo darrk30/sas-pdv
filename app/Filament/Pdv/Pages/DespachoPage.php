@@ -34,7 +34,7 @@ class DespachoPage extends Page implements HasTable
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-paper-airplane';
     protected static ?string $navigationLabel = 'Despachos';
     protected static string|UnitEnum|null $navigationGroup = 'Pedidos Web';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 20;
     protected static ?string $title = 'Despachos pendientes';
 
     public function getHeading(): string
