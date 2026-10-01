@@ -58,15 +58,17 @@
     @endif
 
     {{-- Ítems --}}
+    @php $esTicket = in_array($venta->serie?->tipo?->value ?? '', ['ticket', 'sin_comprobante']); @endphp
+
     <p class="vd-section-label">Ítems</p>
     <div class="vd-table-wrap">
         <table class="vd-table">
             <thead>
                 <tr>
                     <th>Descripción</th>
-                    <th class="vd-ta-r">Cant.</th>
-                    <th class="vd-ta-r">P. Unit.</th>
-                    <th class="vd-ta-r">Total</th>
+                    <th style="text-align:center">Cant.</th>
+                    <th style="text-align:center">P. Unit.</th>
+                    <th style="text-align:center">Total</th>
                 </tr>
             </thead>
             <tbody>
@@ -77,10 +79,13 @@
                         @if($d->precio_unitario == 0)
                             <span class="vd-cortesia-tag">cortesía</span>
                         @endif
+                        @if($d->producto?->codigo_interno)
+                            <div style="font-size:.72rem;color:#9ca3af;margin-top:.1rem">{{ $d->producto->codigo_interno }}</div>
+                        @endif
                     </td>
-                    <td class="vd-ta-r">{{ number_format($d->cantidad, 0) }}</td>
-                    <td class="vd-ta-r">S/ {{ number_format($d->precio_unitario, 2) }}</td>
-                    <td class="vd-ta-r vd-bold">S/ {{ number_format($d->total, 2) }}</td>
+                    <td style="text-align:center">{{ number_format($d->cantidad, 0) }}</td>
+                    <td style="text-align:center">S/ {{ number_format($d->precio_unitario, 2) }}</td>
+                    <td style="text-align:center;font-weight:600">S/ {{ number_format($d->total, 2) }}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -95,14 +100,18 @@
             <span>- S/ {{ number_format($venta->descuento_total, 2) }}</span>
         </div>
         @endif
+        @if(!$esTicket && $venta->op_gravadas > 0)
         <div class="vd-total-fila">
             <span>Op. Gravada</span>
             <span>S/ {{ number_format($venta->op_gravadas, 2) }}</span>
         </div>
+        @endif
+        @if(!$esTicket && $venta->igv > 0)
         <div class="vd-total-fila">
             <span>IGV (18%)</span>
             <span>S/ {{ number_format($venta->igv, 2) }}</span>
         </div>
+        @endif
         <div class="vd-total-fila vd-total-fila--grande">
             <span>Total</span>
             <span>S/ {{ number_format($venta->total, 2) }}</span>
