@@ -163,11 +163,9 @@ class GestionInventario extends Page implements HasTable
                     })
                     ->searchable(query: function (Builder $query, string $search): Builder {
                         return $query->where(function (Builder $q) use ($search): void {
-                            // Busca por nombre del producto (cubre simples y variantes)
                             $q->whereHas('producto', fn(Builder $pq) =>
                                 $pq->where('nombre', 'like', "%{$search}%")
                             )
-                            // Busca por valor de atributo: Rojo, S, M, etc.
                             ->orWhereHas('variante.valores.valor', fn(Builder $vq) =>
                                 $vq->where('nombre', 'like', "%{$search}%")
                             );
@@ -187,11 +185,11 @@ class GestionInventario extends Page implements HasTable
                     ->searchable(query: function (Builder $query, string $search): Builder {
                         return $query->where(function (Builder $q) use ($search): void {
                             $q->whereHas('variante', fn(Builder $vq) =>
-                                $vq->where('codigo', 'like', "%{$search}%")
+                                $vq->where('codigo', $search)
                             )
                             ->orWhereHas('producto', fn(Builder $pq) =>
-                                $pq->where('codigo_interno', 'like', "%{$search}%")
-                                   ->orWhere('codigo_barras', 'like', "%{$search}%")
+                                $pq->where('codigo_interno', $search)
+                                   ->orWhere('codigo_barras', $search)
                             );
                         });
                     })

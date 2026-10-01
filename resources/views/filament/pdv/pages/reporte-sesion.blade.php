@@ -183,7 +183,6 @@
                     <thead>
                         <tr>
                             <th>Comprobante</th>
-                            <th>Fecha / Hora</th>
                             <th>Cliente</th>
                             <th>Pago</th>
                             <th class="rg-th-right">Ítems</th>
@@ -195,9 +194,9 @@
                         @foreach($ventasTab as $v)
                             @php $esCredito = ($v->estado_pago ?? 'pagado') === 'pendiente'; @endphp
                             <tr wire:key="vtab-{{ $v->id }}">
-                                <td><span class="rg-comprobante">{{ ($v->serie?->serie ?? '—') . '-' . $v->correlativo }}</span></td>
                                 <td>
-                                    <div class="rg-fecha">
+                                    <span class="rg-comprobante">{{ ($v->serie?->serie ?? '—') . '-' . $v->correlativo }}</span>
+                                    <div class="rg-fecha" style="margin-top:.15rem">
                                         <span class="rg-fecha__dia">{{ $v->created_at->format('d/m/Y') }}</span>
                                         <span class="rg-fecha__hora">{{ $v->created_at->format('H:i:s') }}</span>
                                     </div>
@@ -446,7 +445,6 @@
                     <thead>
                         <tr>
                             <th>Comprobante</th>
-                            <th>Fecha / Hora</th>
                             <th>Cliente</th>
                             <th class="rg-th-right">Total venta</th>
                         </tr>
@@ -454,9 +452,9 @@
                     <tbody>
                         @foreach($cortVentas as $cv)
                             <tr wire:key="cv-{{ $cv->id }}">
-                                <td><span class="rg-comprobante">{{ ($cv->serie?->serie ?? '—') . '-' . $cv->correlativo }}</span></td>
                                 <td>
-                                    <div class="rg-fecha">
+                                    <span class="rg-comprobante">{{ ($cv->serie?->serie ?? '—') . '-' . $cv->correlativo }}</span>
+                                    <div class="rg-fecha" style="margin-top:.15rem">
                                         <span class="rg-fecha__dia">{{ $cv->created_at->format('d/m/Y') }}</span>
                                         <span class="rg-fecha__hora">{{ $cv->created_at->format('H:i:s') }}</span>
                                     </div>

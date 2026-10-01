@@ -158,9 +158,12 @@ class VentasSesionPage extends Page implements HasTable
                 TextColumn::make('comprobante')
                     ->label('Comprobante')
                     ->state(fn (Venta $r): string => ($r->serie?->serie ?? '---') . '-' . str_pad((string) $r->correlativo, 8, '0', STR_PAD_LEFT))
-                    ->description(fn (Venta $r): ?string => (float) $r->saldo_pendiente > 0
-                        ? '⚠ Saldo: S/ ' . number_format((float) $r->saldo_pendiente, 2)
-                        : null)
+                    ->description(fn (Venta $r): string =>
+                        $r->created_at->format('d/m/Y H:i')
+                        . ((float) $r->saldo_pendiente > 0
+                            ? '  ⚠ Saldo: S/ ' . number_format((float) $r->saldo_pendiente, 2)
+                            : '')
+                    )
                     ->weight('medium')
                     ->searchable(false)
                     ->sortable(false),
@@ -295,7 +298,7 @@ class VentasSesionPage extends Page implements HasTable
                         )
                         ->modalContent(fn (Venta $record) => view(
                             'filament.pdv.components.venta-detalle-modal',
-                            ['venta' => $record->load(['serie', 'detalles', 'pagos.metodoPago'])]
+                            ['venta' => $record->load(['serie', 'detalles.producto:id,codigo_interno', 'pagos.metodoPago'])]
                         ))
                         ->modalFooterActions([])
                         ->slideOver(),

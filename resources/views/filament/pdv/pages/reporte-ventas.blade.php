@@ -106,9 +106,9 @@
                         <thead>
                             <tr>
                                 <th>Descripción</th>
-                                <th class="vs-ta-right">Cant.</th>
-                                <th class="vs-ta-right">P. Unit.</th>
-                                <th class="vs-ta-right">Total</th>
+                                <th style="text-align:center">Cant.</th>
+                                <th style="text-align:center">P. Unit.</th>
+                                <th style="text-align:center">Total</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -121,23 +121,32 @@
                                     $simbolo = $d->producto?->unidadMedida?->simbolo
                                         ?? $d->variante?->producto?->unidadMedida?->simbolo
                                         ?? null;
+                                    $codigoInterno = $d->variante_id
+                                        ? ($d->variante?->producto?->codigo_interno ?? null)
+                                        : ($d->producto?->codigo_interno ?? null);
                                 @endphp
                                 <tr>
-                                    <td>{{ $d->descripcion }}</td>
-                                    <td class="vs-ta-right" style="white-space:nowrap">
+                                    <td>
+                                        {{ $d->descripcion }}
+                                        @if($codigoInterno)
+                                            <div style="font-size:.72rem;color:var(--vs-text-muted);margin-top:.1rem">{{ $codigoInterno }}</div>
+                                        @endif
+                                    </td>
+                                    <td style="text-align:center;white-space:nowrap">
                                         {{ $cantFmt }}
                                         @if($simbolo)
                                             <span style="font-size:.72rem;color:var(--vs-text-muted);margin-left:.15rem">{{ $simbolo }}</span>
                                         @endif
                                     </td>
-                                    <td class="vs-ta-right">S/ {{ number_format($d->precio_unitario, 2) }}</td>
-                                    <td class="vs-ta-right">S/ {{ number_format($d->total, 2) }}</td>
+                                    <td style="text-align:center">S/ {{ number_format($d->precio_unitario, 2) }}</td>
+                                    <td style="text-align:center">S/ {{ number_format($d->total, 2) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
 
+                @php $esTicketVm = in_array($vm->serie?->tipo?->value ?? '', ['ticket', 'sin_comprobante']); @endphp
                 <div class="vs-modal__totales">
                     @if($vm->descuento_total > 0)
                         <div class="vs-modal__total-fila vs-modal__total-fila--descuento">
@@ -150,13 +159,13 @@
                             </span>
                         </div>
                     @endif
-                    @if($vm->op_gravadas > 0)
+                    @if(!$esTicketVm && $vm->op_gravadas > 0)
                     <div class="vs-modal__total-fila">
                         <span>Op. Gravada</span>
                         <span>S/ {{ number_format($vm->op_gravadas, 2) }}</span>
                     </div>
                     @endif
-                    @if($vm->igv > 0)
+                    @if(!$esTicketVm && $vm->igv > 0)
                     <div class="vs-modal__total-fila">
                         <span>IGV (18%)</span>
                         <span>S/ {{ number_format($vm->igv, 2) }}</span>

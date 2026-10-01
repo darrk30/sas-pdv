@@ -178,15 +178,16 @@ class KardexPage extends Page implements HasForms, HasTable
                 TextColumn::make('producto_nombre')
                     ->label('Producto')
                     ->description(fn (Kardex $record): ?string =>
-                        implode(' · ', array_filter([
-                            $record->variante_nombre,
-                            $record->variante_id
-                                ? ($record->variante?->codigo ?: $record->variante?->codigo_barras)
-                                : ($record->producto?->codigo_interno ?: $record->producto?->codigo_barras),
-                        ])) ?: null
+                        $record->producto?->codigo_interno ?: null
                     )
-                    ->wrap()
-                    ->limit(40),
+                    ->wrap(),
+
+                TextColumn::make('codigo_barras')
+                    ->label('Cód. Barras')
+                    ->state(fn (Kardex $record): string =>
+                        $record->variante?->codigo_barras
+                            ?: ($record->producto?->codigo_barras ?: '—')
+                    ),
 
                 TextColumn::make('concepto')
                     ->label('Concepto')
@@ -292,9 +293,14 @@ class KardexPage extends Page implements HasForms, HasTable
 
     private function buildTableQuery(): Builder
     {
-        $q = Kardex::where('kardex.empresa_id', Filament::getTenant()->id)
+        $empresaId = Filament::getTenant()->id;
+
+        $q = Kardex::where('kardex.empresa_id', $empresaId)
             ->with(['user:id,name', 'producto:id,codigo_interno,codigo_barras', 'variante:id,codigo,codigo_barras'])
-            ->leftJoin('unidades_medidas as um', 'um.nombre', '=', 'kardex.unidad')
+            ->leftJoin('unidades_medidas as um', function ($join) use ($empresaId) {
+                $join->on('um.nombre', '=', 'kardex.unidad')
+                     ->where('um.empresa_id', $empresaId);
+            })
             ->select('kardex.*', 'um.simbolo as unidad_simbolo');
 
         $this->aplicarFiltros($q);

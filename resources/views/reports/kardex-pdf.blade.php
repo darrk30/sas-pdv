@@ -133,6 +133,7 @@ tbody td.mono   { font-family: DejaVu Sans Mono, monospace; }
             <td>
                 <span style="font-weight:600">{{ $mov->producto_nombre }}</span>
                 @if($mov->variante_nombre)<br><span style="color:#9ca3af">{{ $mov->variante_nombre }}</span>@endif
+                @if($mov->producto?->codigo_interno)<br><span style="color:#9ca3af;font-size:6.5px">{{ $mov->producto->codigo_interno }}</span>@endif
             </td>
             <td>{{ $mov->concepto }}</td>
             <td class="center">@if($origenLabel)<span class="badge-{{ $origenKey }}">{{ $origenLabel }}</span>@else —@endif</td>

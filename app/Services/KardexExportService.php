@@ -20,7 +20,7 @@ class KardexExportService
     private function baseQuery(Empresa $empresa, array $filtros): Builder
     {
         $q = Kardex::where('empresa_id', $empresa->id)
-            ->with(['user'])
+            ->with(['user', 'producto:id,codigo_interno'])
             ->orderBy('fecha', 'desc')
             ->orderBy('id', 'desc');
 
@@ -206,7 +206,9 @@ class KardexExportService
 
             $rowData = [
                 \Carbon\Carbon::parse($mov->fecha)->format('d/m/Y H:i'),
-                $mov->producto_nombre . ($mov->variante_nombre ? ' (' . $mov->variante_nombre . ')' : ''),
+                $mov->producto_nombre
+                    . ($mov->variante_nombre ? ' (' . $mov->variante_nombre . ')' : '')
+                    . ($mov->producto?->codigo_interno ? ' [' . $mov->producto->codigo_interno . ']' : ''),
                 $mov->concepto,
                 $origenLabels[$mov->movible_type] ?? '—',
                 ucfirst($mov->tipo),
