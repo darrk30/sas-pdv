@@ -275,19 +275,66 @@ class ReporteComprasPage extends Page implements HasForms, HasTable
 
     public function getSparklines(): array
     {
-        $rows = DB::table('compras')
-            ->where('empresa_id', Filament::getTenant()->id)
-            ->where('estado', '!=', 'anulado')
-            ->whereDate('fecha_compra', '>=', today()->subDays(6)->toDateString())
-            ->selectRaw("DATE(fecha_compra) as dia, COUNT(*) as cantidad, COALESCE(SUM(total),0) as total")
-            ->groupBy('dia')->orderBy('dia')->get()->keyBy('dia');
-        $qty = []; $tot = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $d = today()->subDays($i)->toDateString(); $r = $rows->get($d);
-            $qty[] = (int)   ($r?->cantidad ?? 0);
-            $tot[] = (float) ($r?->total    ?? 0);
+        [$desde, $hasta] = $this->getRangoEfectivo();
+        $desde     = \Carbon\Carbon::parse($desde);
+        $hasta     = \Carbon\Carbon::parse($hasta);
+        $diffDias  = $desde->diffInDays($hasta) + 1;
+        $empresaId = Filament::getTenant()->id;
+
+        $base = DB::table('compras')
+            ->where('empresa_id', $empresaId)
+            ->where('estado', '!=', 'anulado');
+
+        if ($diffDias <= 7) {
+            // Por día: 7 días terminando en $hasta
+            $ventana = $hasta->copy()->subDays(6);
+            $rows = (clone $base)
+                ->whereBetween('fecha_compra', [$ventana->toDateString(), $hasta->toDateString()])
+                ->selectRaw("DATE(fecha_compra) as slot, COUNT(*) as cantidad, COALESCE(SUM(total),0) as total")
+                ->groupBy('slot')->orderBy('slot')->get()->keyBy('slot');
+            $qty = []; $tot = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $d = $hasta->copy()->subDays($i)->toDateString();
+                $r = $rows->get($d);
+                $qty[] = (int)   ($r?->cantidad ?? 0);
+                $tot[] = (float) ($r?->total    ?? 0);
+            }
+        } elseif ($diffDias <= 90) {
+            // Por semana: últimas 7 semanas del rango
+            $rows = (clone $base)
+                ->whereBetween('fecha_compra', [$desde->toDateString(), $hasta->toDateString()])
+                ->selectRaw("YEARWEEK(fecha_compra, 1) as slot, COUNT(*) as cantidad, COALESCE(SUM(total),0) as total")
+                ->groupBy('slot')->orderBy('slot')->get();
+            $slice   = $rows->takeLast(7);
+            $padding = max(0, 7 - $slice->count());
+            $qty = array_merge(array_fill(0, $padding, 0),   $slice->pluck('cantidad')->map(fn ($v) => (int)   $v)->toArray());
+            $tot = array_merge(array_fill(0, $padding, 0.0), $slice->pluck('total')   ->map(fn ($v) => (float) $v)->toArray());
+        } else {
+            // Por mes: últimos 7 meses del rango
+            $rows = (clone $base)
+                ->whereBetween('fecha_compra', [$desde->toDateString(), $hasta->toDateString()])
+                ->selectRaw("DATE_FORMAT(fecha_compra,'%Y%m') as slot, COUNT(*) as cantidad, COALESCE(SUM(total),0) as total")
+                ->groupBy('slot')->orderBy('slot')->get();
+            $slice   = $rows->takeLast(7);
+            $padding = max(0, 7 - $slice->count());
+            $qty = array_merge(array_fill(0, $padding, 0),   $slice->pluck('cantidad')->map(fn ($v) => (int)   $v)->toArray());
+            $tot = array_merge(array_fill(0, $padding, 0.0), $slice->pluck('total')   ->map(fn ($v) => (float) $v)->toArray());
         }
+
         return ['cantidad' => $qty, 'total' => $tot];
+    }
+
+    private function getRangoEfectivo(): array
+    {
+        return match ($this->filtroRango) {
+            'semana' => [today()->startOfWeek()->toDateString(), today()->endOfWeek()->toDateString()],
+            'mes'    => [today()->startOfMonth()->toDateString(), today()->endOfMonth()->toDateString()],
+            'personalizado' => [
+                $this->filtroFechaDesde ?? today()->toDateString(),
+                $this->filtroFechaHasta ?? today()->toDateString(),
+            ],
+            default  => [today()->toDateString(), today()->toDateString()],
+        };
     }
 
     // ── Exportación ───────────────────────────────────────────────────────────
