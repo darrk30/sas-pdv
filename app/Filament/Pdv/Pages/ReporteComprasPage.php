@@ -305,7 +305,7 @@ class ReporteComprasPage extends Page implements HasForms, HasTable
                 ->whereBetween('fecha_compra', [$desde->toDateString(), $hasta->toDateString()])
                 ->selectRaw("YEARWEEK(fecha_compra, 1) as slot, COUNT(*) as cantidad, COALESCE(SUM(total),0) as total")
                 ->groupBy('slot')->orderBy('slot')->get();
-            $slice   = $rows->takeLast(7);
+            $slice   = $rows->slice(-7);
             $padding = max(0, 7 - $slice->count());
             $qty = array_merge(array_fill(0, $padding, 0),   $slice->pluck('cantidad')->map(fn ($v) => (int)   $v)->toArray());
             $tot = array_merge(array_fill(0, $padding, 0.0), $slice->pluck('total')   ->map(fn ($v) => (float) $v)->toArray());
@@ -315,7 +315,7 @@ class ReporteComprasPage extends Page implements HasForms, HasTable
                 ->whereBetween('fecha_compra', [$desde->toDateString(), $hasta->toDateString()])
                 ->selectRaw("DATE_FORMAT(fecha_compra,'%Y%m') as slot, COUNT(*) as cantidad, COALESCE(SUM(total),0) as total")
                 ->groupBy('slot')->orderBy('slot')->get();
-            $slice   = $rows->takeLast(7);
+            $slice   = $rows->slice(-7);
             $padding = max(0, 7 - $slice->count());
             $qty = array_merge(array_fill(0, $padding, 0),   $slice->pluck('cantidad')->map(fn ($v) => (int)   $v)->toArray());
             $tot = array_merge(array_fill(0, $padding, 0.0), $slice->pluck('total')   ->map(fn ($v) => (float) $v)->toArray());
