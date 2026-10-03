@@ -472,10 +472,18 @@ class ReporteComprasPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('saldo')
                     ->label('Saldo')
-                    ->state(fn (Compra $r): string => $this->calcularSaldo($r) > 0.01
-                        ? 'S/ ' . number_format($this->calcularSaldo($r), 2)
-                        : '✓ Saldado')
-                    ->color(fn (Compra $r): string => $this->calcularSaldo($r) > 0.01 ? 'warning' : 'success')
+                    ->state(function (Compra $r): string {
+                        $saldo = $this->calcularSaldo($r);
+                        if ($saldo > 0.01) return 'S/ ' . number_format($saldo, 2);
+                        if ($saldo < -0.01) return '⚠ +S/ ' . number_format(abs($saldo), 2);
+                        return '✓ Saldado';
+                    })
+                    ->color(function (Compra $r): string {
+                        $saldo = $this->calcularSaldo($r);
+                        if ($saldo > 0.01)  return 'warning';
+                        if ($saldo < -0.01) return 'danger';
+                        return 'success';
+                    })
                     ->alignEnd()
                     ->weight('semibold')
                     ->toggleable(isToggledHiddenByDefault: false),
