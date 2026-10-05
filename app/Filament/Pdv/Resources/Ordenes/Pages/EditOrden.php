@@ -41,6 +41,9 @@ class EditOrden extends EditRecord
     /** Snapshot de cantidades antes del guardado, para calcular deltas en afterSave. */
     protected array $oldDetalleQtys = [];
 
+    /** Operaciones de stock_reserva calculadas en beforeSave y aplicadas en afterSave. */
+    protected array $pendingStockOps = [];
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
         return $data;
@@ -66,56 +69,95 @@ class EditOrden extends EditRecord
 
         $detallesForm = array_values($this->data['detalles'] ?? []);
 
-        if (empty($detallesForm)) {
-            return;
+        if (! empty($detallesForm)) {
+            $errores = $this->validarStockDetalles(
+                $detallesForm,
+                array_values($this->oldDetalleQtys),
+                $this->record->empresa_id
+            );
+
+            if (! empty($errores)) {
+                foreach ($errores as $msg) {
+                    Notification::make()->danger()->title('Stock insuficiente')->body($msg)->persistent()->send();
+                }
+                $this->halt();
+            }
         }
 
-        $errores = $this->validarStockDetalles(
-            $detallesForm,
-            array_values($this->oldDetalleQtys),
-            $this->record->empresa_id
-        );
+        // Pre-computar los cambios de stock_reserva usando el estado del formulario.
+        // Esto es más fiable que comparar contra la DB en afterSave, ya que el
+        // estado del formulario es conocido en este momento.
+        $this->pendingStockOps = [];
 
-        if (! empty($errores)) {
-            foreach ($errores as $msg) {
-                Notification::make()->danger()->title('Stock insuficiente')->body($msg)->persistent()->send();
+        // Separar ítems existentes (clave "record-{id}") de ítems nuevos (UUID)
+        $keptItemsById = [];
+        foreach ($this->data['detalles'] ?? [] as $key => $item) {
+            if (str_starts_with((string) $key, 'record-')) {
+                $id = (int) str_replace('record-', '', (string) $key);
+                $keptItemsById[$id] = $item;
+            } else {
+                // Ítem nuevo agregado en esta edición → reservar stock
+                $this->pendingStockOps[] = [
+                    'detalle' => (object) [
+                        'tipo_item'    => $item['tipo_item'] ?? 'producto',
+                        'producto_id'  => $item['producto_id'] ?? null,
+                        'variante_id'  => $item['variante_id'] ?? null,
+                        'promocion_id' => $item['promocion_id'] ?? null,
+                    ],
+                    'delta' => -(float) ($item['cantidad'] ?? 0),
+                ];
             }
-            $this->halt();
+        }
+
+        foreach ($this->oldDetalleQtys as $id => $old) {
+            if (! isset($keptItemsById[$id])) {
+                // Ítem eliminado → liberar stock_reserva
+                $this->pendingStockOps[] = ['detalle' => (object) $old, 'delta' => $old['cantidad']];
+                continue;
+            }
+
+            $nuevo = $keptItemsById[$id];
+
+            // Detectar si cambiaron producto / variante / promoción en el mismo ítem
+            $mismoProducto = (
+                (int) ($nuevo['producto_id']  ?? 0) === (int) ($old['producto_id']  ?? 0) &&
+                (int) ($nuevo['variante_id']   ?? 0) === (int) ($old['variante_id']   ?? 0) &&
+                (int) ($nuevo['promocion_id']  ?? 0) === (int) ($old['promocion_id']  ?? 0)
+            );
+
+            if (! $mismoProducto) {
+                // El producto fue reemplazado: liberar el viejo y reservar el nuevo
+                $this->pendingStockOps[] = ['detalle' => (object) $old, 'delta' => $old['cantidad']];
+                $this->pendingStockOps[] = [
+                    'detalle' => (object) [
+                        'tipo_item'    => $nuevo['tipo_item'] ?? 'producto',
+                        'producto_id'  => $nuevo['producto_id'] ?? null,
+                        'variante_id'  => $nuevo['variante_id'] ?? null,
+                        'promocion_id' => $nuevo['promocion_id'] ?? null,
+                    ],
+                    'delta' => -(float) ($nuevo['cantidad'] ?? 0),
+                ];
+            } else {
+                // Mismo producto — solo ajustar por cambio de cantidad
+                $delta = $old['cantidad'] - (float) ($nuevo['cantidad'] ?? 0);
+                if (abs($delta) >= 0.001) {
+                    $this->pendingStockOps[] = ['detalle' => (object) $old, 'delta' => $delta];
+                }
+            }
         }
     }
 
     protected function afterSave(): void
     {
-        if (empty($this->oldDetalleQtys)) {
+        if (empty($this->pendingStockOps)) {
             return;
         }
 
         $empresaId = $this->record->empresa_id;
         $productosAfectados = [];
 
-        $newDetalles = $this->record->detalles()
-            ->get(['id', 'tipo_item', 'producto_id', 'variante_id', 'promocion_id', 'cantidad']);
-
-        foreach ($newDetalles as $det) {
-            $newQty = (float) $det->cantidad;
-            $id     = $det->id;
-
-            if (isset($this->oldDetalleQtys[$id])) {
-                $oldQty = $this->oldDetalleQtys[$id]['cantidad'];
-                $delta  = $oldQty - $newQty;
-                if (abs($delta) < 0.001) continue;
-            } else {
-                $delta = -$newQty;
-            }
-
-            $this->aplicarDeltaStockReserva($det, $delta, $empresaId, $productosAfectados);
-        }
-
-        // Ítems eliminados en la edición → liberar su stock reservado
-        $newIds = $newDetalles->pluck('id')->all();
-        foreach ($this->oldDetalleQtys as $id => $old) {
-            if (in_array($id, $newIds)) continue;
-            $this->aplicarDeltaStockReserva((object) $old, $old['cantidad'], $empresaId, $productosAfectados);
+        foreach ($this->pendingStockOps as $op) {
+            $this->aplicarDeltaStockReserva($op['detalle'], $op['delta'], $empresaId, $productosAfectados);
         }
 
         if ($productosAfectados) {
@@ -125,7 +167,8 @@ class EditOrden extends EditRecord
             }
         }
 
-        $this->oldDetalleQtys = [];
+        $this->oldDetalleQtys  = [];
+        $this->pendingStockOps = [];
     }
 
     /**
