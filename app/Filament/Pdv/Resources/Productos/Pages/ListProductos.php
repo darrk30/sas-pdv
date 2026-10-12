@@ -27,6 +27,8 @@ class ListProductos extends ListRecords
 
     public function mount(): void
     {
+        parent::mount();
+
         $this->js(<<<'JS'
             if (!window.__scannerProductos) {
                 window.__scannerProductos = true;
@@ -50,6 +52,26 @@ class ListProductos extends ListRecords
                 });
             }
         JS);
+
+        $empresa = Filament::getTenant();
+        $total   = $empresa->totalProductos();
+        $limite  = $empresa->limite_productos ?? 1000;
+
+        if ($total >= $limite) {
+            Notification::make()
+                ->danger()
+                ->title('Límite de productos alcanzado')
+                ->body("Has llegado al límite de {$limite} productos. No podrás agregar más. Contacta al soporte para aumentarlo.")
+                ->persistent()
+                ->send();
+        } elseif ($limite > 0 && ($total / $limite) >= 0.9) {
+            $restantes = $limite - $total;
+            Notification::make()
+                ->warning()
+                ->title('Cerca del límite de productos')
+                ->body("Te quedan {$restantes} productos disponibles de tu límite de {$limite}.")
+                ->send();
+        }
     }
 
     #[On('barcode-result')]
@@ -78,7 +100,11 @@ class ListProductos extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->disabled(fn () => Filament::getTenant()->limiteProductosAlcanzado())
+                ->tooltip(fn () => Filament::getTenant()->limiteProductosAlcanzado()
+                    ? 'Límite de ' . (Filament::getTenant()->limite_productos ?? 1000) . ' productos alcanzado'
+                    : null),
 
             ActionGroup::make([
 

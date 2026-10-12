@@ -39,6 +39,7 @@ class Empresa extends Model
         'igv_porcentaje',
         'bot_contexto',
         'suscripcion_proxima_a_vencer',
+        'limite_productos',
     ];
 
     protected $casts = [
@@ -49,6 +50,7 @@ class Empresa extends Model
         'fe_envio_directo_factura'     => 'boolean',
         'impresion_comprobante_directo' => 'boolean',
         'igv_porcentaje'               => 'decimal:2',
+        'limite_productos'             => 'integer',
     ];
 
     public function getRouteKeyName()
@@ -93,6 +95,17 @@ class Empresa extends Model
     {
         $this->loadMissing('suscripcion.plan');
         return $this->suscripcion?->plan;
+    }
+
+    public function totalProductos(): int
+    {
+        return \App\Models\Producto::where('empresa_id', $this->id)->count();
+    }
+
+    public function limiteProductosAlcanzado(): bool
+    {
+        $limite = $this->limite_productos ?? 1000;
+        return $this->totalProductos() >= $limite;
     }
 
     /**

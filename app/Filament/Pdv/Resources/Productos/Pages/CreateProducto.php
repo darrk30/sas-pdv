@@ -9,6 +9,7 @@ use App\Services\ProductoAtributoService;
 use App\Services\VarianteService;
 use App\Traits\GestionaVariantes;
 use App\Traits\HasBarcodeScanner;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Str;
@@ -20,6 +21,23 @@ class CreateProducto extends CreateRecord
     protected static string $resource = ProductoResource::class;
 
     protected ?bool $hasDatabaseTransactions = true;
+
+    protected function beforeCreate(): void
+    {
+        $empresa = Filament::getTenant();
+
+        if ($empresa->limiteProductosAlcanzado()) {
+            $limite = $empresa->limite_productos ?? 1000;
+            Notification::make()
+                ->danger()
+                ->title('Límite de productos alcanzado')
+                ->body("Tu empresa ha alcanzado el límite de {$limite} productos. Contacta al soporte para aumentar el límite.")
+                ->persistent()
+                ->send();
+
+            $this->halt();
+        }
+    }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {

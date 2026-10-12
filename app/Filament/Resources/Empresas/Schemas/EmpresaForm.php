@@ -56,6 +56,17 @@ class EmpresaForm
                                     Select::make('estado')->options(['activo' => 'Activo', 'inactivo' => 'Inactivo'])->default('activo')->native(false),
                                 ]),
                                 FileUpload::make('logo')->label('Logotipo')->image()->directory('logos')->optimize('webp', 85)->maxImageWidth(512)->columnSpanFull(),
+                                Grid::make(2)->schema([
+                                    TextInput::make('limite_productos')
+                                        ->label('Límite de productos')
+                                        ->numeric()
+                                        ->default(1000)
+                                        ->minValue(1)
+                                        ->suffix('productos')
+                                        ->helperText(fn ($record) => $record
+                                            ? 'Actualmente: ' . $record->totalProductos() . ' / ' . ($record->limite_productos ?? 1000)
+                                            : null),
+                                ]),
                             ]),
 
                         Tab::make('Ubicación')
