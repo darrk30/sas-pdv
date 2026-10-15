@@ -204,6 +204,7 @@ class KardexPage extends Page implements HasForms, HasTable
                         . ($record->movible_type === 'App\\Models\\Venta'
                             && $record->tipo === 'salida'
                             && (float) ($record->precio_unitario ?? 0) == 0
+                            && ! str_starts_with((string) $record->notas, 'Promo:')
                             ? '<div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Cortesía</div>'
                             : '')
                     )
