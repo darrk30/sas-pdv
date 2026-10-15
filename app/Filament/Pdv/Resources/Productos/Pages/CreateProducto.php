@@ -80,29 +80,33 @@ class CreateProducto extends CreateRecord
         if ($esComplejo) {
             app(VarianteService::class)->syncVariantes($producto, $atributosForm);
 
-            foreach ($producto->variantes()->where('estado', 'activo')->get() as $variante) {
-                Inventario::firstOrCreate(
-                    [
-                        'empresa_id'  => $producto->empresa_id,
-                        'producto_id' => $producto->id,
-                        'variante_id' => $variante->id,
-                    ],
-                    [
-                        'stock_real'        => 0,
-                        'stock_reserva'     => 0,
-                        'stock_minimo'      => $stockMinimo,
-                        'estado_almacen'    => 'activo',
-                        'estado_inventario' => 'agotado',
-                    ]
-                );
+            // Con comparte_stock el inventario es del producto (variante_id=null), no por variante
+            if (! $producto->comparte_stock) {
+                foreach ($producto->variantes()->where('estado', 'activo')->get() as $variante) {
+                    Inventario::firstOrCreate(
+                        [
+                            'empresa_id'  => $producto->empresa_id,
+                            'producto_id' => $producto->id,
+                            'variante_id' => $variante->id,
+                        ],
+                        [
+                            'stock_real'        => 0,
+                            'stock_reserva'     => 0,
+                            'stock_minimo'      => $stockMinimo,
+                            'estado_almacen'    => 'activo',
+                            'estado_inventario' => 'agotado',
+                        ]
+                    );
+                }
             }
         }
 
         $tieneVariantes = $producto->variantes()->where('estado', 'activo')->exists();
         $producto->update(['tiene_variantes' => $tieneVariantes]);
 
-        // Stock inicial para productos simples (sin variantes)
-        if (! $esComplejo && $stockInicial > 0) {
+        // Stock inicial: productos simples O productos con comparte_stock
+        $aplicarStockInicial = $stockInicial > 0 && (! $esComplejo || $producto->comparte_stock);
+        if ($aplicarStockInicial) {
             if (! $producto->unidad_medida_id) {
                 Notification::make()
                     ->title('Stock inicial no aplicado')

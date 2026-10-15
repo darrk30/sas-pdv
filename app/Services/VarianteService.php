@@ -91,7 +91,7 @@ class VarianteService
                         'producto_id'  => $producto->id,
                         'codigo'       => 'PROD_' . $producto->id . '_' . str_pad($baseContador + $contadorNuevo, 3, '0', STR_PAD_LEFT),
                         'estado'       => 'activo',
-                        'precio_final' => 0,
+                        'precio_final' => $precioBase,
                     ]);
                 }
 
@@ -106,7 +106,10 @@ class VarianteService
                     ]);
                 }
 
-                $variante->update(['precio_final' => $precioFinal]);
+                // Para comparte_stock, precio_final se edita manualmente por variante
+                if (! $producto->comparte_stock) {
+                    $variante->update(['precio_final' => $precioFinal]);
+                }
             }
         });
     }

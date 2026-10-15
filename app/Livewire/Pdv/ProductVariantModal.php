@@ -62,11 +62,12 @@ class ProductVariantModal extends Component
             ->flatMap(fn ($v) => $v->valores->pluck('id'))
             ->unique()->flip()->toArray();
 
+        $empresaId = $producto->empresa_id;
         $this->variantesInfo = $producto->variantesActivas
             ->map(fn ($v) => [
                 'id'      => $v->id,
                 'pav_ids' => $v->valores->pluck('id')->toArray(),
-                'stock'   => (float) ($v->inventario?->stock_reserva ?? 0),
+                'stock'   => $v->stockDisponibleReserva($empresaId),
             ])
             ->values()->toArray();
 

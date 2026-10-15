@@ -197,10 +197,10 @@ class ProductoForm
                                         ->dehydrated(false)
                                         ->helperText('Solo disponible cuando no hay movimientos previos')
                                         ->visible(
-                                            fn(?Model $record): bool =>
+                                            fn(Get $get, ?Model $record): bool =>
                                             $record === null ||
                                                 (
-                                                    ! $record->tiene_variantes &&
+                                                    (! $record->tiene_variantes || $record->comparte_stock) &&
                                                     (float) (Inventario::where('producto_id', $record->id)
                                                         ->whereNull('variante_id')
                                                         ->value('stock_real') ?? 0) <= 0 &&
@@ -831,10 +831,13 @@ class ProductoForm
                                             ),
 
                                         TextInput::make('precio_final')
-                                            ->label('Precio Final')
+                                            ->label(fn (Get $get): string => (bool) $get('../../comparte_stock') ? 'Precio de venta' : 'Precio Final')
                                             ->prefix('S/')
-                                            ->readOnly()
-                                            ->dehydrated(false),
+                                            ->numeric()
+                                            ->step(0.01)
+                                            ->minValue(0)
+                                            ->readOnly(fn (Get $get): bool => ! (bool) $get('../../comparte_stock'))
+                                            ->dehydrated(true),
 
                                         TextInput::make('precio_costo')
                                             ->label('Costo')
@@ -844,10 +847,20 @@ class ProductoForm
                                             ->minValue(0)
                                             ->nullable(),
 
+                                        TextInput::make('factor_presentacion')
+                                            ->label('Factor (uds. base)')
+                                            ->numeric()
+                                            ->step(0.0001)
+                                            ->minValue(0.0001)
+                                            ->default(1)
+                                            ->helperText('Cuántas unidades base equivale esta presentación. Ej: Caja x12 → 12')
+                                            ->visible(fn (Get $get): bool => (bool) $get('../../comparte_stock')),
+
                                         TextInput::make('_stock_display')
                                             ->label('Stock')
                                             ->readOnly()
                                             ->dehydrated(false)
+                                            ->visible(fn (Get $get): bool => ! (bool) $get('../../comparte_stock'))
                                             ->formatStateUsing(function ($state, ?Model $record): string {
                                                 return number_format((float) ($record?->inventario?->stock_real ?? 0), 2);
                                             }),
@@ -858,12 +871,15 @@ class ProductoForm
                                             ->minValue(0)
                                             ->default(0)
                                             ->visible(
-                                                fn(?Model $record): bool =>
-                                                $record === null ||
+                                                fn(Get $get, ?Model $record): bool =>
+                                                ! (bool) $get('../../comparte_stock') &&
+                                                (
+                                                    $record === null ||
                                                     (
                                                         (float) ($record->inventario?->stock_real ?? 0) <= 0 &&
                                                         ! Kardex::where('variante_id', $record->id)->exists()
                                                     )
+                                                )
                                             ),
 
                                         Hidden::make('imagen'),
@@ -936,7 +952,15 @@ class ProductoForm
 
                                         Toggle::make('control_de_stock')
                                             ->label('Control de stock')
-                                            ->default(true),
+                                            ->default(true)
+                                            ->reactive(),
+
+                                        Toggle::make('comparte_stock')
+                                            ->label('Stock compartido entre presentaciones')
+                                            ->helperText('Activa cuando vendes el mismo producto en distintas presentaciones (ej: unidad S/9, caja x12 S/70). El stock se descuenta de un solo pool en unidades base.')
+                                            ->default(false)
+                                            ->visible(fn (Get $get): bool => (bool) $get('control_de_stock'))
+                                            ->reactive(),
 
                                         Toggle::make('venta_sin_stock')
                                             ->label('Venta sin stock'),

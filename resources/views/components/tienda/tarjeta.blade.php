@@ -57,12 +57,18 @@
     $productoAgotado = false;
     $stockDisp = null;
     if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
-        $stockDisp = $tieneVariantes
-            ? $variantesActivas->sum(fn($v) => max(0, (float)($v->inventario?->stock_reserva ?? 0)))
-            : max(0, (float)($producto->inventario?->stock_reserva ?? 0));
-        $productoAgotado = $tieneVariantes
-            ? $variantesActivas->every(fn($v) => (float)($v->inventario?->stock_reserva ?? 0) <= 0)
-            : $stockDisp <= 0;
+        if ($tieneVariantes) {
+            if ($producto->comparte_stock) {
+                $stockDisp = max(0, (float) ($producto->inventario?->stock_reserva ?? 0));
+                $productoAgotado = $stockDisp <= 0;
+            } else {
+                $stockDisp = $variantesActivas->sum(fn($v) => max(0, (float)($v->inventario?->stock_reserva ?? 0)));
+                $productoAgotado = $variantesActivas->every(fn($v) => (float)($v->inventario?->stock_reserva ?? 0) <= 0);
+            }
+        } else {
+            $stockDisp = max(0, (float)($producto->inventario?->stock_reserva ?? 0));
+            $productoAgotado = $stockDisp <= 0;
+        }
     }
 
     $atributosModal = $producto->atributos->map(fn($pa) => [
@@ -78,17 +84,25 @@
         ])->values()->all(),
     ])->filter(fn($a) => $a['id'] && !empty($a['valores']))->values()->all();
 
-    $variantesModal = $variantesActivas->map(fn($var) => [
-        'id'            => $var->id,
-        'codigo'        => $var->codigo ?? null,
-        'imagen'        => $var->imagen ? Storage::url($var->imagen) : null,
-        'valores_ids'   => $var->valores->pluck('valor_id')->sort()->values()->all(),
-        'sin_stock'     => $producto->control_de_stock && ! $producto->venta_sin_stock
-                           && (float)($var->inventario?->stock_reserva ?? 0) <= 0,
-        'stock_reserva' => $producto->control_de_stock && ! $producto->venta_sin_stock
-                           ? (float)($var->inventario?->stock_reserva ?? 0)
-                           : null,
-    ])->values()->all();
+    $poolStock = $producto->comparte_stock ? (float) ($producto->inventario?->stock_reserva ?? 0) : null;
+    $variantesModal = $variantesActivas->map(function($var) use ($producto, $poolStock) {
+        if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
+            $stockVar = $producto->comparte_stock
+                ? ($var->factor() > 0 ? (int) floor($poolStock / $var->factor()) : 0)
+                : (float)($var->inventario?->stock_reserva ?? 0);
+        } else {
+            $stockVar = null;
+        }
+        return [
+            'id'            => $var->id,
+            'codigo'        => $var->codigo ?? null,
+            'imagen'        => $var->imagen ? Storage::url($var->imagen) : null,
+            'valores_ids'   => $var->valores->pluck('valor_id')->sort()->values()->all(),
+            'sin_stock'     => $producto->control_de_stock && ! $producto->venta_sin_stock && ($stockVar ?? 0) <= 0,
+            'stock_reserva' => $stockVar,
+            'precio_final'  => (float) $var->precio_final,
+        ];
+    })->values()->all();
 @endphp
 
 <div {{ $attributes->merge(['class' => 'tarjeta']) }}
@@ -131,6 +145,7 @@
              'descripcion'    => $producto->descripcion ?: null,
              'imagen'         => $imagenes->first(),
              'precioBase'     => $precioFinal,
+             'comparteStock'  => (bool) $producto->comparte_stock,
              'codigo_interno' => $producto->codigo_interno,
              'atributos'      => $atributosModal,
              'variantes'      => $variantesModal,

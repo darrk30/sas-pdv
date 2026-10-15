@@ -20,12 +20,14 @@ class Variante extends Model
         'estado',
         'precio_final',
         'precio_costo',
+        'factor_presentacion',
         'imagen',
     ];
 
     protected $casts = [
-        'precio_final' => 'decimal:2',
-        'precio_costo' => 'decimal:2',
+        'precio_final'        => 'decimal:2',
+        'precio_costo'        => 'decimal:2',
+        'factor_presentacion' => 'decimal:4',
     ];
 
     public function producto()
@@ -42,6 +44,46 @@ class Variante extends Model
     public function inventario()
     {
         return $this->hasOne(Inventario::class);
+    }
+
+    /** Factor numérico de esta presentación (mínimo 0.0001 para evitar división por 0). */
+    public function factor(): float
+    {
+        return max(0.0001, (float) ($this->factor_presentacion ?? 1.0));
+    }
+
+    /**
+     * Devuelve el registro Inventario correcto según si el producto comparte stock.
+     * Con $lock=true aplica lockForUpdate (usar solo dentro de transacciones DB).
+     */
+    public function resolverInventario(int $empresaId, bool $lock = false): ?Inventario
+    {
+        $this->loadMissing('producto');
+        $compartido = (bool) ($this->producto?->comparte_stock ?? false);
+
+        $q = $compartido
+            ? Inventario::where('empresa_id', $empresaId)
+                ->where('producto_id', $this->producto_id)
+                ->whereNull('variante_id')
+            : Inventario::where('empresa_id', $empresaId)
+                ->where('variante_id', $this->id);
+
+        return $lock ? $q->lockForUpdate()->first() : $q->first();
+    }
+
+    /**
+     * Stock disponible (stock_reserva) expresado en las unidades de ESTA presentación.
+     * Para comparte_stock: floor(stock_producto / factor).
+     */
+    public function stockDisponibleReserva(int $empresaId): float
+    {
+        $this->loadMissing('producto');
+        $inv = $this->resolverInventario($empresaId);
+        $stock = (float) ($inv?->stock_reserva ?? 0);
+        if ($this->producto?->comparte_stock) {
+            return floor($stock / $this->factor());
+        }
+        return $stock;
     }
 
     /**

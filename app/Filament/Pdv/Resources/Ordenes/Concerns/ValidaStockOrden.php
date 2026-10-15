@@ -64,11 +64,27 @@ trait ValidaStockOrden
                 $variante = Variante::with('producto')->find($id);
                 $producto = $variante?->producto;
                 if (!$producto?->control_de_stock || $producto->venta_sin_stock) continue;
+                $nombre = $producto->nombre . ' (var. ' . $variante->id . ')';
+
+                if ($producto->comparte_stock) {
+                    $factor = $variante->factor();
+                    $stockReserva = (float) (DB::table('inventarios')
+                        ->where('empresa_id', $empresaId)
+                        ->where('producto_id', $variante->producto_id)
+                        ->whereNull('variante_id')
+                        ->value('stock_reserva') ?? 0);
+                    $efectivoBase = $stockReserva + ($viejaQty * $factor);
+                    if (($nuevaQty * $factor) > $efectivoBase) {
+                        $disp = number_format(max(0.0, floor($efectivoBase / $factor)), 2);
+                        $errores[] = "«{$nombre}»: se necesitan {$nuevaQty} und. pero solo hay {$disp} disponibles.";
+                    }
+                    continue;
+                }
+
                 $stockReserva = (float) (DB::table('inventarios')
                     ->where('empresa_id', $empresaId)
                     ->where('variante_id', $id)
                     ->value('stock_reserva') ?? 0);
-                $nombre = $producto->nombre . ' (var. ' . $variante->id . ')';
             } else {
                 $producto = Producto::find($id);
                 if (!$producto?->control_de_stock || $producto->venta_sin_stock) continue;
@@ -103,7 +119,7 @@ trait ValidaStockOrden
         $productoIds = collect($detalles)->filter(fn($i) => empty($i['variante_id']) && empty($i['promocion_id']) && !empty($i['producto_id']))->pluck('producto_id')->unique()->values()->all();
 
         $variantesMap = $varianteIds
-            ? Variante::with('producto:id,control_de_stock,venta_sin_stock,nombre')->whereIn('id', $varianteIds)->get()->keyBy('id')
+            ? Variante::with('producto:id,control_de_stock,venta_sin_stock,comparte_stock,nombre')->whereIn('id', $varianteIds)->get()->keyBy('id')
             : collect();
         $productosMap = $productoIds
             ? Producto::whereIn('id', $productoIds)->get()->keyBy('id')
@@ -148,13 +164,25 @@ trait ValidaStockOrden
             } elseif ($varianteId) {
                 $variante = $variantesMap[$varianteId] ?? null;
                 if (!$variante?->producto?->control_de_stock) continue;
-                $expr = $variante->producto->venta_sin_stock
-                    ? "stock_reserva - {$qty}"
-                    : "GREATEST(0, stock_reserva - {$qty})";
-                DB::table('inventarios')
-                    ->where('empresa_id', $empresaId)
-                    ->where('variante_id', $varianteId)
-                    ->update(['stock_reserva' => DB::raw($expr)]);
+                if ($variante->producto->comparte_stock) {
+                    $cantBase = round($qty * $variante->factor(), 4);
+                    $expr = $variante->producto->venta_sin_stock
+                        ? "stock_reserva - {$cantBase}"
+                        : "GREATEST(0, stock_reserva - {$cantBase})";
+                    DB::table('inventarios')
+                        ->where('empresa_id', $empresaId)
+                        ->where('producto_id', $variante->producto_id)
+                        ->whereNull('variante_id')
+                        ->update(['stock_reserva' => DB::raw($expr)]);
+                } else {
+                    $expr = $variante->producto->venta_sin_stock
+                        ? "stock_reserva - {$qty}"
+                        : "GREATEST(0, stock_reserva - {$qty})";
+                    DB::table('inventarios')
+                        ->where('empresa_id', $empresaId)
+                        ->where('variante_id', $varianteId)
+                        ->update(['stock_reserva' => DB::raw($expr)]);
+                }
                 $productosAfectados[] = $variante->producto_id;
             } elseif ($productoId) {
                 $producto = $productosMap[$productoId] ?? null;
@@ -217,10 +245,19 @@ trait ValidaStockOrden
             } elseif ($varianteId) {
                 $variante = Variante::with('producto')->find($varianteId);
                 if (!$variante?->producto?->control_de_stock) continue;
-                DB::table('inventarios')
-                    ->where('empresa_id', $empresaId)
-                    ->where('variante_id', $varianteId)
-                    ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$qty})")]);
+                if ($variante->producto->comparte_stock) {
+                    $cantBase = round($qty * $variante->factor(), 4);
+                    DB::table('inventarios')
+                        ->where('empresa_id', $empresaId)
+                        ->where('producto_id', $variante->producto_id)
+                        ->whereNull('variante_id')
+                        ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantBase})")]);
+                } else {
+                    DB::table('inventarios')
+                        ->where('empresa_id', $empresaId)
+                        ->where('variante_id', $varianteId)
+                        ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$qty})")]);
+                }
                 $productosAfectados[] = $variante->producto_id;
             } elseif ($productoId) {
                 $producto = Producto::find($productoId);
