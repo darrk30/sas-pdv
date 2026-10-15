@@ -104,7 +104,12 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
 
     public function mount(): void
     {
-        $this->form->fill();
+        $this->filtroFechaDesde = today()->startOfDay()->format('Y-m-d H:i:s');
+        $this->filtroFechaHasta = today()->endOfDay()->format('Y-m-d H:i:s');
+        $this->form->fill([
+            'filtroFechaDesde' => $this->filtroFechaDesde,
+            'filtroFechaHasta' => $this->filtroFechaHasta,
+        ]);
     }
 
     // ── Form con componentes Filament ─────────────────────────────────────────
@@ -927,35 +932,40 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                                 }
                             }
                         } elseif ($detalle->tipo_item === TipoItem::Variante && $detalle->variante_id) {
-                            $varianteProd = $detalle->variante?->producto;
+                            $varRev = $detalle->variante;
+                            $varRev?->loadMissing('producto.unidadMedida');
+                            $varianteProd = $varRev?->producto;
                             if ($varianteProd?->control_de_stock) {
-                                $productoId = $detalle->variante->producto_id;
-                                $inv = Inventario::where('empresa_id', $empresaId)
-                                    ->where('producto_id', $productoId)
-                                    ->where('variante_id', $detalle->variante_id)
-                                    ->lockForUpdate()->first();
+                                $factor       = $varRev->factor();
+                                $cantidadBase = round($cantidad * $factor, 4);
+                                $inv = $varRev->resolverInventario($empresaId, lock: true);
 
                                 if ($inv) {
                                     $antes   = (float) $inv->stock_real;
-                                    $despues = $antes + $cantidad;
+                                    $despues = $antes + $cantidadBase;
                                     $inv->update([
                                         'stock_real'    => $despues,
-                                        'stock_reserva' => max(0, (float) $inv->stock_reserva + ($despues - $antes)),
+                                        'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantidadBase),
                                     ]);
+                                    $kCantRp = $varianteProd->comparte_stock ? $cantidadBase : $cantidad;
+                                    $kFactRp = $varianteProd->comparte_stock ? 1 : $factor;
+                                    $kPrecRp = $varianteProd->comparte_stock && $cantidadBase > 0
+                                        ? round((float) $detalle->precio_unitario / $cantidadBase * $cantidad, 6)
+                                        : (float) $detalle->precio_unitario;
                                     $kardex->registrar([
                                         'empresa_id'        => $empresaId,
                                         'user_id'           => auth()->id(),
                                         'movible'           => $venta,
-                                        'producto_id'       => $productoId,
+                                        'producto_id'       => $varianteProd->id,
                                         'variante_id'       => $detalle->variante_id,
                                         'producto_nombre'   => $detalle->descripcion,
                                         'tipo'              => 'entrada',
                                         'concepto'          => $conceptoRev,
-                                        'cantidad'          => $cantidad,
-                                        'unidad'            => 'unidad',
-                                        'factor_conversion' => 1,
-                                        'cantidad_base'     => $cantidad,
-                                        'precio_unitario'   => (float) $detalle->precio_unitario,
+                                        'cantidad'          => $kCantRp,
+                                        'unidad'            => $varianteProd->unidadMedida?->nombre ?? 'unidad',
+                                        'factor_conversion' => $kFactRp,
+                                        'cantidad_base'     => $cantidadBase,
+                                        'precio_unitario'   => $kPrecRp,
                                         'precio_total'      => (float) $detalle->total,
                                         'stock_antes'       => $antes,
                                         'stock_despues'     => $despues,
