@@ -118,7 +118,7 @@ class AjusteForm
                                     ->options(fn() => self::_buscarItems('', \Filament\Facades\Filament::getTenant()?->id))
                                     ->getSearchResultsUsing(fn(string $search) => self::_buscarItems($search, \Filament\Facades\Filament::getTenant()?->id))
                                     ->preload()
-                                    ->afterStateUpdated(function (?string $state, Set $set): void {
+                                    ->afterStateUpdated(function (?string $state, Set $set, Get $get): void {
                                         if (blank($state)) {
                                             $set('producto_id', null);
                                             $set('variante_id', null);
@@ -127,29 +127,36 @@ class AjusteForm
                                             $set('costo_unitario', null);
                                             $set('cantidad', null);
                                             $set('costo_total', null);
+                                            self::actualizarTotalGlobal($get, $set, true);
                                             return;
                                         }
 
                                         [$tipo, $id] = explode('_', $state, 2);
 
+                                        $costoUnitario = null;
+
                                         if ($tipo === 'producto') {
                                             $producto = Producto::with('unidadMedida')->find($id);
+                                            $costoUnitario = $producto?->precio_costo ?? null;
                                             $set('producto_id', $producto?->id);
                                             $set('variante_id', null);
                                             $set('nombre_producto', $producto?->nombre);
                                             $set('unidad_id', $producto?->unidad_medida_id);
-                                            $set('costo_unitario', $producto?->precio_costo ?? null);
+                                            $set('costo_unitario', $costoUnitario);
                                         } else {
                                             $variante = Variante::with(['producto.unidadMedida', 'valores.valor'])->find($id);
+                                            $costoUnitario = $variante?->precio_costo ?? $variante?->producto?->precio_costo ?? null;
                                             $set('producto_id', null);
                                             $set('variante_id', $variante?->id);
                                             $set('nombre_producto', AjusteDetalle::generarNombre(null, $variante));
                                             $set('unidad_id', $variante?->producto?->unidad_medida_id);
-                                            $set('costo_unitario', $variante?->precio_costo ?? $variante?->producto?->precio_costo ?? null);
+                                            $set('costo_unitario', $costoUnitario);
                                         }
 
+                                        $costoTotal = $costoUnitario !== null ? round((float) $costoUnitario, 2) : null;
                                         $set('cantidad', 1);
-                                        $set('costo_total', null);
+                                        $set('costo_total', $costoTotal);
+                                        self::actualizarTotalGlobal($get, $set, true);
                                     }),
 
                                 // ── Unidad de medida ──
@@ -320,9 +327,7 @@ class AjusteForm
 
         if (is_array($detalles)) {
             foreach ($detalles as $item) {
-                $cant = (float) ($item['cantidad'] ?? 0);
-                $cost = (float) ($item['costo_unitario'] ?? 0);
-                $total += ($cant * $cost);
+                $total += (float) ($item['costo_total'] ?? 0);
             }
         }
 

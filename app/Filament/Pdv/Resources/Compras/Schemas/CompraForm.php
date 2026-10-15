@@ -293,7 +293,7 @@ class CompraForm
                                     })
                                     ->options(fn() => self::_buscarItems('', \Filament\Facades\Filament::getTenant()?->id))
                                     ->getSearchResultsUsing(fn(string $search) => self::_buscarItems($search, \Filament\Facades\Filament::getTenant()?->id))
-                                    ->afterStateUpdated(function (?string $state, Set $set): void {
+                                    ->afterStateUpdated(function (?string $state, Set $set, Get $get): void {
                                         if (blank($state)) {
                                             $set('producto_id', null);
                                             $set('variante_id', null);
@@ -302,6 +302,7 @@ class CompraForm
                                             $set('costo_unitario', null);
                                             $set('cantidad', null);
                                             $set('costo_total', null);
+                                            self::recalcularTotales($get, $set, true);
                                             return;
                                         }
 
@@ -327,8 +328,10 @@ class CompraForm
                                             $set('costo_unitario', $costoUnitario);
                                         }
 
+                                        $costoTotal = $costoUnitario !== null ? round((float) $costoUnitario, 2) : null;
                                         $set('cantidad', 1);
-                                        $set('costo_total', $costoUnitario !== null ? round((float) $costoUnitario, 2) : null);
+                                        $set('costo_total', $costoTotal);
+                                        self::recalcularTotales($get, $set, true);
                                     }),
 
                                 // ── Unidad de medida ──
@@ -539,9 +542,7 @@ class CompraForm
 
         if (is_array($detalles)) {
             foreach ($detalles as $item) {
-                $cant  = (float) ($item['cantidad'] ?? 0);
-                $costo = (float) ($item['costo_unitario'] ?? 0);
-                $subtotalDetalles += ($cant * $costo);
+                $subtotalDetalles += (float) ($item['costo_total'] ?? 0);
             }
         }
 

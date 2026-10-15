@@ -66,13 +66,29 @@ class InventarioCoreService
                 [$productoId, $varianteId] = $this->resolverItem($detalle);
                 $cantidadOrig = (float) $this->campo($detalle, 'cantidad');
 
+                // Para variantes con comparte_stock, redirigir al pool del producto
+                // y aplicar factor_presentacion para convertir a unidades base del pool.
+                $factorPresentacion = 1.0;
+                $kardexVarianteId   = $varianteId;
+                $kardexUnidad       = null;
+                if ($varianteId) {
+                    $varianteObj = Variante::with(['producto', 'valores.valor'])->find($varianteId);
+                    if ($varianteObj?->producto?->comparte_stock) {
+                        $factorPresentacion = $varianteObj->factor();
+                        $kardexUnidad = $varianteObj->valores
+                            ->map(fn($v) => $v->valor?->valor)
+                            ->filter()->implode(' / ');
+                        $varianteId = null;
+                    }
+                }
+
                 // Convertir a la unidad REGISTRADA del producto (no a la base absoluta
                 // de la dimensión). Si operación y producto usan la misma unidad → factor = 1.
                 $unidadProducto = $this->resolverUnidadProducto($productoId, $varianteId);
                 $factorOp       = $unidad->factor_base ?? 1;
                 $factorProd     = $unidadProducto?->factor_base ?: 1;
                 $relFactor      = $factorOp / $factorProd;
-                $cantidadBase   = round($cantidadOrig * $relFactor, 4);
+                $cantidadBase   = round($cantidadOrig * $relFactor * $factorPresentacion, 4);
 
                 $kardexCtx = null;
                 if ($movible !== null) {
@@ -81,8 +97,9 @@ class InventarioCoreService
                         'movible'           => $movible,
                         'concepto'          => $concepto ?? '',
                         'cantidad'          => $cantidadOrig,
-                        'unidad'            => $unidad->nombre ?? 'unidad',
-                        'factor_conversion' => $relFactor,
+                        'unidad'            => $kardexUnidad ?? ($unidad->nombre ?? 'unidad'),
+                        'factor_conversion' => $relFactor * $factorPresentacion,
+                        'variante_id'       => $kardexVarianteId, // variante original para display
                         'costo_unitario'    => $this->campo($detalle, 'costo_unitario'),
                         'costo_total'       => $this->campo($detalle, 'costo_total'),
                         'precio_unitario'   => $this->campo($detalle, 'precio_unitario'),
@@ -235,7 +252,7 @@ class InventarioCoreService
                 'user_id'           => $kardexCtx['user_id'] ?? null,
                 'movible'           => $kardexCtx['movible'] ?? null,
                 'producto_id'       => $productoId,
-                'variante_id'       => $varianteId,
+                'variante_id'       => array_key_exists('variante_id', $kardexCtx) ? $kardexCtx['variante_id'] : $varianteId,
                 'tipo'              => $tipo,
                 'concepto'          => $kardexCtx['concepto'] ?? '',
                 'notas'             => $kardexCtx['notas'] ?? null,

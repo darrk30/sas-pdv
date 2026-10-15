@@ -93,7 +93,7 @@ class ProductCatalog extends Component
             $precio       = $precioNormal;
             $esDecimal    = $producto->unidadMedida?->esContinua() ?? false;
             $stockMax     = $producto->control_de_stock
-                ? (float) ($variante->inventario?->stock_reserva ?? 0)
+                ? $variante->stockDisponibleReserva($producto->empresa_id)
                 : null;
 
             $this->dispatch('product-selected', [
@@ -265,7 +265,7 @@ class ProductCatalog extends Component
             ->where('vendible', true)
             ->with([
                 'preciosLista.lista',
-                'variantesActivas' => fn ($q) => $q->with(['inventario', 'valores']),
+                'variantesActivas' => fn ($q) => $q->with(['inventario', 'valores.valor']),
                 'inventario',
                 'unidadMedida',
                 'atributos.atributo',
@@ -292,10 +292,13 @@ class ProductCatalog extends Component
                 ->leftJoin('variantes as v', fn ($j) =>
                     $j->on('v.id', '=', 'i.variante_id')->where('v.estado', 'activo')
                 )
+                ->leftJoin('productos as p', 'p.id', '=', DB::raw('COALESCE(v.producto_id, i.producto_id)'))
                 ->where('i.empresa_id', $empresaId)
                 ->selectRaw('
                     COALESCE(v.producto_id, i.producto_id) AS p_id,
                     CASE
+                        WHEN MAX(CASE WHEN p.comparte_stock = 1 THEN 1 ELSE 0 END) = 1
+                        THEN SUM(CASE WHEN i.variante_id IS NULL THEN i.stock_reserva ELSE 0 END)
                         WHEN MAX(CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END) = 1
                         THEN SUM(CASE WHEN v.id IS NOT NULL THEN i.stock_reserva ELSE 0 END)
                         ELSE SUM(CASE WHEN i.variante_id IS NULL THEN i.stock_reserva ELSE 0 END)

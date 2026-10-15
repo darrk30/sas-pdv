@@ -5,6 +5,7 @@ namespace App\Filament\Pdv\Resources\Compras;
 use App\Filament\Pdv\Resources\Compras\Pages\CreateCompra;
 use App\Filament\Pdv\Resources\Compras\Pages\EditCompra;
 use App\Filament\Pdv\Resources\Compras\Pages\ListCompras;
+use App\Filament\Pdv\Resources\Compras\Pages\ViewCompra;
 use App\Filament\Pdv\Resources\Compras\Schemas\CompraForm;
 use App\Filament\Pdv\Resources\Compras\Tables\ComprasTable;
 use App\Models\Compra;
@@ -47,10 +48,10 @@ class CompraResource extends Resource
     public static function table(Table $table): Table
     {
         return ComprasTable::configure($table)
-            ->recordUrl(fn(Compra $record): ?string =>
+            ->recordUrl(fn(Compra $record): string =>
                 $record->esBorrador()
                     ? static::getUrl('edit', ['record' => $record])
-                    : null
+                    : static::getUrl('view', ['record' => $record])
             );
     }
 
@@ -64,6 +65,7 @@ class CompraResource extends Resource
         return [
             'index'  => ListCompras::route('/'),
             'create' => CreateCompra::route('/create'),
+            'view'   => ViewCompra::route('/{record}'),
             'edit'   => EditCompra::route('/{record}/edit'),
         ];
     }
