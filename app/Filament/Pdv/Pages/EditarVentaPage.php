@@ -299,7 +299,7 @@ class EditarVentaPage extends Page implements HasTable
                   ->orWhere('codigo_barras', 'like', "%{$b}%")
                   ->orWhere('codigo_interno', 'like', "%{$b}%");
             })
-            ->with(['variantes', 'inventario'])
+            ->with(['variantesActivas.valores.valor', 'variantesActivas.inventario', 'inventario'])
             ->limit(10)
             ->get()
             ->map(function (Producto $p) use ($empresa) {
@@ -313,13 +313,13 @@ class EditarVentaPage extends Page implements HasTable
                     'control_stock'   => (bool) $p->control_de_stock,
                     'venta_sin_stock' => (bool) $p->venta_sin_stock,
                     'stock_real'      => $stock,
-                    'tiene_variantes' => $p->variantes->count() > 0,
-                    'variantes'       => $p->variantes->map(fn ($v) => [
+                    'tiene_variantes' => $p->variantesActivas->isNotEmpty(),
+                    'variantes'       => $p->variantesActivas->map(fn ($v) => [
                         'id'         => $v->id,
-                        'nombre'     => $v->nombre ?? 'Variante',
+                        'nombre'     => $v->valores->map(fn ($pav) => $pav->valor?->nombre)->filter()->implode(' / ') ?: "Variante {$v->id}",
                         'precio'     => (float) ($v->precio_final ?? $p->precio_venta),
                         'costo'      => (float) ($v->precio_costo ?? 0),
-                        'stock_real' => (float) (Inventario::where('empresa_id', $empresa->id)->where('variante_id', $v->id)->first()?->stock_real ?? 0),
+                        'stock_real' => (float) ($v->inventario?->stock_real ?? 0),
                     ])->values()->toArray(),
                 ];
             })
@@ -331,9 +331,12 @@ class EditarVentaPage extends Page implements HasTable
         if (! $this->venta) { return; }
 
         if ($varianteId) {
-            $variante = Variante::find($varianteId);
-            $producto = $variante ? Producto::find($variante->producto_id) : null;
+            $variante = Variante::with(['producto', 'valores.valor'])->find($varianteId);
+            $producto = $variante?->producto;
             if (! $variante || ! $producto) { return; }
+
+            $sufijo   = $variante->valores->map(fn ($pav) => $pav->valor?->nombre)->filter()->implode(' / ');
+            $nombrVar = $sufijo ? "{$producto->nombre} ({$sufijo})" : $producto->nombre;
 
             $existing = VentaDetalle::where('venta_id', $this->venta->id)
                 ->where('variante_id', $varianteId)->first();
@@ -344,7 +347,7 @@ class EditarVentaPage extends Page implements HasTable
                 $this->crearDetalleEnDb([
                     'tipo'        => 'variante',
                     'id'          => $varianteId,
-                    'nombre'      => $producto->nombre . ' — ' . ($variante->nombre ?? ''),
+                    'nombre'      => $nombrVar,
                     'precio'      => (float) ($variante->precio_final ?? $producto->precio_venta),
                     'cantidad'    => 1,
                     'costo'       => (float) ($variante->precio_costo ?? 0),
