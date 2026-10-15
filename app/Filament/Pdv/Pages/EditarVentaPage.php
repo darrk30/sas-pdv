@@ -7,7 +7,6 @@ use App\Enums\EstadoSunat;
 use App\Enums\TipoComprobante;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use App\Models\Cliente;
-use App\Models\Inventario;
 use App\Models\MetodoPago;
 use App\Models\Producto;
 use App\Models\Serie;
@@ -20,18 +19,11 @@ use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Actions\Action as FilamentAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\TextInputColumn;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
 
-class EditarVentaPage extends Page implements HasTable
+class EditarVentaPage extends Page
 {
     use HasFullWidthPage;
-    use InteractsWithTable;
 
     protected string $view = 'filament.pdv.pages.editar-venta';
     protected static string|BackedEnum|null $navigationIcon = null;
@@ -186,7 +178,7 @@ class EditarVentaPage extends Page implements HasTable
         // Inicializar descuento
         $this->descuentoInput = number_format((float) $venta->descuento_total, 2, '.', '');
 
-        // Inicializar items desde detalles
+        // Inicializar items desde detalles (solo en memoria, nunca se toca la DB hasta guardar)
         $this->items = [];
         foreach ($venta->detalles as $det) {
             $tipo = match ($det->tipo_item->value ?? $det->tipo_item) {
@@ -299,12 +291,14 @@ class EditarVentaPage extends Page implements HasTable
                   ->orWhere('codigo_barras', 'like', "%{$b}%")
                   ->orWhere('codigo_interno', 'like', "%{$b}%");
             })
-            ->with(['variantes', 'inventario'])
+            ->with(['variantesActivas.valores.valor', 'variantesActivas.inventario', 'inventario'])
             ->limit(10)
             ->get()
-            ->map(function (Producto $p) use ($empresa) {
-                $inv   = $p->inventario;
-                $stock = $inv ? (float) $inv->stock_real : null;
+            ->map(function (Producto $p) {
+                $inv         = $p->inventario;
+                $stock       = $inv ? (float) $inv->stock_real : null;
+                $comparteStk = (bool) $p->comparte_stock;
+                $poolStock   = $comparteStk ? (float) ($inv?->stock_real ?? 0) : null;
                 return [
                     'id'              => $p->id,
                     'nombre'          => $p->nombre,
@@ -313,105 +307,82 @@ class EditarVentaPage extends Page implements HasTable
                     'control_stock'   => (bool) $p->control_de_stock,
                     'venta_sin_stock' => (bool) $p->venta_sin_stock,
                     'stock_real'      => $stock,
-                    'tiene_variantes' => $p->variantes->count() > 0,
-                    'variantes'       => $p->variantes->map(fn ($v) => [
+                    'tiene_variantes' => $p->variantesActivas->isNotEmpty(),
+                    'variantes'       => $p->variantesActivas->map(fn ($v) => [
                         'id'         => $v->id,
-                        'nombre'     => $v->nombre ?? 'Variante',
+                        'nombre'     => $v->valores->map(fn ($pav) => $pav->valor?->nombre)->filter()->implode(' / ') ?: "Variante {$v->id}",
                         'precio'     => (float) ($v->precio_final ?? $p->precio_venta),
                         'costo'      => (float) ($v->precio_costo ?? 0),
-                        'stock_real' => (float) (Inventario::where('empresa_id', $empresa->id)->where('variante_id', $v->id)->first()?->stock_real ?? 0),
+                        'stock_real' => $comparteStk ? $poolStock : (float) ($v->inventario?->stock_real ?? 0),
                     ])->values()->toArray(),
                 ];
             })
             ->toArray();
     }
 
+    // Agrega un producto o variante al $items en memoria (sin tocar la DB).
+    // La DB solo se actualiza al guardar via VentaService::editar().
     public function agregarProducto(int $productoId, ?int $varianteId = null): void
     {
         if (! $this->venta) { return; }
 
         if ($varianteId) {
-            $variante = Variante::find($varianteId);
-            $producto = $variante ? Producto::find($variante->producto_id) : null;
+            $variante = Variante::with(['producto', 'valores.valor'])->find($varianteId);
+            $producto = $variante?->producto;
             if (! $variante || ! $producto) { return; }
 
-            $existing = VentaDetalle::where('venta_id', $this->venta->id)
-                ->where('variante_id', $varianteId)->first();
+            $sufijo   = $variante->valores->map(fn ($pav) => $pav->valor?->nombre)->filter()->implode(' / ');
+            $nombrVar = $sufijo ? "{$producto->nombre} ({$sufijo})" : $producto->nombre;
+            $key      = "v:{$varianteId}";
 
-            if ($existing) {
-                $existing->update(['cantidad' => $existing->cantidad + 1]);
+            $items = $this->items;
+            if (isset($items[$key])) {
+                $items[$key]['cantidad'] += 1;
             } else {
-                $this->crearDetalleEnDb([
+                $items[$key] = [
+                    'key'         => $key,
                     'tipo'        => 'variante',
                     'id'          => $varianteId,
-                    'nombre'      => $producto->nombre . ' — ' . ($variante->nombre ?? ''),
+                    'nombre'      => $nombrVar,
                     'precio'      => (float) ($variante->precio_final ?? $producto->precio_venta),
                     'cantidad'    => 1,
                     'costo'       => (float) ($variante->precio_costo ?? 0),
+                    'cortesia'    => false,
                     'producto_id' => $producto->id,
                     'variante_id' => $varianteId,
-                ]);
+                ];
             }
+            $this->items = $items;
         } else {
             $producto = Producto::find($productoId);
             if (! $producto) { return; }
 
-            $existing = VentaDetalle::where('venta_id', $this->venta->id)
-                ->where('producto_id', $productoId)->whereNull('variante_id')->first();
-
-            if ($existing) {
-                $existing->update(['cantidad' => $existing->cantidad + 1]);
+            $key   = "p:{$productoId}";
+            $items = $this->items;
+            if (isset($items[$key])) {
+                $items[$key]['cantidad'] += 1;
             } else {
-                $this->crearDetalleEnDb([
+                $items[$key] = [
+                    'key'         => $key,
                     'tipo'        => 'producto',
                     'id'          => $productoId,
                     'nombre'      => $producto->nombre,
                     'precio'      => (float) $producto->precio_venta,
                     'cantidad'    => 1,
                     'costo'       => (float) ($producto->precio_costo ?? 0),
+                    'cortesia'    => false,
                     'producto_id' => $productoId,
                     'variante_id' => null,
-                ]);
+                ];
             }
+            $this->items = $items;
         }
 
-        $this->recargarItems();
         $this->busquedaProd   = '';
         $this->resultadosProd = [];
     }
 
-    private function crearDetalleEnDb(array $item): void
-    {
-        $igvPct = (float) (Filament::getTenant()->igv_porcentaje ?? 18) / 100;
-        $calcs  = VentaDetalle::calcular(
-            (float) $item['cantidad'],
-            (float) $item['precio'],
-            (float) ($item['costo'] ?? 0),
-            0,
-            $igvPct
-        );
-        VentaDetalle::create([
-            'venta_id'        => $this->venta->id,
-            'tipo_item'       => $item['tipo'],
-            'producto_id'     => $item['producto_id'],
-            'variante_id'     => $item['variante_id'] ?? null,
-            'descripcion'     => $item['nombre'],
-            'cantidad'        => $item['cantidad'],
-            'precio_unitario' => $item['precio'],
-            'valor_unitario'  => $calcs['valorUnitario'],
-            'costo_unitario'  => $item['costo'] ?? 0,
-            'descuento'       => 0,
-            'subtotal'        => $calcs['subtotal'],
-            'valor_total'     => $calcs['valorTotal'],
-            'igv'             => $calcs['igv'],
-            'tip_afe_igv'     => '10',
-            'unidad'          => 'NIU',
-            'total'           => $calcs['total'],
-            'costo_total'     => $calcs['costoTotal'],
-        ]);
-    }
-
-    // ── Cantidad ──────────────────────────────────────────────────────────────
+    // ── Cantidad / precio / cortesía ──────────────────────────────────────────
 
     public function incrementarCantidad(string $key): void
     {
@@ -449,18 +420,9 @@ class EditarVentaPage extends Page implements HasTable
         if (! isset($this->items[$key])) { return; }
         $items = $this->items;
         $items[$key]['precio'] = $precio;
-        // Si tenía precio 0 (cortesía) y se le pone un precio real, ya no es cortesía
         if ($precio > 0 && ($items[$key]['cortesia'] ?? false)) {
             $items[$key]['cortesia'] = false;
         }
-        $this->items = $items;
-    }
-
-    public function quitarCortesia(string $key): void
-    {
-        if (! isset($this->items[$key])) { return; }
-        $items = $this->items;
-        $items[$key]['cortesia'] = false;
         $this->items = $items;
     }
 
@@ -468,6 +430,22 @@ class EditarVentaPage extends Page implements HasTable
     {
         $items = $this->items;
         unset($items[$key]);
+        $this->items = $items;
+    }
+
+    public function quitarCortesia(string $key): void
+    {
+        if (! isset($this->items[$key])) { return; }
+
+        $item = $this->items[$key];
+        $precioRestaurado = match ($item['tipo']) {
+            'variante' => (float) (Variante::find($item['variante_id'])?->precio_final ?? $item['precio']),
+            default    => (float) (Producto::find($item['producto_id'])?->precio_venta ?? $item['precio']),
+        };
+
+        $items = $this->items;
+        $items[$key]['cortesia'] = false;
+        $items[$key]['precio']   = max(0.01, $precioRestaurado);
         $this->items = $items;
     }
 
@@ -502,7 +480,6 @@ class EditarVentaPage extends Page implements HasTable
         $metodo = collect($this->metodosPago)->firstWhere('id', $metodoPagoId);
         if (! $metodo) { return; }
 
-        // Crédito solo para Ticket
         if (($metodo['condicion_pago'] ?? 'contado') === 'credito' && ! $this->esTiketActual()) {
             Notification::make()
                 ->title('El crédito solo está disponible para comprobantes tipo Ticket')
@@ -584,7 +561,6 @@ class EditarVentaPage extends Page implements HasTable
 
         if (! $this->venta) { return; }
 
-        // Verificar cobertura de pagos antes de proceder
         $total   = $this->getTotal();
         $pagado  = $this->getTotalPagado();
         $diff    = round($total - $pagado, 2);
@@ -676,7 +652,6 @@ class EditarVentaPage extends Page implements HasTable
             return;
         }
 
-        // Respetar configuración de envío directo igual que el listener VentaCompletada
         $enviarSunat = match ($tipo) {
             TipoComprobante::Boleta  => (bool) $empresa->fe_envio_directo_boleta,
             TipoComprobante::Factura => (bool) $empresa->fe_envio_directo_factura,
@@ -732,7 +707,6 @@ class EditarVentaPage extends Page implements HasTable
                 ]);
             }
         } catch (\Throwable $e) {
-            // La venta ya fue guardada — el XML se puede regenerar luego
             \Illuminate\Support\Facades\Log::error('EditarVentaPage: error al emitir FE', [
                 'venta_id' => $venta->id,
                 'error'    => $e->getMessage(),
@@ -742,165 +716,6 @@ class EditarVentaPage extends Page implements HasTable
                 'sunat_mensaje' => $e->getMessage(),
                 'estado_sunat'  => EstadoSunat::Error->value,
             ]);
-        }
-    }
-
-    // ── Tabla Filament de ítems ───────────────────────────────────────────────
-
-    public function table(Table $table): Table
-    {
-        return $table
-            ->query(fn () => VentaDetalle::query()->where('venta_id', $this->venta?->id ?? 0))
-            ->columns([
-                TextColumn::make('descripcion')
-                    ->label('Producto')
-                    ->formatStateUsing(fn ($state) => str_replace(' (Cortesía)', '', $state))
-                    ->description(function (VentaDetalle $record) {
-                        $key = $this->itemKey($record);
-                        $esCortesia = $this->items[$key]['cortesia'] ?? str_contains($record->descripcion, '(Cortesía)');
-                        return $esCortesia
-                            ? new \Illuminate\Support\HtmlString('<span class="ev-cortesia-badge">🎁 Cortesía &nbsp;<button wire:click="quitarCortesiaDetalle('.$record->id.')" class="ev-cortesia-badge__remove" title="Quitar cortesía">×</button></span>')
-                            : null;
-                    })
-                    ->wrap()
-                    ->grow()
-                    ->extraCellAttributes(['style' => 'min-width:370px']),
-
-                TextInputColumn::make('precio_unitario')
-                    ->label('Precio')
-                    ->type('number')
-                    ->step('0.01')
-                    ->getStateUsing(function (VentaDetalle $record) {
-                        $key = $this->itemKey($record);
-                        $precio = (float) ($this->items[$key]['precio'] ?? $record->precio_unitario);
-                        return number_format($precio, 2, '.', '');
-                    })
-                    ->extraInputAttributes(['style' => 'text-align:center;'])
-                    ->updateStateUsing(function (VentaDetalle $record, $state) {
-                        $key = $this->itemKey($record);
-                        if (! isset($this->items[$key])) { return; }
-                        $precio = max(0.01, round((float) $state, 2));
-                        $items = $this->items;
-                        $items[$key]['precio'] = $precio;
-                        if ($precio > 0 && ($items[$key]['cortesia'] ?? false)) {
-                            $items[$key]['cortesia'] = false;
-                        }
-                        $this->items = $items;
-                    }),
-
-                TextInputColumn::make('cantidad')
-                    ->label('Cantidad')
-                    ->type('number')
-                    ->step('1')
-                    ->getStateUsing(function (VentaDetalle $record) {
-                        $key = $this->itemKey($record);
-                        $cantidad = (float) ($this->items[$key]['cantidad'] ?? $record->cantidad);
-                        return $cantidad == (int) $cantidad
-                            ? (string) (int) $cantidad
-                            : rtrim(number_format($cantidad, 3, '.', ''), '0');
-                    })
-                    ->extraInputAttributes(['style' => 'text-align:center;'])
-                    ->updateStateUsing(function (VentaDetalle $record, $state) {
-                        $key = $this->itemKey($record);
-                        if (! isset($this->items[$key])) { return; }
-                        $items = $this->items;
-                        $items[$key]['cantidad'] = max(0.001, round((float) $state, 3));
-                        $this->items = $items;
-                    }),
-
-                TextColumn::make('total_calculado')
-                    ->label('Subtotal')
-                    ->getStateUsing(function (VentaDetalle $record) {
-                        $key = $this->itemKey($record);
-                        $precio   = (float) ($this->items[$key]['precio']   ?? $record->precio_unitario);
-                        $cantidad = (float) ($this->items[$key]['cantidad'] ?? $record->cantidad);
-                        return number_format($precio * $cantidad, 2);
-                    })
-                    ->prefix('S/ ')
-                    ->alignEnd()
-                    ->fontFamily('mono'),
-            ])
-            ->recordActions([
-                FilamentAction::make('eliminar')
-                    ->icon('heroicon-m-trash')
-                    ->color('danger')
-                    ->iconButton()
-                    ->requiresConfirmation(false)
-                    ->action(function (VentaDetalle $record) {
-                        $record->delete();
-                        $this->recargarItems();
-                    }),
-            ])
-            ->paginated(false)
-            ->striped(false)
-            ->emptyStateHeading('Sin productos')
-            ->emptyStateDescription('Usa el buscador de arriba para agregar productos.')
-            ->emptyStateIcon('heroicon-o-inbox');
-    }
-
-    private function itemKey(VentaDetalle $det): string
-    {
-        $tipo = $det->tipo_item instanceof \App\Enums\TipoItem
-            ? $det->tipo_item->value
-            : (string) $det->tipo_item;
-        return match ($tipo) {
-            'variante'  => "v:{$det->variante_id}",
-            'promocion' => "promo:{$det->promocion_id}",
-            default     => "p:{$det->producto_id}",
-        };
-    }
-
-    public function recargarItems(): void
-    {
-        if (! $this->venta) { return; }
-
-        $this->items = [];
-        foreach (VentaDetalle::where('venta_id', $this->venta->id)->get() as $det) {
-            $tipo = $det->tipo_item instanceof \App\Enums\TipoItem
-                ? $det->tipo_item->value
-                : (string) $det->tipo_item;
-            $key = match ($tipo) {
-                'variante'  => "v:{$det->variante_id}",
-                'promocion' => "promo:{$det->promocion_id}",
-                default     => "p:{$det->producto_id}",
-            };
-            $this->items[$key] = [
-                'key'         => $key,
-                'tipo'        => $tipo,
-                'id'          => $tipo === 'variante' ? $det->variante_id : ($tipo === 'promocion' ? $det->promocion_id : $det->producto_id),
-                'nombre'      => str_replace(' (Cortesía)', '', $det->descripcion),
-                'precio'      => (float) $det->precio_unitario,
-                'cantidad'    => (float) $det->cantidad,
-                'costo'       => (float) $det->costo_unitario,
-                'cortesia'    => str_contains($det->descripcion, '(Cortesía)'),
-                'producto_id' => $det->producto_id,
-                'variante_id' => $det->variante_id,
-            ];
-        }
-    }
-
-    public function quitarCortesiaDetalle(int $detalleId): void
-    {
-        $det = VentaDetalle::find($detalleId);
-        if (! $det) { return; }
-
-        $tipo = $det->tipo_item instanceof \App\Enums\TipoItem
-            ? $det->tipo_item->value
-            : (string) $det->tipo_item;
-
-        $precioRestaurado = match ($tipo) {
-            'variante' => (float) (\App\Models\Variante::find($det->variante_id)?->precio_final ?? $det->precio_unitario),
-            default    => (float) (\App\Models\Producto::find($det->producto_id)?->precio_venta ?? $det->precio_unitario),
-        };
-
-        $precioFinal = max(0.01, $precioRestaurado);
-
-        $key = $this->itemKey($det);
-        if (isset($this->items[$key])) {
-            $items = $this->items;
-            $items[$key]['cortesia'] = false;
-            $items[$key]['precio']   = $precioFinal;
-            $this->items = $items;
         }
     }
 

@@ -75,9 +75,13 @@ class ProductoDetalle extends Component
         $productoAgotado = false;
         if ($producto->control_de_stock && ! $producto->venta_sin_stock) {
             if ($tieneVariantes) {
-                $productoAgotado = $variantesActivas->every(
-                    fn($v) => (float) ($v->inventario?->stock_reserva ?? 0) <= 0
-                );
+                if ($producto->comparte_stock) {
+                    $productoAgotado = (float) ($producto->inventario?->stock_reserva ?? 0) <= 0;
+                } else {
+                    $productoAgotado = $variantesActivas->every(
+                        fn($v) => (float) ($v->inventario?->stock_reserva ?? 0) <= 0
+                    );
+                }
             } else {
                 $productoAgotado = (float) ($producto->inventario?->stock_reserva ?? 0) <= 0;
             }
@@ -97,17 +101,23 @@ class ProductoDetalle extends Component
             ])->values()->all(),
         ])->filter(fn($a) => $a['id'] && ! empty($a['valores']))->values()->all();
 
-        $variantesData = $variantesActivas->map(fn($var) => [
-            'id'            => $var->id,
-            'codigo'        => $var->codigo ?? null,
-            'imagen'        => $var->imagen ? Storage::url($var->imagen) : null,
-            'valores_ids'   => $var->valores->pluck('valor_id')->sort()->values()->all(),
-            'sin_stock'     => $producto->control_de_stock && ! $producto->venta_sin_stock
-                               && (float) ($var->inventario?->stock_reserva ?? 0) <= 0,
-            'stock_reserva' => $producto->control_de_stock && ! $producto->venta_sin_stock
-                               ? (float) ($var->inventario?->stock_reserva ?? 0)
-                               : null,
-        ])->values()->all();
+        $variantesData = $variantesActivas->map(function($var) use ($producto) {
+            $stockVar = $producto->control_de_stock && ! $producto->venta_sin_stock
+                ? ($producto->comparte_stock
+                    ? $var->stockDisponibleReserva($producto->empresa_id)
+                    : (float) ($var->inventario?->stock_reserva ?? 0))
+                : null;
+            return [
+                'id'            => $var->id,
+                'codigo'        => $var->codigo ?? null,
+                'imagen'        => $var->imagen ? Storage::url($var->imagen) : null,
+                'valores_ids'   => $var->valores->pluck('valor_id')->sort()->values()->all(),
+                'sin_stock'     => $producto->control_de_stock && ! $producto->venta_sin_stock
+                                   && ($stockVar ?? 0) <= 0,
+                'stock_reserva' => $stockVar,
+                'precio_final'  => (float) $var->precio_final,
+            ];
+        })->values()->all();
 
         $stockReservaProducto = $producto->control_de_stock && ! $producto->venta_sin_stock && ! $tieneVariantes
             ? (float) ($producto->inventario?->stock_reserva ?? 0)
@@ -119,6 +129,7 @@ class ProductoDetalle extends Component
             'codigo_interno' => $producto->codigo_interno,
             'imagen'         => $imagenes->first(),
             'precioBase'     => $precioFinal,
+            'comparteStock'  => (bool) $producto->comparte_stock,
             'atributos'      => $atributosData,
             'variantes'      => $variantesData,
             'agotado'        => $productoAgotado,

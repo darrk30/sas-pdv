@@ -94,6 +94,10 @@ window.modalVariante = function() {
 
         get precioActual() {
             if (!this.producto) return '0.00';
+            if (this.producto.comparteStock) {
+                const v = this.varianteCoincidente;
+                return parseFloat(v ? v.precio_final : this.producto.precioBase).toFixed(2);
+            }
             const extra = Object.values(this.seleccion)
                 .reduce((s, v) => s + (parseFloat(v.precio_adicional) || 0), 0);
             return (this.producto.precioBase + extra).toFixed(2);

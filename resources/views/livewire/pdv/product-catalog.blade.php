@@ -206,7 +206,10 @@
                         $stockSimple    = ! $tieneVariantes && $producto->control_de_stock
                             ? (float)($producto->inventario?->stock_reserva ?? 0) : null;
                         $stockVariantes = $tieneVariantes && $producto->control_de_stock
-                            ? $producto->variantesActivas->sum(fn($v) => (float)($v->inventario?->stock_reserva ?? 0)) : null;
+                            ? ($producto->comparte_stock
+                                ? (float)($producto->inventario?->stock_reserva ?? 0)
+                                : $producto->variantesActivas->sum(fn($v) => (float)($v->inventario?->stock_reserva ?? 0)))
+                            : null;
                         $stock          = $stockSimple ?? $stockVariantes;
 
                         // Claves del carrito para el badge Alpine
@@ -269,11 +272,15 @@
                                     ])
                                     ->filter(fn ($a) => count($a['valores']) > 0)
                                     ->values()->all(),
+                                'comparteStock'      => (bool) $producto->comparte_stock,
                                 'variantes'          => $producto->variantesActivas
                                     ->map(fn ($v) => [
-                                        'id'      => $v->id,
-                                        'pav_ids' => $v->valores->pluck('id')->toArray(),
-                                        'stock'   => (float) ($v->inventario?->stock_reserva ?? 0),
+                                        'id'          => $v->id,
+                                        'pav_ids'     => $v->valores->pluck('id')->toArray(),
+                                        'precio_final' => (float) $v->precio_final,
+                                        'stock'       => $producto->comparte_stock
+                                            ? $v->stockDisponibleReserva($producto->empresa_id)
+                                            : (float) ($v->inventario?->stock_reserva ?? 0),
                                     ])->values()->all(),
                                 'exclusiones'        => $producto->atributos->reduce(function ($carry, $pa) {
                                     foreach ($pa->detallesExclusiones as $ex) {
@@ -564,9 +571,14 @@
                 seleccionados: {}, deshabilitados: [], precioAdicional: 0,
                 controlStock: false, ventaSinStock: false, esCortesia: false,
                 esDecimal: false, unidadSimbolo: '', productoId: null,
+                comparteStock: false,
                 cantidad: 1, modalCortesia: false, _precioLista: null,
 
                 get precioFinal() {
+                    if (this.comparteStock) {
+                        const v = this.varianteActual;
+                        return v ? (v.precio_final || 0) : 0;
+                    }
                     return (this._precioLista !== null ? this._precioLista : this.precioBase) + this.precioAdicional;
                 },
                 get completado() {
@@ -603,6 +615,7 @@
                     this.esDecimal          = data.esDecimal;
                     this.unidadSimbolo      = data.unidadSimbolo || '';
                     this.productoId         = data.productoId;
+                    this.comparteStock      = data.comparteStock || false;
                     this.cantidad           = 1;
                     this.modalCortesia      = false;
                     this._precioLista       = precioLista !== undefined ? precioLista : null;
@@ -718,11 +731,16 @@
                     }).filter(Boolean).join(' - ');
                     const nombre = sufijo ? this.nombre + ' (' + sufijo + ')' : this.nombre;
                     const esCort = this.esCortesia && this.modalCortesia;
-                    const base   = this._precioLista !== null ? this._precioLista : this.precioBase;
+                    const precioV = this.comparteStock
+                        ? (v.precio_final || 0)
+                        : (this._precioLista !== null ? this._precioLista : this.precioBase) + this.precioAdicional;
+                    const normalV = this.comparteStock
+                        ? (v.precio_final || 0)
+                        : this.precioBaseOriginal + this.precioAdicional;
                     window.dispatchEvent(new CustomEvent('product-selected', { detail: [{
                         tipo: 'variante', id: v.id, nombre,
-                        precio:        esCort ? 0 : base + this.precioAdicional,
-                        precio_normal: this.precioBaseOriginal + this.precioAdicional,
+                        precio:        esCort ? 0 : precioV,
+                        precio_normal: normalV,
                         es_cortesia:   esCort,
                         cantidad:      this.cantidad,
                         producto_id:   this.productoId,

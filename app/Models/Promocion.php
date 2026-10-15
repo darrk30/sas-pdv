@@ -119,7 +119,8 @@ class Promocion extends Model
         foreach ($this->detalles as $detalle) {
             if ($detalle->variante_id) {
                 $producto   = $detalle->variante?->producto;
-                $inventario = $detalle->variante?->inventario;
+                // resolverInventario maneja comparte_stock (pool) y variante propia
+                $inventario = $detalle->variante?->resolverInventario($this->empresa_id);
                 $pendKey    = "variante_{$detalle->variante_id}";
             } else {
                 $producto   = $detalle->producto;
@@ -163,7 +164,8 @@ class Promocion extends Model
             if ($detalle->variante_id) {
                 $variante = $detalle->variante;
                 $producto = $variante?->producto;
-                $inventario = $variante?->inventario;
+                // resolverInventario maneja comparte_stock (pool) y variante propia
+                $inventario = $variante?->resolverInventario($this->empresa_id);
             } else {
                 $variante = null;
                 $producto = $detalle->producto;

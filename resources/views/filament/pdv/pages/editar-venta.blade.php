@@ -93,16 +93,12 @@
                 <div class="ev-search-results">
                     @foreach($resultadosProd as $prod)
                         @if($prod['tiene_variantes'])
-                            <div class="ev-prod-header">
-                                <x-filament::icon icon="heroicon-m-squares-2x2" style="width:.8rem;height:.8rem;" />
-                                {{ $prod['nombre'] }}
-                            </div>
                             @foreach($prod['variantes'] as $var)
                             <div class="ev-var-row"
                                 wire:click="agregarProducto({{ $prod['id'] }}, {{ $var['id'] }})"
                                 wire:key="var-{{ $var['id'] }}">
                                 <div class="ev-prod-info">
-                                    <div class="ev-prod-name">{{ $var['nombre'] }}</div>
+                                    <div class="ev-prod-name">{{ $prod['nombre'] }} ({{ $var['nombre'] }})</div>
                                     <div class="ev-prod-price">S/ {{ number_format($var['precio'], 2) }}</div>
                                 </div>
                                 <div class="ev-prod-stock">
@@ -129,8 +125,67 @@
             </div>
         </x-filament::section>
 
-        {{-- 4. TABLA DE ÍTEMS (Filament nativo) ──────────────────────────────── --}}
-        {{ $this->table }}
+        {{-- 4. TABLA DE ÍTEMS ────────────────────────────────────────────────── --}}
+        <x-filament::section>
+            @if(empty($items))
+                <div class="ev-empty-state">
+                    <x-filament::icon icon="heroicon-o-inbox" style="width:2rem;height:2rem;color:#9ca3af;margin:0 auto 0.5rem;" />
+                    <p style="color:#9ca3af;text-align:center;font-size:.875rem;">Sin productos. Usa el buscador de arriba para agregar.</p>
+                </div>
+            @else
+            <div class="ev-items-table">
+                <div class="ev-items-head">
+                    <span class="ev-th ev-th--name">Producto</span>
+                    <span class="ev-th ev-th--price">Precio</span>
+                    <span class="ev-th ev-th--qty">Cantidad</span>
+                    <span class="ev-th ev-th--sub">Subtotal</span>
+                    <span class="ev-th ev-th--del"></span>
+                </div>
+                @foreach($items as $key => $item)
+                <div class="ev-items-row" wire:key="item-{{ $key }}">
+                    <div class="ev-td ev-td--name">
+                        <span class="ev-item-nombre">{{ $item['nombre'] }}</span>
+                        @if($item['cortesia'] ?? false)
+                            <span class="ev-cortesia-badge">🎁 Cortesía
+                                <button type="button" wire:click="quitarCortesia('{{ $key }}')" class="ev-cortesia-badge__remove" title="Quitar cortesía">×</button>
+                            </span>
+                        @endif
+                    </div>
+                    <div class="ev-td ev-td--price">
+                        <x-filament::input.wrapper>
+                            <x-filament::input
+                                type="number" step="0.01" min="0"
+                                value="{{ number_format((float)$item['precio'], 2, '.', '') }}"
+                                wire:change="actualizarPrecio('{{ $key }}', $event.target.value)"
+                                style="text-align:right;width:6rem;" />
+                        </x-filament::input.wrapper>
+                    </div>
+                    <div class="ev-td ev-td--qty">
+                        <div class="ev-qty-wrap">
+                            <button type="button" class="ev-qty-btn" wire:click="decrementarCantidad('{{ $key }}')">−</button>
+                            <x-filament::input.wrapper>
+                                <x-filament::input
+                                    type="number" step="1" min="0.001"
+                                    value="{{ $item['cantidad'] == (int)$item['cantidad'] ? (int)$item['cantidad'] : $item['cantidad'] }}"
+                                    wire:change="actualizarCantidad('{{ $key }}', $event.target.value)"
+                                    style="text-align:center;width:4rem;" />
+                            </x-filament::input.wrapper>
+                            <button type="button" class="ev-qty-btn" wire:click="incrementarCantidad('{{ $key }}')">+</button>
+                        </div>
+                    </div>
+                    <div class="ev-td ev-td--sub">
+                        S/ {{ number_format((float)$item['precio'] * (float)$item['cantidad'], 2) }}
+                    </div>
+                    <div class="ev-td ev-td--del">
+                        <button type="button" class="ev-del-btn" wire:click="eliminarItem('{{ $key }}')" title="Quitar producto">
+                            <x-filament::icon icon="heroicon-m-trash" style="width:.875rem;height:.875rem;" />
+                        </button>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @endif
+        </x-filament::section>
 
     </div>{{-- /ev-col-main --}}
 

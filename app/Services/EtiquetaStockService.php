@@ -45,6 +45,16 @@ class EtiquetaStockService
             ->pluck('id');
 
         if ($variantes->isNotEmpty()) {
+            // Productos con stock compartido: revisar inventario del producto (variante_id=null)
+            $primerProducto = \App\Models\Producto::find($productoId);
+            if ($primerProducto?->comparte_stock) {
+                $inv = Inventario::where('empresa_id', $empresaId)
+                    ->where('producto_id', $productoId)
+                    ->whereNull('variante_id')
+                    ->first();
+                return (float) ($inv?->stock_reserva ?? 0) <= 0;
+            }
+
             // Agotado si TODAS las variantes tienen stock_reserva <= 0
             return Inventario::where('empresa_id', $empresaId)
                 ->whereIn('variante_id', $variantes)

@@ -354,7 +354,7 @@ class VentaService
                 ->where('transaccionable_id', $venta->id)
                 ->update(['estado' => EstadoMovimiento::Anulado->value]);
 
-            $venta->loadMissing(['detalles.producto', 'detalles.variante.producto']);
+            $venta->loadMissing(['detalles.producto', 'detalles.variante.producto.unidadMedida']);
 
             foreach ($venta->detalles as $detalle) {
                 $cantidad = (float) $detalle->cantidad;
@@ -385,27 +385,33 @@ class VentaService
                         }
                     }
                 } elseif ($detalle->tipo_item === TipoItem::Variante && $detalle->variante_id) {
-                    $prodVariante = $detalle->variante?->producto;
+                    $varAnul = $detalle->variante;
+                    $varAnul?->loadMissing('producto.unidadMedida');
+                    $prodVariante = $varAnul?->producto;
                     if ($prodVariante?->control_de_stock) {
-                        $productoId = $detalle->variante->producto_id;
-                        $inv = Inventario::where('empresa_id', $empresaId)
-                            ->where('producto_id', $productoId)
-                            ->where('variante_id', $detalle->variante_id)
-                            ->lockForUpdate()->first();
+                        $factor       = $varAnul->factor();
+                        $cantidadBase = round($cantidad * $factor, 4);
+                        $inv = $varAnul->resolverInventario($empresaId, lock: true);
                         if ($inv) {
                             $antes   = (float) $inv->stock_real;
-                            $despues = $antes + $cantidad;
+                            $despues = $antes + $cantidadBase;
                             $inv->update([
                                 'stock_real'    => $despues,
-                                'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantidad),
+                                'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantidadBase),
                             ]);
+                            $kCantAnul = $prodVariante->comparte_stock ? $cantidadBase : $cantidad;
+                            $kFactAnul = $prodVariante->comparte_stock ? 1 : $factor;
+                            $kPrecAnul = $prodVariante->comparte_stock && $cantidadBase > 0
+                                ? round((float) $detalle->precio_unitario / $cantidadBase * $cantidad, 6)
+                                : (float) $detalle->precio_unitario;
                             $this->kardex->registrar([
                                 'empresa_id' => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
-                                'producto_id' => $productoId, 'variante_id' => $detalle->variante_id,
+                                'producto_id' => $prodVariante->id, 'variante_id' => $detalle->variante_id,
                                 'producto_nombre' => $detalle->descripcion, 'tipo' => 'entrada',
-                                'concepto' => $conceptoRev, 'cantidad' => $cantidad, 'unidad' => 'unidad',
-                                'factor_conversion' => 1, 'cantidad_base' => $cantidad,
-                                'precio_unitario' => (float) $detalle->precio_unitario,
+                                'concepto' => $conceptoRev, 'cantidad' => $kCantAnul,
+                                'unidad' => $prodVariante->unidadMedida?->nombre ?? 'unidad',
+                                'factor_conversion' => $kFactAnul, 'cantidad_base' => $cantidadBase,
+                                'precio_unitario' => $kPrecAnul,
                                 'precio_total' => (float) $detalle->total,
                                 'stock_antes' => $antes, 'stock_despues' => $despues, 'fecha' => now(),
                             ]);
@@ -413,32 +419,11 @@ class VentaService
                     }
                 } elseif ($detalle->tipo_item === TipoItem::Promocion && $detalle->promocion_id) {
                     Promocion::where('id', $detalle->promocion_id)->decrement('usos_actuales', (int) $cantidad);
-                    $promo = Promocion::with(['detalles.producto', 'detalles.variante.producto'])->find($detalle->promocion_id);
+                    $promo = Promocion::with(['detalles.producto.unidadMedida', 'detalles.variante.producto.unidadMedida'])->find($detalle->promocion_id);
                     if (! $promo) continue;
                     foreach ($promo->detalles as $comp) {
-                        $cantComp   = $cantidad * (float) $comp->cantidad;
-                        $invPromoId = $comp->variante_id
-                            ? Inventario::where('empresa_id', $empresaId)->where('variante_id', $comp->variante_id)->lockForUpdate()->first()
-                            : ($comp->producto_id ? Inventario::where('empresa_id', $empresaId)->where('producto_id', $comp->producto_id)->whereNull('variante_id')->lockForUpdate()->first() : null);
-                        if (! $invPromoId) continue;
-                        $prodComp = $comp->variante?->producto ?? $comp->producto;
-                        if (! $prodComp?->control_de_stock) continue;
-                        $antes   = (float) $invPromoId->stock_real;
-                        $despues = $antes + $cantComp;
-                        $invPromoId->update([
-                            'stock_real'    => $despues,
-                            'stock_reserva' => max(0, (float) $invPromoId->stock_reserva + $cantComp),
-                        ]);
-                        $this->kardex->registrar([
-                            'empresa_id' => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
-                            'producto_id' => $comp->variante?->producto_id ?? $comp->producto_id,
-                            'variante_id' => $comp->variante_id,
-                            'tipo' => 'entrada', 'concepto' => $conceptoRev,
-                            'notas' => "Promo: {$detalle->descripcion}",
-                            'cantidad' => $cantComp, 'unidad' => 'unidad',
-                            'factor_conversion' => 1, 'cantidad_base' => $cantComp,
-                            'stock_antes' => $antes, 'stock_despues' => $despues, 'fecha' => now(),
-                        ]);
+                        $cantComp = $cantidad * (float) $comp->cantidad;
+                        $this->restaurarStockPromoComp($empresaId, $comp, $cantComp, $venta, $conceptoRev, "Promo: {$detalle->descripcion}");
                     }
                 }
             }
@@ -541,26 +526,33 @@ class VentaService
                         }
                     }
                 } elseif ($det->tipo_item === TipoItem::Variante && $det->variante_id) {
-                    $prodVar = $det->variante?->producto;
+                    $varEdit = $det->variante;
+                    $varEdit?->loadMissing('producto.unidadMedida');
+                    $prodVar = $varEdit?->producto;
                     if ($prodVar?->control_de_stock) {
-                        $inv = Inventario::where('empresa_id', $empresaId)
-                            ->where('producto_id', $prodVar->id)
-                            ->where('variante_id', $det->variante_id)
-                            ->lockForUpdate()->first();
+                        $factor   = $varEdit->factor();
+                        $diffBase = round($diff * $factor, 4);
+                        $inv = $varEdit->resolverInventario($empresaId, lock: true);
                         if ($inv) {
                             $antes   = (float) $inv->stock_real;
-                            $despues = $antes + $diff;
+                            $despues = $antes + $diffBase;
                             $inv->update([
                                 'stock_real'    => $despues,
-                                'stock_reserva' => max(0, (float) $inv->stock_reserva + $diff),
+                                'stock_reserva' => max(0, (float) $inv->stock_reserva + $diffBase),
                             ]);
+                            $kCantEdit = $prodVar->comparte_stock ? $diffBase : $diff;
+                            $kFactEdit = $prodVar->comparte_stock ? 1 : $factor;
+                            $kPrecEdit = $prodVar->comparte_stock && $diffBase > 0
+                                ? round((float) $det->precio_unitario / $diffBase * abs($diff), 6)
+                                : (float) $det->precio_unitario;
                             $this->kardex->registrar([
                                 'empresa_id'        => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
                                 'producto_id'       => $prodVar->id, 'variante_id' => $det->variante_id,
                                 'producto_nombre'   => $det->descripcion, 'tipo' => 'entrada',
-                                'concepto'          => $concepto, 'cantidad' => $diff, 'unidad' => 'unidad',
-                                'factor_conversion' => 1, 'cantidad_base' => $diff,
-                                'precio_unitario'   => (float) $det->precio_unitario,
+                                'concepto'          => $concepto, 'cantidad' => $kCantEdit,
+                                'unidad'            => $prodVar->unidadMedida?->nombre ?? 'unidad',
+                                'factor_conversion' => $kFactEdit, 'cantidad_base' => $diffBase,
+                                'precio_unitario'   => $kPrecEdit,
                                 'precio_total'      => round((float) $det->precio_unitario * $diff, 2),
                                 'stock_antes'       => $antes, 'stock_despues' => $despues, 'fecha' => now(),
                             ]);
@@ -568,32 +560,11 @@ class VentaService
                     }
                 } elseif ($det->tipo_item === TipoItem::Promocion && $det->promocion_id) {
                     Promocion::where('id', $det->promocion_id)->decrement('usos_actuales', max(1, (int) $diff));
-                    $promo = Promocion::with(['detalles.producto', 'detalles.variante.producto'])->find($det->promocion_id);
+                    $promo = Promocion::with(['detalles.producto.unidadMedida', 'detalles.variante.producto.unidadMedida'])->find($det->promocion_id);
                     if ($promo) {
                         foreach ($promo->detalles as $comp) {
                             $cantComp = $diff * (float) $comp->cantidad;
-                            $invComp  = $comp->variante_id
-                                ? Inventario::where('empresa_id', $empresaId)->where('variante_id', $comp->variante_id)->lockForUpdate()->first()
-                                : ($comp->producto_id ? Inventario::where('empresa_id', $empresaId)->where('producto_id', $comp->producto_id)->whereNull('variante_id')->lockForUpdate()->first() : null);
-                            if (! $invComp) continue;
-                            $prodComp = $comp->variante?->producto ?? $comp->producto;
-                            if (! $prodComp?->control_de_stock) continue;
-                            $antes   = (float) $invComp->stock_real;
-                            $despues = $antes + $cantComp;
-                            $invComp->update([
-                                'stock_real'    => $despues,
-                                'stock_reserva' => max(0, (float) $invComp->stock_reserva + $cantComp),
-                            ]);
-                            $this->kardex->registrar([
-                                'empresa_id'        => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
-                                'producto_id'       => $comp->variante?->producto_id ?? $comp->producto_id,
-                                'variante_id'       => $comp->variante_id,
-                                'tipo'              => 'entrada', 'concepto' => $concepto,
-                                'notas'             => "Promo: {$det->descripcion}",
-                                'cantidad'          => $cantComp, 'unidad' => 'unidad',
-                                'factor_conversion' => 1, 'cantidad_base' => $cantComp,
-                                'stock_antes'       => $antes, 'stock_despues' => $despues, 'fecha' => now(),
-                            ]);
+                            $this->restaurarStockPromoComp($empresaId, $comp, $cantComp, $venta, $concepto, "Promo: {$det->descripcion}");
                         }
                     }
                 }
@@ -611,6 +582,8 @@ class VentaService
                     $this->reducirStockProducto($empresaId, $item['id'], $item['nombre'], $diff, (float) $item['precio'], $venta, $concepto, false);
                 } elseif ($item['tipo'] === 'variante') {
                     $this->reducirStockVariante($empresaId, $item['id'], $item['nombre'], $diff, (float) $item['precio'], $venta, $concepto, false);
+                } elseif ($item['tipo'] === 'promocion') {
+                    $this->procesarPromocion($empresaId, $item['id'], $item['nombre'], $diff, $venta, $concepto, false);
                 }
             }
 
@@ -886,36 +859,42 @@ class VentaService
         float $cantidad, float $precio, Venta $venta, string $comprobante,
         bool $stockYaReservado = false
     ): void {
-        $variante = Variante::find($varianteId);
+        $variante = Variante::with('producto.unidadMedida')->find($varianteId);
         if (! $variante) return;
 
-        $producto = Producto::with('unidadMedida')->find($variante->producto_id);
+        $producto = $variante->producto;
         if (! $producto?->control_de_stock) return;
 
-        $inv = Inventario::where('empresa_id', $empresaId)
-            ->where('producto_id', $variante->producto_id)
-            ->where('variante_id', $varianteId)
-            ->lockForUpdate()->first();
+        $factor       = $variante->factor();
+        $cantidadBase = round($cantidad * $factor, 4);
 
+        $inv = $variante->resolverInventario($empresaId, lock: true);
         if (! $inv) return;
 
         $stockAntes = (float) $inv->stock_real;
 
-        if (! $producto->venta_sin_stock && $stockAntes < $cantidad) {
+        if (! $producto->venta_sin_stock && $stockAntes < $cantidadBase) {
             throw new \RuntimeException(
-                "Stock insuficiente para \"{$nombre}\": disponible {$stockAntes}, solicitado {$cantidad}."
+                "Stock insuficiente para \"{$nombre}\": disponible {$stockAntes}, solicitado {$cantidadBase}."
             );
         }
 
         $stockDespues = $producto->venta_sin_stock
-            ? $stockAntes - $cantidad
-            : max(0, $stockAntes - $cantidad);
+            ? $stockAntes - $cantidadBase
+            : max(0, $stockAntes - $cantidadBase);
 
         $update = ['stock_real' => $stockDespues];
         if (! $stockYaReservado) {
             $update['stock_reserva'] = max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues));
         }
         $inv->update($update);
+
+        // Para comparte_stock grabamos directamente en unidades base (sin factor)
+        $kCantidad = $producto->comparte_stock ? $cantidadBase : $cantidad;
+        $kFactor   = $producto->comparte_stock ? 1 : $factor;
+        $kPrecioU  = $producto->comparte_stock && $cantidadBase > 0
+            ? round($precio / $cantidadBase, 6)
+            : $precio;
 
         $this->kardex->registrar([
             'empresa_id'        => $empresaId,
@@ -926,15 +905,68 @@ class VentaService
             'producto_nombre'   => $nombre,
             'tipo'              => 'salida',
             'concepto'          => $comprobante,
-            'cantidad'          => $cantidad,
+            'cantidad'          => $kCantidad,
             'unidad'            => $producto->unidadMedida?->nombre ?? 'unidad',
-            'factor_conversion' => 1,
-            'cantidad_base'     => $cantidad,
-            'precio_unitario'   => $precio,
+            'factor_conversion' => $kFactor,
+            'cantidad_base'     => $cantidadBase,
+            'precio_unitario'   => $kPrecioU,
             'precio_total'      => $precio * $cantidad,
             'stock_antes'       => $stockAntes,
             'stock_despues'     => $stockDespues,
         ]);
+    }
+
+    // Restaura stock de UN componente de promo (variante o producto) al anular/reducir.
+    // Maneja correctamente comparte_stock y factor_presentacion.
+    private function restaurarStockPromoComp(
+        int $empresaId, object $comp, float $cantComp, Venta $venta, string $concepto, string $notas
+    ): void {
+        if ($comp->variante_id && $comp->variante) {
+            $var      = $comp->variante;
+            $prod     = $var->producto;
+            if (! $prod?->control_de_stock) return;
+            $factor   = $var->factor();
+            $cantBase = round($cantComp * $factor, 4);
+            $inv      = $var->resolverInventario($empresaId, lock: true);
+            if (! $inv) return;
+            $antes   = (float) $inv->stock_real;
+            $despues = $antes + $cantBase;
+            $inv->update([
+                'stock_real'    => $despues,
+                'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantBase),
+            ]);
+            $kCant = $prod->comparte_stock ? $cantBase : $cantComp;
+            $kFact = $prod->comparte_stock ? 1 : $factor;
+            $this->kardex->registrar([
+                'empresa_id'        => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
+                'producto_id'       => $var->producto_id, 'variante_id' => $comp->variante_id,
+                'tipo'              => 'entrada', 'concepto' => $concepto, 'notas' => $notas,
+                'cantidad'          => $kCant, 'unidad' => $prod->unidadMedida?->nombre ?? 'unidad',
+                'factor_conversion' => $kFact, 'cantidad_base' => $cantBase,
+                'stock_antes'       => $antes, 'stock_despues' => $despues, 'fecha' => now(),
+            ]);
+        } elseif ($comp->producto_id && $comp->producto) {
+            $prod = $comp->producto;
+            if (! $prod->control_de_stock) return;
+            $inv = Inventario::where('empresa_id', $empresaId)
+                ->where('producto_id', $comp->producto_id)->whereNull('variante_id')
+                ->lockForUpdate()->first();
+            if (! $inv) return;
+            $antes   = (float) $inv->stock_real;
+            $despues = $antes + $cantComp;
+            $inv->update([
+                'stock_real'    => $despues,
+                'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantComp),
+            ]);
+            $this->kardex->registrar([
+                'empresa_id'        => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
+                'producto_id'       => $comp->producto_id, 'variante_id' => null,
+                'tipo'              => 'entrada', 'concepto' => $concepto, 'notas' => $notas,
+                'cantidad'          => $cantComp, 'unidad' => $prod->unidadMedida?->nombre ?? 'unidad',
+                'factor_conversion' => 1, 'cantidad_base' => $cantComp,
+                'stock_antes'       => $antes, 'stock_despues' => $despues, 'fecha' => now(),
+            ]);
+        }
     }
 
     private function procesarPromocion(
@@ -959,25 +991,27 @@ class VentaService
                 $prodDetalle     = $varianteDetalle?->producto;
 
                 if ($prodDetalle?->control_de_stock) {
-                    $inv = Inventario::where('empresa_id', $empresaId)
-                        ->where('variante_id', $detalle->variante_id)
-                        ->lockForUpdate()->first();
+                    $factor      = $varianteDetalle->factor();
+                    $cantBase    = round($cantidadDetalle * $factor, 4);
+                    $inv         = $varianteDetalle->resolverInventario($empresaId, lock: true);
 
                     if ($inv) {
                         $stockAntes = (float) $inv->stock_real;
-                        if (! ($prodDetalle->venta_sin_stock ?? false) && $stockAntes < $cantidadDetalle) {
+                        if (! ($prodDetalle->venta_sin_stock ?? false) && $stockAntes < $cantBase) {
                             throw new \RuntimeException(
-                                "Stock insuficiente en combo \"{$nombre}\": disponible {$stockAntes}, solicitado {$cantidadDetalle}."
+                                "Stock insuficiente en combo \"{$nombre}\": disponible {$stockAntes}, solicitado {$cantBase}."
                             );
                         }
                         $stockDespues = ($prodDetalle->venta_sin_stock ?? false)
-                            ? $stockAntes - $cantidadDetalle
-                            : max(0, $stockAntes - $cantidadDetalle);
+                            ? $stockAntes - $cantBase
+                            : max(0, $stockAntes - $cantBase);
                         $invUpdate = ['stock_real' => $stockDespues];
                         if (! $stockYaReservado) {
                             $invUpdate['stock_reserva'] = max(0, (float) $inv->stock_reserva - ($stockAntes - $stockDespues));
                         }
                         $inv->update($invUpdate);
+                        $kCant  = $prodDetalle->comparte_stock ? $cantBase : $cantidadDetalle;
+                        $kFact  = $prodDetalle->comparte_stock ? 1 : $factor;
                         $this->kardex->registrar([
                             'empresa_id'        => $empresaId,
                             'user_id'           => auth()->id(),
@@ -987,10 +1021,10 @@ class VentaService
                             'tipo'              => 'salida',
                             'concepto'          => $comprobante,
                             'notas'             => "Promo: {$nombre}",
-                            'cantidad'          => $cantidadDetalle,
+                            'cantidad'          => $kCant,
                             'unidad'            => $prodDetalle?->unidadMedida?->nombre ?? 'unidad',
-                            'factor_conversion' => 1,
-                            'cantidad_base'     => $cantidadDetalle,
+                            'factor_conversion' => $kFact,
+                            'cantidad_base'     => $cantBase,
                             'stock_antes'       => $stockAntes,
                             'stock_despues'     => $stockDespues,
                         ]);

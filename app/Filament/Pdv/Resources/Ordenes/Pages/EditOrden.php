@@ -216,13 +216,25 @@ class EditOrden extends EditRecord
             $variante = Variante::with('producto')->find($detalle->variante_id);
             if (! $variante?->producto?->control_de_stock) return;
 
-            $expr = $variante->producto->venta_sin_stock
-                ? "LEAST(stock_real, stock_reserva + {$delta})"
-                : "LEAST(stock_real, GREATEST(0, stock_reserva + {$delta}))";
-            DB::table('inventarios')
-                ->where('empresa_id', $empresaId)
-                ->where('variante_id', $detalle->variante_id)
-                ->update(['stock_reserva' => DB::raw($expr)]);
+            if ($variante->producto->comparte_stock) {
+                $cantBase = round($delta * $variante->factor(), 4);
+                $expr = $variante->producto->venta_sin_stock
+                    ? "LEAST(stock_real, stock_reserva + {$cantBase})"
+                    : "LEAST(stock_real, GREATEST(0, stock_reserva + {$cantBase}))";
+                DB::table('inventarios')
+                    ->where('empresa_id', $empresaId)
+                    ->where('producto_id', $variante->producto_id)
+                    ->whereNull('variante_id')
+                    ->update(['stock_reserva' => DB::raw($expr)]);
+            } else {
+                $expr = $variante->producto->venta_sin_stock
+                    ? "LEAST(stock_real, stock_reserva + {$delta})"
+                    : "LEAST(stock_real, GREATEST(0, stock_reserva + {$delta}))";
+                DB::table('inventarios')
+                    ->where('empresa_id', $empresaId)
+                    ->where('variante_id', $detalle->variante_id)
+                    ->update(['stock_reserva' => DB::raw($expr)]);
+            }
             $productosAfectados[] = $variante->producto_id;
 
         } elseif ($detalle->producto_id) {
@@ -592,34 +604,69 @@ class EditOrden extends EditRecord
             // ── Variante ──────────────────────────────────────────
             } elseif ($detalle->variante_id) {
                 $variante = Variante::with('producto.unidadMedida')->find($detalle->variante_id);
-                if (! $variante?->producto?->control_de_stock) continue;
-                $inv = Inventario::where('empresa_id', $empresaId)
-                    ->where('producto_id', $variante->producto_id)
-                    ->where('variante_id', $detalle->variante_id)
-                    ->lockForUpdate()->first();
-                if (! $inv) continue;
-                $antes   = (float) $inv->stock_real;
-                $despues = ($variante->producto->venta_sin_stock ?? false)
-                    ? $antes - $cantidad
-                    : max(0, $antes - $cantidad);
-                $inv->update(['stock_real' => $despues]);
-                $kardex->registrar([
-                    'empresa_id'        => $empresaId,
-                    'movible'           => $venta,
-                    'producto_id'       => $variante->producto_id,
-                    'variante_id'       => $detalle->variante_id,
-                    'producto_nombre'   => $detalle->descripcion,
-                    'tipo'              => 'salida',
-                    'concepto'          => $concepto,
-                    'cantidad'          => $cantidad,
-                    'unidad'            => $variante->producto->unidadMedida?->nombre ?? 'unidad',
-                    'factor_conversion' => 1,
-                    'cantidad_base'     => $cantidad,
-                    'precio_unitario'   => $precio,
-                    'precio_total'      => $precio * $cantidad,
-                    'stock_antes'       => $antes,
-                    'stock_despues'     => $despues,
-                ]);
+                $prod = $variante?->producto;
+                if (! $prod?->control_de_stock) continue;
+
+                if ($prod->comparte_stock) {
+                    $factor   = $variante->factor();
+                    $cantBase = round($cantidad * $factor, 4);
+                    $inv = Inventario::where('empresa_id', $empresaId)
+                        ->where('producto_id', $variante->producto_id)
+                        ->whereNull('variante_id')
+                        ->lockForUpdate()->first();
+                    if (! $inv) continue;
+                    $antes   = (float) $inv->stock_real;
+                    $despues = ($prod->venta_sin_stock ?? false)
+                        ? $antes - $cantBase
+                        : max(0, $antes - $cantBase);
+                    $inv->update(['stock_real' => $despues]);
+                    $kPrecio = $cantBase > 0 ? round($precio / $cantBase, 6) : $precio;
+                    $kardex->registrar([
+                        'empresa_id'        => $empresaId,
+                        'movible'           => $venta,
+                        'producto_id'       => $variante->producto_id,
+                        'variante_id'       => null,
+                        'producto_nombre'   => $detalle->descripcion,
+                        'tipo'              => 'salida',
+                        'concepto'          => $concepto,
+                        'cantidad'          => $cantBase,
+                        'unidad'            => $prod->unidadMedida?->nombre ?? 'unidad',
+                        'factor_conversion' => 1,
+                        'cantidad_base'     => $cantBase,
+                        'precio_unitario'   => $kPrecio,
+                        'precio_total'      => $precio * $cantidad,
+                        'stock_antes'       => $antes,
+                        'stock_despues'     => $despues,
+                    ]);
+                } else {
+                    $inv = Inventario::where('empresa_id', $empresaId)
+                        ->where('producto_id', $variante->producto_id)
+                        ->where('variante_id', $detalle->variante_id)
+                        ->lockForUpdate()->first();
+                    if (! $inv) continue;
+                    $antes   = (float) $inv->stock_real;
+                    $despues = ($prod->venta_sin_stock ?? false)
+                        ? $antes - $cantidad
+                        : max(0, $antes - $cantidad);
+                    $inv->update(['stock_real' => $despues]);
+                    $kardex->registrar([
+                        'empresa_id'        => $empresaId,
+                        'movible'           => $venta,
+                        'producto_id'       => $variante->producto_id,
+                        'variante_id'       => $detalle->variante_id,
+                        'producto_nombre'   => $detalle->descripcion,
+                        'tipo'              => 'salida',
+                        'concepto'          => $concepto,
+                        'cantidad'          => $cantidad,
+                        'unidad'            => $prod->unidadMedida?->nombre ?? 'unidad',
+                        'factor_conversion' => 1,
+                        'cantidad_base'     => $cantidad,
+                        'precio_unitario'   => $precio,
+                        'precio_total'      => $precio * $cantidad,
+                        'stock_antes'       => $antes,
+                        'stock_despues'     => $despues,
+                    ]);
+                }
 
             // ── Producto simple ────────────────────────────────────
             } elseif ($detalle->producto_id) {

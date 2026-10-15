@@ -166,21 +166,24 @@ class EditProducto extends EditRecord
         if ($esComplejo) {
             app(VarianteService::class)->syncVariantes($producto, $atributosForm);
 
-            foreach ($producto->variantes()->where('estado', 'activo')->get() as $variante) {
-                Inventario::firstOrCreate(
-                    [
-                        'empresa_id'  => $producto->empresa_id,
-                        'producto_id' => $producto->id,
-                        'variante_id' => $variante->id,
-                    ],
-                    [
-                        'stock_real'        => 0,
-                        'stock_reserva'     => 0,
-                        'stock_minimo'      => (float) ($estadoFormulario['stock_minimo'] ?: 0),
-                        'estado_almacen'    => 'activo',
-                        'estado_inventario' => 'agotado',
-                    ]
-                );
+            // Con comparte_stock el stock es del producto, no por variante
+            if (! $producto->comparte_stock) {
+                foreach ($producto->variantes()->where('estado', 'activo')->get() as $variante) {
+                    Inventario::firstOrCreate(
+                        [
+                            'empresa_id'  => $producto->empresa_id,
+                            'producto_id' => $producto->id,
+                            'variante_id' => $variante->id,
+                        ],
+                        [
+                            'stock_real'        => 0,
+                            'stock_reserva'     => 0,
+                            'stock_minimo'      => (float) ($estadoFormulario['stock_minimo'] ?: 0),
+                            'estado_almacen'    => 'activo',
+                            'estado_inventario' => 'agotado',
+                        ]
+                    );
+                }
             }
 
             $this->recalcularPreciosVariantes($producto);
@@ -194,21 +197,32 @@ class EditProducto extends EditRecord
         $tieneVariantes      = $idsVariantesActivas->isNotEmpty();
 
         if ($tieneVariantes) {
-            // Inventario de producto simple → inactivo
-            Inventario::where('producto_id', $producto->id)
-                ->whereNull('variante_id')
-                ->update(['estado_almacen' => 'inactivo']);
+            if ($producto->comparte_stock) {
+                // El pool es el inventario del producto (variante_id=null) → siempre activo
+                Inventario::where('producto_id', $producto->id)
+                    ->whereNull('variante_id')
+                    ->update(['estado_almacen' => 'activo']);
+                // Inventarios por variante → inactivos (no se usan)
+                Inventario::where('producto_id', $producto->id)
+                    ->whereNotNull('variante_id')
+                    ->update(['estado_almacen' => 'inactivo']);
+            } else {
+                // Inventario de producto simple → inactivo
+                Inventario::where('producto_id', $producto->id)
+                    ->whereNull('variante_id')
+                    ->update(['estado_almacen' => 'inactivo']);
 
-            // Solo las variantes activas (ROJO-L-POLIESTER) → activo
-            Inventario::where('producto_id', $producto->id)
-                ->whereIn('variante_id', $idsVariantesActivas)
-                ->update(['estado_almacen' => 'activo']);
+                // Solo las variantes activas → activo
+                Inventario::where('producto_id', $producto->id)
+                    ->whereIn('variante_id', $idsVariantesActivas)
+                    ->update(['estado_almacen' => 'activo']);
 
-            // Variantes que quedaron inactivas (ROJO-L, AZUL-L) → inactivo en inventario
-            Inventario::where('producto_id', $producto->id)
-                ->whereNotNull('variante_id')
-                ->whereNotIn('variante_id', $idsVariantesActivas)
-                ->update(['estado_almacen' => 'inactivo']);
+                // Variantes que quedaron inactivas → inactivo en inventario
+                Inventario::where('producto_id', $producto->id)
+                    ->whereNotNull('variante_id')
+                    ->whereNotIn('variante_id', $idsVariantesActivas)
+                    ->update(['estado_almacen' => 'inactivo']);
+            }
         } else {
             Inventario::where('producto_id', $producto->id)
                 ->whereNull('variante_id')
@@ -231,7 +245,7 @@ class EditProducto extends EditRecord
         array $estadoFormulario,
         bool $tieneVariantes,
     ): void {
-        if ($tieneVariantes) return;
+        if ($tieneVariantes && ! $producto->comparte_stock) return;
 
         $stockInicial = (float) ($estadoFormulario['stock_inicial'] ?? 0);
         if ($stockInicial <= 0) return;
@@ -269,6 +283,9 @@ class EditProducto extends EditRecord
 
     private function recalcularPreciosVariantes($producto): void
     {
+        // Para comparte_stock, precio_final se edita directamente en cada variante
+        if ($producto->comparte_stock) return;
+
         // Refrescar para leer precio_con_descuento ya persistido en BD
         $producto->refresh();
 
