@@ -25,8 +25,8 @@ class PromoDetalle extends Component
             ->with([
                 'detalles.producto.galeriaProductos',
                 'detalles.producto.inventario',
-                'detalles.variante.producto.inventario',
-                'detalles.variante.inventario',
+                'detalles.variante.producto',
+                'detalles.variante.valores.valor',
             ])
             ->firstOrFail();
     }
@@ -51,7 +51,8 @@ class PromoDetalle extends Component
                 $prod     = $d->variante?->producto;
                 $nombre   = ($prod?->nombre ?? '—') . ' — ' . ($d->variante?->valores->map(fn($pav) => $pav->valor?->nombre ?? '')->filter()->implode(' / ') ?: '');
                 $logo     = $prod?->logo ? Storage::url($prod->logo) : null;
-                $stock    = (float) ($d->variante?->inventario?->stock_reserva ?? 0);
+                $inv      = $d->variante?->resolverInventario($this->empresaId);
+                $stock    = (float) ($inv?->stock_reserva ?? 0);
                 $ctrlStock = (bool) ($prod?->control_de_stock ?? false);
                 $sinStock  = $ctrlStock && !($prod?->venta_sin_stock ?? false) && $stock <= 0;
             } else {
