@@ -355,3 +355,8 @@ html.dark .ev-items-row { border-color: #1e293b; }
 html.dark .ev-qty-btn { background: #1e293b; border-color: #334155; color: #cbd5e1; }
 html.dark .ev-qty-btn:hover { background: #334155; }
 .ev-empty-state { padding: 2rem 1rem; display: flex; flex-direction: column; align-items: center; }
+
+/* Ocultar flechas nativas de inputs numéricos en la tabla de ítems */
+.ev-items-table input[type=number]::-webkit-outer-spin-button,
+.ev-items-table input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.ev-items-table input[type=number] { -moz-appearance: textfield; appearance: textfield; }
