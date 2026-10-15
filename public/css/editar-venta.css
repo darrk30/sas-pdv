@@ -311,3 +311,47 @@ html.dark .ev-confirm-sub { color: #94a3b8; }
 
 /* ── Filament section: quitar padding lateral extra en la col lateral ── */
 .ev-col-side .fi-section-content { padding-inline: 1rem; }
+
+/* ── Tabla de ítems (blade loop) ─────────────────────────────────────────── */
+.ev-items-table { width: 100%; border-collapse: collapse; }
+.ev-items-head {
+    display: grid;
+    grid-template-columns: 1fr 7rem 9rem 6rem 2.5rem;
+    gap: .5rem; padding: .5rem .75rem;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: .75rem; font-weight: 600;
+    color: #6b7280; text-transform: uppercase; letter-spacing: .05em;
+}
+html.dark .ev-items-head { border-color: #334155; color: #94a3b8; }
+.ev-items-row {
+    display: grid;
+    grid-template-columns: 1fr 7rem 9rem 6rem 2.5rem;
+    gap: .5rem; padding: .625rem .75rem;
+    align-items: center;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: .875rem;
+}
+html.dark .ev-items-row { border-color: #1e293b; }
+.ev-items-row:last-child { border-bottom: none; }
+.ev-th { display: flex; align-items: center; }
+.ev-th--price, .ev-th--sub { justify-content: flex-end; }
+.ev-th--qty { justify-content: center; }
+.ev-td { display: flex; align-items: center; }
+.ev-td--price, .ev-td--sub { justify-content: flex-end; font-variant-numeric: tabular-nums; }
+.ev-td--qty { justify-content: center; }
+.ev-td--del { justify-content: center; }
+.ev-item-nombre { font-weight: 500; line-height: 1.4; }
+.ev-qty-wrap { display: flex; align-items: center; gap: .25rem; }
+.ev-qty-btn {
+    width: 1.5rem; height: 1.5rem;
+    border: 1px solid #d1d5db; border-radius: .375rem;
+    background: #f9fafb; color: #374151;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; line-height: 1; cursor: pointer;
+    flex-shrink: 0;
+    transition: background .1s;
+}
+.ev-qty-btn:hover { background: #e5e7eb; }
+html.dark .ev-qty-btn { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+html.dark .ev-qty-btn:hover { background: #334155; }
+.ev-empty-state { padding: 2rem 1rem; display: flex; flex-direction: column; align-items: center; }
