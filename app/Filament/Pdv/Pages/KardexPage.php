@@ -177,6 +177,10 @@ class KardexPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('producto_nombre')
                     ->label('Producto')
+                    ->state(fn (Kardex $record): string =>
+                        $record->producto_nombre
+                        . ($record->variante_nombre ? " — {$record->variante_nombre}" : '')
+                    )
                     ->description(fn (Kardex $record): ?string =>
                         $record->producto?->codigo_interno ?: null
                     )
