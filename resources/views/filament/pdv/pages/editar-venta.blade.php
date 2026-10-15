@@ -93,16 +93,12 @@
                 <div class="ev-search-results">
                     @foreach($resultadosProd as $prod)
                         @if($prod['tiene_variantes'])
-                            <div class="ev-prod-header">
-                                <x-filament::icon icon="heroicon-m-squares-2x2" style="width:.8rem;height:.8rem;" />
-                                {{ $prod['nombre'] }}
-                            </div>
                             @foreach($prod['variantes'] as $var)
                             <div class="ev-var-row"
                                 wire:click="agregarProducto({{ $prod['id'] }}, {{ $var['id'] }})"
                                 wire:key="var-{{ $var['id'] }}">
                                 <div class="ev-prod-info">
-                                    <div class="ev-prod-name">{{ $var['nombre'] }}</div>
+                                    <div class="ev-prod-name">{{ $prod['nombre'] }} ({{ $var['nombre'] }})</div>
                                     <div class="ev-prod-price">S/ {{ number_format($var['precio'], 2) }}</div>
                                 </div>
                                 <div class="ev-prod-stock">

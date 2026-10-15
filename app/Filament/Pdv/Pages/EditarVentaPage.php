@@ -295,8 +295,10 @@ class EditarVentaPage extends Page
             ->limit(10)
             ->get()
             ->map(function (Producto $p) {
-                $inv   = $p->inventario;
-                $stock = $inv ? (float) $inv->stock_real : null;
+                $inv         = $p->inventario;
+                $stock       = $inv ? (float) $inv->stock_real : null;
+                $comparteStk = (bool) $p->comparte_stock;
+                $poolStock   = $comparteStk ? (float) ($inv?->stock_real ?? 0) : null;
                 return [
                     'id'              => $p->id,
                     'nombre'          => $p->nombre,
@@ -311,7 +313,7 @@ class EditarVentaPage extends Page
                         'nombre'     => $v->valores->map(fn ($pav) => $pav->valor?->nombre)->filter()->implode(' / ') ?: "Variante {$v->id}",
                         'precio'     => (float) ($v->precio_final ?? $p->precio_venta),
                         'costo'      => (float) ($v->precio_costo ?? 0),
-                        'stock_real' => (float) ($v->inventario?->stock_real ?? 0),
+                        'stock_real' => $comparteStk ? $poolStock : (float) ($v->inventario?->stock_real ?? 0),
                     ])->values()->toArray(),
                 ];
             })
