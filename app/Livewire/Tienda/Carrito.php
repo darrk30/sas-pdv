@@ -691,14 +691,19 @@ class Carrito extends Component
         $total          = max(0.0, $subtotal - $descuentoCupon) + $costoEnvio;
 
         // ── Validar precios contra BD (previene manipulación por inspector) ──
+        $preciosCambiados = false;
         foreach ($items as $item) {
             $precioEsperado = $this->precioRealItem($item);
             if ($precioEsperado !== null && abs((float) $item->precio_unitario - $precioEsperado) > 0.01) {
-                $this->dispatch('toast',
-                    mensaje: 'El precio de "' . ($item->producto?->nombre ?? 'un producto') . '" ha cambiado. Recarga la página.',
-                    tipo: 'error');
-                return;
+                $item->update(['precio_unitario' => $precioEsperado]);
+                $preciosCambiados = true;
             }
+        }
+        if ($preciosCambiados) {
+            $this->dispatch('toast',
+                mensaje: 'Algunos precios han cambiado. Por favor revisa el carrito antes de confirmar.',
+                tipo: 'warning');
+            return;
         }
 
         try {
@@ -835,14 +840,22 @@ class Carrito extends Component
         $total          = max(0.0, $subtotal - $descuentoCupon) + $costoEnvio;
 
         // ── Validar precios contra BD ──────────────────────────────────────
-        foreach ($rawItems as $raw) {
+        $preciosCambiados = false;
+        $rawItems = $rawItems->map(function ($raw) use (&$preciosCambiados) {
             $precioEsperado = $this->precioRealGuest($raw);
             if ($precioEsperado !== null && abs((float) $raw['precio_unitario'] - $precioEsperado) > 0.01) {
-                $this->dispatch('toast',
-                    mensaje: 'El precio de "' . ($raw['nombre'] ?? 'un producto') . '" ha cambiado. Recarga la página.',
-                    tipo: 'error');
-                return;
+                $raw['precio_unitario'] = $precioEsperado;
+                $preciosCambiados = true;
             }
+            return $raw;
+        });
+        if ($preciosCambiados) {
+            $this->guestItems = array_values($rawItems->toArray());
+            $this->dispatch('carrito-actualizar-local', items: $this->guestItems);
+            $this->dispatch('toast',
+                mensaje: 'Algunos precios han cambiado. Por favor revisa el carrito antes de confirmar.',
+                tipo: 'warning');
+            return;
         }
 
         // Buscar cliente por DNI o crear uno nuevo (sin email/password)
@@ -1246,7 +1259,10 @@ class Carrito extends Component
             } elseif (! empty($det['variante_id'])) {
                 $variante = $detVariantesMap->get($det['variante_id']);
                 $prod = $variante?->producto;
-                if (! $prod?->control_de_stock) continue;
+                if (! $prod?->control_de_stock) {
+                    $this->_reservarInsumosReceta($empresaId, null, (int) $det['variante_id'], $cantidad, (bool) $prod->venta_sin_stock);
+                    continue;
+                }
 
                 if ($prod->comparte_stock) {
                     $cantBase = round($cantidad * $variante->factor(), 4);
@@ -1270,7 +1286,10 @@ class Carrito extends Component
             // ── Producto simple ────────────────────────────────────
             } elseif (! empty($det['producto_id'])) {
                 $producto = $detProductosMap->get($det['producto_id']);
-                if (! $producto?->control_de_stock) continue;
+                if (! $producto?->control_de_stock) {
+                    $this->_reservarInsumosReceta($empresaId, (int) $det['producto_id'], null, $cantidad, (bool) $producto->venta_sin_stock);
+                    continue;
+                }
                 $inv = $detInvProducto->get($det['producto_id']);
                 if (! $producto->venta_sin_stock) {
                     if (! $inv || (float) $inv->stock_reserva < $cantidad) {
@@ -1278,6 +1297,80 @@ class Carrito extends Component
                     }
                 }
                 if ($inv) $inv->update(['stock_reserva' => (float) $inv->stock_reserva - $cantidad]);
+            }
+        }
+    }
+
+    // Reserva stock_reserva de los insumos de una receta para productos sin control_de_stock.
+    // $ventaSinStockFinal: si el producto final tiene venta_sin_stock, permite consumir insumos aunque no tengan stock.
+    private function _reservarInsumosReceta(int $empresaId, ?int $productoId, ?int $varianteId, float $cantidad, bool $ventaSinStockFinal = false): void
+    {
+        $receta = \App\Models\Receta::where('empresa_id', $empresaId)
+            ->when($varianteId,
+                fn ($q) => $q->where('variante_id', $varianteId),
+                fn ($q) => $q->where('producto_id', $productoId)->whereNull('variante_id')
+            )
+            ->with([
+                'detalles.insumoProducto.unidadMedida',
+                'detalles.insumoVariante.producto',
+                'detalles.unidadMedida',
+            ])
+            ->first();
+
+        if (! $receta || $receta->detalles->isEmpty()) return;
+
+        foreach ($receta->detalles as $det) {
+            $cantInsumo = round($cantidad * (float) $det->cantidad, 4);
+
+            // Conversión de unidades para insumo de producto simple
+            if (! $det->insumo_variante_id && $det->insumo_producto_id && $det->unidadMedida) {
+                $prodUnidad = $det->insumoProducto?->unidadMedida;
+                if ($prodUnidad && $prodUnidad->id !== $det->unidad_medida_id) {
+                    $fr = (float) $det->unidadMedida->factor_base;
+                    $fp = (float) $prodUnidad->factor_base;
+                    if ($fp > 0) $cantInsumo = round($cantInsumo * $fr / $fp, 4);
+                }
+            }
+
+            if ($det->insumo_variante_id) {
+                $var  = $det->insumoVariante;
+                $prod = $var?->producto;
+                if (! $prod?->control_de_stock) continue;
+                $factor   = $var->factor();
+                $cantBase = round($cantInsumo * $factor, 4);
+                $permiteNegativo = $prod->venta_sin_stock || $ventaSinStockFinal;
+                if ($prod->comparte_stock) {
+                    $inv = Inventario::where('empresa_id', $empresaId)
+                        ->where('producto_id', $var->producto_id)
+                        ->whereNull('variante_id')
+                        ->lockForUpdate()->first();
+                } else {
+                    $inv = Inventario::where('empresa_id', $empresaId)
+                        ->where('variante_id', $det->insumo_variante_id)
+                        ->lockForUpdate()->first();
+                }
+                if (! $permiteNegativo) {
+                    if (! $inv || (float) $inv->stock_reserva < $cantBase) {
+                        $nombre = $prod->nombre ?? 'insumo';
+                        throw new \RuntimeException("Sin stock disponible para el insumo \"{$nombre}\".");
+                    }
+                }
+                $inv?->decrement('stock_reserva', $cantBase);
+            } elseif ($det->insumo_producto_id) {
+                $prod = $det->insumoProducto;
+                if (! $prod?->control_de_stock) continue;
+                $permiteNegativo = $prod->venta_sin_stock || $ventaSinStockFinal;
+                $inv = Inventario::where('empresa_id', $empresaId)
+                    ->where('producto_id', $det->insumo_producto_id)
+                    ->whereNull('variante_id')
+                    ->lockForUpdate()->first();
+                if (! $permiteNegativo) {
+                    if (! $inv || (float) $inv->stock_reserva < $cantInsumo) {
+                        $nombre = $prod->nombre ?? 'insumo';
+                        throw new \RuntimeException("Sin stock disponible para el insumo \"{$nombre}\".");
+                    }
+                }
+                $inv?->decrement('stock_reserva', $cantInsumo);
             }
         }
     }

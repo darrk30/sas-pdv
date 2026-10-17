@@ -94,7 +94,7 @@ class ProductCatalog extends Component
             $esDecimal    = $producto->unidadMedida?->esContinua() ?? false;
             $stockMax     = $producto->control_de_stock
                 ? $variante->stockDisponibleReserva($producto->empresa_id)
-                : null;
+                : (! $producto->venta_sin_stock ? $this->_stockMaxReceta(null, $variante->id, $producto->empresa_id) : null);
 
             $this->dispatch('product-selected', [
                 'tipo'            => 'variante',
@@ -125,7 +125,7 @@ class ProductCatalog extends Component
             $esDecimal = $producto->unidadMedida?->esContinua() ?? false;
             $stockMax  = $producto->control_de_stock
                 ? (float) ($producto->inventario?->stock_reserva ?? 0)
-                : null;
+                : (! $producto->venta_sin_stock ? $this->_stockMaxReceta($producto->id, null, $producto->empresa_id) : null);
 
             $this->dispatch('product-selected', [
                 'tipo'            => 'producto',
@@ -321,6 +321,68 @@ class ProductCatalog extends Component
             if (! $p->control_de_stock || $p->venta_sin_stock) return 0;
             return (($stockMap[$p->id] ?? 0) > 0) ? 0 : 1;
         })->values();
+    }
+
+    // Calcula el stock máximo vendible basado en insumos de receta para productos sin control_de_stock.
+    // Retorna null si no existe receta (sin limitación), o el mínimo de unidades fabricables.
+    private function _stockMaxReceta(?int $productoId, ?int $varianteId, int $empresaId): ?float
+    {
+        $receta = \App\Models\Receta::where('empresa_id', $empresaId)
+            ->when($varianteId,
+                fn ($q) => $q->where('variante_id', $varianteId),
+                fn ($q) => $q->where('producto_id', $productoId)->whereNull('variante_id')
+            )
+            ->with([
+                'detalles.insumoProducto.unidadMedida',
+                'detalles.insumoVariante.producto',
+                'detalles.unidadMedida',
+            ])
+            ->first();
+
+        if (! $receta || $receta->detalles->isEmpty()) return null;
+
+        $stockMin = PHP_INT_MAX;
+
+        foreach ($receta->detalles as $det) {
+            $cantPorUnidad = (float) $det->cantidad;
+            if ($cantPorUnidad <= 0) continue;
+
+            // Conversión de unidades para insumo de producto simple
+            if (! $det->insumo_variante_id && $det->insumo_producto_id && $det->unidadMedida) {
+                $prodUnidad = $det->insumoProducto?->unidadMedida;
+                if ($prodUnidad && $prodUnidad->id !== $det->unidad_medida_id) {
+                    $fr = (float) $det->unidadMedida->factor_base;
+                    $fp = (float) $prodUnidad->factor_base;
+                    if ($fp > 0) $cantPorUnidad = $cantPorUnidad * $fr / $fp;
+                }
+            }
+
+            if ($det->insumo_variante_id) {
+                $var  = $det->insumoVariante;
+                $prod = $var?->producto;
+                if (! $prod?->control_de_stock) continue; // insumo sin tracking → no limita
+                if ($prod->venta_sin_stock) continue;     // insumo permite negativo → no limita
+                $inv = $prod->comparte_stock
+                    ? \App\Models\Inventario::where('empresa_id', $empresaId)
+                        ->where('producto_id', $var->producto_id)->whereNull('variante_id')->first()
+                    : \App\Models\Inventario::where('empresa_id', $empresaId)
+                        ->where('variante_id', $det->insumo_variante_id)->first();
+                if (! $inv) { return 0.0; }
+                $factor = $var->factor();
+                $cantBase = $cantPorUnidad * $factor;
+                $stockMin = min($stockMin, $cantBase > 0 ? (float) $inv->stock_reserva / $cantBase : 0);
+            } elseif ($det->insumo_producto_id) {
+                $prod = $det->insumoProducto;
+                if (! $prod?->control_de_stock) continue; // insumo sin tracking → no limita
+                if ($prod->venta_sin_stock) continue;     // insumo permite negativo → no limita
+                $inv = \App\Models\Inventario::where('empresa_id', $empresaId)
+                    ->where('producto_id', $det->insumo_producto_id)->whereNull('variante_id')->first();
+                if (! $inv) { return 0.0; }
+                $stockMin = min($stockMin, $cantPorUnidad > 0 ? (float) $inv->stock_reserva / $cantPorUnidad : 0);
+            }
+        }
+
+        return $stockMin === PHP_INT_MAX ? null : floor($stockMin * 1000) / 1000;
     }
 
     public function render()

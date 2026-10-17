@@ -21,6 +21,7 @@ use App\Models\Venta;
 use App\Models\VentaPago;
 use App\Services\KardexService;
 use App\Services\PdfVentaService;
+use App\Services\VentaService;
 use App\Services\ReporteVentasExportService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -822,6 +823,22 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
             if ($d->tipo_item === TipoItem::Promocion)          return true;
             if ($d->producto?->control_de_stock)                return true;
             if ($d->variante?->producto?->control_de_stock)     return true;
+
+            // Sin control de stock pero con receta: los insumos sí tienen stock
+            if ($d->tipo_item === TipoItem::Producto && $d->producto_id) {
+                if (\App\Models\Receta::where('empresa_id', $venta->empresa_id)
+                    ->where('producto_id', $d->producto_id)->whereNull('variante_id')
+                    ->whereHas('detalles')->exists()) {
+                    return true;
+                }
+            }
+            if ($d->tipo_item === TipoItem::Variante && $d->variante_id) {
+                if (\App\Models\Receta::where('empresa_id', $venta->empresa_id)
+                    ->where('variante_id', $d->variante_id)
+                    ->whereHas('detalles')->exists()) {
+                    return true;
+                }
+            }
         }
 
         return false;
@@ -890,8 +907,9 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                 }
 
                 if ($revertir) {
-                    $kardex      = app(KardexService::class);
-                    $conceptoRev = "Reversión {$comprobante}";
+                    $kardex       = app(KardexService::class);
+                    $ventaService = app(VentaService::class);
+                    $conceptoRev  = "Reversión {$comprobante}";
 
                     foreach ($venta->detalles as $detalle) {
                         $cantidad = (float) $detalle->cantidad;
@@ -931,6 +949,8 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                                     ]);
                                 }
                             }
+                            // Restaurar insumos de receta (con o sin control_de_stock)
+                            $ventaService->restaurarReceta($empresaId, $detalle->producto_id, null, $cantidad, $venta, $conceptoRev);
                         } elseif ($detalle->tipo_item === TipoItem::Variante && $detalle->variante_id) {
                             $varRev = $detalle->variante;
                             $varRev?->loadMissing('producto.unidadMedida');
@@ -973,6 +993,8 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                                     ]);
                                 }
                             }
+                            // Restaurar insumos de receta (con o sin control_de_stock)
+                            $ventaService->restaurarReceta($empresaId, null, $detalle->variante_id, $cantidad, $venta, $conceptoRev);
                         } elseif ($detalle->tipo_item === TipoItem::Promocion && $detalle->promocion_id) {
                             Promocion::where('id', $detalle->promocion_id)
                                 ->decrement('usos_actuales', (int) $cantidad);

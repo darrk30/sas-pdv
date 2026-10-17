@@ -382,6 +382,7 @@ class VentaService
                                 'precio_total' => (float) $detalle->total,
                                 'stock_antes' => $antes, 'stock_despues' => $despues, 'fecha' => now(),
                             ]);
+                            $this->restaurarReceta($empresaId, $detalle->producto_id, null, $cantidad, $venta, $conceptoRev);
                         }
                     }
                 } elseif ($detalle->tipo_item === TipoItem::Variante && $detalle->variante_id) {
@@ -415,6 +416,7 @@ class VentaService
                                 'precio_total' => (float) $detalle->total,
                                 'stock_antes' => $antes, 'stock_despues' => $despues, 'fecha' => now(),
                             ]);
+                            $this->restaurarReceta($empresaId, null, $detalle->variante_id, $cantidad, $venta, $conceptoRev);
                         }
                     }
                 } elseif ($detalle->tipo_item === TipoItem::Promocion && $detalle->promocion_id) {
@@ -523,6 +525,7 @@ class VentaService
                                 'precio_total'      => round((float) $det->precio_unitario * $diff, 2),
                                 'stock_antes'       => $antes, 'stock_despues' => $despues, 'fecha' => now(),
                             ]);
+                            $this->restaurarReceta($empresaId, $det->producto_id, null, $diff, $venta, $concepto);
                         }
                     }
                 } elseif ($det->tipo_item === TipoItem::Variante && $det->variante_id) {
@@ -556,6 +559,7 @@ class VentaService
                                 'precio_total'      => round((float) $det->precio_unitario * $diff, 2),
                                 'stock_antes'       => $antes, 'stock_despues' => $despues, 'fecha' => now(),
                             ]);
+                            $this->restaurarReceta($empresaId, null, $det->variante_id, $diff, $venta, $concepto);
                         }
                     }
                 } elseif ($det->tipo_item === TipoItem::Promocion && $det->promocion_id) {
@@ -804,10 +808,18 @@ class VentaService
     private function reducirStockProducto(
         int $empresaId, int $productoId, string $nombre,
         float $cantidad, float $precio, Venta $venta, string $comprobante,
-        bool $stockYaReservado = false
+        bool $stockYaReservado = false, bool $procesarReceta = true, ?string $notas = null,
+        bool $forzarVentaSinStock = false
     ): void {
         $producto = Producto::with('unidadMedida')->find($productoId);
-        if (! $producto?->control_de_stock) return;
+        if (! $producto?->control_de_stock) {
+            // Sin control de stock: no se reduce inventario propio,
+            // pero sí se consumen insumos de la receta si existe.
+            if ($procesarReceta) {
+                $this->consumirReceta($empresaId, $productoId, null, $cantidad, $venta, $comprobante, $stockYaReservado, (bool) $producto->venta_sin_stock || $forzarVentaSinStock);
+            }
+            return;
+        }
 
         $inv = Inventario::where('empresa_id', $empresaId)
             ->where('producto_id', $productoId)
@@ -818,13 +830,15 @@ class VentaService
 
         $stockAntes = (float) $inv->stock_real;
 
-        if (! $producto->venta_sin_stock && $stockAntes < $cantidad) {
+        $permiteNegativo = $producto->venta_sin_stock || $forzarVentaSinStock;
+
+        if (! $permiteNegativo && $stockAntes < $cantidad) {
             throw new \RuntimeException(
                 "Stock insuficiente para \"{$nombre}\": disponible {$stockAntes}, solicitado {$cantidad}."
             );
         }
 
-        $stockDespues = $producto->venta_sin_stock
+        $stockDespues = $permiteNegativo
             ? $stockAntes - $cantidad
             : max(0, $stockAntes - $cantidad);
 
@@ -834,7 +848,7 @@ class VentaService
         }
         $inv->update($update);
 
-        $this->kardex->registrar([
+        $kardexData = [
             'empresa_id'        => $empresaId,
             'user_id'           => auth()->id(),
             'movible'           => $venta,
@@ -851,19 +865,33 @@ class VentaService
             'precio_total'      => $precio * $cantidad,
             'stock_antes'       => $stockAntes,
             'stock_despues'     => $stockDespues,
-        ]);
+        ];
+        if ($notas !== null) $kardexData['notas'] = $notas;
+        $this->kardex->registrar($kardexData);
+
+        if ($procesarReceta) {
+            $this->consumirReceta($empresaId, $productoId, null, $cantidad, $venta, $comprobante, $stockYaReservado, $permiteNegativo);
+        }
     }
 
     private function reducirStockVariante(
         int $empresaId, int $varianteId, string $nombre,
         float $cantidad, float $precio, Venta $venta, string $comprobante,
-        bool $stockYaReservado = false
+        bool $stockYaReservado = false, bool $procesarReceta = true, ?string $notas = null,
+        bool $forzarVentaSinStock = false
     ): void {
         $variante = Variante::with('producto.unidadMedida')->find($varianteId);
         if (! $variante) return;
 
         $producto = $variante->producto;
-        if (! $producto?->control_de_stock) return;
+        if (! $producto?->control_de_stock) {
+            // Sin control de stock: no se reduce inventario propio,
+            // pero sí se consumen insumos de la receta si existe.
+            if ($procesarReceta) {
+                $this->consumirReceta($empresaId, null, $varianteId, $cantidad, $venta, $comprobante, $stockYaReservado, (bool) $producto->venta_sin_stock || $forzarVentaSinStock);
+            }
+            return;
+        }
 
         $factor       = $variante->factor();
         $cantidadBase = round($cantidad * $factor, 4);
@@ -873,13 +901,15 @@ class VentaService
 
         $stockAntes = (float) $inv->stock_real;
 
-        if (! $producto->venta_sin_stock && $stockAntes < $cantidadBase) {
+        $permiteNegativo = $producto->venta_sin_stock || $forzarVentaSinStock;
+
+        if (! $permiteNegativo && $stockAntes < $cantidadBase) {
             throw new \RuntimeException(
                 "Stock insuficiente para \"{$nombre}\": disponible {$stockAntes}, solicitado {$cantidadBase}."
             );
         }
 
-        $stockDespues = $producto->venta_sin_stock
+        $stockDespues = $permiteNegativo
             ? $stockAntes - $cantidadBase
             : max(0, $stockAntes - $cantidadBase);
 
@@ -896,7 +926,7 @@ class VentaService
             ? round($precio / $cantidadBase, 6)
             : $precio;
 
-        $this->kardex->registrar([
+        $kardexData = [
             'empresa_id'        => $empresaId,
             'user_id'           => auth()->id(),
             'movible'           => $venta,
@@ -913,7 +943,131 @@ class VentaService
             'precio_total'      => $precio * $cantidad,
             'stock_antes'       => $stockAntes,
             'stock_despues'     => $stockDespues,
-        ]);
+        ];
+        if ($notas !== null) $kardexData['notas'] = $notas;
+        $this->kardex->registrar($kardexData);
+
+        if ($procesarReceta) {
+            $this->consumirReceta($empresaId, null, $varianteId, $cantidad, $venta, $comprobante, $stockYaReservado, $permiteNegativo);
+        }
+    }
+
+    // ── Recetas: consumo y restauración de insumos ───────────────────────────
+
+    public function consumirReceta(
+        int $empresaId, ?int $productoId, ?int $varianteId, float $cantidad,
+        Venta $venta, string $concepto, bool $stockYaReservado = false, bool $ventaSinStockFinal = false
+    ): void {
+        $receta = \App\Models\Receta::where('empresa_id', $empresaId)
+            ->when($varianteId,
+                fn ($q) => $q->where('variante_id', $varianteId),
+                fn ($q) => $q->where('producto_id', $productoId)->whereNull('variante_id')
+            )
+            ->with([
+                'detalles.unidadMedida',
+                'detalles.insumoProducto.unidadMedida',
+                'detalles.insumoVariante.producto.unidadMedida',
+            ])
+            ->first();
+
+        if (! $receta || $receta->detalles->isEmpty()) return;
+
+        foreach ($receta->detalles as $det) {
+            $cantBase   = round($cantidad * (float) $det->cantidad, 4);
+            $nombre     = $det->nombre_insumo;
+
+            // Conversión de unidades para insumos de producto simple:
+            // si la unidad de la receta difiere de la unidad del producto,
+            // escala usando factor_base de cada unidad.
+            if (! $det->insumo_variante_id && $det->insumo_producto_id && $det->unidadMedida) {
+                $productoUnidad = $det->insumoProducto?->unidadMedida;
+                if ($productoUnidad && $productoUnidad->id !== $det->unidad_medida_id) {
+                    $factorReceta   = (float) $det->unidadMedida->factor_base;
+                    $factorProducto = (float) $productoUnidad->factor_base;
+                    if ($factorProducto > 0) {
+                        $cantBase = round($cantBase * $factorReceta / $factorProducto, 4);
+                    }
+                }
+            }
+
+            if ($det->insumo_variante_id) {
+                $this->reducirStockVariante(
+                    $empresaId, $det->insumo_variante_id, $nombre,
+                    $cantBase, 0, $venta, $concepto, $stockYaReservado, false, 'Insumo de receta', $ventaSinStockFinal
+                );
+            } elseif ($det->insumo_producto_id) {
+                $this->reducirStockProducto(
+                    $empresaId, $det->insumo_producto_id, $nombre,
+                    $cantBase, 0, $venta, $concepto, $stockYaReservado, false, 'Insumo de receta', $ventaSinStockFinal
+                );
+            }
+        }
+    }
+
+    public function restaurarReceta(
+        int $empresaId, ?int $productoId, ?int $varianteId, float $cantidad,
+        Venta $venta, string $concepto
+    ): void {
+        $receta = \App\Models\Receta::where('empresa_id', $empresaId)
+            ->when($varianteId,
+                fn ($q) => $q->where('variante_id', $varianteId),
+                fn ($q) => $q->where('producto_id', $productoId)->whereNull('variante_id')
+            )
+            ->with([
+                'detalles.insumoProducto',
+                'detalles.insumoVariante.producto.unidadMedida',
+            ])
+            ->first();
+
+        if (! $receta || $receta->detalles->isEmpty()) return;
+
+        foreach ($receta->detalles as $det) {
+            $cantInsumo = round($cantidad * (float) $det->cantidad, 4);
+
+            if ($det->insumo_variante_id && $det->insumoVariante) {
+                $var  = $det->insumoVariante;
+                $prod = $var->producto;
+                if (! $prod?->control_de_stock) continue;
+                $factor   = $var->factor();
+                $cantBase = round($cantInsumo * $factor, 4);
+                $inv = $var->resolverInventario($empresaId, lock: true);
+                if (! $inv) continue;
+                $antes = (float) $inv->stock_real;
+                $inv->update([
+                    'stock_real'    => $antes + $cantBase,
+                    'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantBase),
+                ]);
+                $this->kardex->registrar([
+                    'empresa_id' => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
+                    'producto_id' => $var->producto_id, 'variante_id' => $det->insumo_variante_id,
+                    'tipo' => 'entrada', 'concepto' => $concepto, 'notas' => 'Receta restaurada',
+                    'cantidad' => $cantInsumo, 'unidad' => $prod->unidadMedida?->nombre ?? 'unidad',
+                    'factor_conversion' => $factor, 'cantidad_base' => $cantBase,
+                    'stock_antes' => $antes, 'stock_despues' => $antes + $cantBase, 'fecha' => now(),
+                ]);
+            } elseif ($det->insumo_producto_id && $det->insumoProducto) {
+                $prod = $det->insumoProducto;
+                if (! $prod->control_de_stock) continue;
+                $inv = Inventario::where('empresa_id', $empresaId)
+                    ->where('producto_id', $det->insumo_producto_id)
+                    ->whereNull('variante_id')
+                    ->lockForUpdate()->first();
+                if (! $inv) continue;
+                $antes = (float) $inv->stock_real;
+                $inv->update([
+                    'stock_real'    => $antes + $cantInsumo,
+                    'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantInsumo),
+                ]);
+                $this->kardex->registrar([
+                    'empresa_id' => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
+                    'producto_id' => $det->insumo_producto_id, 'variante_id' => null,
+                    'tipo' => 'entrada', 'concepto' => $concepto, 'notas' => 'Receta restaurada',
+                    'cantidad' => $cantInsumo, 'unidad' => $prod->unidadMedida?->nombre ?? 'unidad',
+                    'factor_conversion' => 1, 'cantidad_base' => $cantInsumo,
+                    'stock_antes' => $antes, 'stock_despues' => $antes + $cantInsumo, 'fecha' => now(),
+                ]);
+            }
+        }
     }
 
     // Restaura stock de UN componente de promo (variante o producto) al anular/reducir.

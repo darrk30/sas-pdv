@@ -466,6 +466,22 @@ class VentasSesionPage extends Page implements HasTable
             if ($d->tipo_item === TipoItem::Promocion)          return true;
             if ($d->producto?->control_de_stock)                return true;
             if ($d->variante?->producto?->control_de_stock)     return true;
+
+            // Sin control de stock pero con receta: los insumos sí tienen stock
+            if ($d->tipo_item === TipoItem::Producto && $d->producto_id) {
+                if (\App\Models\Receta::where('empresa_id', $venta->empresa_id)
+                    ->where('producto_id', $d->producto_id)->whereNull('variante_id')
+                    ->whereHas('detalles')->exists()) {
+                    return true;
+                }
+            }
+            if ($d->tipo_item === TipoItem::Variante && $d->variante_id) {
+                if (\App\Models\Receta::where('empresa_id', $venta->empresa_id)
+                    ->where('variante_id', $d->variante_id)
+                    ->whereHas('detalles')->exists()) {
+                    return true;
+                }
+            }
         }
 
         return false;
@@ -522,6 +538,8 @@ class VentasSesionPage extends Page implements HasTable
                     $kardex      = app(KardexService::class);
                     $conceptoRev = "Reversión {$comprobante}";
 
+                    $ventaService = app(\App\Services\VentaService::class);
+
                     foreach ($venta->detalles as $detalle) {
                         $cantidad = (float) $detalle->cantidad;
 
@@ -562,6 +580,8 @@ class VentasSesionPage extends Page implements HasTable
                                     ]);
                                 }
                             }
+                            // Restaurar insumos de receta (con o sin control de stock)
+                            $ventaService->restaurarReceta($empresaId, $detalle->producto_id, null, $cantidad, $venta, $conceptoRev);
                         }
 
                         // ── Variante ──────────────────────────────────────────
@@ -607,6 +627,8 @@ class VentasSesionPage extends Page implements HasTable
                                     ]);
                                 }
                             }
+                            // Restaurar insumos de receta (con o sin control de stock)
+                            $ventaService->restaurarReceta($empresaId, null, $detalle->variante_id, $cantidad, $venta, $conceptoRev);
                         }
 
                         // ── Promoción: revertir cada componente del combo ─────

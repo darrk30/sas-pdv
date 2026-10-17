@@ -172,6 +172,7 @@ class Empresa extends Model
             'gestion_inventario'  => true,
             'kardex'              => true,
             'ajustes_stock'       => true,
+            'recetas'             => false,
             // Pedidos Web
             'pedidos_web'         => true,
             'ordenes_web'         => true,
@@ -233,6 +234,7 @@ class Empresa extends Model
         'gestion_inventario'  => 'inventario',
         'kardex'              => 'inventario',
         'ajustes_stock'       => 'inventario',
+        'recetas'             => 'inventario',
         // Pedidos Web
         'ordenes_web'         => 'pedidos_web',
         'clientes'            => 'pedidos_web',

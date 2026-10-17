@@ -20,6 +20,7 @@ use App\Models\VentaDetalle;
 use App\Models\VentaPago;
 use App\Services\EtiquetaStockService;
 use App\Services\KardexService;
+use App\Services\VentaService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Repeater;
@@ -522,7 +523,8 @@ class EditOrden extends EditRecord
     // stock_reserva NO se toca aquí (ya fue decrementado al crear la orden web).
     private function descontarStockReal($orden, int $empresaId, Venta $venta, string $concepto): void
     {
-        $kardex = app(KardexService::class);
+        $kardex      = app(KardexService::class);
+        $ventaService = app(VentaService::class);
 
         foreach ($orden->detalles as $detalle) {
             $cantidad = (float) $detalle->cantidad;
@@ -605,7 +607,11 @@ class EditOrden extends EditRecord
             } elseif ($detalle->variante_id) {
                 $variante = Variante::with('producto.unidadMedida')->find($detalle->variante_id);
                 $prod = $variante?->producto;
-                if (! $prod?->control_de_stock) continue;
+                if (! $prod?->control_de_stock) {
+                    // Sin control de stock propio: consumir insumos de la receta si existe
+                    $ventaService->consumirReceta($empresaId, null, $detalle->variante_id, $cantidad, $venta, $concepto, true, (bool) $prod->venta_sin_stock);
+                    continue;
+                }
 
                 if ($prod->comparte_stock) {
                     $factor   = $variante->factor();
@@ -671,7 +677,11 @@ class EditOrden extends EditRecord
             // ── Producto simple ────────────────────────────────────
             } elseif ($detalle->producto_id) {
                 $producto = Producto::with('unidadMedida')->find($detalle->producto_id);
-                if (! $producto?->control_de_stock) continue;
+                if (! $producto?->control_de_stock) {
+                    // Sin control de stock propio: consumir insumos de la receta si existe
+                    $ventaService->consumirReceta($empresaId, $detalle->producto_id, null, $cantidad, $venta, $concepto, true, (bool) $producto->venta_sin_stock);
+                    continue;
+                }
                 $inv = Inventario::where('empresa_id', $empresaId)
                     ->where('producto_id', $detalle->producto_id)
                     ->whereNull('variante_id')

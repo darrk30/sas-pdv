@@ -7,12 +7,14 @@ use App\Models\Cupon;
 use App\Models\Empresa;
 use App\Models\Mesa;
 use App\Models\Plan;
+use App\Models\Receta;
 use App\Models\TareaProgramada;
 use App\Observers\MesaObserver;
 use App\Policies\AnuncioPolicy;
 use App\Policies\CuponPolicy;
 use App\Policies\EmpresaPolicy;
 use App\Policies\PlanPolicy;
+use App\Policies\RecetaPolicy;
 use App\Policies\TareaProgramadaPolicy;
 use App\Events\VentaCompletada;
 use App\Listeners\EmitirComprobanteElectronico;
@@ -43,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Anuncio::class, AnuncioPolicy::class);
         Gate::policy(TareaProgramada::class, TareaProgramadaPolicy::class);
         Gate::policy(Cupon::class, CuponPolicy::class);
+        Gate::policy(Receta::class, RecetaPolicy::class);
 
         Event::listen(VentaCompletada::class, EmitirComprobanteElectronico::class);
 
