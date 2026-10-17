@@ -12,7 +12,7 @@ class RecetaDetalle extends Model
         'insumo_producto_id',
         'insumo_variante_id',
         'cantidad',
-        'unidad',
+        'unidad_medida_id',
     ];
 
     protected $casts = [
@@ -34,7 +34,11 @@ class RecetaDetalle extends Model
         return $this->belongsTo(Variante::class, 'insumo_variante_id');
     }
 
-    /** Nombre legible del insumo. */
+    public function unidadMedida(): BelongsTo
+    {
+        return $this->belongsTo(UnidadesMedida::class, 'unidad_medida_id');
+    }
+
     public function getNombreInsumoAttribute(): string
     {
         if ($this->insumo_variante_id && $this->insumoVariante) {

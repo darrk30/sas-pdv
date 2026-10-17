@@ -177,10 +177,14 @@ class KardexPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('producto_nombre')
                     ->label('Producto')
-                    ->state(fn (Kardex $record): string =>
-                        $record->producto_nombre
-                        . ($record->variante_nombre ? " — {$record->variante_nombre}" : '')
-                    )
+                    ->state(function (Kardex $record): string {
+                        $nombre   = $record->producto_nombre ?? '';
+                        $variante = $record->variante_nombre;
+                        if ($variante && ! str_contains($nombre, $variante)) {
+                            $nombre .= " — {$variante}";
+                        }
+                        return $nombre;
+                    })
                     ->description(fn (Kardex $record): ?string =>
                         $record->producto?->codigo_interno ?: null
                     )
@@ -205,6 +209,7 @@ class KardexPage extends Page implements HasForms, HasTable
                             && $record->tipo === 'salida'
                             && (float) ($record->precio_unitario ?? 0) == 0
                             && ! str_starts_with((string) $record->notas, 'Promo:')
+                            && $record->notas !== 'Insumo de receta'
                             ? '<div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Cortesía</div>'
                             : '')
                     )

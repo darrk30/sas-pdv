@@ -22,6 +22,7 @@ class RoleForm
         $tieneVariantes     = $empresa?->tieneFeature('variantes') ?? false;
         $tieneFE            = $empresa?->tieneFacturacionElectronica() ?? false;
         $tieneListaPrecios  = $empresa?->tieneFeature('lista_precios') ?? false;
+        $tieneRecetas       = $empresa?->tieneModulo('recetas') ?? false;
 
         // Módulos completos a excluir según modulos_activos de la empresa
         $excludeModulos = [];
@@ -41,6 +42,7 @@ class RoleForm
             $excludeModulos[] = 'cuentas_cobrar';
             $excludeModulos[] = 'cuentas_pagar';
         }
+        if (! $tieneRecetas)                                              $excludeModulos[] = 'recetas';
 
         // Permisos individuales a excluir por sub-módulo inactivo dentro de 'config'
         $excludePermisos = [];

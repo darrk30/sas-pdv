@@ -89,6 +89,12 @@ class SuperAdminSeeder extends Seeder
         ['module' => 'productos', 'module_label' => 'Productos / Inventario', 'name' => 'ajustes.anular',     'description' => 'Anular ajustes confirmados'],
         ['module' => 'productos', 'module_label' => 'Productos / Inventario', 'name' => 'ajustes.reporte',    'description' => 'Ver reporte de ajustes'],
 
+        // ── Recetas ───────────────────────────────────────────────────────────
+        ['module' => 'recetas', 'module_label' => 'Recetas de Productos', 'name' => 'recetas.ver',      'description' => 'Ver listado de recetas'],
+        ['module' => 'recetas', 'module_label' => 'Recetas de Productos', 'name' => 'recetas.crear',    'description' => 'Crear recetas de productos'],
+        ['module' => 'recetas', 'module_label' => 'Recetas de Productos', 'name' => 'recetas.editar',   'description' => 'Editar recetas existentes'],
+        ['module' => 'recetas', 'module_label' => 'Recetas de Productos', 'name' => 'recetas.eliminar', 'description' => 'Eliminar recetas'],
+
         // ── Pedidos Web / Tienda ───────────────────────────────────────────────
         ['module' => 'tienda', 'module_label' => 'Pedidos Web / Tienda', 'name' => 'ordenes.ver',           'description' => 'Ver órdenes de clientes web'],
         ['module' => 'tienda', 'module_label' => 'Pedidos Web / Tienda', 'name' => 'ordenes.gestionar',     'description' => 'Editar y procesar órdenes'],

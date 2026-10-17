@@ -277,6 +277,7 @@ class EmpresaForm
                                                     ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('inventario', ['gestion_productos','gestion_inventario','kardex','ajustes_stock'], $get, $set)),
                                                 Toggle::make('modulos_activos.ajustes_stock')->label('Ajustes de Stock')->default(true)->live()
                                                     ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('inventario', ['gestion_productos','gestion_inventario','kardex','ajustes_stock'], $get, $set)),
+                                                Toggle::make('modulos_activos.recetas')->label('Recetas de Productos')->default(false)->live(),
                                             ])->columnSpanFull(),
                                         ]),
 

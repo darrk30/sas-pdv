@@ -163,7 +163,10 @@ trait ValidaStockOrden
                 }
             } elseif ($varianteId) {
                 $variante = $variantesMap[$varianteId] ?? null;
-                if (!$variante?->producto?->control_de_stock) continue;
+                if (!$variante?->producto?->control_de_stock) {
+                    $this->_reservarInsumosReceta($empresaId, null, $varianteId, $qty, (bool) ($variante?->producto?->venta_sin_stock ?? false));
+                    continue;
+                }
                 if ($variante->producto->comparte_stock) {
                     $cantBase = round($qty * $variante->factor(), 4);
                     $expr = $variante->producto->venta_sin_stock
@@ -186,7 +189,10 @@ trait ValidaStockOrden
                 $productosAfectados[] = $variante->producto_id;
             } elseif ($productoId) {
                 $producto = $productosMap[$productoId] ?? null;
-                if (!$producto?->control_de_stock) continue;
+                if (!$producto?->control_de_stock) {
+                    $this->_reservarInsumosReceta($empresaId, $productoId, null, $qty, (bool) ($producto?->venta_sin_stock ?? false));
+                    continue;
+                }
                 $expr = $producto->venta_sin_stock
                     ? "stock_reserva - {$qty}"
                     : "GREATEST(0, stock_reserva - {$qty})";
@@ -244,7 +250,10 @@ trait ValidaStockOrden
                 }
             } elseif ($varianteId) {
                 $variante = Variante::with('producto')->find($varianteId);
-                if (!$variante?->producto?->control_de_stock) continue;
+                if (!$variante?->producto?->control_de_stock) {
+                    $this->_liberarInsumosReceta($empresaId, null, $varianteId, $qty);
+                    continue;
+                }
                 if ($variante->producto->comparte_stock) {
                     $cantBase = round($qty * $variante->factor(), 4);
                     DB::table('inventarios')
@@ -261,7 +270,10 @@ trait ValidaStockOrden
                 $productosAfectados[] = $variante->producto_id;
             } elseif ($productoId) {
                 $producto = Producto::find($productoId);
-                if (!$producto?->control_de_stock) continue;
+                if (!$producto?->control_de_stock) {
+                    $this->_liberarInsumosReceta($empresaId, $productoId, null, $qty);
+                    continue;
+                }
                 DB::table('inventarios')
                     ->where('empresa_id', $empresaId)
                     ->where('producto_id', $productoId)
@@ -283,6 +295,131 @@ trait ValidaStockOrden
      * Expande los productos internos de una promo en el mapa de demanda.
      * Solo incluye productos con control_de_stock habilitado.
      */
+    // Libera stock_reserva de los insumos de una receta para productos sin control_de_stock.
+    private function _reservarInsumosReceta(int $empresaId, ?int $productoId, ?int $varianteId, float $cantidad, bool $ventaSinStockFinal = false): void
+    {
+        $receta = \App\Models\Receta::where('empresa_id', $empresaId)
+            ->when($varianteId,
+                fn ($q) => $q->where('variante_id', $varianteId),
+                fn ($q) => $q->where('producto_id', $productoId)->whereNull('variante_id')
+            )
+            ->with([
+                'detalles.insumoProducto.unidadMedida',
+                'detalles.insumoVariante.producto',
+                'detalles.unidadMedida',
+            ])
+            ->first();
+
+        if (! $receta || $receta->detalles->isEmpty()) return;
+
+        foreach ($receta->detalles as $det) {
+            $cantInsumo = round($cantidad * (float) $det->cantidad, 4);
+
+            // Conversión de unidades para insumo de producto simple
+            if (! $det->insumo_variante_id && $det->insumo_producto_id && $det->unidadMedida) {
+                $prodUnidad = $det->insumoProducto?->unidadMedida;
+                if ($prodUnidad && $prodUnidad->id !== $det->unidad_medida_id) {
+                    $fr = (float) $det->unidadMedida->factor_base;
+                    $fp = (float) $prodUnidad->factor_base;
+                    if ($fp > 0) $cantInsumo = round($cantInsumo * $fr / $fp, 4);
+                }
+            }
+
+            if ($det->insumo_variante_id) {
+                $var  = $det->insumoVariante;
+                $prod = $var?->producto;
+                if (! $prod?->control_de_stock) continue;
+                $cantBase        = round($cantInsumo * $var->factor(), 4);
+                $permiteNegativo = $prod->venta_sin_stock || $ventaSinStockFinal;
+                $expr            = $permiteNegativo
+                    ? "stock_reserva - {$cantBase}"
+                    : "GREATEST(0, stock_reserva - {$cantBase})";
+                if ($prod->comparte_stock) {
+                    DB::table('inventarios')
+                        ->where('empresa_id', $empresaId)
+                        ->where('producto_id', $var->producto_id)
+                        ->whereNull('variante_id')
+                        ->update(['stock_reserva' => DB::raw($expr)]);
+                } else {
+                    DB::table('inventarios')
+                        ->where('empresa_id', $empresaId)
+                        ->where('variante_id', $det->insumo_variante_id)
+                        ->update(['stock_reserva' => DB::raw($expr)]);
+                }
+            } elseif ($det->insumo_producto_id) {
+                $prod = $det->insumoProducto;
+                if (! $prod?->control_de_stock) continue;
+                $permiteNegativo = $prod->venta_sin_stock || $ventaSinStockFinal;
+                $expr            = $permiteNegativo
+                    ? "stock_reserva - {$cantInsumo}"
+                    : "GREATEST(0, stock_reserva - {$cantInsumo})";
+                DB::table('inventarios')
+                    ->where('empresa_id', $empresaId)
+                    ->where('producto_id', $det->insumo_producto_id)
+                    ->whereNull('variante_id')
+                    ->update(['stock_reserva' => DB::raw($expr)]);
+            }
+        }
+    }
+
+    private function _liberarInsumosReceta(int $empresaId, ?int $productoId, ?int $varianteId, float $cantidad): void
+    {
+        $receta = \App\Models\Receta::where('empresa_id', $empresaId)
+            ->when($varianteId,
+                fn ($q) => $q->where('variante_id', $varianteId),
+                fn ($q) => $q->where('producto_id', $productoId)->whereNull('variante_id')
+            )
+            ->with([
+                'detalles.insumoProducto.unidadMedida',
+                'detalles.insumoVariante.producto',
+                'detalles.unidadMedida',
+            ])
+            ->first();
+
+        if (! $receta || $receta->detalles->isEmpty()) return;
+
+        foreach ($receta->detalles as $det) {
+            $cantInsumo = round($cantidad * (float) $det->cantidad, 4);
+
+            // Conversión de unidades para insumo de producto simple
+            if (! $det->insumo_variante_id && $det->insumo_producto_id && $det->unidadMedida) {
+                $prodUnidad = $det->insumoProducto?->unidadMedida;
+                if ($prodUnidad && $prodUnidad->id !== $det->unidad_medida_id) {
+                    $fr = (float) $det->unidadMedida->factor_base;
+                    $fp = (float) $prodUnidad->factor_base;
+                    if ($fp > 0) $cantInsumo = round($cantInsumo * $fr / $fp, 4);
+                }
+            }
+
+            if ($det->insumo_variante_id) {
+                $var  = $det->insumoVariante;
+                $prod = $var?->producto;
+                if (! $prod?->control_de_stock) continue;
+                $cantBase = round($cantInsumo * $var->factor(), 4);
+                if ($prod->comparte_stock) {
+                    DB::table('inventarios')
+                        ->where('empresa_id', $empresaId)
+                        ->where('producto_id', $var->producto_id)
+                        ->whereNull('variante_id')
+                        ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantBase})")]);
+                } else {
+                    DB::table('inventarios')
+                        ->where('empresa_id', $empresaId)
+                        ->where('variante_id', $det->insumo_variante_id)
+                        ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantBase})")]);
+                }
+            } elseif ($det->insumo_producto_id) {
+                $prod = $det->insumoProducto;
+                if (! $prod?->control_de_stock) continue;
+                DB::table('inventarios')
+                    ->where('empresa_id', $empresaId)
+                    ->where('producto_id', $det->insumo_producto_id)
+                    ->whereNull('variante_id')
+                    ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantInsumo})")]);
+            }
+        }
+    }
+
     private function expandirPromoParaStock(int $promoId, float $cantPromo, array &$mapa): void
     {
         static $cache = [];
