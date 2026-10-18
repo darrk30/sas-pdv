@@ -5,18 +5,34 @@ namespace App\Filament\Resources\Empresas\Pages;
 use App\Filament\Resources\Empresas\EmpresaResource;
 use App\Models\Empresa;
 use App\Services\FacturadorService;
-use Filament\Actions\DeleteAction;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Livewire\Attributes\On;
 
 class EditEmpresa extends EditRecord
 {
     protected static string $resource = EmpresaResource::class;
 
+    #[On('cancelar-empresa-eliminar')]
+    public function cancelarEliminar(): void
+    {
+        $this->unmountAction();
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            Action::make('eliminar')
+                ->label('Eliminar empresa')
+                ->icon('heroicon-o-trash')
+                ->color('danger')
+                ->modalHeading('Eliminar empresa')
+                ->modalContent(fn () => view('livewire.admin.eliminar-empresa-wrapper', [
+                    'empresaId' => $this->record->id,
+                ]))
+                ->modalFooterActions([])
+                ->modalWidth('lg'),
         ];
     }
 

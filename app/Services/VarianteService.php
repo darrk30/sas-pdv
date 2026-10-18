@@ -100,7 +100,7 @@ class VarianteService
                 foreach ($comb as $data) {
                     $precioFinal += $data['precio'];
 
-                    VarianteValor::updateOrCreate([
+                    VarianteValor::insertOrIgnore([
                         'variante_id'                 => $variante->id,
                         'producto_atributo_valors_id' => $data['pav_id'],
                     ]);
