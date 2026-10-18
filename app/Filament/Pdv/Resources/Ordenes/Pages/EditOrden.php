@@ -673,6 +673,8 @@ class EditOrden extends EditRecord
                         'stock_despues'     => $despues,
                     ]);
                 }
+                // Con control de stock propio también consumir insumos si tiene receta
+                $ventaService->consumirReceta($empresaId, null, $detalle->variante_id, $cantidad, $venta, $concepto, true, (bool) $prod->venta_sin_stock);
 
             // ── Producto simple ────────────────────────────────────
             } elseif ($detalle->producto_id) {
@@ -709,6 +711,8 @@ class EditOrden extends EditRecord
                     'stock_antes'       => $antes,
                     'stock_despues'     => $despues,
                 ]);
+                // Con control de stock propio también consumir insumos si tiene receta
+                $ventaService->consumirReceta($empresaId, $detalle->producto_id, null, $cantidad, $venta, $concepto, true, (bool) $producto->venta_sin_stock);
             }
         }
     }
