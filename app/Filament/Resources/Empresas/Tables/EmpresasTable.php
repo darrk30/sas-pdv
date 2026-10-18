@@ -78,7 +78,7 @@ class EmpresasTable
                 TextColumn::make('fecha_fin')
                     ->label('Vence')
                     ->date('d/m/Y')
-                    ->default('—')
+                    ->placeholder('—')
                     ->color(fn ($record) => $record->fecha_fin && $record->fecha_fin < now() ? 'danger' : null)
                     ->sortable(),
 
