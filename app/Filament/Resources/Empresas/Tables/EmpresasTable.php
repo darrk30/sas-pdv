@@ -122,7 +122,8 @@ class EmpresasTable
             ->toolbarActions([
                 BulkActionGroup::make([]),
             ])
-            ->defaultSort('monto_mes', 'desc');
+            ->defaultSort('monto_mes', 'desc')
+            ->persistSortInSession(false);
     }
 }
 
