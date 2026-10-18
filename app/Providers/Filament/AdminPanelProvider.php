@@ -24,6 +24,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use ShuvroRoy\FilamentSpatieLaravelBackup\FilamentSpatieLaravelBackupPlugin;
 use Spatie\Permission\PermissionRegistrar;
 
 class AdminPanelProvider extends PanelProvider
@@ -61,6 +62,23 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Usuarios'),
                 NavigationGroup::make('Sistema')->collapsed(),
                 NavigationGroup::make('Configuración')->collapsed(),
+            ])
+            ->plugins([
+                FilamentSpatieLaravelBackupPlugin::make()
+                    ->navigationGroup('Sistema')
+                    ->navigationSort(10)
+                    ->authorize(function (): bool {
+                        $user = auth()->user();
+                        if (! $user) return false;
+                        return \Illuminate\Support\Facades\DB::table('model_has_roles')
+                            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+                            ->where('model_has_roles.model_id', $user->id)
+                            ->where('model_has_roles.model_type', get_class($user))
+                            ->whereNull('model_has_roles.empresa_id')
+                            ->where('roles.name', 'Super Administrador')
+                            ->whereNull('roles.empresa_id')
+                            ->exists();
+                    }),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

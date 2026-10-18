@@ -49,6 +49,11 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(VentaCompletada::class, EmitirComprobanteElectronico::class);
 
+        // Backups: solo super_admin (cubierto por Gate::before, estos son fallback)
+        Gate::define('create-backup',   fn (\App\Models\User $user) => false);
+        Gate::define('download-backup', fn (\App\Models\User $user) => false);
+        Gate::define('delete-backup',   fn (\App\Models\User $user) => false);
+
         Gate::before(function (\App\Models\User $user, string $ability) {
             // Consulta directa sin team scope de Spatie para evitar ambigüedad en empresa_id
             $esSuperAdmin = \Illuminate\Support\Facades\DB::table('model_has_roles')
