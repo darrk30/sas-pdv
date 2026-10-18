@@ -4,7 +4,6 @@ namespace App\Filament\Resources\Empresas\RelationManagers;
 
 use App\Enums\EstadoGeneral;
 use App\Enums\MetodoPago;
-use App\Filament\Resources\Empresas\EmpresaResource;
 use App\Models\Plan;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -29,8 +28,6 @@ class PagosRelationManager extends RelationManager
 {
     protected static string $relationship = 'pagos';
     protected static ?string $title = 'Historial de Pagos';
-
-    protected static ?string $relatedResource = EmpresaResource::class;
 
     public function table(Table $table): Table
     {

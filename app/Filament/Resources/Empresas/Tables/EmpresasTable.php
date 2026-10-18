@@ -45,6 +45,7 @@ class EmpresasTable
                         'suscripciones.es_prueba_gratuita',
                         DB::raw('COALESCE(vm.ventas_mes,0) AS ventas_mes'),
                         DB::raw('COALESCE(vm.monto_mes,0)  AS monto_mes'),
+                        DB::raw('NULL AS fecha_pago'),
                     ])
             )
             ->columns([
