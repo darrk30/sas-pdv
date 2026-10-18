@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Empresas\RelationManagers;
 
-use App\Filament\Resources\Empresas\EmpresaResource;
 use App\Models\Role;
 use App\Models\User;
 use Filament\Actions\Action;
@@ -35,7 +34,6 @@ class UsuariosRelationManager extends RelationManager
     protected static string $relationship = 'usuarios';
     protected static ?string $title = 'Usuarios';
 
-    protected static ?string $relatedResource = EmpresaResource::class;
 
     public function table(Table $table): Table
     {
