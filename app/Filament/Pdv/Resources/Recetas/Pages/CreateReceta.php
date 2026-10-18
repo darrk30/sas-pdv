@@ -16,6 +16,16 @@ class CreateReceta extends CreateRecord
         return $data;
     }
 
+    protected function afterCreate(): void
+    {
+        $this->record->load([
+            'detalles.unidadMedida',
+            'detalles.insumoProducto.unidadMedida',
+            'detalles.insumoVariante.producto.unidadMedida',
+        ]);
+        $this->record->sincronizarCosto();
+    }
+
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');

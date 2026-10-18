@@ -176,6 +176,72 @@ class InventarioCoreService
         $detalles = $compra->detalles()->with('unidad')->get();
         $concepto = ($compra->codigo ?? ('COMPRA-' . str_pad($compra->id, 8, '0', STR_PAD_LEFT))) . ' (reversión)';
         $this->revertirDetalles($compra->empresa_id, 'entrada', $detalles, $compra, $concepto, $compra->user_id);
+        $this->revertirCostosCompra($compra->empresa_id, $detalles);
+    }
+
+    /**
+     * Revierte el costo promedio ponderado tras anular una compra.
+     *
+     * Fórmula inversa del promedio ponderado:
+     *   C_anterior = (C_actual × stock_antes_reversa - cantidad × C_compra) / stock_después_reversa
+     *
+     * "stock_antes_reversa" = stock_actual (ya revertido) + cantidad = stock que había después de la compra.
+     */
+    private function revertirCostosCompra(int $empresaId, Collection $detalles): void
+    {
+        foreach ($detalles as $detalle) {
+            [$productoId, $varianteId] = $this->resolverItem($detalle);
+
+            $costoTotalDetalle  = (float) $this->campo($detalle, 'costo_total');
+            $costoUnitDetalle   = (float) $this->campo($detalle, 'costo_unitario');
+
+            // Derivar costo de la compra en la unidad del producto
+            $unidad         = $this->resolverUnidad($detalle);
+            $unidadProducto = $this->resolverUnidadProducto($productoId, $varianteId);
+            $factorOp       = $unidad?->factor_base ?? 1;
+            $factorProd     = $unidadProducto?->factor_base ?: 1;
+            $cantidadOrig   = (float) $this->campo($detalle, 'cantidad');
+            $cantidadBase   = round($cantidadOrig * ($factorOp / $factorProd), 4);
+
+            // Costo por unidad base que se registró al recibir
+            $costoCompraBase = ($costoTotalDetalle > 0 && $cantidadBase > 0)
+                ? $costoTotalDetalle / $cantidadBase
+                : $costoUnitDetalle;
+
+            if ($costoCompraBase <= 0 || $cantidadBase <= 0) continue;
+
+            // Stock actual (ya revertido) y costo actual
+            $inv = Inventario::where('empresa_id', $empresaId)
+                ->where('producto_id', $productoId)
+                ->where('variante_id', $varianteId)
+                ->first();
+            $stockRestante = (float) ($inv?->stock_real ?? 0);
+
+            if ($varianteId) {
+                $model       = Variante::find($varianteId);
+                $costoActual = (float) ($model?->precio_costo ?? 0);
+            } else {
+                $model       = Producto::find($productoId);
+                $costoActual = (float) ($model?->precio_costo ?? 0);
+            }
+
+            if (! $model || $costoActual <= 0) continue;
+
+            // stock_antes_reversa = stockRestante + cantidadBase
+            $stockAntesReversa = $stockRestante + $cantidadBase;
+
+            if ($stockRestante <= 0) {
+                // Sin stock: no se puede despromediar, dejamos en 0
+                $costoAnterior = 0;
+            } else {
+                // Fórmula: C_ant = (C_act × stock_total − cant × C_compra) / stock_restante
+                $costoAnterior = ($costoActual * $stockAntesReversa - $cantidadBase * $costoCompraBase) / $stockRestante;
+                $costoAnterior = max(0.0, round($costoAnterior, 4));
+            }
+
+            // Actualizar vía modelo para disparar el observer y recalcular recetas
+            $model->update(['precio_costo' => $costoAnterior]);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -383,12 +449,12 @@ class InventarioCoreService
         float $costoNuevo,
     ): float {
         if ($stockAntes <= 0 || $costoActual <= 0) {
-            return round($costoNuevo, 2);
+            return round($costoNuevo, 4);
         }
 
         $valorActual = $stockAntes * $costoActual;
         $valorNuevo  = $cantidadNueva * $costoNuevo;
 
-        return round(($valorActual + $valorNuevo) / ($stockAntes + $cantidadNueva), 2);
+        return round(($valorActual + $valorNuevo) / ($stockAntes + $cantidadNueva), 4);
     }
 }

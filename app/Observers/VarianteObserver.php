@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Variante;
+use App\Services\RecetaCostoService;
 use Illuminate\Support\Facades\Storage;
 
 class VarianteObserver
@@ -11,6 +12,13 @@ class VarianteObserver
     {
         if ($variante->isDirty('imagen') && ($old = $variante->getOriginal('imagen'))) {
             Storage::disk('public')->delete($old);
+        }
+    }
+
+    public function updated(Variante $variante): void
+    {
+        if ($variante->wasChanged('precio_costo')) {
+            RecetaCostoService::sincronizarPorInsumo(varianteId: $variante->id);
         }
     }
 
