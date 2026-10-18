@@ -12,6 +12,10 @@ Artisan::command('inspire', function () {
 // Alertar créditos vencidos cada mañana
 Schedule::command('creditos:alertar-vencidos')->dailyAt('08:00');
 
+// Backup automático diario a las 2am + limpieza de backups viejos
+Schedule::command('backup:run')->dailyAt('02:00')->onFailure(fn () => null);
+Schedule::command('backup:clean')->dailyAt('01:00')->onFailure(fn () => null);
+
 // Cargar tareas programadas desde la base de datos
 if (Schema::hasTable('tareas_programadas')) {
     \App\Models\TareaProgramada::where('activo', true)->get()->each(function ($tarea) {
