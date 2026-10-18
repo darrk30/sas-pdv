@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Producto;
+use App\Services\RecetaCostoService;
 use Illuminate\Support\Facades\Storage;
 
 class ProductoObserver
@@ -11,6 +12,13 @@ class ProductoObserver
     {
         if ($producto->isDirty('logo') && ($old = $producto->getOriginal('logo'))) {
             Storage::disk('public')->delete($old);
+        }
+    }
+
+    public function updated(Producto $producto): void
+    {
+        if ($producto->wasChanged('precio_costo')) {
+            RecetaCostoService::sincronizarPorInsumo(productoId: $producto->id);
         }
     }
 

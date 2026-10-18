@@ -14,6 +14,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
@@ -98,6 +99,14 @@ class RecetaResource extends Resource
                 ->placeholder('Ej: Perfume Acqua 50ml')
                 ->required()
                 ->maxLength(200)
+                ->columnSpanFull(),
+
+            Placeholder::make('costo_info')
+                ->label('Costo calculado')
+                ->content(fn ($record) => $record
+                    ? 'S/ ' . number_format($record->costoCalculado(), 4) . ' — Se actualiza al guardar'
+                    : 'Se calculará al guardar la receta'
+                )
                 ->columnSpanFull(),
 
             // ── Insumos ───────────────────────────────────────────────────────
@@ -189,7 +198,14 @@ class RecetaResource extends Resource
         return $table
             ->query(
                 Receta::where('empresa_id', Filament::getTenant()->id)
-                    ->with(['producto', 'variante.producto', 'variante.valores.valor', 'detalles'])
+                    ->with([
+                        'producto',
+                        'variante.producto',
+                        'variante.valores.valor',
+                        'detalles.unidadMedida',
+                        'detalles.insumoProducto.unidadMedida',
+                        'detalles.insumoVariante.producto.unidadMedida',
+                    ])
             )
             ->columns([
                 TextColumn::make('nombre')
@@ -214,6 +230,11 @@ class RecetaResource extends Resource
                     ->state(fn (Receta $r): int => $r->detalles->count())
                     ->badge()
                     ->color('gray'),
+
+                TextColumn::make('costo_calculado')
+                    ->label('Costo calculado')
+                    ->state(fn (Receta $r): string => 'S/ ' . number_format($r->costoCalculado(), 4))
+                    ->color('success'),
 
                 TextColumn::make('updated_at')
                     ->label('Actualizado')

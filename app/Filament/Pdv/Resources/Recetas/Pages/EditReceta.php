@@ -15,6 +15,16 @@ class EditReceta extends EditRecord
         return [DeleteAction::make()];
     }
 
+    protected function afterSave(): void
+    {
+        $this->record->load([
+            'detalles.unidadMedida',
+            'detalles.insumoProducto.unidadMedida',
+            'detalles.insumoVariante.producto.unidadMedida',
+        ]);
+        $this->record->sincronizarCosto();
+    }
+
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
