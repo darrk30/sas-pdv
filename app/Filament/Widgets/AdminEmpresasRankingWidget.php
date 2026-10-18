@@ -3,11 +3,9 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Empresa;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class AdminEmpresasRankingWidget extends BaseWidget
@@ -100,7 +98,7 @@ class AdminEmpresasRankingWidget extends BaseWidget
                 TextColumn::make('ultima_venta')
                     ->label('Última venta')
                     ->since()
-                    ->default('—'),
+                    ->placeholder('—'),
             ])
             ->paginated([10, 25, 50]);
     }
