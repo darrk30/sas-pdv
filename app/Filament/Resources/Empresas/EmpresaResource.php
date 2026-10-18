@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Empresas;
 use App\Filament\Resources\Empresas\Pages\CreateEmpresa;
 use App\Filament\Resources\Empresas\Pages\EditEmpresa;
 use App\Filament\Resources\Empresas\Pages\ListEmpresas;
+use App\Filament\Resources\Empresas\Pages\ViewEmpresaStats;
 use App\Filament\Resources\Empresas\RelationManagers\PagosRelationManager;
 use App\Filament\Resources\Empresas\RelationManagers\UsuariosRelationManager;
 use App\Filament\Resources\Empresas\Schemas\EmpresaForm;
@@ -50,9 +51,11 @@ class EmpresaResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListEmpresas::route('/'),
+            'index'  => ListEmpresas::route('/'),
             'create' => CreateEmpresa::route('/create'),
-            'edit' => EditEmpresa::route('/{record}/edit'),
+            'edit'   => EditEmpresa::route('/{record}/edit'),
+            'stats'  => ViewEmpresaStats::route('/{record}/stats'),
+            
         ];
     }
 }

@@ -73,15 +73,18 @@ class ProductoImportService
 
                 $precioVenta = $this->parseDecimal($fila['C'] ?? null);
                 if ($precioVenta === null) {
-                    $this->errores[] = "Fila {$num}: PRECIO_VENTA requerido.";
+                    $this->errores[] = "Fila {$num}: falta el PRECIO_VENTA.";
                     $this->omitidos++;
                     continue;
                 }
 
-                $precioCosto    = $this->parseDecimal($fila['D'] ?? null) ?? 0;
-                $stockMinimo    = $this->parseDecimal($fila['I'] ?? null) ?? 0;
-                $stockInicial   = $this->parseDecimal($fila['J'] ?? null) ?? 0;
-                $controlDeStock = $this->parseBooleano($fila['P'] ?? null, true);
+                $precioCosto       = $this->parseDecimal($fila['D'] ?? null) ?? 0;
+                $stockMinimo       = $this->parseDecimal($fila['I'] ?? null) ?? 0;
+                $stockInicial      = $this->parseDecimal($fila['J'] ?? null) ?? 0;
+                $controlDeStock    = $this->parseBooleano($fila['P'] ?? null, true);
+                $descuento         = $this->parseDecimal($fila['E'] ?? null) ?? 0;
+                $precioConDesc     = $this->parseDecimal($fila['F'] ?? null)
+                    ?? round($precioVenta * (1 - $descuento / 100), 4);
 
                 $producto = Producto::create([
                     'empresa_id'            => $empresaId,
@@ -90,8 +93,8 @@ class ProductoImportService
                     'slug'                  => $this->generarSlug($nombre, $empresaId),
                     'precio_venta'          => $precioVenta,
                     'precio_costo'          => $precioCosto,
-                    'porcentaje_descuento'  => $this->parseDecimal($fila['E'] ?? null) ?? 0,
-                    'precio_con_descuento'  => $this->parseDecimal($fila['F'] ?? null),
+                    'porcentaje_descuento'  => $descuento,
+                    'precio_con_descuento'  => $precioConDesc,
                     'unidad_medida_id'      => $this->resolverUnidad($fila['G'] ?? null),
                     'estado'                => $this->resolverEstado($fila['H'] ?? null),
                     'codigo_barras'         => trim($fila['K'] ?? '') ?: null,
@@ -138,6 +141,9 @@ class ProductoImportService
                 }
 
                 $this->creados++;
+            } catch (\Illuminate\Database\QueryException $e) {
+                $this->errores[] = "Fila {$num}: error al guardar el producto '{$nombre}' — " . $this->mensajeDb($e);
+                $this->omitidos++;
             } catch (\Throwable $e) {
                 $this->errores[] = "Fila {$num}: " . $e->getMessage();
                 $this->omitidos++;
@@ -237,6 +243,9 @@ class ProductoImportService
                 }
 
                 $this->actualizados++;
+            } catch (\Illuminate\Database\QueryException $e) {
+                $this->errores[] = "Fila {$num}: error al actualizar '{$codigoInterno}' — " . $this->mensajeDb($e);
+                $this->omitidos++;
             } catch (\Throwable $e) {
                 $this->errores[] = "Fila {$num}: " . $e->getMessage();
                 $this->omitidos++;
@@ -285,6 +294,9 @@ class ProductoImportService
                 }
 
                 $this->actualizados++;
+            } catch (\Illuminate\Database\QueryException $e) {
+                $this->errores[] = "Fila {$num}: error al actualizar precios de '{$codigoInterno}' — " . $this->mensajeDb($e);
+                $this->omitidos++;
             } catch (\Throwable $e) {
                 $this->errores[] = "Fila {$num}: " . $e->getMessage();
                 $this->omitidos++;
@@ -533,5 +545,28 @@ class ProductoImportService
         if ($dec !== null) {
             $cambios[$campo] = $dec;
         }
+    }
+
+    private function mensajeDb(\Illuminate\Database\QueryException $e): string
+    {
+        $code = $e->getCode();
+        $msg  = $e->getMessage();
+
+        if ($code == 23000) {
+            if (str_contains($msg, 'Duplicate entry')) {
+                preg_match("/Duplicate entry '(.+?)' for key '(.+?)'/", $msg, $m);
+                $val   = $m[1] ?? '?';
+                $campo = $m[2] ?? '?';
+                return "valor duplicado '{$val}' en campo '{$campo}'.";
+            }
+            if (str_contains($msg, 'cannot be null')) {
+                preg_match("/Column '(.+?)' cannot be null/", $msg, $m);
+                $campo = $m[1] ?? '?';
+                return "el campo '{$campo}' no puede estar vacío.";
+            }
+        }
+
+        // Genérico: solo el mensaje corto sin el SQL
+        return preg_replace('/\(Connection:.*$/s', '', $msg);
     }
 }
