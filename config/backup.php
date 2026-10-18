@@ -223,7 +223,7 @@ return [
             BackupHasFailedNotification::class         => env('APP_ENV') === 'production' ? ['mail'] : [],
             UnhealthyBackupWasFoundNotification::class => env('APP_ENV') === 'production' ? ['mail'] : [],
             CleanupHasFailedNotification::class        => env('APP_ENV') === 'production' ? ['mail'] : [],
-            BackupWasSuccessfulNotification::class     => [],
+            BackupWasSuccessfulNotification::class     => env('APP_ENV') === 'production' ? ['mail'] : [],
             HealthyBackupWasFoundNotification::class   => [],
             CleanupWasSuccessfulNotification::class    => [],
         ],
