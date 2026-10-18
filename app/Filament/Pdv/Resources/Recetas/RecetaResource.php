@@ -284,7 +284,7 @@ class RecetaResource extends Resource
 
         $simples = Producto::query()
             ->doesntHave('variantesActivas')
-            ->whereIn('estado', ['activo', 'inactivo'])
+            ->where('estado', 'activo')
             ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
             ->when(! $esPreload, fn ($q) => $q->where(function ($q) use ($search) {
                 $q->where('nombre', 'like', "%{$search}%")
@@ -298,7 +298,6 @@ class RecetaResource extends Resource
         foreach ($simples as $p) {
             $tag   = $p->codigo_interno ?: $p->codigo_barras;
             $label = $tag ? "[{$tag}] {$p->nombre}" : $p->nombre;
-            if ($p->estado === 'inactivo') $label .= ' (inactivo)';
             $opciones["producto_{$p->id}"] = $label;
         }
 
@@ -306,8 +305,8 @@ class RecetaResource extends Resource
             ->with(['producto', 'valores.valor', 'valores.productoAtributo.atributo'])
             ->join('productos as p_ord', 'p_ord.id', '=', 'variantes.producto_id')
             ->select('variantes.*')
-            ->whereIn('variantes.estado', ['activo', 'inactivo'])
-            ->whereIn('p_ord.estado', ['activo', 'inactivo'])
+            ->where('variantes.estado', 'activo')
+            ->where('p_ord.estado', 'activo')
             ->when($empresaId, fn ($q) => $q->where('p_ord.empresa_id', $empresaId))
             ->when(! $esPreload, fn ($q) => $q->where(function ($q) use ($search) {
                 $q->where('variantes.codigo', 'like', "%{$search}%")
@@ -322,7 +321,6 @@ class RecetaResource extends Resource
         foreach ($variantes as $v) {
             $nombre = AjusteDetalle::generarNombre(null, $v);
             $label  = $v->codigo ? "[{$v->codigo}] {$nombre}" : $nombre;
-            if ($v->estado === 'inactivo') $label .= ' (inactivo)';
             $opciones["variante_{$v->id}"] = $label;
         }
 
