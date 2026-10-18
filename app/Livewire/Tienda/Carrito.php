@@ -1410,7 +1410,9 @@ class Carrito extends Component
             return $item->promocion ? (float) $item->promocion->precio : null;
         }
         if ($item->variante_id) {
-            return $item->variante ? (float) $item->variante->precio_final : null;
+            $variante = $item->variante;
+            if (! $variante) return null;
+            return $this->precioVariante($variante);
         }
         $p = $item->producto;
         if (! $p) return null;
@@ -1427,8 +1429,9 @@ class Carrito extends Component
             return $promo ? (float) $promo->precio : null;
         }
         if (! empty($raw['variante_id'])) {
-            $variante = Variante::find($raw['variante_id']);
-            return $variante ? (float) $variante->precio_final : null;
+            $variante = Variante::with('valores', 'producto')->find($raw['variante_id']);
+            if (! $variante) return null;
+            return $this->precioVariante($variante);
         }
         if (! empty($raw['producto_id'])) {
             $p = Producto::find($raw['producto_id']);
@@ -1438,5 +1441,15 @@ class Carrito extends Component
                 : (float) $p->precio_venta;
         }
         return null;
+    }
+
+    private function precioVariante(\App\Models\Variante $variante): float
+    {
+        $producto = $variante->producto;
+        $base = $producto && ($producto->porcentaje_descuento ?? 0) > 0 && $producto->precio_con_descuento
+            ? (float) $producto->precio_con_descuento
+            : (float) ($producto?->precio_venta ?? $variante->precio_final);
+        $extras = (float) $variante->valores->sum('precio_adicional');
+        return $base + $extras;
     }
 }
