@@ -820,7 +820,6 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
         if (! $venta) return false;
 
         foreach ($venta->detalles as $d) {
-            if ($d->tipo_item === TipoItem::Promocion)          return true;
             if ($d->producto?->control_de_stock)                return true;
             if ($d->variante?->producto?->control_de_stock)     return true;
 
@@ -837,6 +836,19 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->where('variante_id', $d->variante_id)
                     ->whereHas('detalles')->exists()) {
                     return true;
+                }
+            }
+
+            // Promo: solo muestra el check si al menos un componente tiene control_de_stock o receta
+            if ($d->tipo_item === TipoItem::Promocion && $d->promocion_id) {
+                $promo = \App\Models\Promocion::with(['detalles.producto', 'detalles.variante.producto'])->find($d->promocion_id);
+                if ($promo) {
+                    foreach ($promo->detalles as $pd) {
+                        if ($pd->variante_id && $pd->variante?->producto?->control_de_stock) return true;
+                        if ($pd->producto_id && $pd->producto?->control_de_stock)            return true;
+                        if ($pd->variante_id && \App\Models\Receta::where('empresa_id', $venta->empresa_id)->where('variante_id', $pd->variante_id)->whereHas('detalles')->exists()) return true;
+                        if ($pd->producto_id && \App\Models\Receta::where('empresa_id', $venta->empresa_id)->where('producto_id', $pd->producto_id)->whereNull('variante_id')->whereHas('detalles')->exists()) return true;
+                    }
                 }
             }
         }
@@ -1041,6 +1053,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                                             ]);
                                         }
                                     }
+                                    $ventaService->restaurarReceta($empresaId, null, (int) $comp->variante_id, $cantComp, $venta, $conceptoRev);
                                 } elseif ($comp->producto_id) {
                                     $prodComp = $comp->producto;
                                     if ($prodComp?->control_de_stock) {
@@ -1074,6 +1087,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                                             ]);
                                         }
                                     }
+                                    $ventaService->restaurarReceta($empresaId, (int) $comp->producto_id, null, $cantComp, $venta, $conceptoRev);
                                 }
                             }
                         }

@@ -293,6 +293,7 @@
                     @endphp
                     <button
                         class="pdv-card {{ $agotado ? 'pdv-card--agotado' : '' }}"
+                        data-stock-max="{{ $stockVisible !== null ? (float)$stockVisible : '' }}"
                         @if($tieneListasPrecios)
                         x-data="{
                             modalLista: false,
@@ -314,15 +315,15 @@
                         @if($tieneVariantes)
                             @click="$store.vm.abrir(@js($variantData), listaActiva ? precioActual : null)"
                         @else
-                            @click="$dispatch('product-selected', [{ tipo: 'producto', id: {{ $producto->id }}, nombre: '{{ addslashes($producto->nombre) }}', precio: precioActual, precio_normal: precioNorm, es_cortesia: false, cantidad: 1, producto_id: {{ $producto->id }}, puede_cortesia: false, es_decimal: {{ $esDecimal ? 'true' : 'false' }}, stock_max: {{ $stockVisible !== null ? (float)$stockVisible : 'null' }}, venta_sin_stock: {{ $producto->venta_sin_stock ? 'true' : 'false' }} }])"
+                            @click="$dispatch('product-selected', [{ tipo: 'producto', id: {{ $producto->id }}, nombre: '{{ addslashes($producto->nombre) }}', precio: precioActual, precio_normal: precioNorm, es_cortesia: false, cantidad: 1, producto_id: {{ $producto->id }}, puede_cortesia: false, es_decimal: {{ $esDecimal ? 'true' : 'false' }}, stock_max: ($el.dataset.stockMax !== '' ? parseFloat($el.dataset.stockMax) : null), venta_sin_stock: {{ $producto->venta_sin_stock ? 'true' : 'false' }} }])"
                         @endif
                         @elseif($quickAdd)
-                            @click="$dispatch('product-selected', [{ tipo: 'producto', id: {{ $producto->id }}, nombre: '{{ addslashes($producto->nombre) }}', precio: {{ $precioFinal }}, precio_normal: {{ $precioNorm }}, es_cortesia: false, cantidad: 1, producto_id: {{ $producto->id }}, puede_cortesia: false, es_decimal: {{ $esDecimal ? 'true' : 'false' }}, stock_max: {{ $stockVisible !== null ? (float)$stockVisible : 'null' }}, venta_sin_stock: {{ $producto->venta_sin_stock ? 'true' : 'false' }} }])"
+                            @click="$dispatch('product-selected', [{ tipo: 'producto', id: {{ $producto->id }}, nombre: '{{ addslashes($producto->nombre) }}', precio: {{ $precioFinal }}, precio_normal: {{ $precioNorm }}, es_cortesia: false, cantidad: 1, producto_id: {{ $producto->id }}, puede_cortesia: false, es_decimal: {{ $esDecimal ? 'true' : 'false' }}, stock_max: ($el.dataset.stockMax !== '' ? parseFloat($el.dataset.stockMax) : null), venta_sin_stock: {{ $producto->venta_sin_stock ? 'true' : 'false' }} }])"
                         @elseif($tieneVariantes)
                             @click="$store.vm.abrir(@js($variantData))"
                         @else
                             {{-- Cortesía sin variantes --}}
-                            @click="$dispatch('product-selected', [{ tipo: 'producto', id: {{ $producto->id }}, nombre: '{{ addslashes($producto->nombre) }}', precio: {{ $precioFinal }}, precio_normal: {{ $precioNorm }}, es_cortesia: false, cantidad: 1, producto_id: {{ $producto->id }}, puede_cortesia: true, es_decimal: {{ $esDecimal ? 'true' : 'false' }}, stock_max: {{ $stockVisible !== null ? (float)$stockVisible : 'null' }}, venta_sin_stock: {{ $producto->venta_sin_stock ? 'true' : 'false' }} }])"
+                            @click="$dispatch('product-selected', [{ tipo: 'producto', id: {{ $producto->id }}, nombre: '{{ addslashes($producto->nombre) }}', precio: {{ $precioFinal }}, precio_normal: {{ $precioNorm }}, es_cortesia: false, cantidad: 1, producto_id: {{ $producto->id }}, puede_cortesia: true, es_decimal: {{ $esDecimal ? 'true' : 'false' }}, stock_max: ($el.dataset.stockMax !== '' ? parseFloat($el.dataset.stockMax) : null), venta_sin_stock: {{ $producto->venta_sin_stock ? 'true' : 'false' }} }])"
                         @endif
                         @if($agotado) disabled @endif
                     >
@@ -355,7 +356,7 @@
                             @if($stockNivel !== null && ! $agotado)
                                 <span
                                     class="pdv-card__stock-badge"
-                                    wire:key="sb-{{ $producto->id }}-{{ (int)floor($stockVisible) }}"
+                                    wire:key="sb-{{ $producto->id }}-{{ str_replace('.', '-', number_format((float)$stockVisible, 4)) }}"
                                     x-data="{
                                         dbStock: {{ $stockVisible }},
                                         keys: @js($cartKeys),
