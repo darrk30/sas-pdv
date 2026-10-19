@@ -58,7 +58,7 @@ class EmpresasTable
                     ->searchable()
                     ->sortable()
                     ->weight('bold')
-                    ->url(fn ($record) => "https://{$record->slug}.tukupu.cloud/pdv/login")
+                    ->url(fn ($record) => "https://{$record->slug}.tukipu.cloud/pdv/login")
                     ->openUrlInNewTab(),
 
                 TextColumn::make('ruc')
