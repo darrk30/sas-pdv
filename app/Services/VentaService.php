@@ -1014,7 +1014,8 @@ class VentaService
                 fn ($q) => $q->where('producto_id', $productoId)->whereNull('variante_id')
             )
             ->with([
-                'detalles.insumoProducto',
+                'detalles.unidadMedida',
+                'detalles.insumoProducto.unidadMedida',
                 'detalles.insumoVariante.producto.unidadMedida',
             ])
             ->first();
@@ -1048,6 +1049,20 @@ class VentaService
             } elseif ($det->insumo_producto_id && $det->insumoProducto) {
                 $prod = $det->insumoProducto;
                 if (! $prod->control_de_stock) continue;
+
+                // Aplicar conversión de unidades igual que en consumirReceta
+                $cantBase = $cantInsumo;
+                if ($det->unidadMedida) {
+                    $productoUnidad = $prod->unidadMedida;
+                    if ($productoUnidad && $productoUnidad->id !== $det->unidad_medida_id) {
+                        $factorReceta   = (float) $det->unidadMedida->factor_base;
+                        $factorProducto = (float) $productoUnidad->factor_base;
+                        if ($factorProducto > 0) {
+                            $cantBase = round($cantInsumo * $factorReceta / $factorProducto, 4);
+                        }
+                    }
+                }
+
                 $inv = Inventario::where('empresa_id', $empresaId)
                     ->where('producto_id', $det->insumo_producto_id)
                     ->whereNull('variante_id')
@@ -1055,16 +1070,16 @@ class VentaService
                 if (! $inv) continue;
                 $antes = (float) $inv->stock_real;
                 $inv->update([
-                    'stock_real'    => $antes + $cantInsumo,
-                    'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantInsumo),
+                    'stock_real'    => $antes + $cantBase,
+                    'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantBase),
                 ]);
                 $this->kardex->registrar([
                     'empresa_id' => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
                     'producto_id' => $det->insumo_producto_id, 'variante_id' => null,
                     'tipo' => 'entrada', 'concepto' => $concepto, 'notas' => 'Receta restaurada',
-                    'cantidad' => $cantInsumo, 'unidad' => $prod->unidadMedida?->nombre ?? 'unidad',
-                    'factor_conversion' => 1, 'cantidad_base' => $cantInsumo,
-                    'stock_antes' => $antes, 'stock_despues' => $antes + $cantInsumo, 'fecha' => now(),
+                    'cantidad' => $cantBase, 'unidad' => $prod->unidadMedida?->nombre ?? 'unidad',
+                    'factor_conversion' => 1, 'cantidad_base' => $cantBase,
+                    'stock_antes' => $antes, 'stock_despues' => $antes + $cantBase, 'fecha' => now(),
                 ]);
             }
         }
@@ -1076,50 +1091,56 @@ class VentaService
         int $empresaId, object $comp, float $cantComp, Venta $venta, string $concepto, string $notas
     ): void {
         if ($comp->variante_id && $comp->variante) {
-            $var      = $comp->variante;
-            $prod     = $var->producto;
-            if (! $prod?->control_de_stock) return;
-            $factor   = $var->factor();
-            $cantBase = round($cantComp * $factor, 4);
-            $inv      = $var->resolverInventario($empresaId, lock: true);
-            if (! $inv) return;
-            $antes   = (float) $inv->stock_real;
-            $despues = $antes + $cantBase;
-            $inv->update([
-                'stock_real'    => $despues,
-                'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantBase),
-            ]);
-            $kCant = $prod->comparte_stock ? $cantBase : $cantComp;
-            $kFact = $prod->comparte_stock ? 1 : $factor;
-            $this->kardex->registrar([
-                'empresa_id'        => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
-                'producto_id'       => $var->producto_id, 'variante_id' => $comp->variante_id,
-                'tipo'              => 'entrada', 'concepto' => $concepto, 'notas' => $notas,
-                'cantidad'          => $kCant, 'unidad' => $prod->unidadMedida?->nombre ?? 'unidad',
-                'factor_conversion' => $kFact, 'cantidad_base' => $cantBase,
-                'stock_antes'       => $antes, 'stock_despues' => $despues, 'fecha' => now(),
-            ]);
+            $var  = $comp->variante;
+            $prod = $var->producto;
+            if ($prod?->control_de_stock) {
+                $factor   = $var->factor();
+                $cantBase = round($cantComp * $factor, 4);
+                $inv      = $var->resolverInventario($empresaId, lock: true);
+                if ($inv) {
+                    $antes   = (float) $inv->stock_real;
+                    $despues = $antes + $cantBase;
+                    $inv->update([
+                        'stock_real'    => $despues,
+                        'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantBase),
+                    ]);
+                    $kCant = $prod->comparte_stock ? $cantBase : $cantComp;
+                    $kFact = $prod->comparte_stock ? 1 : $factor;
+                    $this->kardex->registrar([
+                        'empresa_id'        => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
+                        'producto_id'       => $var->producto_id, 'variante_id' => $comp->variante_id,
+                        'tipo'              => 'entrada', 'concepto' => $concepto, 'notas' => $notas,
+                        'cantidad'          => $kCant, 'unidad' => $prod->unidadMedida?->nombre ?? 'unidad',
+                        'factor_conversion' => $kFact, 'cantidad_base' => $cantBase,
+                        'stock_antes'       => $antes, 'stock_despues' => $despues, 'fecha' => now(),
+                    ]);
+                }
+            }
+            $this->restaurarReceta($empresaId, null, $comp->variante_id, $cantComp, $venta, $concepto);
         } elseif ($comp->producto_id && $comp->producto) {
             $prod = $comp->producto;
-            if (! $prod->control_de_stock) return;
-            $inv = Inventario::where('empresa_id', $empresaId)
-                ->where('producto_id', $comp->producto_id)->whereNull('variante_id')
-                ->lockForUpdate()->first();
-            if (! $inv) return;
-            $antes   = (float) $inv->stock_real;
-            $despues = $antes + $cantComp;
-            $inv->update([
-                'stock_real'    => $despues,
-                'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantComp),
-            ]);
-            $this->kardex->registrar([
-                'empresa_id'        => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
-                'producto_id'       => $comp->producto_id, 'variante_id' => null,
-                'tipo'              => 'entrada', 'concepto' => $concepto, 'notas' => $notas,
-                'cantidad'          => $cantComp, 'unidad' => $prod->unidadMedida?->nombre ?? 'unidad',
-                'factor_conversion' => 1, 'cantidad_base' => $cantComp,
-                'stock_antes'       => $antes, 'stock_despues' => $despues, 'fecha' => now(),
-            ]);
+            if ($prod->control_de_stock) {
+                $inv = Inventario::where('empresa_id', $empresaId)
+                    ->where('producto_id', $comp->producto_id)->whereNull('variante_id')
+                    ->lockForUpdate()->first();
+                if ($inv) {
+                    $antes   = (float) $inv->stock_real;
+                    $despues = $antes + $cantComp;
+                    $inv->update([
+                        'stock_real'    => $despues,
+                        'stock_reserva' => max(0, (float) $inv->stock_reserva + $cantComp),
+                    ]);
+                    $this->kardex->registrar([
+                        'empresa_id'        => $empresaId, 'user_id' => auth()->id(), 'movible' => $venta,
+                        'producto_id'       => $comp->producto_id, 'variante_id' => null,
+                        'tipo'              => 'entrada', 'concepto' => $concepto, 'notas' => $notas,
+                        'cantidad'          => $cantComp, 'unidad' => $prod->unidadMedida?->nombre ?? 'unidad',
+                        'factor_conversion' => 1, 'cantidad_base' => $cantComp,
+                        'stock_antes'       => $antes, 'stock_despues' => $despues, 'fecha' => now(),
+                    ]);
+                }
+            }
+            $this->restaurarReceta($empresaId, $comp->producto_id, null, $cantComp, $venta, $concepto);
         }
     }
 
@@ -1184,6 +1205,7 @@ class VentaService
                         ]);
                     }
                 }
+                $this->consumirReceta($empresaId, null, $detalle->variante_id, $cantidadDetalle, $venta, $comprobante, $stockYaReservado, (bool) ($prodDetalle->venta_sin_stock ?? false));
             } elseif ($detalle->producto_id) {
                 $prodDetalle = $detalle->producto;
 
@@ -1226,6 +1248,7 @@ class VentaService
                         ]);
                     }
                 }
+                $this->consumirReceta($empresaId, $detalle->producto_id, null, $cantidadDetalle, $venta, $comprobante, $stockYaReservado, (bool) ($prodDetalle->venta_sin_stock ?? false));
             }
         }
     }

@@ -149,6 +149,8 @@ trait ValidaStockOrden
                             ->where('variante_id', $pd->variante_id)
                             ->update(['stock_reserva' => DB::raw($expr)]);
                         if ($pd->variante->producto_id) $productosAfectados[] = $pd->variante->producto_id;
+                    } elseif ($pd->variante_id) {
+                        $this->_reservarInsumosReceta($empresaId, null, (int) $pd->variante_id, $cantDet, false);
                     } elseif ($pd->producto_id && $pd->producto?->control_de_stock) {
                         $expr = $pd->producto->venta_sin_stock
                             ? "stock_reserva - {$cantDet}"
@@ -159,6 +161,8 @@ trait ValidaStockOrden
                             ->whereNull('variante_id')
                             ->update(['stock_reserva' => DB::raw($expr)]);
                         $productosAfectados[] = $pd->producto_id;
+                    } elseif ($pd->producto_id) {
+                        $this->_reservarInsumosReceta($empresaId, (int) $pd->producto_id, null, $cantDet, false);
                     }
                 }
             } elseif ($varianteId) {
@@ -239,6 +243,8 @@ trait ValidaStockOrden
                             ->where('variante_id', $pd->variante_id)
                             ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantDet})")]);
                         if ($pd->variante->producto_id) $productosAfectados[] = $pd->variante->producto_id;
+                    } elseif ($pd->variante_id) {
+                        $this->_liberarInsumosReceta($empresaId, null, (int) $pd->variante_id, $cantDet);
                     } elseif ($pd->producto_id && $pd->producto?->control_de_stock) {
                         DB::table('inventarios')
                             ->where('empresa_id', $empresaId)
@@ -246,6 +252,8 @@ trait ValidaStockOrden
                             ->whereNull('variante_id')
                             ->update(['stock_reserva' => DB::raw("LEAST(stock_real, stock_reserva + {$cantDet})")]);
                         $productosAfectados[] = $pd->producto_id;
+                    } elseif ($pd->producto_id) {
+                        $this->_liberarInsumosReceta($empresaId, (int) $pd->producto_id, null, $cantDet);
                     }
                 }
             } elseif ($varianteId) {

@@ -545,61 +545,67 @@ class EditOrden extends EditRecord
                     if ($pd->variante_id) {
                         $var  = $pd->variante;
                         $prod = $var?->producto;
-                        if (! $prod?->control_de_stock) continue;
-                        $inv = Inventario::where('empresa_id', $empresaId)
-                            ->where('variante_id', $pd->variante_id)
-                            ->lockForUpdate()->first();
-                        if (! $inv) continue;
-                        $antes   = (float) $inv->stock_real;
-                        $despues = ($prod->venta_sin_stock ?? false)
-                            ? $antes - $cantDet
-                            : max(0, $antes - $cantDet);
-                        $inv->update(['stock_real' => $despues]);
-                        $kardex->registrar([
-                            'empresa_id'        => $empresaId,
-                            'movible'           => $venta,
-                            'producto_id'       => $var->producto_id,
-                            'variante_id'       => $pd->variante_id,
-                            'tipo'              => 'salida',
-                            'concepto'          => $concepto,
-                            'notas'             => "Promo: {$promo->nombre}",
-                            'cantidad'          => $cantDet,
-                            'unidad'            => $prod->unidadMedida?->nombre ?? 'unidad',
-                            'factor_conversion' => 1,
-                            'cantidad_base'     => $cantDet,
-                            'precio_unitario'   => $precio,
-                            'stock_antes'       => $antes,
-                            'stock_despues'     => $despues,
-                        ]);
+                        if ($prod?->control_de_stock) {
+                            $inv = Inventario::where('empresa_id', $empresaId)
+                                ->where('variante_id', $pd->variante_id)
+                                ->lockForUpdate()->first();
+                            if ($inv) {
+                                $antes   = (float) $inv->stock_real;
+                                $despues = ($prod->venta_sin_stock ?? false)
+                                    ? $antes - $cantDet
+                                    : max(0, $antes - $cantDet);
+                                $inv->update(['stock_real' => $despues]);
+                                $kardex->registrar([
+                                    'empresa_id'        => $empresaId,
+                                    'movible'           => $venta,
+                                    'producto_id'       => $var->producto_id,
+                                    'variante_id'       => $pd->variante_id,
+                                    'tipo'              => 'salida',
+                                    'concepto'          => $concepto,
+                                    'notas'             => "Promo: {$promo->nombre}",
+                                    'cantidad'          => $cantDet,
+                                    'unidad'            => $prod->unidadMedida?->nombre ?? 'unidad',
+                                    'factor_conversion' => 1,
+                                    'cantidad_base'     => $cantDet,
+                                    'precio_unitario'   => $precio,
+                                    'stock_antes'       => $antes,
+                                    'stock_despues'     => $despues,
+                                ]);
+                            }
+                        }
+                        $ventaService->consumirReceta($empresaId, null, (int) $pd->variante_id, $cantDet, $venta, $concepto, true, (bool) ($prod->venta_sin_stock ?? false));
                     } elseif ($pd->producto_id) {
                         $prod = $pd->producto;
-                        if (! $prod?->control_de_stock) continue;
-                        $inv = Inventario::where('empresa_id', $empresaId)
-                            ->where('producto_id', $pd->producto_id)
-                            ->whereNull('variante_id')
-                            ->lockForUpdate()->first();
-                        if (! $inv) continue;
-                        $antes   = (float) $inv->stock_real;
-                        $despues = ($prod->venta_sin_stock ?? false)
-                            ? $antes - $cantDet
-                            : max(0, $antes - $cantDet);
-                        $inv->update(['stock_real' => $despues]);
-                        $kardex->registrar([
-                            'empresa_id'        => $empresaId,
-                            'movible'           => $venta,
-                            'producto_id'       => $pd->producto_id,
-                            'variante_id'       => null,
-                            'tipo'              => 'salida',
-                            'concepto'          => $concepto,
-                            'notas'             => "Promo: {$promo->nombre}",
-                            'cantidad'          => $cantDet,
-                            'unidad'            => $prod->unidadMedida?->nombre ?? 'unidad',
-                            'factor_conversion' => 1,
-                            'cantidad_base'     => $cantDet,
-                            'precio_unitario'   => $precio,
-                            'stock_antes'       => $antes,
-                            'stock_despues'     => $despues,
-                        ]);
+                        if ($prod?->control_de_stock) {
+                            $inv = Inventario::where('empresa_id', $empresaId)
+                                ->where('producto_id', $pd->producto_id)
+                                ->whereNull('variante_id')
+                                ->lockForUpdate()->first();
+                            if ($inv) {
+                                $antes   = (float) $inv->stock_real;
+                                $despues = ($prod->venta_sin_stock ?? false)
+                                    ? $antes - $cantDet
+                                    : max(0, $antes - $cantDet);
+                                $inv->update(['stock_real' => $despues]);
+                                $kardex->registrar([
+                                    'empresa_id'        => $empresaId,
+                                    'movible'           => $venta,
+                                    'producto_id'       => $pd->producto_id,
+                                    'variante_id'       => null,
+                                    'tipo'              => 'salida',
+                                    'concepto'          => $concepto,
+                                    'notas'             => "Promo: {$promo->nombre}",
+                                    'cantidad'          => $cantDet,
+                                    'unidad'            => $prod->unidadMedida?->nombre ?? 'unidad',
+                                    'factor_conversion' => 1,
+                                    'cantidad_base'     => $cantDet,
+                                    'precio_unitario'   => $precio,
+                                    'stock_antes'       => $antes,
+                                    'stock_despues'     => $despues,
+                                ]);
+                            }
+                        }
+                        $ventaService->consumirReceta($empresaId, (int) $pd->producto_id, null, $cantDet, $venta, $concepto, true, (bool) ($prod->venta_sin_stock ?? false));
                     }
                 }
 

@@ -889,7 +889,8 @@ class ProductoForm
                                         Toggle::make('control_de_stock')
                                             ->label('Control de stock')
                                             ->default(true)
-                                            ->reactive(),
+                                            ->reactive()
+                                            ->afterStateUpdated(fn (Set $set, bool $state) => ! $state ? $set('venta_sin_stock', false) : null),
 
                                         Toggle::make('comparte_stock')
                                             ->label('Stock compartido entre presentaciones')
@@ -899,7 +900,9 @@ class ProductoForm
                                             ->reactive(),
 
                                         Toggle::make('venta_sin_stock')
-                                            ->label('Venta sin stock'),
+                                            ->label('Venta sin stock')
+                                            ->visible(fn (Get $get): bool => (bool) $get('control_de_stock'))
+                                            ->reactive(),
 
                                         Toggle::make('vendible')
                                             ->label('Producto vendible')

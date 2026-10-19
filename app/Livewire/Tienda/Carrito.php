@@ -1229,7 +1229,10 @@ class Carrito extends Component
 
                     if ($pd->variante_id) {
                         $prod = $pd->variante?->producto;
-                        if (! $prod?->control_de_stock) continue;
+                        if (! $prod?->control_de_stock) {
+                            $this->_reservarInsumosReceta($empresaId, null, (int) $pd->variante_id, $cantDet, (bool) ($prod?->venta_sin_stock ?? false));
+                            continue;
+                        }
                         $inv = Inventario::where('empresa_id', $empresaId)
                             ->where('variante_id', $pd->variante_id)
                             ->lockForUpdate()->first();
@@ -1241,7 +1244,10 @@ class Carrito extends Component
                         if ($inv) $inv->update(['stock_reserva' => (float) $inv->stock_reserva - $cantDet]);
                     } elseif ($pd->producto_id) {
                         $prod = $pd->producto;
-                        if (! $prod?->control_de_stock) continue;
+                        if (! $prod?->control_de_stock) {
+                            $this->_reservarInsumosReceta($empresaId, (int) $pd->producto_id, null, $cantDet, (bool) ($prod?->venta_sin_stock ?? false));
+                            continue;
+                        }
                         $inv = Inventario::where('empresa_id', $empresaId)
                             ->where('producto_id', $pd->producto_id)
                             ->whereNull('variante_id')
