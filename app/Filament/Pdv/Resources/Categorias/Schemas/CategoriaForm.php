@@ -49,12 +49,22 @@ class CategoriaForm
                 Group::make()
                     ->schema([
                         Section::make('Visibilidad')
-                            ->description('Control de estado')
+                            ->description('El estado general tiene prioridad sobre los demás')
                             ->icon('heroicon-o-eye')
                             ->schema([
                                 Toggle::make('estado')
-                                    ->label('Categoría Activa')
-                                    ->helperText('Si se desactiva, los productos se ocultarán.')
+                                    ->label('Categoría activa')
+                                    ->helperText('Si se desactiva, se oculta en PDV y catálogo independientemente de los otros controles.')
+                                    ->default(true),
+
+                                Toggle::make('activo_en_pdv')
+                                    ->label('Visible en PDV')
+                                    ->helperText('Si se desactiva, la categoría y sus productos no aparecen en el PDV.')
+                                    ->default(true),
+
+                                Toggle::make('activo_en_catalogo')
+                                    ->label('Visible en catálogo')
+                                    ->helperText('Si se desactiva, la categoría y sus productos no aparecen en la tienda online.')
                                     ->default(true),
                             ]),
                     ])

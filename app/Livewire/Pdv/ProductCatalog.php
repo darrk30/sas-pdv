@@ -246,6 +246,8 @@ class ProductCatalog extends Component
     public function getCategorias(): Collection
     {
         return Categoria::where('empresa_id', Filament::getTenant()->id)
+            ->where('estado', true)
+            ->where('activo_en_pdv', true)
             ->orderBy('orden')
             ->orderBy('nombre')
             ->get(['id', 'nombre']);
@@ -262,6 +264,10 @@ class ProductCatalog extends Component
         $query = Producto::where('empresa_id', $empresaId)
             ->where('estado', 'activo')
             ->where('vendible', true)
+            ->where(fn($q) => $q
+                ->whereNull('categoria_id')
+                ->orWhereHas('categoria', fn($cq) => $cq->where('estado', true)->where('activo_en_pdv', true))
+            )
             ->with([
                 'preciosLista.lista',
                 'variantesActivas' => fn ($q) => $q->with(['inventario', 'valores.valor']),

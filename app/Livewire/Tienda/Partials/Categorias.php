@@ -29,10 +29,11 @@ class Categorias extends Component
     {
         $categorias = Categoria::where('empresa_id', $this->empresaId)
             ->where('estado', true)
+            ->where('activo_en_catalogo', true)
             ->orderBy('orden')
             ->orderBy('nombre')
-            ->withCount(['productos' => fn($q) => $q->where('estado', 'activo')])
-            ->get();
+            ->withCount(['productos' => fn($q) => $q->where('estado', 'activo')->where('visible_en_carta', true)])
+            ->get(['id', 'nombre', 'imagen_url', 'orden']);
 
         return view('livewire.tienda.partials.categorias', compact('categorias'));
     }

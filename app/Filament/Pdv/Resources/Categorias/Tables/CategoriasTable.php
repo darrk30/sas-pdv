@@ -31,10 +31,17 @@ class CategoriasTable
                     ->sortable()
                     ->weight('bold'),
 
-                // 🌟 Cambiado a ToggleColumn para editar directamente en la tabla
                 ToggleColumn::make('estado')
-                    ->label('Estado')
+                    ->label('General')
                     ->sortable()
+                    ->disabled(fn() => ! auth()->user()?->can('categorias.editar')),
+
+                ToggleColumn::make('activo_en_pdv')
+                    ->label('PDV')
+                    ->disabled(fn() => ! auth()->user()?->can('categorias.editar')),
+
+                ToggleColumn::make('activo_en_catalogo')
+                    ->label('Catálogo')
                     ->disabled(fn() => ! auth()->user()?->can('categorias.editar')),
 
                 // Opcional: Mostrar el número de orden (puedes quitarlo si prefieres que sea invisible)

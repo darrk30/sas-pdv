@@ -47,9 +47,9 @@
 
 /* ── Página activa ── */
 .pag__num--activo {
-    background: #111827;
+    background: #1e2d3d;
     color: #fff;
-    border-color: #111827;
+    border-color: #1e2d3d;
     cursor: default;
     font-weight: 600;
 }

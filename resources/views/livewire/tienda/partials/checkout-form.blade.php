@@ -98,6 +98,10 @@
                 </h2>
                 <div class="chk__seccion-cuerpo">
 
+                    @error('chkMetodoEnvioId')
+                        <span class="chk__error chk__error--block chk__error--seccion">{{ $message }}</span>
+                    @enderror
+
                     @forelse ($metodosEnvio as $metodo)
                         <button type="button"
                                 class="chk__envio {{ $chkMetodoEnvioId === $metodo->id ? 'chk__envio--sel' : '' }}"
@@ -121,10 +125,6 @@
                     @empty
                         <p class="chk__sin-opciones">No hay métodos de envío disponibles.</p>
                     @endforelse
-
-                    @error('chkMetodoEnvioId')
-                        <span class="chk__error chk__error--block">{{ $message }}</span>
-                    @enderror
 
                     {{-- ── DELIVERY: solo dirección de entrega ── --}}
                     @if ($metodoTipo === 'delivery')
@@ -202,35 +202,50 @@
                     Método de pago
                 </h2>
                 <div class="chk__seccion-cuerpo">
+                    @error('chkMetodoPagoId')
+                        <span class="chk__error chk__error--block chk__error--seccion">{{ $message }}</span>
+                    @enderror
+
                     @if ($metodosPago->isEmpty())
                         <p class="chk__sin-opciones chk__sin-opciones--error">
                             No hay métodos de pago disponibles para esta tienda.
                         </p>
                     @else
+                        <div class="chk__pago-grid">
                         @foreach ($metodosPago as $mp)
                             <button type="button"
-                                    class="chk__envio {{ $chkMetodoPagoId === $mp->id ? 'chk__envio--sel' : '' }}"
+                                    class="chk__pago-card {{ $chkMetodoPagoId === $mp->id ? 'chk__pago-card--sel' : '' }}"
                                     wire:click="$set('chkMetodoPagoId', {{ $mp->id }})">
-                                <span class="chk__metodo-check {{ $chkMetodoPagoId === $mp->id ? 'chk__metodo-check--sel' : '' }}"></span>
-                                @if ($mp->imagen)
-                                    <img src="{{ Storage::url($mp->imagen) }}"
-                                         alt="{{ $mp->nombre }}" class="chk__pago-img">
-                                @endif
-                                <span class="chk__envio-info">
-                                    <span class="chk__envio-nombre">{{ $mp->nombre }}</span>
-                                    @if ($mp->descripcion)
-                                        <span class="chk__envio-desc">{!! $mp->descripcion !!}</span>
+
+                                <div class="chk__pago-card-top">
+                                    @if ($mp->imagen)
+                                        <img src="{{ Storage::url($mp->imagen) }}"
+                                             alt="{{ $mp->nombre }}" class="chk__pago-card-img">
+                                    @else
+                                        <div class="chk__pago-card-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                 stroke-width="1.5" width="22" height="22">
+                                                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                                                <line x1="1" y1="10" x2="23" y2="10"/>
+                                            </svg>
+                                        </div>
                                     @endif
-                                </span>
+                                    <span class="chk__metodo-check chk__metodo-check--pago {{ $chkMetodoPagoId === $mp->id ? 'chk__metodo-check--sel' : '' }}"></span>
+                                </div>
+
+                                <span class="chk__pago-card-nombre">{{ $mp->nombre }}</span>
+
+                                @if ($mp->descripcion)
+                                    <span class="chk__pago-card-desc">{!! $mp->descripcion !!}</span>
+                                @endif
+
                                 @if ($mp->requiere_referencia)
                                     <span class="chk__pago-ref-badge">Requiere ref.</span>
                                 @endif
                             </button>
                         @endforeach
+                        </div>
 
-                        @error('chkMetodoPagoId')
-                            <span class="chk__error chk__error--block">{{ $message }}</span>
-                        @enderror
                     @endif
                 </div>
             </div>

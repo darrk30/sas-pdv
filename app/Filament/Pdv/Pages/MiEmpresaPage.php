@@ -58,6 +58,8 @@ class MiEmpresaPage extends Page implements HasForms
                 'logo', 'icono',
                 'carta_activa_cliente',
                 'bot_contexto',
+                'descripcion',
+                'facebook', 'instagram', 'tiktok',
                 'fe_envio_directo_boleta',
                 'fe_envio_directo_factura',
                 'impresion_comprobante_directo',
@@ -120,7 +122,41 @@ class MiEmpresaPage extends Page implements HasForms
                                             ->maxLength(5),
                                     ]),
 
-                                Section::make('Imagen de Marca')
+                                Section::make('Descripción y Redes Sociales')
+                    ->icon('heroicon-o-share')
+                    ->description('Aparece en el footer de tu tienda en línea.')
+                    ->columns(3)
+                    ->schema([
+                        Textarea::make('descripcion')
+                            ->label('Descripción de la empresa')
+                            ->placeholder('Breve descripción de tu negocio, productos o servicios...')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->columnSpanFull(),
+
+                        TextInput::make('facebook')
+                            ->label('Facebook')
+                            ->placeholder('https://facebook.com/tupagina')
+                            ->url()
+                            ->prefixIcon('heroicon-o-globe-alt')
+                            ->maxLength(255),
+
+                        TextInput::make('instagram')
+                            ->label('Instagram')
+                            ->placeholder('https://instagram.com/tuusuario')
+                            ->url()
+                            ->prefixIcon('heroicon-o-globe-alt')
+                            ->maxLength(255),
+
+                        TextInput::make('tiktok')
+                            ->label('TikTok')
+                            ->placeholder('https://tiktok.com/@tuusuario')
+                            ->url()
+                            ->prefixIcon('heroicon-o-globe-alt')
+                            ->maxLength(255),
+                    ]),
+
+                Section::make('Imagen de Marca')
                                     ->icon('heroicon-o-photo')
                                     ->description('El logo aparece en documentos y la barra lateral. El ícono en la pestaña del navegador.')
                                     ->columns(2)

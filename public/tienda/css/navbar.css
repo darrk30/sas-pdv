@@ -10,6 +10,7 @@
     position: sticky;
     top: 0;
     z-index: 100;
+    font-family: var(--font);
 }
 
 .navbar__contenido {
@@ -78,7 +79,7 @@
 .navbar__busqueda-input:focus {
     border-color: var(--color-primario);
     background: #fff;
-    box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    box-shadow: 0 0 0 3px rgba(79,171,234,.1);
 }
 
 .navbar__busqueda-input::placeholder { color: var(--color-texto-muted); }
@@ -106,6 +107,7 @@
     border-radius: var(--radio);
     transition: background .15s;
     line-height: 1.2;
+    font-family: var(--font);
 }
 
 .navbar__saludo:hover { background: var(--color-fondo-alt); }
