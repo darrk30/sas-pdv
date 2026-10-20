@@ -38,7 +38,17 @@ class Catalogo extends Component
         $this->empresaId = app('tienda.empresa')->id;
     }
 
+    public function updatingPage(): void        { $this->dispatch('scroll-top'); }
+
     public function updatingBuscar(): void    { $this->resetPage(); }
+
+    private function fullTextQuery(): string
+    {
+        return collect(preg_split('/\s+/', trim($this->buscar)))
+            ->filter(fn($w) => mb_strlen($w) >= 2)
+            ->map(fn($w) => mb_strlen($w) >= 4 ? $w . '*' : $w)
+            ->implode(' ');
+    }
 
     public function recibirBusqueda(string $q): void
     {
@@ -65,14 +75,26 @@ class Catalogo extends Component
         $productos = Producto::where('empresa_id', $this->empresaId)
             ->where('estado', 'activo')
             ->where('visible_en_carta', true)
-            ->when($this->buscar, fn($q) => $q->where(fn($q) =>
-                $q->where('nombre', 'like', '%' . $this->buscar . '%')
-                  ->orWhere('codigo_interno', 'like', '%' . $this->buscar . '%')
-            ))
+            ->when($this->buscar, function ($q) {
+                $like = '%' . $this->buscar . '%';
+                $ft   = $this->fullTextQuery();
+                $q->where(fn($q) =>
+                    $q->whereRaw('MATCH(productos.nombre, productos.descripcion) AGAINST(? IN BOOLEAN MODE)', [$ft])
+                      ->orWhere('productos.nombre', 'like', $like)
+                      ->orWhere('productos.codigo_interno', 'like', $like)
+                      ->orWhereHas('categoria', fn($cq) => $cq->where('nombre', 'like', $like))
+                      ->orWhereHas('marca',     fn($mq) => $mq->where('nombre', 'like', $like))
+                );
+            })
             ->when($this->marcaId,     fn($q) => $q->where('marca_id', $this->marcaId))
             ->when($this->categoriaId, fn($q) => $q->where('categoria_id', $this->categoriaId))
+            ->where(fn($q) => $q
+                ->whereNull('categoria_id')
+                ->orWhereHas('categoria', fn($cq) => $cq->where('estado', true)->where('activo_en_catalogo', true))
+            )
             ->with([
                 'categoria',
+                'marca',
                 'atributos.atributo',
                 'atributos.valores',
                 'galeriaProductos',
@@ -113,7 +135,7 @@ class Catalogo extends Component
             ')
             ->orderBy('productos.orden')
             ->orderBy('productos.nombre')
-            ->paginate(25);
+            ->paginate(24);
 
         $marcaActiva = $this->marcaId
             ? Cache::remember("tienda_marca_{$this->marcaId}", 600, fn () => Marca::find($this->marcaId)?->nombre)
@@ -124,7 +146,7 @@ class Catalogo extends Component
             : null;
 
         $tieneCategorias = Cache::remember("tienda_tiene_cats_{$this->empresaId}", 300, fn () =>
-            Categoria::where('empresa_id', $this->empresaId)->where('estado', true)->exists()
+            Categoria::where('empresa_id', $this->empresaId)->where('estado', true)->where('activo_en_catalogo', true)->exists()
         );
 
         // Promociones vigentes hoy (solo sin filtros activos para no confundir)

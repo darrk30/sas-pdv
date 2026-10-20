@@ -370,6 +370,10 @@
     {{-- ── Info ────────────────────────────────────────────────── --}}
     <div class="tarjeta__cuerpo">
 
+        @if ($producto->marca)
+            <span class="tarjeta__marca">{{ $producto->marca->nombre }}</span>
+        @endif
+
         <h3 class="tarjeta__nombre">{{ $producto->nombre }}</h3>
 
         @if (!empty($producto->descripcion))

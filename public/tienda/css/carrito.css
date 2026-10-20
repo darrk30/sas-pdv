@@ -533,7 +533,7 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
-    background: #111827;
+    background: #1e2d3d;
     color: #fff;
     border: none;
     border-radius: 9px;
@@ -549,7 +549,7 @@
     opacity: 1;
 }
 .cr-btn-orden--activo:hover {
-    background: #1f2937;
+    background: #2d3e52;
 }
 
 /* Aviso seguridad */
@@ -744,7 +744,7 @@
     text-align: center;
     font-size: 0.8125rem;
     font-weight: 500;
-    color: #2563eb;
+    color: #5591d8;
     text-decoration: none;
     padding: 0.5rem 1rem;
     border-radius: 8px;
@@ -771,5 +771,5 @@
     color: #6b7280;
     text-decoration: none;
 }
-.cr-guest-auth__link:hover { color: #2563eb; text-decoration: underline; }
+.cr-guest-auth__link:hover { color: #5591d8; text-decoration: underline; }
 .cr-guest-auth__sep { color: #d1d5db; font-size: 0.75rem; }

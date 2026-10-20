@@ -47,17 +47,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     {{-- font-display=optional: usa Inter si está en caché, sistema si no → sin flash --}}
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=optional">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 
     {{-- ── CSS global (se necesita en todas las páginas) ─────────────────── --}}
     @livewireStyles
-    <link rel="stylesheet" href="{{ asset('tienda/css/base.css') }}?v=2">
-    <link rel="stylesheet" href="{{ asset('tienda/css/navbar.css') }}">
-    <link rel="stylesheet" href="{{ asset('tienda/css/marcas.css') }}">
+    <link rel="stylesheet" href="{{ asset('tienda/css/base.css') }}?v=11">
+    <link rel="stylesheet" href="{{ asset('tienda/css/footer.css') }}?v=4">
+    <link rel="stylesheet" href="{{ asset('tienda/css/navbar.css') }}?v=5">
     <link rel="stylesheet" href="{{ asset('tienda/css/spinner.css') }}">
-    <link rel="stylesheet" href="{{ asset('tienda/css/toast.css') }}">
-    <link rel="stylesheet" href="{{ asset('tienda/css/carrito.css') }}?v=3">
-    <link rel="stylesheet" href="{{ asset('tienda/css/modal-variante.css') }}?v=2">
+    <link rel="stylesheet" href="{{ asset('tienda/css/toast.css') }}?v=2">
+    <link rel="stylesheet" href="{{ asset('tienda/css/carrito.css') }}?v=4">
+    <link rel="stylesheet" href="{{ asset('tienda/css/modal-variante.css') }}?v=5">
 
     {{-- ── CSS específico de cada página (via @push desde las vistas) ─────── --}}
     @stack('styles')
@@ -93,11 +93,12 @@
     @endif
 
     <livewire:tienda.partials.navbar />
-    <livewire:tienda.partials.marcas />
 
     <main class="pagina">
         {{ $slot }}
     </main>
+
+    <x-tienda.footer />
 
     <x-tienda.modal-variante />
     <x-tienda.toast />
@@ -118,6 +119,10 @@
     {{-- ── JS específico de cada página ───────────────────────────────────── --}}
     @stack('scripts')
 
+    <script>
+        document.addEventListener('livewire:navigated', () => window.scrollTo(0, 0));
+        window.addEventListener('scroll-top', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    </script>
 
 </body>
 
