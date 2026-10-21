@@ -58,7 +58,7 @@ class MiEmpresaPage extends Page implements HasForms
                 'logo', 'icono',
                 'carta_activa_cliente',
                 'bot_contexto',
-                'descripcion',
+                'descripcion', 'rubro',
                 'facebook', 'instagram', 'tiktok',
                 'fe_envio_directo_boleta',
                 'fe_envio_directo_factura',
