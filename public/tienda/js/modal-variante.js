@@ -14,6 +14,23 @@ window.modalVariante = function() {
             this.imgPreview = data.imagen;
             this.abierto    = true;
             document.body.style.overflow = 'hidden';
+            this._autoSeleccionarPrimera();
+        },
+
+        _autoSeleccionarPrimera() {
+            if (!this.producto?.variantes?.length || !this.producto?.atributos?.length) return;
+            const primera = this.producto.variantes.find(v => !v.sin_stock);
+            if (!primera) return;
+            const sel = {};
+            for (const attr of this.producto.atributos) {
+                const val = attr.valores.find(v => primera.valores_ids.includes(v.id));
+                if (val) sel[attr.id] = val;
+            }
+            this.seleccion = sel;
+            if (primera.imagen) { this.imgPreview = primera.imagen; return; }
+            for (const sv of Object.values(sel)) {
+                if (sv.imagen) { this.imgPreview = sv.imagen; return; }
+            }
         },
 
         cerrar() {

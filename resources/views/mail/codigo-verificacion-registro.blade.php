@@ -39,7 +39,10 @@
     <div class="warning">
       <strong>¿No solicitaste este código?</strong> Ignora este correo. Nadie puede usar este código sin acceso a tu bandeja de entrada.
     </div>
-    <p class="msg" style="margin-bottom:0">Si tienes problemas, escríbenos a <a href="mailto:soporte@{{ parse_url(config('app.url'), PHP_URL_HOST) }}" style="color:#1A4E96">soporte@{{ parse_url(config('app.url'), PHP_URL_HOST) }}</a>.</p>
+    @php $wspSoporte = \App\Models\AppSetting::get('whatsapp'); @endphp
+    @if($wspSoporte)
+    <p class="msg" style="margin-bottom:0">Si tienes problemas, escríbenos por WhatsApp: <a href="https://wa.me/{{ preg_replace('/\D/', '', $wspSoporte) }}" style="color:#1A4E96">{{ $wspSoporte }}</a>.</p>
+    @endif
   </div>
   <div class="footer">
     © {{ date('Y') }} {{ config('app.name') }} · Este es un correo automático, no respondas a este mensaje.

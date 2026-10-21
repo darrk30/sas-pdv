@@ -52,7 +52,7 @@
     {{-- ── CSS global (se necesita en todas las páginas) ─────────────────── --}}
     @livewireStyles
     <link rel="stylesheet" href="{{ asset('tienda/css/base.css') }}?v=11">
-    <link rel="stylesheet" href="{{ asset('tienda/css/footer.css') }}?v=4">
+    <link rel="stylesheet" href="{{ asset('tienda/css/footer.css') }}?v=5">
     <link rel="stylesheet" href="{{ asset('tienda/css/navbar.css') }}?v=5">
     <link rel="stylesheet" href="{{ asset('tienda/css/spinner.css') }}">
     <link rel="stylesheet" href="{{ asset('tienda/css/toast.css') }}?v=2">
@@ -110,9 +110,9 @@
     {{-- ── JS global: carrito store, fly-to-cart ──────────────────────────── --}}
     <script src="{{ asset('tienda/js/app.js') }}?v=1" data-navigate-once></script>
     {{-- Modal de variantes (necesario en cualquier página con tarjetas de producto) --}}
-    <script src="{{ asset('tienda/js/modal-variante.js') }}?v=2" data-navigate-once></script>
+    <script src="{{ asset('tienda/js/modal-variante.js') }}?v=3" data-navigate-once></script>
     {{-- Componentes Alpine cargados globalmente para que estén en el registry antes de wire:navigate --}}
-    <script src="{{ asset('tienda/js/producto-detalle.js') }}?v=3" data-navigate-once></script>
+    <script src="{{ asset('tienda/js/producto-detalle.js') }}?v=7" data-navigate-once></script>
     <script src="{{ asset('tienda/js/lista-deseos.js') }}?v=2" data-navigate-once></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" data-navigate-once></script>
 

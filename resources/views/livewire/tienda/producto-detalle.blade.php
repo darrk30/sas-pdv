@@ -1,7 +1,7 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('tienda/css/tarjeta.css') }}?v=3">
 <link rel="stylesheet" href="{{ asset('tienda/css/carrusel.css') }}">
-<link rel="stylesheet" href="{{ asset('tienda/css/producto-detalle.css') }}?v=4">
+<link rel="stylesheet" href="{{ asset('tienda/css/producto-detalle.css') }}?v=6">
 @endpush
 
 <div class="pd-page"
@@ -26,64 +26,62 @@
                  @touchmove.passive="tocarMover($event)"
                  @touchend.passive="tocarFin($event)">
 
-                @if ($imagenes->isNotEmpty())
-                    {{-- Tira deslizable --}}
-                    <div class="pd-galeria__tira"
-                         x-show="!imgOverride"
-                         :style="`transform:translateX(calc(-${indice*100}% + ${touchDx}px));transition:${arrastrandoImg?'none':'transform .3s cubic-bezier(.25,1,.5,1)'}`">
-                        <template x-for="(img, i) in imagenes" :key="img">
-                            <img :src="img"
-                                 class="pd-galeria__img pd-galeria__img--zoom"
-                                 alt="{{ $producto->nombre }}"
-                                 @click="abrirLightbox(i)"
-                                 loading="lazy"
-                                 title="Clic para ampliar">
-                        </template>
-                    </div>
-                    {{-- Overlay para imagen de variante/color --}}
-                    <img x-ref="imgPrincipal"
-                         x-show="imgOverride"
-                         :src="imgOverride || ''"
-                         alt="{{ $producto->nombre }}"
-                         class="pd-galeria__img pd-galeria__img--zoom pd-galeria__img--override"
-                         @click="abrirLightbox(indice)"
-                         title="Clic para ampliar">
-                @else
-                    <div class="pd-galeria__sin-img">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="56" height="56">
-                            <rect x="3" y="3" width="18" height="18" rx="1.5"/>
-                            <circle cx="8.5" cy="8.5" r="1.5"/>
-                            <path d="m21 15-5-5L5 21"/>
-                        </svg>
-                    </div>
-                @endif
+                {{-- Tira deslizable (galería) --}}
+                <div class="pd-galeria__tira"
+                     x-show="imagenes.length > 0 && !imgOverride"
+                     :style="`transform:translateX(calc(-${indice*100}% + ${touchDx}px));transition:${arrastrandoImg?'none':'transform .3s cubic-bezier(.25,1,.5,1)'}`">
+                    <template x-for="(img, i) in imagenes" :key="img">
+                        <img :src="img"
+                             class="pd-galeria__img pd-galeria__img--zoom"
+                             alt="{{ $producto->nombre }}"
+                             @click="abrirLightbox()"
+                             loading="lazy"
+                             title="Clic para ampliar">
+                    </template>
+                </div>
+                {{-- Overlay: imagen de variante seleccionada --}}
+                <img x-ref="imgPrincipal"
+                     x-show="!!imgOverride"
+                     :src="imgOverride || ''"
+                     alt="{{ $producto->nombre }}"
+                     class="pd-galeria__img pd-galeria__img--zoom pd-galeria__img--override"
+                     @click="abrirLightbox()"
+                     title="Clic para ampliar">
+                {{-- Sin imagen (sin galería y sin variante seleccionada) --}}
+                <div class="pd-galeria__sin-img" x-show="imagenes.length === 0 && !imgOverride">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="56" height="56">
+                        <rect x="3" y="3" width="18" height="18" rx="1.5"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <path d="m21 15-5-5L5 21"/>
+                    </svg>
+                </div>
 
-                {{-- Flechas (solo si hay más de 1 imagen y no hay override) --}}
-                <template x-if="imagenes.length > 1 && !imgOverride">
+                {{-- Flechas: navegan por TODAS las imágenes (galería + variantes) --}}
+                <template x-if="todasImagenes.length > 1">
                     <button type="button" class="pd-galeria__arrow pd-galeria__arrow--prev"
-                            @click="anterior()">
+                            @click="anteriorImg()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
                             <path d="M15 18l-6-6 6-6"/>
                         </svg>
                     </button>
                 </template>
-                <template x-if="imagenes.length > 1 && !imgOverride">
+                <template x-if="todasImagenes.length > 1">
                     <button type="button" class="pd-galeria__arrow pd-galeria__arrow--next"
-                            @click="siguiente()">
+                            @click="siguienteImg()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
                             <path d="M9 18l6-6-6-6"/>
                         </svg>
                     </button>
                 </template>
 
-                {{-- Puntos de posición --}}
-                <template x-if="imagenes.length > 1 && !imgOverride">
+                {{-- Puntos de posición (todas las imágenes) --}}
+                <template x-if="todasImagenes.length > 1">
                     <div class="pd-galeria__dots">
-                        <template x-for="(_, i) in imagenes" :key="i">
+                        <template x-for="(img, i) in todasImagenes" :key="i">
                             <button type="button"
                                     class="pd-galeria__dot"
-                                    :class="{ 'pd-galeria__dot--activo': indice === i }"
-                                    @click="seleccionarThumb(i)">
+                                    :class="{ 'pd-galeria__dot--activo': indiceTodas === i }"
+                                    @click="_irAImagen(img)">
                             </button>
                         </template>
                     </div>
@@ -94,9 +92,12 @@
 
             </div>
 
-            {{-- Thumbnails --}}
-            <div class="pd-galeria__thumbs" x-show="imagenes.length > 1">
-                <template x-for="(img, i) in imagenes" :key="i">
+            {{-- Thumbnails: galería + variantes con imagen --}}
+            <div class="pd-galeria__thumbs"
+                 x-show="imagenes.length > 1 || producto.variantes.some(v => v.imagen)">
+
+                {{-- Thumbs de galería --}}
+                <template x-for="(img, i) in imagenes" :key="'g'+i">
                     <button type="button"
                             class="pd-galeria__thumb"
                             :class="{ 'pd-galeria__thumb--activo': !imgOverride && indice === i }"
@@ -104,6 +105,21 @@
                         <img :src="img" alt="" class="pd-galeria__thumb-img">
                     </button>
                 </template>
+
+                {{-- Thumbs de variantes con imagen --}}
+                <template x-for="v in producto.variantes.filter(v => v.imagen)" :key="'var'+v.id">
+                    <button type="button"
+                            class="pd-galeria__thumb pd-galeria__thumb--var"
+                            :class="{
+                                'pd-galeria__thumb--activo': imgOverride === v.imagen,
+                                'pd-galeria__thumb--sin-stock': v.sin_stock
+                            }"
+                            :title="v.sin_stock ? 'Sin stock' : 'Ver esta variante'"
+                            @click="seleccionarVariante(v.id)">
+                        <img :src="v.imagen" alt="" class="pd-galeria__thumb-img">
+                    </button>
+                </template>
+
             </div>
 
         </div>
@@ -344,7 +360,7 @@
                         <div class="pd-specs__fila">
                             <span class="pd-specs__key">{{ $pa->atributo->nombre }}</span>
                             <span class="pd-specs__val">
-                                {{ $pa->valores->map(fn($v) => $v->nombre ?? $v->valor ?? '')->filter()->join(' · ') }}
+                                {{ $pa->valores->map(fn($v) => $v->nombre ?? $v->valor ?? '')->filter()->join('  /  ') }}
                             </span>
                         </div>
                     @endif
@@ -359,7 +375,6 @@
     {{-- ── Lightbox ──────────────────────────────────────────────── --}}
     <div class="lb"
      x-show="lb.abierto"
-     x-trap.noscroll="lb.abierto"
      @keydown.escape.window="lb.abierto = false"
      @click.self="lb.abierto = false"
      x-transition:enter="lb--enter"
@@ -375,22 +390,22 @@
 
     {{-- Imagen --}}
     <div class="lb__wrap" @click.self="lb.abierto = false">
-        <img :src="imagenes[lb.indice]" alt="{{ $producto->nombre }}" class="lb__img">
+        <img :src="lb.imgSrc || ''" alt="{{ $producto->nombre }}" class="lb__img">
     </div>
 
     {{-- Flechas --}}
-    <template x-if="imagenes.length > 1">
+    <template x-if="lb.total > 1">
         <button type="button" class="lb__flecha lb__flecha--prev"
-                @click="lb.indice = (lb.indice - 1 + imagenes.length) % imagenes.length"
+                @click="lbAnterior()"
                 aria-label="Anterior">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="22" height="22">
                 <path d="M15 18l-6-6 6-6"/>
             </svg>
         </button>
     </template>
-    <template x-if="imagenes.length > 1">
+    <template x-if="lb.total > 1">
         <button type="button" class="lb__flecha lb__flecha--next"
-                @click="lb.indice = (lb.indice + 1) % imagenes.length"
+                @click="lbSiguiente()"
                 aria-label="Siguiente">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="22" height="22">
                 <path d="M9 18l6-6-6-6"/>
@@ -399,7 +414,7 @@
     </template>
 
     {{-- Contador --}}
-    <template x-if="imagenes.length > 1">
-        <span class="lb__contador" x-text="(lb.indice + 1) + ' / ' + imagenes.length"></span>
+    <template x-if="lb.total > 1">
+        <span class="lb__contador" x-text="(lb.indice + 1) + ' / ' + lb.total"></span>
     </template>
 </div>
