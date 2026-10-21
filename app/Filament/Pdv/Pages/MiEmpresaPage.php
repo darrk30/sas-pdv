@@ -127,6 +127,27 @@ class MiEmpresaPage extends Page implements HasForms
                     ->description('Aparece en el footer de tu tienda en línea.')
                     ->columns(3)
                     ->schema([
+                        Select::make('rubro')
+                            ->label('Rubro')
+                            ->placeholder('Selecciona un rubro')
+                            ->options([
+                                'Bodega / Minimarket'        => 'Bodega / Minimarket',
+                                'Cafetería'                  => 'Cafetería',
+                                'Restaurante'                => 'Restaurante',
+                                'Tienda de ropa'             => 'Tienda de ropa',
+                                'Tienda de calzado'          => 'Tienda de calzado',
+                                'Ferretería'                 => 'Ferretería',
+                                'Farmacia / Botica'          => 'Farmacia / Botica',
+                                'Librería / Papelería'       => 'Librería / Papelería',
+                                'Electrónica y tecnología'   => 'Electrónica y tecnología',
+                                'Perfumería'                 => 'Perfumería',
+                                'Servicios'                  => 'Servicios',
+                                'Otro'                       => 'Otro',
+                            ])
+                            ->native(false)
+                            ->nullable()
+                            ->columnSpanFull(),
+
                         Textarea::make('descripcion')
                             ->label('Descripción de la empresa')
                             ->placeholder('Breve descripción de tu negocio, productos o servicios...')

@@ -14,11 +14,87 @@ const _pdPage = function(productoData, imagenesData, colorImagenMap) {
         arrastrandoImg: false,
         _dirGesto:     null,
 
+        init() {
+            this._autoSeleccionarPrimera();
+        },
+
+        _autoSeleccionarPrimera() {
+            if (!this.producto?.variantes?.length || !this.producto?.atributos?.length) return;
+            const primera = this.producto.variantes.find(v => !v.sin_stock);
+            if (!primera) return;
+            const sel = {};
+            for (const attr of this.producto.atributos) {
+                const val = attr.valores.find(v => primera.valores_ids.includes(v.id));
+                if (val) sel[attr.id] = val;
+            }
+            this.seleccion = sel;
+            if (primera.imagen) { this.imgOverride = primera.imagen; return; }
+            for (const sv of Object.values(sel)) {
+                if (sv.imagen) { this.imgOverride = sv.imagen; return; }
+            }
+        },
+
         get imgActual() {
             return this.imgOverride ?? this.imagenes[this.indice] ?? null;
         },
 
         seleccionarThumb(i) { this.indice = i; this.imgOverride = null; },
+
+        // Lista unificada: galería + variantes con imagen
+        get todasImagenes() {
+            const gal  = this.imagenes.map((src, i) => ({ src, tipo: 'galeria', idx: i }));
+            const vars = this.producto.variantes
+                .filter(v => v.imagen)
+                .map(v => ({ src: v.imagen, tipo: 'variante', varId: v.id }));
+            return [...gal, ...vars];
+        },
+
+        get indiceTodas() {
+            if (this.imgOverride) {
+                const f = this.todasImagenes.findIndex(img => img.src === this.imgOverride);
+                return f >= 0 ? f : 0;
+            }
+            return this.indice;
+        },
+
+        _irAImagen(item) {
+            if (!item) return;
+            if (item.tipo === 'galeria') {
+                this.indice = item.idx;
+                this.imgOverride = null;
+            } else {
+                this.seleccionarVariante(item.varId);
+            }
+        },
+
+        anteriorImg() {
+            const all = this.todasImagenes;
+            if (all.length <= 1) return;
+            const prev = (this.indiceTodas - 1 + all.length) % all.length;
+            this._irAImagen(all[prev]);
+        },
+        siguienteImg() {
+            const all = this.todasImagenes;
+            if (all.length <= 1) return;
+            const next = (this.indiceTodas + 1) % all.length;
+            this._irAImagen(all[next]);
+        },
+
+        seleccionarVariante(varId) {
+            const variante = this.producto.variantes.find(v => v.id === varId);
+            if (!variante) return;
+            const sel = {};
+            for (const attr of this.producto.atributos) {
+                const val = attr.valores.find(v => variante.valores_ids.includes(v.id));
+                if (val) sel[attr.id] = val;
+            }
+            this.seleccion = sel;
+            if (variante.imagen) { this.imgOverride = variante.imagen; return; }
+            for (const sv of Object.values(sel)) {
+                if (sv.imagen) { this.imgOverride = sv.imagen; return; }
+            }
+            this.imgOverride = null;
+        },
         siguiente() { if (this.indice < this.imagenes.length - 1) this.indice++; },
         anterior()  { if (this.indice > 0) this.indice--; },
 
@@ -214,8 +290,27 @@ const _pdPage = function(productoData, imagenesData, colorImagenMap) {
             Alpine.store('carrito').agregarDeseo(this.producto.id, v?.id ?? null, this.cantidad);
         },
 
-        lb: { abierto: false, indice: 0 },
-        abrirLightbox(i) { this.lb.indice = i; this.lb.abierto = true; },
+        lb: { abierto: false, indice: 0, imgSrc: null, total: 1 },
+        abrirLightbox() {
+            const all = this.todasImagenes;
+            if (!all.length) return;
+            this.lb.indice = this.indiceTodas;
+            this.lb.imgSrc = all[this.lb.indice]?.src ?? null;
+            this.lb.total  = all.length;
+            this.lb.abierto = true;
+        },
+        lbAnterior() {
+            const all = this.todasImagenes;
+            this.lb.indice = (this.lb.indice - 1 + all.length) % all.length;
+            this.lb.imgSrc = all[this.lb.indice]?.src ?? null;
+            this._irAImagen(all[this.lb.indice]);
+        },
+        lbSiguiente() {
+            const all = this.todasImagenes;
+            this.lb.indice = (this.lb.indice + 1) % all.length;
+            this.lb.imgSrc = all[this.lb.indice]?.src ?? null;
+            this._irAImagen(all[this.lb.indice]);
+        },
     };
 };
 

@@ -34,6 +34,14 @@
         }
     }
 
+    // Fallback: si no hay logo ni galería, usar imagen de la primera variante que tenga
+    $variantesParaImg = $producto->variantes ?? collect();
+    if ($imagenes->isEmpty()) {
+        foreach ($variantesParaImg as $var) {
+            if ($var->imagen) { $imagenes->push(Storage::url($var->imagen)); break; }
+        }
+    }
+
     // Índice en $imagenes donde empieza la galería (para el hover).
     // Solo útil si hay logo Y al menos una imagen de galería.
     $indiceGaleria = ($producto->logo && $galeria->isNotEmpty()) ? 1 : null;

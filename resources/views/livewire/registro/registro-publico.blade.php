@@ -347,6 +347,7 @@
                                 <option>Farmacia / Botica</option>
                                 <option>Librería / Papelería</option>
                                 <option>Electrónica y tecnología</option>
+                                <option>Perfumería</option>
                                 <option>Servicios</option>
                                 <option>Otro</option>
                             </select>

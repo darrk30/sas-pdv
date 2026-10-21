@@ -19,10 +19,6 @@
                 <span class="site-footer__nombre-grande">{{ $empresa->name }}</span>
             @endif
 
-            @if ($empresa->rubro)
-                <span class="site-footer__rubro">{{ $empresa->rubro }}</span>
-            @endif
-
             @if ($empresa->descripcion)
                 <p class="site-footer__desc">{{ $empresa->descripcion }}</p>
             @endif
@@ -59,6 +55,10 @@
                         </a>
                     @endif
                 </div>
+            @endif
+
+            @if ($empresa->rubro)
+                <span class="site-footer__rubro">{{ $empresa->rubro }}</span>
             @endif
         </div>
 
