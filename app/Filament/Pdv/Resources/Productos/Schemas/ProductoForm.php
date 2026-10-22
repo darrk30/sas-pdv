@@ -83,8 +83,7 @@ class ProductoForm
                                         ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                             $precio      = floatval($state ?: 0);
                                             $descuento   = floatval($get('porcentaje_descuento') ?: 0);
-                                            // precio calculado → floor
-                                            $precioFinal = (int) floor($precio - ($precio * ($descuento / 100)));
+                                            $precioFinal = round($precio - ($precio * ($descuento / 100)), 2);
                                             $set('precio_con_descuento', $precioFinal);
                                         }),
 
@@ -108,14 +107,14 @@ class ProductoForm
                                         ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                             $descuento   = floatval($state ?: 0);
                                             $precio      = floatval($get('precio_venta') ?: 0);
-                                            // precio calculado → floor (el usuario no lo escribió)
-                                            $precioFinal = (int) floor($precio - ($precio * ($descuento / 100)));
+                                            $precioFinal = round($precio - ($precio * ($descuento / 100)), 2);
                                             $set('precio_con_descuento', $precioFinal);
                                         }),
 
                                     TextInput::make('precio_con_descuento')
                                         ->label('Precio final al cliente')
                                         ->numeric()
+                                        ->step(0.01)
                                         ->prefix('S/')
                                         ->default(0)
                                         ->minValue(0)
@@ -125,9 +124,8 @@ class ProductoForm
                                         ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                             $precioFinal = floatval($state ?: 0);
                                             $precio      = floatval($get('precio_venta') ?: 0);
-                                            // porcentaje calculado → floor (el usuario no lo escribió)
                                             $descuento = $precio > 0
-                                                ? (int) floor(($precio - $precioFinal) / $precio * 100)
+                                                ? round(($precio - $precioFinal) / $precio * 100, 2)
                                                 : 0;
                                             $set('porcentaje_descuento', $descuento);
                                         })
@@ -136,7 +134,7 @@ class ProductoForm
                                             $precio = floatval($get('precio_venta') ?: 0);
                                             if ($stored == 0 && $precio > 0) {
                                                 $descuento = floatval($get('porcentaje_descuento') ?: 0);
-                                                return (int) floor($precio - ($precio * ($descuento / 100)));
+                                                return round($precio - ($precio * ($descuento / 100)), 2);
                                             }
                                             return $stored;
                                         }),
