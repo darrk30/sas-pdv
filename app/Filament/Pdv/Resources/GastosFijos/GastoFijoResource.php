@@ -6,18 +6,23 @@ use App\Enums\FrecuenciaGasto;
 use App\Filament\Pdv\Resources\GastosFijos\Pages\CreateGastoFijo;
 use App\Filament\Pdv\Resources\GastosFijos\Pages\EditGastoFijo;
 use App\Filament\Pdv\Resources\GastosFijos\Pages\ListGastosFijos;
+use App\Enums\CategoriaGasto;
+use App\Models\Gasto;
 use App\Models\GastoFijo;
+use App\Models\MetodoPago;
 use BackedEnum;
 use UnitEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
+use Filament\Forms;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
+use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Filament\Forms;
 use Illuminate\Database\Eloquent\Model;
 
 class GastoFijoResource extends Resource
@@ -74,9 +79,24 @@ class GastoFijoResource extends Resource
                 ->required()
                 ->default('activo'),
 
+            Forms\Components\DatePicker::make('proxima_fecha_pago')
+                ->label('Próxima fecha de pago')
+                ->helperText('Cuándo se debe pagar por primera vez. Después se avanza automáticamente.')
+                ->nullable()
+                ->native(false),
+
+            Forms\Components\TextInput::make('dias_aviso')
+                ->label('Días de aviso previo')
+                ->numeric()
+                ->default(3)
+                ->minValue(1)
+                ->maxValue(30)
+                ->suffix('días')
+                ->helperText('Con cuántos días de anticipación notificar.'),
+
             Forms\Components\Textarea::make('notas')
                 ->label('Notas')
-                ->placeholder('Observaciones, fecha de vencimiento, proveedor...')
+                ->placeholder('Observaciones, proveedor...')
                 ->rows(3)
                 ->columnSpanFull(),
         ]);
@@ -109,6 +129,24 @@ class GastoFijoResource extends Resource
                     ))
                     ->color('gray'),
 
+                TextColumn::make('proxima_fecha_pago')
+                    ->label('Próx. pago')
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->color(fn (GastoFijo $r) => match (true) {
+                        $r->proxima_fecha_pago === null                                   => 'gray',
+                        $r->proxima_fecha_pago->isPast()                                  => 'danger',
+                        $r->proxima_fecha_pago->lte(now()->addDays($r->dias_aviso ?? 3))  => 'warning',
+                        default                                                            => 'success',
+                    })
+                    ->description(fn (GastoFijo $r) => match (true) {
+                        $r->proxima_fecha_pago === null        => null,
+                        $r->proxima_fecha_pago->isToday()      => 'Vence hoy',
+                        $r->proxima_fecha_pago->isTomorrow()   => 'Vence mañana',
+                        $r->proxima_fecha_pago->isPast()       => 'Vencido hace ' . (int) now()->startOfDay()->diffInDays($r->proxima_fecha_pago->startOfDay()) . ' días',
+                        default                                => 'En ' . (int) now()->startOfDay()->diffInDays($r->proxima_fecha_pago->startOfDay()) . ' días',
+                    }),
+
                 TextColumn::make('estado')
                     ->label('Estado')
                     ->badge()
@@ -134,10 +172,74 @@ class GastoFijoResource extends Resource
                     ->options(['activo' => 'Activo', 'inactivo' => 'Inactivo']),
             ])
             ->actions([
+                Action::make('registrar_pago')
+                    ->label('Pagar')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('success')
+                    ->visible(fn (GastoFijo $r) => $r->estaActivo() && $r->proxima_fecha_pago !== null)
+                    ->modalHeading(fn (GastoFijo $r) => 'Registrar pago — ' . $r->nombre)
+                    ->modalWidth('md')
+                    ->form(fn (GastoFijo $r) => [
+                        Forms\Components\TextInput::make('monto')
+                            ->label('Monto a pagar (S/)')
+                            ->numeric()
+                            ->prefix('S/')
+                            ->default(fn () => (float) $r->monto)
+                            ->minValue(0.01)
+                            ->required(),
+
+                        Forms\Components\Select::make('metodo_pago_id')
+                            ->label('Método de pago')
+                            ->options(
+                                MetodoPago::where('empresa_id', Filament::getTenant()->id)
+                                    ->where('estado', 'activo')
+                                    ->pluck('nombre', 'id')
+                            )
+                            ->required()
+                            ->searchable(),
+
+                        Forms\Components\Select::make('categoria')
+                            ->label('Categoría')
+                            ->options(collect(CategoriaGasto::cases())->mapWithKeys(fn ($c) => [$c->value => $c->getLabel()]))
+                            ->default('otro')
+                            ->required(),
+
+                        Forms\Components\DatePicker::make('fecha')
+                            ->label('Fecha de pago')
+                            ->default(now())
+                            ->required()
+                            ->native(false),
+                    ])
+                    ->action(function (GastoFijo $record, array $data): void {
+                        $empresaId = Filament::getTenant()->id;
+
+                        Gasto::create([
+                            'empresa_id'    => $empresaId,
+                            'gasto_fijo_id' => $record->id,
+                            'user_id'       => auth()->id(),
+                            'fecha'         => $data['fecha'],
+                            'monto'         => $data['monto'],
+                            'metodo_pago_id'=> $data['metodo_pago_id'],
+                            'categoria'     => $data['categoria'],
+                            'descripcion'   => 'Pago de gasto fijo: ' . $record->nombre,
+                            'serie'         => 'GF',
+                            'correlativo'   => Gasto::siguienteCorrelativo($empresaId, 'GF'),
+                            'estado'        => 'aprobado',
+                        ]);
+
+                        $record->avanzarProximaFecha();
+
+                        Notification::make()
+                            ->success()
+                            ->title('Pago registrado')
+                            ->body('S/ ' . number_format($data['monto'], 2) . ' — próximo pago: ' . $record->fresh()->proxima_fecha_pago?->format('d/m/Y'))
+                            ->send();
+                    }),
+
                 EditAction::make(),
                 DeleteAction::make(),
             ])
-            ->defaultSort('nombre')
+            ->defaultSort('proxima_fecha_pago')
             ->emptyStateHeading('Sin gastos fijos registrados')
             ->emptyStateDescription('Agrega tus gastos fijos (alquiler, servicios, planilla…) para calcular tu meta mínima de ventas.')
             ->emptyStateIcon('heroicon-o-clipboard-document-list');

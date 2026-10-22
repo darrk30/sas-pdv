@@ -4,6 +4,7 @@ namespace App\Filament\Pdv\Resources\IngresoEgresos\Schemas;
 
 use App\Enums\CategoriaEgreso;
 use App\Enums\TipoMovimiento;
+use App\Models\MetodoPago;
 use App\Models\SesionCaja;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -84,6 +85,17 @@ class IngresoEgresoForm
                                 ->required()
                                 ->visible(fn($get) => self::tipo($get('tipo')) === TipoMovimiento::Egreso->value
                                     && self::categoria($get('categoria')) === CategoriaEgreso::Remuneracion->value),
+
+                            Select::make('metodo_pago_id')
+                                ->label('Método de pago')
+                                ->options(fn() => MetodoPago::where('empresa_id', Filament::getTenant()->id)
+                                    ->orderBy('nombre')
+                                    ->pluck('nombre', 'id'))
+                                ->native(false)
+                                ->required()
+                                ->default(fn() => MetodoPago::where('empresa_id', Filament::getTenant()->id)
+                                    ->where('nombre', 'Efectivo')
+                                    ->value('id')),
 
                             TextInput::make('monto')
                                 ->label('Monto (S/)')

@@ -3,6 +3,7 @@
 namespace App\Filament\Pdv\Resources\Gastos\Schemas;
 
 use App\Enums\CategoriaGasto;
+use App\Models\MetodoPago;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -29,6 +30,17 @@ class GastoForm
                             ->default(now())
                             ->native(false)
                             ->displayFormat('d/m/Y'),
+
+                        Select::make('metodo_pago_id')
+                            ->label('Método de pago')
+                            ->options(fn () => MetodoPago::where('empresa_id', Filament::getTenant()->id)
+                                ->orderBy('nombre')
+                                ->pluck('nombre', 'id'))
+                            ->native(false)
+                            ->required()
+                            ->default(fn () => MetodoPago::where('empresa_id', Filament::getTenant()->id)
+                                ->where('nombre', 'Efectivo')
+                                ->value('id')),
 
                         TextInput::make('monto')
                             ->label('Monto (S/)')

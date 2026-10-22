@@ -205,6 +205,7 @@ class Empresa extends Model
             'reporte_vendedores'  => true,
             'reporte_ajustes'     => true,
             'reporte_clientes'    => true,
+            'reporte_balance'     => true,
             // Cuentas
             'cuentas'             => false,
             'cuentas_por_cobrar'  => false,
@@ -263,6 +264,7 @@ class Empresa extends Model
         'reporte_vendedores'  => 'reportes',
         'reporte_ajustes'     => 'reportes',
         'reporte_clientes'    => 'reportes',
+        'reporte_balance'     => 'reportes',
         // Cuentas
         'cuentas_por_cobrar'  => 'cuentas',
         'cuentas_por_pagar'   => 'cuentas',

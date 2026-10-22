@@ -94,6 +94,11 @@ class ComprasTable
                     ->sortable()
                     ->alignEnd(),
 
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('created_at')
                     ->label('Registrado')
                     ->dateTime('d/m/Y H:i')

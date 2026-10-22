@@ -365,27 +365,29 @@ class EmpresaForm
                                             Toggle::make('modulos_activos.reportes')
                                                 ->label('Activar módulo completo')->onColor('success')->live()->default(true)->columnSpanFull()
                                                 ->afterStateUpdated(function (bool $state, Set $set) {
-                                                    foreach (['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes'] as $s) {
+                                                    foreach (['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','reporte_balance'] as $s) {
                                                         $set("modulos_activos.$s", $state);
                                                     }
                                                 }),
                                             Grid::make(2)->schema([
                                                 Toggle::make('modulos_activos.ventas_periodo')->label('Ventas por Período')->default(true)->live()
-                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes'], $get, $set)),
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','reporte_balance'], $get, $set)),
                                                 Toggle::make('modulos_activos.reporte_ventas')->label('Reporte de Ventas')->default(true)->live()
-                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes'], $get, $set)),
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','reporte_balance'], $get, $set)),
                                                 Toggle::make('modulos_activos.reporte_ganancias')->label('Reporte de Ganancias')->default(true)->live()
-                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes'], $get, $set)),
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','reporte_balance'], $get, $set)),
                                                 Toggle::make('modulos_activos.reporte_productos')->label('Productos más vendidos')->default(true)->live()
-                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes'], $get, $set)),
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','reporte_balance'], $get, $set)),
                                                 Toggle::make('modulos_activos.reporte_compras')->label('Reporte de Compras')->default(true)->live()
-                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes'], $get, $set)),
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','reporte_balance'], $get, $set)),
                                                 Toggle::make('modulos_activos.reporte_vendedores')->label('Vendedores')->default(true)->live()
-                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes'], $get, $set)),
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','reporte_balance'], $get, $set)),
                                                 Toggle::make('modulos_activos.reporte_ajustes')->label('Reporte de Ajustes')->default(true)->live()
-                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes'], $get, $set)),
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','reporte_balance'], $get, $set)),
                                                 Toggle::make('modulos_activos.reporte_clientes')->label('Reporte de Clientes')->default(true)->live()
-                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes'], $get, $set)),
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','reporte_balance'], $get, $set)),
+                                                Toggle::make('modulos_activos.reporte_balance')->label('Reporte de Balance')->default(true)->live()
+                                                    ->afterStateUpdated(fn(Get $get, Set $set) => static::syncPadre('reportes', ['ventas_periodo','reporte_ventas','reporte_ganancias','reporte_productos','reporte_compras','reporte_vendedores','reporte_ajustes','reporte_clientes','reporte_balance'], $get, $set)),
                                             ])->columnSpanFull(),
                                         ]),
 

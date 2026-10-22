@@ -38,6 +38,9 @@ class GastosTable
                 TextColumn::make('categoria')
                     ->label('Categoría')
                     ->badge()
+                    ->formatStateUsing(fn ($state) => $state instanceof CategoriaGasto ? $state->getLabel() : ucfirst(str_replace('_', ' ', $state ?? '')))
+                    ->color(fn ($state) => $state instanceof CategoriaGasto ? $state->getColor() : 'gray')
+                    ->icon(fn ($state) => $state instanceof CategoriaGasto ? $state->getIcon() : null)
                     ->sortable(),
 
                 TextColumn::make('descripcion')
@@ -49,6 +52,11 @@ class GastosTable
                     ->label('Empleado')
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('metodoPago.nombre')
+                    ->label('Método')
+                    ->badge()
+                    ->placeholder('—'),
 
                 TextColumn::make('monto')
                     ->label('Monto')

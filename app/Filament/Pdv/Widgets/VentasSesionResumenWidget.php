@@ -19,7 +19,7 @@ class VentasSesionResumenWidget extends BaseWidget
     protected int | array | null $columns = [
         'default' => 2,
         'sm'      => 3,
-        'lg'      => 6,
+        'lg'      => 4,
     ];
 
     protected function getStats(): array
@@ -106,16 +106,36 @@ class VentasSesionResumenWidget extends BaseWidget
                 ->icon('heroicon-o-truck');
         }
 
-        // ── Métodos de pago ───────────────────────────────────────────────────
-        $metodos = DB::table('venta_pagos')
+        // ── Métodos de pago: ventas + ingresos/egresos ───────────────────────
+        $ventasPorMetodo = DB::table('venta_pagos')
             ->join('ventas',       'ventas.id',       '=', 'venta_pagos.venta_id')
             ->join('metodos_pago', 'metodos_pago.id', '=', 'venta_pagos.metodo_pago_id')
             ->where('ventas.sesion_caja_id', $sesion->id)
             ->where('ventas.estado', $completada)
-            ->selectRaw('metodos_pago.nombre, SUM(venta_pagos.monto) AS total')
+            ->selectRaw('metodos_pago.id, metodos_pago.nombre, SUM(venta_pagos.monto) AS total')
             ->groupBy('metodos_pago.id', 'metodos_pago.nombre')
-            ->orderByDesc('total')
-            ->get();
+            ->get()
+            ->keyBy('id');
+
+        // Ingresos suman, egresos restan
+        $movsPorMetodo = DB::table('ingresos_egresos')
+            ->join('metodos_pago', 'metodos_pago.id', '=', 'ingresos_egresos.metodo_pago_id')
+            ->where('ingresos_egresos.sesion_caja_id', $sesion->id)
+            ->where('ingresos_egresos.estado', '!=', 'anulado')
+            ->selectRaw("metodos_pago.id, metodos_pago.nombre,
+                SUM(CASE WHEN ingresos_egresos.tipo = 'ingreso' THEN monto ELSE -monto END) AS total")
+            ->groupBy('metodos_pago.id', 'metodos_pago.nombre')
+            ->get()
+            ->keyBy('id');
+
+        // Unir ambas colecciones por método de pago
+        $todosIds = $ventasPorMetodo->keys()->merge($movsPorMetodo->keys())->unique();
+        $metodos  = $todosIds->map(function ($id) use ($ventasPorMetodo, $movsPorMetodo) {
+            $nombre = $ventasPorMetodo[$id]->nombre ?? $movsPorMetodo[$id]->nombre;
+            $total  = ((float) ($ventasPorMetodo[$id]->total ?? 0))
+                    + ((float) ($movsPorMetodo[$id]->total  ?? 0));
+            return (object) ['id' => $id, 'nombre' => $nombre, 'total' => $total];
+        })->sortByDesc('total');
 
         foreach ($metodos as $m) {
             $stats[] = Stat::make($m->nombre, 'S/ ' . number_format((float) $m->total, 2))
