@@ -70,31 +70,39 @@ class ReporteBalancePage extends Page implements HasForms
                     ->native(false)
                     ->live()
                     ->afterStateUpdated(function ($state, $set) {
-                        [$desde, $hasta] = $this->rangoFechas($state);
-                        $set('filtroFechaDesde', $desde);
-                        $set('filtroFechaHasta', $hasta);
+                        $this->filtroRango = $state;
+                        if ($state === 'custom') {
+                            $hoy = today()->toDateString();
+                            $set('filtroFechaDesde', $hoy);
+                            $set('filtroFechaHasta', $hoy);
+                            $this->filtroFechaDesde = $hoy;
+                            $this->filtroFechaHasta = $hoy;
+                        } else {
+                            [$desde, $hasta] = $this->rangoFechas($state);
+                            $set('filtroFechaDesde', $desde);
+                            $set('filtroFechaHasta', $hasta);
+                            $this->filtroFechaDesde = $desde;
+                            $this->filtroFechaHasta = $hasta;
+                        }
                     }),
 
                 DatePicker::make('filtroFechaDesde')
                     ->label('Desde')
                     ->native(false)
                     ->displayFormat('d/m/Y')
+                    ->live()
+                    ->afterStateUpdated(fn ($state) => $this->filtroFechaDesde = $state)
                     ->visible(fn ($get) => $get('filtroRango') === 'custom'),
 
                 DatePicker::make('filtroFechaHasta')
                     ->label('Hasta')
                     ->native(false)
                     ->displayFormat('d/m/Y')
+                    ->live()
+                    ->afterStateUpdated(fn ($state) => $this->filtroFechaHasta = $state)
                     ->visible(fn ($get) => $get('filtroRango') === 'custom'),
             ]),
         ]);
-    }
-
-    public function updated($property): void
-    {
-        if (in_array($property, ['filtroRango', 'filtroFechaDesde', 'filtroFechaHasta'])) {
-            // Reactivo — la vista se recalcula automáticamente
-        }
     }
 
     // ── Helpers de fecha ──────────────────────────────────────────────────────
@@ -206,6 +214,7 @@ class ReporteBalancePage extends Page implements HasForms
 
     public function getSaldosPorMetodo(): array
     {
+        [$desde, $hasta] = $this->fechas();
         $empresaId = Filament::getTenant()->id;
         $metodos   = DB::table('metodos_pago')
             ->where('empresa_id', $empresaId)
@@ -216,7 +225,7 @@ class ReporteBalancePage extends Page implements HasForms
 
         $ids = $metodos->pluck('id')->all();
 
-        // 1. Ventas contado por método (una sola query)
+        // 1. Ventas contado por método filtradas por período
         $ventas = DB::table('venta_pagos')
             ->join('ventas', 'ventas.id', '=', 'venta_pagos.venta_id')
             ->join('metodos_pago', 'metodos_pago.id', '=', 'venta_pagos.metodo_pago_id')
@@ -224,36 +233,43 @@ class ReporteBalancePage extends Page implements HasForms
             ->where('ventas.estado', 'completada')
             ->where('metodos_pago.condicion_pago', 'contado')
             ->whereIn('venta_pagos.metodo_pago_id', $ids)
+            ->whereDate('ventas.fecha_emision', '>=', $desde)
+            ->whereDate('ventas.fecha_emision', '<=', $hasta)
             ->selectRaw('venta_pagos.metodo_pago_id, SUM(venta_pagos.monto) AS total')
             ->groupBy('venta_pagos.metodo_pago_id')
             ->pluck('total', 'metodo_pago_id');
 
-        // 2. Movimientos de caja netos por método (una sola query)
-        $movimientos = DB::table('transacciones')
+        // 2. Movimientos de caja netos por método filtrados por período
+        $movimientos = DB::table('ingresos_egresos')
             ->where('empresa_id', $empresaId)
             ->where('estado', 'aprobado')
-            ->where('transaccionable_type', \App\Models\IngresoEgreso::class)
             ->whereIn('metodo_pago_id', $ids)
+            ->where('fecha_hora', '>=', $desde)
+            ->where('fecha_hora', '<=', $hasta . ' 23:59:59')
             ->selectRaw("metodo_pago_id, SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE -monto END) AS saldo")
             ->groupBy('metodo_pago_id')
             ->pluck('saldo', 'metodo_pago_id');
 
-        // 3. Gastos por método (una sola query)
+        // 3. Gastos por método filtrados por período
         $gastos = DB::table('gastos')
             ->where('empresa_id', $empresaId)
             ->where('estado', '!=', 'anulado')
             ->whereIn('metodo_pago_id', $ids)
+            ->where('fecha', '>=', $desde)
+            ->where('fecha', '<=', $hasta)
             ->selectRaw('metodo_pago_id, SUM(monto) AS total')
             ->groupBy('metodo_pago_id')
             ->pluck('total', 'metodo_pago_id');
 
-        // 4. Compras pagadas por método (una sola query)
+        // 4. Compras pagadas por método filtradas por período
         $compras = DB::table('compra_pagos')
             ->join('compras', 'compras.id', '=', 'compra_pagos.compra_id')
             ->where('compras.empresa_id', $empresaId)
             ->where('compras.estado', 'confirmado')
             ->where('compras.estado_pago', 'pagado')
             ->whereIn('compra_pagos.metodo_pago_id', $ids)
+            ->where('compras.created_at', '>=', $desde)
+            ->where('compras.created_at', '<=', $hasta . ' 23:59:59')
             ->selectRaw('compra_pagos.metodo_pago_id, SUM(compra_pagos.monto) AS total')
             ->groupBy('compra_pagos.metodo_pago_id')
             ->pluck('total', 'metodo_pago_id');

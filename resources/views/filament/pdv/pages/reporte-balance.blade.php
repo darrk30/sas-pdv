@@ -132,7 +132,7 @@
                     class="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Por método de pago</p>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Saldo acumulado histórico</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ $diasLabel }}</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <div class="hidden md:flex flex-wrap gap-2">
