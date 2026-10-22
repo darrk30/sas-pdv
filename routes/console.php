@@ -12,6 +12,9 @@ Artisan::command('inspire', function () {
 // Alertar créditos vencidos cada mañana
 Schedule::command('creditos:alertar-vencidos')->dailyAt('08:00');
 
+// Notificar gastos fijos que vencen pronto
+Schedule::command('gastos-fijos:notificar')->dailyAt('08:05');
+
 // Backup automático diario a las 2am + limpieza de backups viejos
 Schedule::command('backup:run')->dailyAt('02:00')->onFailure(fn () => null);
 Schedule::command('backup:clean')->dailyAt('01:00')->onFailure(fn () => null);

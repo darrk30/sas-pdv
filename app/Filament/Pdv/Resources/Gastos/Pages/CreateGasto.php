@@ -19,7 +19,7 @@ class CreateGasto extends CreateRecord
         $data['user_id']     = auth()->id();
         $data['serie']       = 'G';
         $data['correlativo'] = Gasto::siguienteCorrelativo($empresaId, 'G');
-        $data['estado']      = 'pendiente';
+        $data['estado']      = 'aprobado';
 
         return $data;
     }

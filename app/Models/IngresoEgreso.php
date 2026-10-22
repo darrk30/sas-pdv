@@ -30,6 +30,7 @@ class IngresoEgreso extends Model
         'entregado_a',
         'user_receptor_id',
         'monto',
+        'metodo_pago_id',
         'motivo',
         'estado',
     ];
@@ -45,6 +46,11 @@ class IngresoEgreso extends Model
     public function transaccion(): MorphOne
     {
         return $this->morphOne(Transaccion::class, 'transaccionable');
+    }
+
+    public function metodoPago(): BelongsTo
+    {
+        return $this->belongsTo(MetodoPago::class);
     }
 
     public function sesionCaja(): BelongsTo

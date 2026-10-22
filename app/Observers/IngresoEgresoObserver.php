@@ -12,16 +12,17 @@ class IngresoEgresoObserver
 {
     public function created(IngresoEgreso $ingreso): void
     {
-        // Ingresos/Egresos siempre usan Efectivo
-        $efectivo = MetodoPago::where('empresa_id', $ingreso->empresa_id)
-            ->where('nombre', 'Efectivo')
-            ->first();
+        // Usar el método de pago seleccionado; fallback a Efectivo si no viene
+        $metodoPagoId = $ingreso->metodo_pago_id
+            ?? MetodoPago::where('empresa_id', $ingreso->empresa_id)
+                ->where('nombre', 'Efectivo')
+                ->value('id');
 
         $tipo = $ingreso->tipo instanceof TipoMovimiento
             ? $ingreso->tipo->value
             : (string) $ingreso->tipo;
 
-        $persona = $ingreso->entregado_a ?? $ingreso->receptor?->name ?? '';
+        $persona  = $ingreso->entregado_a ?? $ingreso->receptor?->name ?? '';
         $concepto = match (true) {
             $tipo === TipoMovimiento::Ingreso->value => 'Ingreso' . ($persona ? ": {$persona}" : ''),
             default                                  => 'Egreso'  . ($persona ? ": {$persona}" : ''),
@@ -35,7 +36,7 @@ class IngresoEgresoObserver
             'tipo'                 => $tipo,
             'concepto'             => $concepto,
             'monto'                => $ingreso->monto,
-            'metodo_pago_id'       => $efectivo?->id,
+            'metodo_pago_id'       => $metodoPagoId,
             'estado'               => 'aprobado',
             'fecha'                => $ingreso->fecha_hora,
         ]);

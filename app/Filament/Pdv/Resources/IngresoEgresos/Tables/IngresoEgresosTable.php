@@ -22,7 +22,7 @@ class IngresoEgresosTable
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) {
-                $query->with('sesionCaja');
+                $query->with(['sesionCaja', 'metodoPago']);
                 if (! self::esAdmin()) {
                     $query->where('user_id', auth()->id());
                 }
@@ -56,6 +56,11 @@ class IngresoEgresosTable
                         ?? $record->receptor?->name
                         ?? '—')
                     ->searchable(),
+
+                TextColumn::make('metodoPago.nombre')
+                    ->label('Método')
+                    ->badge()
+                    ->placeholder('—'),
 
                 TextColumn::make('monto')
                     ->label('Monto')
@@ -103,6 +108,26 @@ class IngresoEgresosTable
                     ->visible(fn($record) => $record->estado === EstadoMovimiento::Aprobado
                         && $record->sesionCaja?->estaAbierta())
                     ->action(function ($record) {
+                        // Solo validar si es un ingreso: anular un ingreso reduce el saldo
+                        if ($record->tipo === TipoMovimiento::Ingreso && $record->metodo_pago_id && $record->sesion_caja_id) {
+                            $saldoActual = DB::table('transacciones')
+                                ->where('sesion_caja_id', $record->sesion_caja_id)
+                                ->where('metodo_pago_id', $record->metodo_pago_id)
+                                ->where('estado', 'aprobado')
+                                ->selectRaw("SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE -monto END) AS saldo")
+                                ->value('saldo') ?? 0;
+
+                            if ((float) $saldoActual - (float) $record->monto < 0) {
+                                $metodo = $record->metodoPago?->nombre ?? 'el método de pago';
+                                Notification::make()
+                                    ->danger()
+                                    ->title('No se puede anular')
+                                    ->body("El saldo en {$metodo} quedaría negativo (S/ " . number_format((float)$saldoActual - (float)$record->monto, 2) . ").")
+                                    ->send();
+                                return;
+                            }
+                        }
+
                         $record->update(['estado' => EstadoMovimiento::Anulado->value]);
                         Notification::make()
                             ->success()

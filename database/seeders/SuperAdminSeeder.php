@@ -210,6 +210,7 @@ class SuperAdminSeeder extends Seeder
         ['module' => 'reportes', 'module_label' => 'Reportes', 'name' => 'reportes.vendedor',       'description' => 'Reporte detallado por vendedor'],
         ['module' => 'reportes', 'module_label' => 'Reportes', 'name' => 'reportes.clientes',       'description' => 'Reporte de compras por cliente'],
         ['module' => 'reportes', 'module_label' => 'Reportes', 'name' => 'reportes.cuentas_cobrar', 'description' => 'Ver cuentas por cobrar'],
+        ['module' => 'reportes', 'module_label' => 'Reportes', 'name' => 'reportes.balance',        'description' => 'Ver reporte de balance (ingresos, egresos y ganancias)'],
 
         // ── Listas de Precios ──────────────────────────────────────────────────
         ['module' => 'listas_precios', 'module_label' => 'Listas de Precios', 'name' => 'listas_precios.ver',      'description' => 'Ver listas de precios'],

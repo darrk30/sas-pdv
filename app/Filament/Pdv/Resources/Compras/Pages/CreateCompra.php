@@ -5,6 +5,7 @@ namespace App\Filament\Pdv\Resources\Compras\Pages;
 use App\Filament\Pdv\Resources\Compras\CompraResource;
 use App\Services\InventarioCoreService;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -50,6 +51,43 @@ class CreateCompra extends CreateRecord
         }
 
         return $data;
+    }
+
+    protected function beforeCreate(): void
+    {
+        $this->validarPagos();
+    }
+
+    private function validarPagos(): void
+    {
+        $estadoPago = $this->data['estado_pago'] ?? 'pendiente';
+        $estadoPago = $estadoPago instanceof \BackedEnum ? $estadoPago->value : (string) $estadoPago;
+
+        if ($estadoPago === 'pendiente') return;
+
+        $total     = round((float) ($this->data['total'] ?? 0), 2);
+        $pagos     = is_array($this->data['pagos'] ?? null) ? $this->data['pagos'] : [];
+        $sumaPagos = 0.0;
+        foreach ($pagos as $pago) {
+            if (is_array($pago)) $sumaPagos += (float) ($pago['monto'] ?? 0);
+        }
+        $sumaPagos = round($sumaPagos, 2);
+
+        $error = null;
+
+        if ($estadoPago === 'pagado' && $sumaPagos !== $total) {
+            $error = "El monto pagado (S/ {$sumaPagos}) debe coincidir con el total (S/ {$total}).";
+        } elseif ($estadoPago === 'parcial') {
+            if ($sumaPagos <= 0) {
+                $error = 'Debe registrar al menos un pago cuando el estado es Parcial.';
+            } elseif ($sumaPagos > $total) {
+                $error = "El monto pagado (S/ {$sumaPagos}) no puede superar el total (S/ {$total}).";
+            }
+        }
+
+        if ($error) {
+            throw ValidationException::withMessages(['data.pagos' => $error]);
+        }
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Traits\BelongsToEmpresa;
 use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\MetodoPago;
 
 class Gasto extends Model
 {
@@ -17,10 +18,12 @@ class Gasto extends Model
 
     protected $fillable = [
         'empresa_id',
+        'gasto_fijo_id',
         'user_id',
         'user_empleado_id',
         'fecha',
         'monto',
+        'metodo_pago_id',
         'categoria',
         'descripcion',
         'serie',
@@ -35,6 +38,16 @@ class Gasto extends Model
         'fecha'      => 'date',
         'monto'      => 'decimal:2',
     ];
+
+    public function metodoPago(): BelongsTo
+    {
+        return $this->belongsTo(MetodoPago::class);
+    }
+
+    public function gastoFijo(): BelongsTo
+    {
+        return $this->belongsTo(GastoFijo::class);
+    }
 
     public function registradoPor(): BelongsTo
     {

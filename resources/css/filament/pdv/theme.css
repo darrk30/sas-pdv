@@ -6,3 +6,18 @@
 
 /* Tailwind dark: variants siguen el toggle .dark de Filament, no el OS */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Stats widgets: tamaño compacto y responsive ─────────────────────── */
+.fi-wi-stats-overview-stat {
+    zoom: 0.92;
+}
+@media (max-width: 1023px) {
+    .fi-wi-stats-overview-stat {
+        zoom: 0.85;
+    }
+}
+@media (max-width: 639px) {
+    .fi-wi-stats-overview-stat {
+        zoom: 0.78;
+    }
+}
