@@ -174,12 +174,12 @@ class ReporteBalancePage extends Page implements HasForms
             ->where('fecha', '<=', $hasta)
             ->sum('monto');
 
-        // Compras confirmadas y pagadas del período (suma de pagos por método)
+        // Compras confirmadas del período — incluye pagado y parcial (ambos son egresos reales)
         $compras = (float) DB::table('compra_pagos')
             ->join('compras', 'compras.id', '=', 'compra_pagos.compra_id')
             ->where('compras.empresa_id', $empresaId)
             ->where('compras.estado', 'confirmado')
-            ->where('compras.estado_pago', 'pagado')
+            ->whereIn('compras.estado_pago', ['pagado', 'parcial'])
             ->where('compras.created_at', '>=', $desde)
             ->where('compras.created_at', '<=', $hasta . ' 23:59:59')
             ->sum('compra_pagos.monto');
@@ -261,12 +261,12 @@ class ReporteBalancePage extends Page implements HasForms
             ->groupBy('metodo_pago_id')
             ->pluck('total', 'metodo_pago_id');
 
-        // 4. Compras pagadas por método filtradas por período
+        // 4. Compras por método filtradas por período — incluye pagado y parcial
         $compras = DB::table('compra_pagos')
             ->join('compras', 'compras.id', '=', 'compra_pagos.compra_id')
             ->where('compras.empresa_id', $empresaId)
             ->where('compras.estado', 'confirmado')
-            ->where('compras.estado_pago', 'pagado')
+            ->whereIn('compras.estado_pago', ['pagado', 'parcial'])
             ->whereIn('compra_pagos.metodo_pago_id', $ids)
             ->where('compras.created_at', '>=', $desde)
             ->where('compras.created_at', '<=', $hasta . ' 23:59:59')
@@ -303,13 +303,13 @@ class ReporteBalancePage extends Page implements HasForms
             ->get()
             ->keyBy('metodo_id');
 
-        // Compra pagos por método (solo confirmadas y pagadas)
+        // Compra pagos por método — incluye pagado y parcial
         $comprasVar = DB::table('compra_pagos')
             ->join('compras', 'compras.id', '=', 'compra_pagos.compra_id')
             ->join('metodos_pago', 'metodos_pago.id', '=', 'compra_pagos.metodo_pago_id')
             ->where('compras.empresa_id', $empresaId)
             ->where('compras.estado', 'confirmado')
-            ->where('compras.estado_pago', 'pagado')
+            ->whereIn('compras.estado_pago', ['pagado', 'parcial'])
             ->whereDate('compras.created_at', '>=', $desde)
             ->whereDate('compras.created_at', '<=', $hasta)
             ->selectRaw('metodos_pago.id AS metodo_id, metodos_pago.nombre, SUM(compra_pagos.monto) AS total')
