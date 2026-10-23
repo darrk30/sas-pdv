@@ -82,6 +82,8 @@ class ProductoImportService
                 $stockMinimo       = $this->parseDecimal($fila['I'] ?? null) ?? 0;
                 $stockInicial      = $this->parseDecimal($fila['J'] ?? null) ?? 0;
                 $controlDeStock    = $this->parseBooleano($fila['P'] ?? null, true);
+                $ventaSinStock     = $this->parseBooleano($fila['R'] ?? null, false);
+                $comparteStock     = $this->parseBooleano($fila['S'] ?? null, false);
                 $descuento         = $this->parseDecimal($fila['E'] ?? null) ?? 0;
                 $precioConDesc     = $this->parseDecimal($fila['F'] ?? null)
                     ?? round($precioVenta * (1 - $descuento / 100), 4);
@@ -106,7 +108,8 @@ class ProductoImportService
                     'orden'                 => (int) ($this->parseDecimal($fila['Q'] ?? null) ?? 0),
                     'visible_en_carta'      => true,
                     'es_cortesia'           => false,
-                    'venta_sin_stock'       => false,
+                    'venta_sin_stock'       => $ventaSinStock,
+                    'comparte_stock'        => $comparteStock,
                 ]);
 
                 if ($controlDeStock) {
@@ -233,6 +236,18 @@ class ProductoImportService
                     $cambios['orden'] = (int) $orden;
                 }
 
+                // R = VENTA_SIN_STOCK
+                $rawVentaSinStock = trim($fila['R'] ?? '');
+                if ($rawVentaSinStock !== '') {
+                    $cambios['venta_sin_stock'] = $this->parseBooleano($rawVentaSinStock, false);
+                }
+
+                // S = COMPARTE_STOCK
+                $rawComparteStock = trim($fila['S'] ?? '');
+                if ($rawComparteStock !== '') {
+                    $cambios['comparte_stock'] = $this->parseBooleano($rawComparteStock, false);
+                }
+
                 // Regenerar slug si cambió el nombre
                 if (isset($cambios['nombre'])) {
                     $cambios['slug'] = $this->generarSlug($cambios['nombre'], $empresaId, $producto->id);
@@ -240,6 +255,58 @@ class ProductoImportService
 
                 if (! empty($cambios)) {
                     $producto->update($cambios);
+                }
+
+                // J = STOCK_INICIAL — solo si el producto nunca tuvo stock registrado
+                $stockInicialRaw = $this->parseDecimal($fila['J'] ?? null);
+                if ($stockInicialRaw !== null && $stockInicialRaw > 0 && $producto->control_de_stock) {
+                    $inventario = Inventario::where('empresa_id', $empresaId)
+                        ->where('producto_id', $producto->id)
+                        ->whereNull('variante_id')
+                        ->first();
+
+                    $sinMovimientos = ! \App\Models\Kardex::where('empresa_id', $empresaId)
+                        ->where('producto_id', $producto->id)
+                        ->exists();
+
+                    $stockActual = (float) ($inventario?->stock_real ?? 0);
+
+                    if ($sinMovimientos && $stockActual == 0) {
+                        if ($inventario) {
+                            $inventario->update([
+                                'stock_real'        => $stockInicialRaw,
+                                'stock_reserva'     => $stockInicialRaw,
+                                'estado_inventario' => 'disponible',
+                            ]);
+                        } else {
+                            Inventario::create([
+                                'empresa_id'        => $empresaId,
+                                'producto_id'       => $producto->id,
+                                'variante_id'       => null,
+                                'stock_real'        => $stockInicialRaw,
+                                'stock_reserva'     => $stockInicialRaw,
+                                'stock_minimo'      => 0,
+                                'estado_almacen'    => 'activo',
+                                'estado_inventario' => 'disponible',
+                            ]);
+                        }
+
+                        $this->kardex->registrar([
+                            'empresa_id'      => $empresaId,
+                            'user_id'         => auth()->id(),
+                            'producto_id'     => $producto->id,
+                            'producto_nombre' => $producto->nombre,
+                            'tipo'            => 'entrada',
+                            'concepto'        => 'Stock inicial (importación masiva)',
+                            'cantidad'        => $stockInicialRaw,
+                            'cantidad_base'   => $stockInicialRaw,
+                            'costo_unitario'  => null,
+                            'costo_total'     => null,
+                            'stock_antes'     => 0,
+                            'stock_despues'   => $stockInicialRaw,
+                            'fecha'           => now(),
+                        ]);
+                    }
                 }
 
                 $this->actualizados++;
