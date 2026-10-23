@@ -24,15 +24,15 @@ use Illuminate\Support\Facades\Hash;
 
 class EmpresaForm
 {
-    // Cuando un hijo cambia, recalcula si todos los hijos del padre están ON
+    // Cuando un hijo cambia, el padre queda activo si AL MENOS UNO de sus hijos está ON
     private static function syncPadre(string $padre, array $hijos, Get $get, Set $set): void
     {
-        $todos = array_reduce(
+        $alguno = array_reduce(
             $hijos,
-            fn($carry, $hijo) => $carry && (bool) $get("modulos_activos.$hijo"),
-            true,
+            fn($carry, $hijo) => $carry || (bool) $get("modulos_activos.$hijo"),
+            false,
         );
-        $set("modulos_activos.$padre", $todos);
+        $set("modulos_activos.$padre", $alguno);
     }
 
     public static function configure(Schema $schema): Schema
