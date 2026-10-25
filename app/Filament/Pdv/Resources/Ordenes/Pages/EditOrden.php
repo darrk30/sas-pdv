@@ -328,7 +328,7 @@ class EditOrden extends EditRecord
                         ]),
 
                     Toggle::make('facturar_envio')
-                        ->label('Incluir costo de envío en la venta (S/ ' . number_format((float) ($this->record->costo_envio ?? 0), 2) . ')')
+                        ->label('Incluir costo de envío en la venta (S/ ' . fmt_precio((float) ($this->record->costo_envio ?? 0)) . ')')
                         ->helperText('Activo: el envío se suma al total como ítem "Delivery" y aparece en el comprobante. Inactivo: queda como concepto informativo, no afecta el total ni la facturación.')
                         ->default(false)
                         ->hidden((float) ($this->record->costo_envio ?? 0) <= 0),

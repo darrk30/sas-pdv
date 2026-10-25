@@ -158,9 +158,9 @@
 <p class="sec-label">Ventas</p>
 <table class="kv">
     <tr><td class="k">Completadas</td>   <td class="v">{{ number_format($ventas->cnt_comp ?? 0) }} vta{{ ($ventas->cnt_comp ?? 0) != 1 ? 's' : '' }}</td></tr>
-    <tr><td class="k">Total facturado</td><td class="v">S/ {{ number_format($ventas->tot_total ?? 0, 2) }}</td></tr>
-    <tr><td class="k">Anuladas</td>      <td class="v">{{ number_format($ventas->cnt_anu ?? 0) }} (S/ {{ number_format($ventas->tot_anu ?? 0, 2) }})</td></tr>
-    <tr><td class="k">Fondo apertura</td><td class="v">S/ {{ number_format($sesion->monto_apertura ?? 0, 2) }}</td></tr>
+    <tr><td class="k">Total facturado</td><td class="v">S/ {{ fmt_precio($ventas->tot_total ?? 0) }}</td></tr>
+    <tr><td class="k">Anuladas</td>      <td class="v">{{ number_format($ventas->cnt_anu ?? 0) }} (S/ {{ fmt_precio($ventas->tot_anu ?? 0) }})</td></tr>
+    <tr><td class="k">Fondo apertura</td><td class="v">S/ {{ fmt_precio($sesion->monto_apertura ?? 0) }}</td></tr>
 </table>
 
 {{-- Cuadre --}}
@@ -169,12 +169,12 @@
     <hr class="sep-dash">
     <p class="sec-label">Cuadre</p>
     <table class="kv">
-        <tr><td class="k">Sistema</td>      <td class="v">S/ {{ number_format($sesion->total_sistema ?? 0, 2) }}</td></tr>
-        <tr><td class="k">Cajero</td>       <td class="v">S/ {{ number_format($sesion->total_cajero ?? 0, 2) }}</td></tr>
+        <tr><td class="k">Sistema</td>      <td class="v">S/ {{ fmt_precio($sesion->total_sistema ?? 0) }}</td></tr>
+        <tr><td class="k">Cajero</td>       <td class="v">S/ {{ fmt_precio($sesion->total_cajero ?? 0) }}</td></tr>
         @if(($sesion->total_creditos ?? 0) > 0)
-            <tr><td class="k">Créditos</td><td class="v">S/ {{ number_format($sesion->total_creditos, 2) }}</td></tr>
+            <tr><td class="k">Créditos</td><td class="v">S/ {{ fmt_precio($sesion->total_creditos) }}</td></tr>
         @endif
-        <tr><td class="k bold">Diferencia</td><td class="v">{{ $dif >= 0 ? '+' : '' }}S/ {{ number_format($dif, 2) }}</td></tr>
+        <tr><td class="k bold">Diferencia</td><td class="v">{{ $dif >= 0 ? '+' : '' }}S/ {{ fmt_precio($dif) }}</td></tr>
     </table>
 @endif
 
@@ -189,14 +189,14 @@
             @php $tS += $p->importe_sistema; $tC += ($p->importe_cajero ?? 0); @endphp
             <tr>
                 <td>{{ $p->metodoPago?->nombre ?? '—' }}</td>
-                <td class="n">{{ number_format($p->importe_sistema, 2) }}</td>
-                <td class="n">{{ number_format($p->importe_cajero ?? 0, 2) }}</td>
+                <td class="n">{{ fmt_precio($p->importe_sistema) }}</td>
+                <td class="n">{{ fmt_precio($p->importe_cajero ?? 0) }}</td>
             </tr>
         @endforeach
         <tr class="ft">
             <td>TOTAL</td>
-            <td class="n">{{ number_format($tS, 2) }}</td>
-            <td class="n">{{ number_format($tC, 2) }}</td>
+            <td class="n">{{ fmt_precio($tS) }}</td>
+            <td class="n">{{ fmt_precio($tC) }}</td>
         </tr>
     </table>
 @endif
@@ -211,7 +211,7 @@
             <tr>
                 <td>{{ ucfirst($c->tipo) }}</td>
                 <td class="n">{{ $c->cnt }}</td>
-                <td class="n">S/{{ number_format($c->total, 2) }}</td>
+                <td class="n">S/{{ fmt_precio($c->total) }}</td>
             </tr>
         @endforeach
     </table>
@@ -226,13 +226,13 @@
     $mg   = $neta > 0 ? round(($util / $neta) * 100, 1) : 0;
 @endphp
 <table class="kv">
-    <tr><td class="k">IGV 18%</td>      <td class="v">S/ {{ number_format($ventas->igv ?? 0, 2) }}</td></tr>
-    <tr><td class="k">Base impon.</td>  <td class="v">S/ {{ number_format($neta, 2) }}</td></tr>
-    <tr><td class="k">Costo</td>        <td class="v">S/ {{ number_format($ventas->costo ?? 0, 2) }}</td></tr>
+    <tr><td class="k">IGV 18%</td>      <td class="v">S/ {{ fmt_precio($ventas->igv ?? 0) }}</td></tr>
+    <tr><td class="k">Base impon.</td>  <td class="v">S/ {{ fmt_precio($neta) }}</td></tr>
+    <tr><td class="k">Costo</td>        <td class="v">S/ {{ fmt_precio($ventas->costo ?? 0) }}</td></tr>
     @if(($ventas->descuento ?? 0) > 0)
-        <tr><td class="k">Descuentos</td><td class="v">S/ {{ number_format($ventas->descuento, 2) }}</td></tr>
+        <tr><td class="k">Descuentos</td><td class="v">S/ {{ fmt_precio($ventas->descuento) }}</td></tr>
     @endif
-    <tr><td class="k bold">Utilidad</td><td class="v">S/ {{ number_format($util, 2) }} ({{ $mg }}%)</td></tr>
+    <tr><td class="k bold">Utilidad</td><td class="v">S/ {{ fmt_precio($util) }} ({{ $mg }}%)</td></tr>
 </table>
 
 {{-- Cortesías --}}
@@ -269,7 +269,7 @@
             <table class="kv">
                 <tr>
                     <td class="k">{{ $l }}</td>
-                    <td class="v">{{ $r->cnt }} · S/ {{ number_format($r->tot, 2) }}</td>
+                    <td class="v">{{ $r->cnt }} · S/ {{ fmt_precio($r->tot) }}</td>
                 </tr>
             </table>
         @endif
@@ -283,7 +283,7 @@
                         {{ $m->concepto ?? ($m->tipo === 'ingreso' ? 'Ingreso' : 'Egreso') }}
                         {{ $m->estado === 'anulado' ? ' [A]' : '' }}
                     </td>
-                    <td class="n">{{ $m->tipo === 'ingreso' ? '+' : '-' }}{{ number_format($m->monto, 2) }}</td>
+                    <td class="n">{{ $m->tipo === 'ingreso' ? '+' : '-' }}{{ fmt_precio($m->monto) }}</td>
                 </tr>
             @endforeach
         </table>
@@ -365,16 +365,16 @@
         <td style="width:25%">
             <div class="kpi-lbl">Ventas anuladas</div>
             <div class="kpi-val red">{{ number_format($ventas->cnt_anu ?? 0) }}</div>
-            <div class="kpi-sub">S/ {{ number_format($ventas->tot_anu ?? 0, 2) }}</div>
+            <div class="kpi-sub">S/ {{ fmt_precio($ventas->tot_anu ?? 0) }}</div>
         </td>
         <td style="width:25%">
             <div class="kpi-lbl">Total facturado</div>
-            <div class="kpi-val">S/ {{ number_format($ventas->tot_total ?? 0, 2) }}</div>
+            <div class="kpi-val">S/ {{ fmt_precio($ventas->tot_total ?? 0) }}</div>
             <div class="kpi-sub">ventas completadas</div>
         </td>
         <td style="width:25%">
             <div class="kpi-lbl">Fondo apertura</div>
-            <div class="kpi-val grn">S/ {{ number_format($sesion->monto_apertura ?? 0, 2) }}</div>
+            <div class="kpi-val grn">S/ {{ fmt_precio($sesion->monto_apertura ?? 0) }}</div>
             <div class="kpi-sub">efectivo inicial</div>
         </td>
     </tr>
@@ -397,21 +397,21 @@
             </td>
             <td style="width:20%">
                 <div class="cuadre-lbl">Total sistema</div>
-                <div class="cuadre-val">S/ {{ number_format($sesion->total_sistema ?? 0, 2) }}</div>
+                <div class="cuadre-val">S/ {{ fmt_precio($sesion->total_sistema ?? 0) }}</div>
             </td>
             <td style="width:20%">
                 <div class="cuadre-lbl">Total cajero</div>
-                <div class="cuadre-val">S/ {{ number_format($sesion->total_cajero ?? 0, 2) }}</div>
+                <div class="cuadre-val">S/ {{ fmt_precio($sesion->total_cajero ?? 0) }}</div>
             </td>
             @if(($sesion->total_creditos ?? 0) > 0)
                 <td style="width:20%">
                     <div class="cuadre-lbl">Créditos otorgados</div>
-                    <div class="cuadre-val amb">S/ {{ number_format($sesion->total_creditos, 2) }}</div>
+                    <div class="cuadre-val amb">S/ {{ fmt_precio($sesion->total_creditos) }}</div>
                 </td>
             @endif
             <td>
                 <div class="cuadre-lbl">Diferencia</div>
-                <div class="cuadre-val {{ $dc }}">{{ $dif >= 0 ? '+' : '' }}S/ {{ number_format($dif, 2) }}</div>
+                <div class="cuadre-val {{ $dc }}">{{ $dif >= 0 ? '+' : '' }}S/ {{ fmt_precio($dif) }}</div>
             </td>
         </tr>
     </table>
@@ -439,18 +439,18 @@
             @endphp
             <tr class="{{ $i % 2 ? 'alt' : '' }}">
                 <td class="bold">{{ $pg->metodoPago?->nombre ?? '—' }}</td>
-                <td class="tr mono">S/ {{ number_format($s, 2) }}</td>
-                <td class="tr mono">S/ {{ number_format($c, 2) }}</td>
-                <td class="tr mono {{ $dc }}">{{ $d >= 0 ? '+' : '' }}S/ {{ number_format($d, 2) }}</td>
+                <td class="tr mono">S/ {{ fmt_precio($s) }}</td>
+                <td class="tr mono">S/ {{ fmt_precio($c) }}</td>
+                <td class="tr mono {{ $dc }}">{{ $d >= 0 ? '+' : '' }}S/ {{ fmt_precio($d) }}</td>
                 <td class="tc mut">{{ $pg->importe_cajero !== null ? '✔' : '—' }}</td>
             </tr>
         @endforeach
         @php $dt = $tC - $tS; $dct = $dt == 0 ? 'grn' : ($dt > 0 ? 'amb' : 'red'); @endphp
         <tr class="tot">
             <td class="bold">TOTAL</td>
-            <td class="tr bold mono">S/ {{ number_format($tS, 2) }}</td>
-            <td class="tr bold mono">S/ {{ number_format($tC, 2) }}</td>
-            <td class="tr bold mono {{ $dct }}">{{ $dt >= 0 ? '+' : '' }}S/ {{ number_format($dt, 2) }}</td>
+            <td class="tr bold mono">S/ {{ fmt_precio($tS) }}</td>
+            <td class="tr bold mono">S/ {{ fmt_precio($tC) }}</td>
+            <td class="tr bold mono {{ $dct }}">{{ $dt >= 0 ? '+' : '' }}S/ {{ fmt_precio($dt) }}</td>
             <td></td>
         </tr>
     </table>
@@ -467,7 +467,7 @@
                     <tr class="{{ $i % 2 ? 'alt' : '' }}">
                         <td>{{ ucfirst($comp->tipo) }}</td>
                         <td class="tr">{{ number_format($comp->cnt) }}</td>
-                        <td class="tr mono">S/ {{ number_format($comp->total, 2) }}</td>
+                        <td class="tr mono">S/ {{ fmt_precio($comp->total) }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="3" class="tc mut">Sin comprobantes</td></tr>
@@ -483,16 +483,16 @@
             @endphp
             <table class="sec" cellpadding="0" cellspacing="0">
                 <tr class="sh"><td colspan="2">Resumen Financiero</td></tr>
-                <tr>         <td>Total facturado</td><td class="tr bold mono">S/ {{ number_format($ventas->tot_total ?? 0, 2) }}</td></tr>
-                <tr class="alt"><td>IGV (18%)</td>   <td class="tr mono">S/ {{ number_format($ventas->igv ?? 0, 2) }}</td></tr>
-                <tr>         <td>Base imponible</td>  <td class="tr mono">S/ {{ number_format($neta, 2) }}</td></tr>
-                <tr class="alt"><td>Costo de ventas</td><td class="tr mono">S/ {{ number_format($ventas->costo ?? 0, 2) }}</td></tr>
+                <tr>         <td>Total facturado</td><td class="tr bold mono">S/ {{ fmt_precio($ventas->tot_total ?? 0) }}</td></tr>
+                <tr class="alt"><td>IGV (18%)</td>   <td class="tr mono">S/ {{ fmt_precio($ventas->igv ?? 0) }}</td></tr>
+                <tr>         <td>Base imponible</td>  <td class="tr mono">S/ {{ fmt_precio($neta) }}</td></tr>
+                <tr class="alt"><td>Costo de ventas</td><td class="tr mono">S/ {{ fmt_precio($ventas->costo ?? 0) }}</td></tr>
                 @if(($ventas->descuento ?? 0) > 0)
-                    <tr><td>Descuentos</td><td class="tr mono amb">S/ {{ number_format($ventas->descuento, 2) }}</td></tr>
+                    <tr><td>Descuentos</td><td class="tr mono amb">S/ {{ fmt_precio($ventas->descuento) }}</td></tr>
                 @endif
                 <tr class="tot">
                     <td>Utilidad bruta</td>
-                    <td class="tr bold mono {{ $util >= 0 ? 'grn' : 'red' }}">S/ {{ number_format($util, 2) }}</td>
+                    <td class="tr bold mono {{ $util >= 0 ? 'grn' : 'red' }}">S/ {{ fmt_precio($util) }}</td>
                 </tr>
                 <tr><td class="mut">Margen bruto</td><td class="tr bold">{{ number_format($mg, 1) }}%</td></tr>
             </table>
@@ -541,7 +541,7 @@
                     {{ $l }}
                 </td>
                 <td class="tr mut">{{ $row->cnt }}</td>
-                <td class="tr bold mono">S/ {{ number_format($row->tot, 2) }}</td>
+                <td class="tr bold mono">S/ {{ fmt_precio($row->tot) }}</td>
             </tr>
         @endif
     @endforeach
@@ -568,7 +568,7 @@
                     @if(!$ok)<span style="color:#c0392b;font-size:6pt"> [anulado]</span>@endif
                 </td>
                 <td class="mut" style="font-size:7.5pt">{{ $mov->metodo ?? '—' }}</td>
-                <td class="tr mono bold {{ $ing ? 'grn' : 'red' }}">{{ $ing ? '+' : '−' }}S/ {{ number_format($mov->monto, 2) }}</td>
+                <td class="tr mono bold {{ $ing ? 'grn' : 'red' }}">{{ $ing ? '+' : '−' }}S/ {{ fmt_precio($mov->monto) }}</td>
             </tr>
         @endforeach
     </table>

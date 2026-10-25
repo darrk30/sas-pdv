@@ -43,10 +43,10 @@
             <div class="pdv-modal__precio-row">
                 <div>
                     <p class="pdv-modal__precio-label">Precio</p>
-                    <p class="pdv-modal__precio-total" x-text="'S/ ' + ({{ $precioBase }} + {{ $precioAdicionalTotal }}).toFixed(2)"
+                    <p class="pdv-modal__precio-total" x-text="'S/ ' + fmtPrecio({{ $precioBase }} + {{ $precioAdicionalTotal }})"
                         :class="esCortesia ? 'pdv-modal__precio-gratis' : ''"></p>
                     @if($precioBase < $precioBaseOriginal)
-                        <p class="pdv-modal__precio-detalle" style="text-decoration:line-through;">S/ {{ number_format($precioBaseOriginal + $precioAdicionalTotal, 2) }}</p>
+                        <p class="pdv-modal__precio-detalle" style="text-decoration:line-through;">S/ {{ fmt_precio($precioBaseOriginal + $precioAdicionalTotal) }}</p>
                     @endif
                 </div>
                 <div class="pdv-modal__precio-right">
@@ -98,7 +98,7 @@
                         >
                             {{ $valor['nombre'] }}
                             @if($valor['precio_adicional'] > 0)
-                                <span class="pdv-valor-btn__extra">+{{ number_format($valor['precio_adicional'], 2) }}</span>
+                                <span class="pdv-valor-btn__extra">+{{ fmt_precio($valor['precio_adicional']) }}</span>
                             @endif
                         </button>
                     @endforeach

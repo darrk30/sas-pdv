@@ -270,7 +270,7 @@ class ReporteAjustesPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('valor_total')
                     ->label('Valor total')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignEnd(),
             ])
             ->actions([

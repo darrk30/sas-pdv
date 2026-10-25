@@ -30,18 +30,18 @@ class ReporteComprasStatsWidget extends BaseWidget
                 ->color('primary')
                 ->chart($s['cantidad'] ?? []),
 
-            Stat::make('Total comprado', 'S/ ' . number_format($r['total'] ?? 0, 2))
+            Stat::make('Total comprado', 'S/ ' . fmt_precio($r['total'] ?? 0))
                 ->description('importe total')
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color('success')
                 ->chart($s['total'] ?? []),
 
-            Stat::make('Total pagado', 'S/ ' . number_format($r['pagado'] ?? 0, 2))
+            Stat::make('Total pagado', 'S/ ' . fmt_precio($r['pagado'] ?? 0))
                 ->description('pagos registrados')
                 ->descriptionIcon('heroicon-o-check-circle')
                 ->color('success'),
 
-            Stat::make('Saldo pendiente', 'S/ ' . number_format($r['saldo'] ?? 0, 2))
+            Stat::make('Saldo pendiente', 'S/ ' . fmt_precio($r['saldo'] ?? 0))
                 ->description(($r['pendiente'] ?? 0) . ' compras por pagar')
                 ->descriptionIcon('heroicon-o-clock')
                 ->color('warning'),

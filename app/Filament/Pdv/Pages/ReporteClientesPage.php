@@ -252,14 +252,14 @@ class ReporteClientesPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('total_gastado')
                     ->label('Total facturado')
-                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->formatStateUsing(fn($state): string => 'S/ ' . fmt_precio((float) $state))
                     ->alignRight()
                     ->color('success'),
 
                 TextColumn::make('credito_pendiente')
                     ->label('Crédito pend.')
                     ->formatStateUsing(fn($state): string =>
-                        (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—'
+                        (float) $state > 0 ? 'S/ ' . fmt_precio((float) $state) : '—'
                     )
                     ->alignRight()
                     ->color(fn($state): string => (float) $state > 0 ? 'warning' : 'gray'),

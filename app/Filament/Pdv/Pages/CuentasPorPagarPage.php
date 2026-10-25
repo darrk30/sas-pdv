@@ -167,14 +167,14 @@ class CuentasPorPagarPage extends Page implements HasTable
 
                 TextColumn::make('total')
                     ->label('Total')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignRight()
                     ->sortable(),
 
                 TextColumn::make('pagos_sum_monto')
                     ->label('Pagado')
                     ->state(fn (Compra $record): float => (float) ($record->pagos_sum_monto ?? 0))
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignRight()
                     ->color('success'),
 
@@ -183,7 +183,7 @@ class CuentasPorPagarPage extends Page implements HasTable
                     ->state(fn (Compra $record): float =>
                         max(0, (float) $record->total - (float) ($record->pagos_sum_monto ?? 0))
                     )
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignRight()
                     ->color(fn (Compra $record): string =>
                         max(0, (float) $record->total - (float) ($record->pagos_sum_monto ?? 0)) > 0
@@ -336,7 +336,7 @@ class CuentasPorPagarPage extends Page implements HasTable
 
         $this->compraId   = $compraId;
         $this->pagoMetodo = null;
-        $this->pagoMonto  = number_format($saldo, 2, '.', '');
+        $this->pagoMonto  = fmt_precio($saldo);
         $this->pagoRef    = '';
         $this->modalPago  = true;
         $this->dispatch('open-modal', id: 'pago-modal');
@@ -362,7 +362,7 @@ class CuentasPorPagarPage extends Page implements HasTable
             'pagoMetodo.required' => 'Selecciona un método de pago.',
             'pagoMonto.required'  => 'Ingresa el monto a pagar.',
             'pagoMonto.gt'        => 'El monto debe ser mayor a 0.',
-            'pagoMonto.max'       => 'El monto no puede superar el saldo pendiente (S/ ' . number_format($saldoMax, 2) . ').',
+            'pagoMonto.max'       => 'El monto no puede superar el saldo pendiente (S/ ' . fmt_precio($saldoMax) . ').',
         ]);
 
         $monto = (float) $this->pagoMonto;

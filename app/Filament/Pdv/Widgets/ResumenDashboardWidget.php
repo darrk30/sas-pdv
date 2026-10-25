@@ -71,7 +71,7 @@ class ResumenDashboardWidget extends BaseWidget
         $empresa = Filament::getTenant();
 
         $stats = [
-            Stat::make('Ventas', 'S/ ' . number_format($data['totalVentas'], 2))
+            Stat::make('Ventas', 'S/ ' . fmt_precio($data['totalVentas']))
                 ->description($n . ' ' . ($n === 1 ? 'venta completada' : 'ventas completadas'))
                 ->descriptionIcon('heroicon-o-receipt-percent')
                 ->color('success')
@@ -80,7 +80,7 @@ class ResumenDashboardWidget extends BaseWidget
         ];
 
         if ($empresa->tieneModulo('reporte_ganancias')) {
-            $stats[] = Stat::make('Utilidad', 'S/ ' . number_format($utilidad, 2))
+            $stats[] = Stat::make('Utilidad', 'S/ ' . fmt_precio($utilidad))
                 ->description('Ventas − Costo')
                 ->descriptionIcon('heroicon-o-arrow-trending-up')
                 ->color($utilidad >= 0 ? 'info' : 'danger')

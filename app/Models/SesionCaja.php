@@ -35,10 +35,10 @@ class SesionCaja extends Model
         'fecha_apertura'  => 'datetime',
         'fecha_cierre'    => 'datetime',
         'monto_apertura'  => 'decimal:2',
-        'total_sistema'    => 'decimal:2',
-        'total_cajero'     => 'decimal:2',
-        'diferencia_total' => 'decimal:2',
-        'total_creditos'   => 'decimal:2',
+        'total_sistema'    => 'decimal:4',
+        'total_cajero'     => 'decimal:4',
+        'diferencia_total' => 'decimal:4',
+        'total_creditos'   => 'decimal:4',
     ];
 
     public function caja(): BelongsTo

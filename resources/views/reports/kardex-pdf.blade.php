@@ -138,9 +138,9 @@ tbody td.mono   { font-family: DejaVu Sans Mono, monospace; }
             <td>{{ $mov->concepto }}</td>
             <td class="center">@if($origenLabel)<span class="badge-{{ $origenKey }}">{{ $origenLabel }}</span>@else —@endif</td>
             <td class="center"><span class="{{ $esEntrada ? 'badge-entrada' : 'badge-salida' }}">{{ $esEntrada ? 'Entrada' : 'Salida' }}</span></td>
-            <td class="right"><span class="{{ $esEntrada ? 'qty-entrada' : 'qty-salida' }}">{{ $esEntrada ? '+' : '-' }}{{ number_format((float)$mov->cantidad, 2) }}</span></td>
-            <td class="right" style="color:#6b7280">{{ number_format((float)$mov->stock_antes, 2) }}</td>
-            <td class="right"><span class="{{ $stockSube ? 'stock-up' : 'stock-down' }}">{{ number_format((float)$mov->stock_despues, 2) }}</span></td>
+            <td class="right"><span class="{{ $esEntrada ? 'qty-entrada' : 'qty-salida' }}">{{ $esEntrada ? '+' : '-' }}{{ fmt_precio((float)$mov->cantidad) }}</span></td>
+            <td class="right" style="color:#6b7280">{{ fmt_precio((float)$mov->stock_antes) }}</td>
+            <td class="right"><span class="{{ $stockSube ? 'stock-up' : 'stock-down' }}">{{ fmt_precio((float)$mov->stock_despues) }}</span></td>
             <td>{{ $mov->user?->name ?? 'Sistema' }}</td>
         </tr>
         @endforeach

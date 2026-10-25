@@ -187,7 +187,7 @@
                             <p class="pdv-card__nombre">{{ $promo->nombre }}</p>
                             <p class="pdv-card__meta">{{ $promo->detalles_count }} productos</p>
                             <div class="pdv-card__precio-fila">
-                                <p class="pdv-card__precio">S/ {{ number_format($promo->precio, 2) }}</p>
+                                <p class="pdv-card__precio">S/ {{ fmt_precio($promo->precio) }}</p>
                                 <x-pdv.promo-vista :detalles="$detallesVista" clase="promo-vista--catalog" />
                             </div>
                         </div>
@@ -377,55 +377,55 @@
                                 <p class="pdv-card__meta">{{ $producto->variantesActivas->count() }} variantes</p>
                             @endif
                             @if(!$tieneVariantes && $producto->porcentaje_descuento > 0 && $producto->precio_con_descuento)
-                                <p class="pdv-card__precio-original">S/ {{ number_format($producto->precio_venta, 2) }}</p>
+                                <p class="pdv-card__precio-original">S/ {{ fmt_precio($producto->precio_venta) }}</p>
                                 @if($tieneListasPrecios)
                                     <div class="pdv-card__precio-fila">
-                                        <p class="pdv-card__precio pdv-card__precio--oferta" x-text="'S/ ' + precioActual.toFixed(2)" style="margin:0"></p>
+                                        <p class="pdv-card__precio pdv-card__precio--oferta" x-text="'S/ ' + fmtPrecio(precioActual)" style="margin:0"></p>
                                         <div class="pdv-card__lista-controles" @click.stop>
                                             <div class="pdv-card__lista-reset" x-show="listaActiva !== null" @click="resetearLista()" title="Quitar lista"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clip-rule="evenodd"/></svg></div>
                                             <div class="pdv-card__lista-btn" :class="listaActiva !== null ? 'pdv-card__lista-btn--activa' : ''" @click="modalLista = true" title="Lista de precios"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 4.75A.75.75 0 0 1 6.75 4h10.5a.75.75 0 0 1 0 1.5H6.75A.75.75 0 0 1 6 4.75ZM6 10a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H6.75A.75.75 0 0 1 6 10Zm0 5.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H6.75a.75.75 0 0 1-.75-.75ZM1.99 4.75a1 1 0 0 1 1-1H3a1 1 0 0 1 1 1v.01a1 1 0 0 1-1 1h-.01a1 1 0 0 1-1-1v-.01ZM1.99 15.25a1 1 0 0 1 1-1H3a1 1 0 0 1 1 1v.01a1 1 0 0 1-1 1h-.01a1 1 0 0 1-1-1v-.01ZM1.99 10a1 1 0 0 1 1-1H3a1 1 0 0 1 1 1v.01a1 1 0 0 1-1 1h-.01a1 1 0 0 1-1-1V10Z" clip-rule="evenodd"/></svg></div>
                                             <div class="pdv-lista-backdrop" x-show="modalLista" x-cloak @click="modalLista = false"></div>
                                             <div class="pdv-lista-popup" x-show="modalLista" x-cloak @click.stop>
                                                 <div class="pdv-lista-popup__header"><span>Lista de precios</span><div class="pdv-lista-popup__cerrar" @click="modalLista = false"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/></svg></div></div>
-                                                <ul class="pdv-lista-popup__lista"><template x-for="lista in listas" :key="lista.id"><li><div class="pdv-lista-popup__opcion" :class="listaActiva === lista.id ? 'pdv-lista-popup__opcion--activa' : ''" @click="seleccionarLista(lista)"><span x-text="lista.nombre" class="pdv-lista-popup__nombre"></span><span x-text="'S/ ' + lista.precio.toFixed(2)" class="pdv-lista-popup__precio"></span></div></li></template></ul>
+                                                <ul class="pdv-lista-popup__lista"><template x-for="lista in listas" :key="lista.id"><li><div class="pdv-lista-popup__opcion" :class="listaActiva === lista.id ? 'pdv-lista-popup__opcion--activa' : ''" @click="seleccionarLista(lista)"><span x-text="lista.nombre" class="pdv-lista-popup__nombre"></span><span x-text="'S/ ' + fmtPrecio(lista.precio)" class="pdv-lista-popup__precio"></span></div></li></template></ul>
                                             </div>
                                         </div>
                                     </div>
                                 @else
-                                    <p class="pdv-card__precio pdv-card__precio--oferta">S/ {{ number_format($producto->precio_con_descuento, 2) }}</p>
+                                    <p class="pdv-card__precio pdv-card__precio--oferta">S/ {{ fmt_precio($producto->precio_con_descuento) }}</p>
                                 @endif
                             @else
                                 @if($tieneVariantes && $tieneListasPrecios)
                                     <div class="pdv-card__precio-fila">
-                                        <p class="pdv-card__precio" x-show="!listaActiva" style="margin:0">Desde S/ {{ number_format($producto->variantesActivas->min('precio_final'), 2) }}</p>
-                                        <p class="pdv-card__precio" x-show="listaActiva" x-cloak x-text="'S/ ' + precioActual.toFixed(2)" style="margin:0"></p>
+                                        <p class="pdv-card__precio" x-show="!listaActiva" style="margin:0">Desde S/ {{ fmt_precio($producto->variantesActivas->min('precio_final')) }}</p>
+                                        <p class="pdv-card__precio" x-show="listaActiva" x-cloak x-text="'S/ ' + fmtPrecio(precioActual)" style="margin:0"></p>
                                         <div class="pdv-card__lista-controles" @click.stop>
                                             <div class="pdv-card__lista-reset" x-show="listaActiva !== null" @click="resetearLista()" title="Quitar lista"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clip-rule="evenodd"/></svg></div>
                                             <div class="pdv-card__lista-btn" :class="listaActiva !== null ? 'pdv-card__lista-btn--activa' : ''" @click="modalLista = true" title="Lista de precios"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 4.75A.75.75 0 0 1 6.75 4h10.5a.75.75 0 0 1 0 1.5H6.75A.75.75 0 0 1 6 4.75ZM6 10a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H6.75A.75.75 0 0 1 6 10Zm0 5.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H6.75a.75.75 0 0 1-.75-.75ZM1.99 4.75a1 1 0 0 1 1-1H3a1 1 0 0 1 1 1v.01a1 1 0 0 1-1 1h-.01a1 1 0 0 1-1-1v-.01ZM1.99 15.25a1 1 0 0 1 1-1H3a1 1 0 0 1 1 1v.01a1 1 0 0 1-1 1h-.01a1 1 0 0 1-1-1v-.01ZM1.99 10a1 1 0 0 1 1-1H3a1 1 0 0 1 1 1v.01a1 1 0 0 1-1 1h-.01a1 1 0 0 1-1-1V10Z" clip-rule="evenodd"/></svg></div>
                                             <div class="pdv-lista-backdrop" x-show="modalLista" x-cloak @click="modalLista = false"></div>
                                             <div class="pdv-lista-popup" x-show="modalLista" x-cloak @click.stop>
                                                 <div class="pdv-lista-popup__header"><span>Lista de precios</span><div class="pdv-lista-popup__cerrar" @click="modalLista = false"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/></svg></div></div>
-                                                <ul class="pdv-lista-popup__lista"><template x-for="lista in listas" :key="lista.id"><li><div class="pdv-lista-popup__opcion" :class="listaActiva === lista.id ? 'pdv-lista-popup__opcion--activa' : ''" @click="seleccionarLista(lista)"><span x-text="lista.nombre" class="pdv-lista-popup__nombre"></span><span x-text="'S/ ' + lista.precio.toFixed(2)" class="pdv-lista-popup__precio"></span></div></li></template></ul>
+                                                <ul class="pdv-lista-popup__lista"><template x-for="lista in listas" :key="lista.id"><li><div class="pdv-lista-popup__opcion" :class="listaActiva === lista.id ? 'pdv-lista-popup__opcion--activa' : ''" @click="seleccionarLista(lista)"><span x-text="lista.nombre" class="pdv-lista-popup__nombre"></span><span x-text="'S/ ' + fmtPrecio(lista.precio)" class="pdv-lista-popup__precio"></span></div></li></template></ul>
                                             </div>
                                         </div>
                                     </div>
                                 @elseif($tieneVariantes)
-                                    <p class="pdv-card__precio">Desde S/ {{ number_format($producto->variantesActivas->min('precio_final'), 2) }}</p>
+                                    <p class="pdv-card__precio">Desde S/ {{ fmt_precio($producto->variantesActivas->min('precio_final')) }}</p>
                                 @elseif($tieneListasPrecios)
                                     <div class="pdv-card__precio-fila">
-                                        <p class="pdv-card__precio" x-text="'S/ ' + precioActual.toFixed(2)" style="margin:0"></p>
+                                        <p class="pdv-card__precio" x-text="'S/ ' + fmtPrecio(precioActual)" style="margin:0"></p>
                                         <div class="pdv-card__lista-controles" @click.stop>
                                             <div class="pdv-card__lista-reset" x-show="listaActiva !== null" @click="resetearLista()" title="Quitar lista"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clip-rule="evenodd"/></svg></div>
                                             <div class="pdv-card__lista-btn" :class="listaActiva !== null ? 'pdv-card__lista-btn--activa' : ''" @click="modalLista = true" title="Lista de precios"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 4.75A.75.75 0 0 1 6.75 4h10.5a.75.75 0 0 1 0 1.5H6.75A.75.75 0 0 1 6 4.75ZM6 10a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H6.75A.75.75 0 0 1 6 10Zm0 5.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H6.75a.75.75 0 0 1-.75-.75ZM1.99 4.75a1 1 0 0 1 1-1H3a1 1 0 0 1 1 1v.01a1 1 0 0 1-1 1h-.01a1 1 0 0 1-1-1v-.01ZM1.99 15.25a1 1 0 0 1 1-1H3a1 1 0 0 1 1 1v.01a1 1 0 0 1-1 1h-.01a1 1 0 0 1-1-1v-.01ZM1.99 10a1 1 0 0 1 1-1H3a1 1 0 0 1 1 1v.01a1 1 0 0 1-1 1h-.01a1 1 0 0 1-1-1V10Z" clip-rule="evenodd"/></svg></div>
                                             <div class="pdv-lista-backdrop" x-show="modalLista" x-cloak @click="modalLista = false"></div>
                                             <div class="pdv-lista-popup" x-show="modalLista" x-cloak @click.stop>
                                                 <div class="pdv-lista-popup__header"><span>Lista de precios</span><div class="pdv-lista-popup__cerrar" @click="modalLista = false"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/></svg></div></div>
-                                                <ul class="pdv-lista-popup__lista"><template x-for="lista in listas" :key="lista.id"><li><div class="pdv-lista-popup__opcion" :class="listaActiva === lista.id ? 'pdv-lista-popup__opcion--activa' : ''" @click="seleccionarLista(lista)"><span x-text="lista.nombre" class="pdv-lista-popup__nombre"></span><span x-text="'S/ ' + lista.precio.toFixed(2)" class="pdv-lista-popup__precio"></span></div></li></template></ul>
+                                                <ul class="pdv-lista-popup__lista"><template x-for="lista in listas" :key="lista.id"><li><div class="pdv-lista-popup__opcion" :class="listaActiva === lista.id ? 'pdv-lista-popup__opcion--activa' : ''" @click="seleccionarLista(lista)"><span x-text="lista.nombre" class="pdv-lista-popup__nombre"></span><span x-text="'S/ ' + fmtPrecio(lista.precio)" class="pdv-lista-popup__precio"></span></div></li></template></ul>
                                             </div>
                                         </div>
                                     </div>
                                 @else
-                                    <p class="pdv-card__precio">S/ {{ number_format($producto->precio_venta, 2) }}</p>
+                                    <p class="pdv-card__precio">S/ {{ fmt_precio($producto->precio_venta) }}</p>
                                 @endif
                             @endif
                         </div>
@@ -473,12 +473,12 @@
                     <div>
                         <p class="pdv-modal__precio-label">Precio</p>
                         <p class="pdv-modal__precio-total"
-                           x-text="'S/ ' + $store.vm.precioFinal.toFixed(2)"
+                           x-text="'S/ ' + fmtPrecio($store.vm.precioFinal)"
                            :class="$store.vm.modalCortesia ? 'pdv-modal__precio-gratis' : ''"></p>
                         <p class="pdv-modal__precio-detalle"
                            style="text-decoration:line-through"
                            x-show="$store.vm.precioBase < $store.vm.precioBaseOriginal"
-                           x-text="'S/ ' + ($store.vm.precioBaseOriginal + $store.vm.precioAdicional).toFixed(2)"></p>
+                           x-text="'S/ ' + fmtPrecio($store.vm.precioBaseOriginal + $store.vm.precioAdicional)"></p>
                     </div>
                     <div class="pdv-modal__precio-right">
                         <template x-if="$store.vm.controlStock && $store.vm.varianteActual">
@@ -519,7 +519,7 @@
                                     <span x-text="valor.nombre"></span>
                                     <span class="pdv-valor-btn__extra"
                                           x-show="valor.precio_adicional > 0"
-                                          x-text="'+' + valor.precio_adicional.toFixed(2)"></span>
+                                          x-text="'+' + fmtPrecio(valor.precio_adicional)"></span>
                                 </button>
                             </template>
                         </div>

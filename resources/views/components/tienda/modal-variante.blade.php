@@ -135,18 +135,18 @@
                                                 >
                                                     <span x-text="val.label"></span>
                                                     <span
-                                                        x-show="val.precio_adicional > 0"
+                                                        x-show="val.precio_adicional > 0 && !producto.comparteStock"
                                                         class="modal-var__extra-badge"
-                                                        x-text="`+S/ ${parseFloat(val.precio_adicional).toFixed(2)}`"
+                                                        x-text="`+S/ ${fmtPrecio(val.precio_adicional)}`"
                                                     ></span>
                                                 </button>
                                             </template>
 
                                             {{-- Precio extra debajo del círculo de color --}}
-                                            <template x-if="attr.tipo === 'color' && val.precio_adicional > 0">
+                                            <template x-if="attr.tipo === 'color' && val.precio_adicional > 0 && !producto.comparteStock">
                                                 <span
                                                     class="modal-var__extra-badge"
-                                                    x-text="`+S/ ${parseFloat(val.precio_adicional).toFixed(2)}`"
+                                                    x-text="`+S/ ${fmtPrecio(val.precio_adicional)}`"
                                                 ></span>
                                             </template>
 
@@ -190,10 +190,10 @@
 
             {{-- Precio --}}
             <div class="modal-var__precio">
-                S/ <span x-text="(parseFloat(precioActual) * cantidad).toFixed(2)"></span>
+                S/ <span x-text="fmtPrecio(parseFloat(precioActual) * cantidad)"></span>
                 <span class="modal-var__precio-unit"
                       x-show="cantidad > 1"
-                      x-text="`c/u S/ ${precioActual}`"></span>
+                      x-text="`c/u S/ ${fmtPrecio(precioActual)}`"></span>
             </div>
 
             {{-- Cantidad --}}

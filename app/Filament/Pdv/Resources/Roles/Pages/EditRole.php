@@ -40,12 +40,12 @@ class EditRole extends EditRecord
 
     private function recogerPermisosDelForm(): \Illuminate\Support\Collection
     {
-        $modulos = Permission::select('module')->distinct()->pluck('module');
         $ids = collect();
 
-        foreach ($modulos as $modulo) {
-            $valores = $this->form->getRawState()["permisos_modulo_{$modulo}"] ?? [];
-            $ids = $ids->merge(collect($valores)->filter());
+        foreach ($this->form->getRawState() as $key => $valores) {
+            if (str_starts_with($key, 'permisos_modulo_') && is_array($valores)) {
+                $ids = $ids->merge(collect($valores)->filter());
+            }
         }
 
         return Permission::whereIn('id', $ids->unique()->values())->get();

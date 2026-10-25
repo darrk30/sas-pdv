@@ -46,7 +46,7 @@
         <div class="ec-header-right">
             @if($detalles->count() > 0)
                 <div class="ec-total-badge">
-                    S/ {{ number_format($comanda->total, 2) }}
+                    S/ {{ fmt_precio($comanda->total) }}
                 </div>
             @endif
             {{-- Mobile: toggle panel --}}
@@ -126,7 +126,7 @@
                             @endif
                             <div class="ec-prod-info">
                                 <span class="ec-prod-nombre">{{ $prod->nombre }}</span>
-                                <span class="ec-prod-precio">S/ {{ number_format($prod->precio_venta, 2) }}</span>
+                                <span class="ec-prod-precio">S/ {{ fmt_precio($prod->precio_venta) }}</span>
                             </div>
                             <div class="ec-prod-add" wire:loading.class="ec-prod-add--loading" wire:target="agregarProducto({{ $prod->id }})">
                                 <x-heroicon-m-plus class="ec-prod-add-icon" />
@@ -179,7 +179,7 @@
                                         <x-heroicon-m-plus class="ec-qty-icon" />
                                     </button>
                                 </div>
-                                <span class="ec-item-precio">S/ {{ number_format($det->total, 2) }}</span>
+                                <span class="ec-item-precio">S/ {{ fmt_precio($det->total) }}</span>
                                 <button wire:click="eliminarItem({{ $det->id }})" wire:confirm="¿Eliminar este ítem?" class="ec-item-del">
                                     <x-heroicon-m-trash class="ec-del-icon" />
                                 </button>
@@ -216,15 +216,15 @@
                 <div class="ec-totales">
                     <div class="ec-total-row">
                         <span>Subtotal</span>
-                        <span>S/ {{ number_format($comanda->subtotal, 2) }}</span>
+                        <span>S/ {{ fmt_precio($comanda->subtotal) }}</span>
                     </div>
                     <div class="ec-total-row">
                         <span>IGV ({{ $comanda->igv > 0 ? number_format(($comanda->igv / max($comanda->subtotal, 0.01)) * 100, 0) : 18 }}%)</span>
-                        <span>S/ {{ number_format($comanda->igv, 2) }}</span>
+                        <span>S/ {{ fmt_precio($comanda->igv) }}</span>
                     </div>
                     <div class="ec-total-row ec-total-final">
                         <span>Total</span>
-                        <span>S/ {{ number_format($comanda->total, 2) }}</span>
+                        <span>S/ {{ fmt_precio($comanda->total) }}</span>
                     </div>
                 </div>
 
@@ -289,7 +289,7 @@
         {{-- Resumen --}}
         <div class="ec-modal-total-banner">
             <span>Total a cobrar</span>
-            <span class="ec-modal-total-amount">S/ {{ number_format($comanda->total, 2) }}</span>
+            <span class="ec-modal-total-amount">S/ {{ fmt_precio($comanda->total) }}</span>
         </div>
 
         {{-- Comprobante --}}
@@ -347,14 +347,14 @@
                 type="number"
                 wire:model="cobroMonto"
                 step="0.01"
-                min="{{ number_format($comanda->total, 2, '.', '') }}"
+                min="{{ fmt_precio($comanda->total) }}"
                 class="ec-modal-input ec-modal-input--monto"
-                placeholder="{{ number_format($comanda->total, 2) }}"
+                placeholder="{{ fmt_precio($comanda->total) }}"
             />
             @error('cobroMonto') <p class="ec-modal-error">{{ $message }}</p> @enderror
             @if((float)$this->cobroMonto > (float)$comanda->total + 0.001)
                 <p class="ec-modal-vuelto">
-                    Vuelto: <strong>S/ {{ number_format((float)$this->cobroMonto - (float)$comanda->total, 2) }}</strong>
+                    Vuelto: <strong>S/ {{ fmt_precio((float)$this->cobroMonto - (float)$comanda->total) }}</strong>
                 </p>
             @endif
         </div>

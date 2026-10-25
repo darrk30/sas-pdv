@@ -1,4 +1,4 @@
-<div class="chk">
+﻿<div class="chk">
 
     {{-- Encabezado --}}
     <div class="chk__header">
@@ -119,7 +119,7 @@
                                 @endif
                             </span>
                             @if ((float)$metodo->costo > 0)
-                                <span class="chk__envio-costo">S/ {{ number_format($metodo->costo, 2) }}</span>
+                                <span class="chk__envio-costo">S/ {{ fmt_precio($metodo->costo) }}</span>
                             @endif
                         </button>
                     @empty
@@ -337,7 +337,7 @@
                                 @endif
                             </span>
                             <span class="chk__resumen-precio">
-                                S/ {{ number_format($item->precio_unitario * $item->cantidad, 2) }}
+                                S/ {{ fmt_precio($item->precio_unitario * $item->cantidad) }}
                             </span>
                         </div>
                     @else
@@ -368,12 +368,12 @@
 
             <div class="chk__resumen-linea">
                 <span class="chk__resumen-label">Subtotal</span>
-                <span class="chk__resumen-valor">S/ {{ number_format($subtotal, 2) }}</span>
+                <span class="chk__resumen-valor">S/ {{ fmt_precio($subtotal) }}</span>
             </div>
             @if ($costoEnvio > 0)
                 <div class="chk__resumen-linea">
                     <span class="chk__resumen-label">Envío</span>
-                    <span class="chk__resumen-valor">S/ {{ number_format($costoEnvio, 2) }}</span>
+                    <span class="chk__resumen-valor">S/ {{ fmt_precio($costoEnvio) }}</span>
                 </div>
             @endif
             @php $chkCuponDesc = isset($cuponDescuento) ? (float) $cuponDescuento : 0.0; @endphp
@@ -385,7 +385,7 @@
                             <small class="cr-cupon-badge-tag">{{ $cuponCodigo }}</small>
                         @endif
                     </span>
-                    <span class="chk__resumen-valor" style="color:#16a34a">−S/ {{ number_format($chkCuponDesc, 2) }}</span>
+                    <span class="chk__resumen-valor" style="color:#16a34a">−S/ {{ fmt_precio($chkCuponDesc) }}</span>
                 </div>
             @endif
 
@@ -393,7 +393,7 @@
 
             <div class="chk__resumen-total">
                 <span class="chk__resumen-total-label">Total</span>
-                <span class="chk__resumen-total-valor">S/ {{ number_format($total, 2) }}</span>
+                <span class="chk__resumen-total-valor">S/ {{ fmt_precio($total) }}</span>
             </div>
 
             <button type="button"

@@ -37,12 +37,12 @@ class VentaDetalle extends Model
         'precio_unitario' => 'decimal:4',
         'valor_unitario'  => 'decimal:4',
         'costo_unitario'  => 'decimal:4',
-        'descuento'  => 'decimal:2',
-        'subtotal'   => 'decimal:2',
-        'valor_total'     => 'decimal:2',
-        'igv'             => 'decimal:2',
-        'total'           => 'decimal:2',
-        'costo_total'     => 'decimal:2',
+        'descuento'   => 'decimal:4',
+        'subtotal'    => 'decimal:4',
+        'valor_total' => 'decimal:4',
+        'igv'         => 'decimal:4',
+        'total'       => 'decimal:4',
+        'costo_total' => 'decimal:4',
     ];
 
     // ── Relaciones ───────────────────────────────────────────────────────
@@ -76,12 +76,12 @@ class VentaDetalle extends Model
         float $descuento = 0,
         float $tasaIgv = 0.18,
     ): array {
-        $total         = round($precioUnitario * $cantidad, 2);
+        $total         = round($precioUnitario * $cantidad, 4);
         $valorUnitario = round($precioUnitario / (1 + $tasaIgv), 4);
-        $subtotal      = round($cantidad * $valorUnitario, 2);
-        $valorTotal    = round($subtotal - $descuento, 2);
-        $igv           = round($total - $valorTotal, 2);
-        $costoTotal    = round($cantidad * $costoUnitario, 2);
+        $subtotal      = round($cantidad * $valorUnitario, 4);
+        $valorTotal    = round($subtotal - $descuento, 4);
+        $igv           = round($total - $valorTotal, 4);
+        $costoTotal    = round($cantidad * $costoUnitario, 4);
 
         return compact('valorUnitario', 'subtotal', 'valorTotal', 'igv', 'total', 'costoTotal');
     }

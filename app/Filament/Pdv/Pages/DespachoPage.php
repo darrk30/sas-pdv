@@ -186,7 +186,7 @@ class DespachoPage extends Page implements HasTable
 
                 TextColumn::make('total')
                     ->label('Total')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->sortable()
                     ->alignRight(),
 
@@ -339,7 +339,7 @@ class DespachoPage extends Page implements HasTable
         $texto   = "Cliente: {$cliente} → {$nuevoLabel}";
 
         if ((float) $record->saldo_pendiente > 0) {
-            $texto .= ' · ⚠ Saldo pendiente: S/ ' . number_format((float) $record->saldo_pendiente, 2);
+            $texto .= ' · ⚠ Saldo pendiente: S/ ' . fmt_precio((float) $record->saldo_pendiente);
         }
 
         return $texto;

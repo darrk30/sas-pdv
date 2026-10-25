@@ -63,12 +63,12 @@ class ProductosTable
 
                 TextColumn::make('precio_costo')
                     ->label('Costo')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('precio_venta')
                     ->label('Precio base')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
@@ -82,7 +82,7 @@ class ProductosTable
 
                 TextColumn::make('precio_con_descuento')
                     ->label('Precio final')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->sortable(),
 
                 TextColumn::make('produccion.nombre')

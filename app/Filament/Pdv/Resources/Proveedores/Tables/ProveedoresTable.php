@@ -72,7 +72,7 @@ class ProveedoresTable
                     ->label('Deuda total')
                     ->money('PEN')
                     ->color(fn ($state): string => (float) $state > 0 ? 'danger' : 'gray')
-                    ->formatStateUsing(fn ($state): string => (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—')
+                    ->formatStateUsing(fn ($state): string => (float) $state > 0 ? 'S/ ' . fmt_precio((float) $state) : '—')
                     ->alignRight()
                     ->sortable()
                     ->visible($tieneCuentas),

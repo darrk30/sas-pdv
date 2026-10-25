@@ -36,13 +36,13 @@ class GastosStatsWidget extends BaseWidget
         $mes = now()->translatedFormat('F');
 
         return [
-            Stat::make('Aprobados ' . $mes, 'S/ ' . number_format($aprobados, 2))
+            Stat::make('Aprobados ' . $mes, 'S/ ' . fmt_precio($aprobados))
                 ->description('Gastos confirmados')
                 ->descriptionIcon('heroicon-o-check-circle')
                 ->color('success')
                 ->icon('heroicon-o-check-circle'),
 
-            Stat::make('Anulados ' . $mes, 'S/ ' . number_format($anulados, 2))
+            Stat::make('Anulados ' . $mes, 'S/ ' . fmt_precio($anulados))
                 ->description('Gastos anulados')
                 ->descriptionIcon('heroicon-o-x-circle')
                 ->color($anulados > 0 ? 'danger' : 'gray')

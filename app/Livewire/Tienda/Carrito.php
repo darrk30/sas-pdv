@@ -1452,6 +1452,10 @@ class Carrito extends Component
     private function precioVariante(\App\Models\Variante $variante): float
     {
         $producto = $variante->producto;
+        // comparte_stock: precio_final ya es el precio completo de la variante
+        if ($producto && $producto->comparte_stock) {
+            return (float) $variante->precio_final;
+        }
         $base = $producto && ($producto->porcentaje_descuento ?? 0) > 0 && $producto->precio_con_descuento
             ? (float) $producto->precio_con_descuento
             : (float) ($producto?->precio_venta ?? $variante->precio_final);

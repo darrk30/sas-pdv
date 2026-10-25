@@ -75,7 +75,7 @@ trait ValidaStockOrden
                         ->value('stock_reserva') ?? 0);
                     $efectivoBase = $stockReserva + ($viejaQty * $factor);
                     if (($nuevaQty * $factor) > $efectivoBase) {
-                        $disp = number_format(max(0.0, floor($efectivoBase / $factor)), 2);
+                        $disp = fmt_precio(max(0.0, floor($efectivoBase / $factor)));
                         $errores[] = "«{$nombre}»: se necesitan {$nuevaQty} und. pero solo hay {$disp} disponibles.";
                     }
                     continue;
@@ -99,7 +99,7 @@ trait ValidaStockOrden
             // efectivo disponible = stock_reserva actual + lo que esta orden ya tenía reservado
             $efectivo = $stockReserva + $viejaQty;
             if ($nuevaQty > $efectivo) {
-                $disp    = number_format(max(0.0, $efectivo), 2);
+                $disp    = fmt_precio(max(0.0, $efectivo));
                 $errores[] = "«{$nombre}»: se necesitan {$nuevaQty} und. pero solo hay {$disp} disponibles.";
             }
         }

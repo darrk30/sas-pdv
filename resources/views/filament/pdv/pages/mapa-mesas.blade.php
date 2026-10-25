@@ -98,7 +98,7 @@
                         <div class="mm-ord-meta">
                             <span class="mm-ord-codigo">#{{ $lo->codigo }}</span>
                             <span>{{ $lo->created_at->format('H:i') }}</span>
-                            @if($lo->total > 0)<span class="mm-ord-total">S/ {{ number_format($lo->total, 2) }}</span>@endif
+                            @if($lo->total > 0)<span class="mm-ord-total">S/ {{ fmt_precio($lo->total) }}</span>@endif
                         </div>
                         <span class="mm-ord-badge mm-ord-badge--{{ $loEstado }}">
                             {{ $lo->estado instanceof \App\Enums\EstadoOrden ? $lo->estado->getLabel() : $loEstado }}
@@ -207,7 +207,7 @@
                         <div class="mm-ord-meta">
                             <span class="mm-ord-codigo">#{{ $do->codigo }}</span>
                             <span>{{ $do->created_at->format('H:i') }}</span>
-                            @if($do->total > 0)<span class="mm-ord-total">S/ {{ number_format($do->total, 2) }}</span>@endif
+                            @if($do->total > 0)<span class="mm-ord-total">S/ {{ fmt_precio($do->total) }}</span>@endif
                         </div>
                         @if($do->cliente_telefono || $do->cliente_direccion || $repNombre)
                             <div class="mm-ord-extra">
@@ -414,7 +414,7 @@
                                             <span class="mm-data-sep">·</span>
                                             <span class="mm-data-item mm-data-total">
                                                 <x-heroicon-m-banknotes class="mm-data-icon" />
-                                                S/ {{ number_format($orden->total, 2) }}
+                                                S/ {{ fmt_precio($orden->total) }}
                                             </span>
                                         @else
                                             <span class="mm-data-sep">·</span>
@@ -552,15 +552,15 @@
                     <tr>
                         <td>{{ $det->descripcion ?? $det->producto?->nombre ?? '—' }}</td>
                         <td class="mm-dt-num">{{ number_format($det->cantidad, 0) }}</td>
-                        <td class="mm-dt-num">S/ {{ number_format($det->precio_unitario, 2) }}</td>
-                        <td class="mm-dt-num">S/ {{ number_format($det->total ?? ($det->precio_unitario * $det->cantidad), 2) }}</td>
+                        <td class="mm-dt-num">S/ {{ fmt_precio($det->precio_unitario) }}</td>
+                        <td class="mm-dt-num">S/ {{ fmt_precio($det->total ?? ($det->precio_unitario * $det->cantidad)) }}</td>
                     </tr>
                     @endforeach
                 </tbody>
                 <tfoot>
                     <tr>
                         <td colspan="3">Total</td>
-                        <td class="mm-dt-num">S/ {{ number_format($detOrden->total, 2) }}</td>
+                        <td class="mm-dt-num">S/ {{ fmt_precio($detOrden->total) }}</td>
                     </tr>
                 </tfoot>
             </table>

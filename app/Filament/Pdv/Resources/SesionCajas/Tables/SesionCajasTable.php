@@ -45,19 +45,19 @@ class SesionCajasTable
 
                 TextColumn::make('total_sistema')
                     ->label('Total sistema')
-                    ->money('PEN')
+                    ->formatStateUsing(fn($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->placeholder('—')
                     ->toggleable(),
 
                 TextColumn::make('total_cajero')
                     ->label('Total cajero')
-                    ->money('PEN')
+                    ->formatStateUsing(fn($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->placeholder('—')
                     ->toggleable(),
 
                 TextColumn::make('diferencia_total')
                     ->label('Diferencia')
-                    ->money('PEN')
+                    ->formatStateUsing(fn($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->placeholder('—')
                     ->color(fn($state) => match (true) {
                         $state === null  => 'gray',

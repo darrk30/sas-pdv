@@ -28,7 +28,7 @@ class Transaccion extends Model
     protected $casts = [
         'tipo'   => TipoMovimiento::class,
         'estado' => EstadoMovimiento::class,
-        'monto'  => 'decimal:2',
+        'monto'  => 'decimal:4',
         'fecha'  => 'datetime',
     ];
 

@@ -22,9 +22,8 @@ const _listaDeseos = function(datosIniciales) {
         get totalSel() {
             const disp = this.disponibles;
             const sel  = disp.filter(d => this.seleccion[d.id]);
-            return (sel.length > 0 ? sel : disp)
-                .reduce((s, d) => s + d.total, 0)
-                .toFixed(2);
+            return fmtPrecio((sel.length > 0 ? sel : disp)
+                .reduce((s, d) => s + d.total, 0));
         },
 
         get idsEnMover() {

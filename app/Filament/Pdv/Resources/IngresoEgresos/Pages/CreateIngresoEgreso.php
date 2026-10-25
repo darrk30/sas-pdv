@@ -50,7 +50,7 @@ class CreateIngresoEgreso extends CreateRecord
                 Notification::make()
                     ->danger()
                     ->title('Saldo insuficiente')
-                    ->body("No hay saldo suficiente en {$metodo}. Disponible: S/ " . number_format($saldo, 2) . ".")
+                    ->body("No hay saldo suficiente en {$metodo}. Disponible: S/ " . fmt_precio($saldo) . ".")
                     ->send();
 
                 throw new Halt();

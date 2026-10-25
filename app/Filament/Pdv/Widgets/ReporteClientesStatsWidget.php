@@ -35,14 +35,14 @@ class ReporteClientesStatsWidget extends BaseWidget
                 ->descriptionIcon('heroicon-o-shopping-bag')
                 ->color('gray'),
 
-            Stat::make('Total facturado', 'S/ ' . number_format($totalGastado, 2))
-                ->description('S/ ' . number_format($promedioPorC, 2) . ' prom. / cliente')
+            Stat::make('Total facturado', 'S/ ' . fmt_precio($totalGastado))
+                ->description('S/ ' . fmt_precio($promedioPorC) . ' prom. / cliente')
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color('success'),
         ];
 
         if (($r['creditoPendiente'] ?? 0) > 0) {
-            $stats[] = Stat::make('Crédito pendiente', 'S/ ' . number_format($r['creditoPendiente'], 2))
+            $stats[] = Stat::make('Crédito pendiente', 'S/ ' . fmt_precio($r['creditoPendiente']))
                 ->description('por cobrar')
                 ->descriptionIcon('heroicon-o-clock')
                 ->color('warning');

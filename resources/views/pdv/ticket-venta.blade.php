@@ -260,8 +260,8 @@ html, body {
             <tr>
                 <td class="c">{{ $cantFmt }}</td>
                 <td class="td-desc">{{ $d->descripcion }}</td>
-                <td class="r">S/ {{ number_format($d->precio_unitario,2) }}</td>
-                <td class="r">S/ {{ number_format($d->total,2) }}</td>
+                <td class="r">S/ {{ fmt_precio($d->precio_unitario) }}</td>
+                <td class="r">S/ {{ fmt_precio($d->total) }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -270,7 +270,7 @@ html, body {
     {{-- ══ TOTALES ══ --}}
     <div class="tk-tots">
         @if((float)$venta->descuento_total > 0)
-        <div class="tk-tot-fila"><span>DESCUENTO</span><span>- S/ {{ number_format($venta->descuento_total,2) }}</span></div>
+        <div class="tk-tot-fila"><span>DESCUENTO</span><span>- S/ {{ fmt_precio($venta->descuento_total) }}</span></div>
         @endif
         @if($tieneIgv)
         <div class="tk-tot-fila"><span>OP. GRAVADA</span><span>S/ {{ number_format($venta->op_gravadas,2) }}</span></div>
@@ -279,7 +279,7 @@ html, body {
 
         <div class="tk-tot-fila tk-tot-fila--total">
             <span>TOTAL</span>
-            <span>S/ {{ number_format($venta->total,2) }}</span>
+            <span>S/ {{ fmt_precio($venta->total) }}</span>
         </div>
 
         @if($venta->total_letras)
@@ -301,10 +301,10 @@ html, body {
             @endif
             <strong style="font-size:8px">FORMAS DE PAGO</strong><br>
             @foreach($pagos as $pago)
-            {{ strtoupper($pago->metodoPago?->nombre ?? 'EFECTIVO') }}: S/ {{ number_format($pago->monto,2) }}<br>
+            {{ strtoupper($pago->metodoPago?->nombre ?? 'EFECTIVO') }}: S/ {{ fmt_precio($pago->monto) }}<br>
             @endforeach
             @if($vuelto > 0)
-            VUELTO: S/ {{ number_format($vuelto,2) }}<br>
+            VUELTO: S/ {{ fmt_precio($vuelto) }}<br>
             @endif
         </div>
     </div>
@@ -315,15 +315,15 @@ html, body {
         @foreach($pagos as $pago)
         <div class="tk-pago-fila">
             <span>{{ strtoupper($pago->metodoPago?->nombre ?? 'EFECTIVO') }}</span>
-            <span>S/ {{ number_format($pago->monto,2) }}</span>
+            <span>S/ {{ fmt_precio($pago->monto) }}</span>
         </div>
         @if($pago->referencia)<div style="font-size:8.5px;color:#555;padding-left:1mm">Ref: {{ $pago->referencia }}</div>@endif
         @endforeach
         @if($vuelto > 0)
-        <div class="tk-pago-fila"><span>VUELTO</span><span>S/ {{ number_format($vuelto,2) }}</span></div>
+        <div class="tk-pago-fila"><span>VUELTO</span><span>S/ {{ fmt_precio($vuelto) }}</span></div>
         @endif
         @if((float)($venta->saldo_pendiente??0)>0)
-        <div class="tk-pago-fila" style="font-style:italic"><span>Saldo pendiente</span><span>S/ {{ number_format($venta->saldo_pendiente,2) }}</span></div>
+        <div class="tk-pago-fila" style="font-style:italic"><span>Saldo pendiente</span><span>S/ {{ fmt_precio($venta->saldo_pendiente) }}</span></div>
         @endif
     </div>
     @endif

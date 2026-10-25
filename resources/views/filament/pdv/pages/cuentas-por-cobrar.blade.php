@@ -36,16 +36,16 @@
             @endif
             <div class="cpc-hist-resumen__fila">
                 <span>Total</span>
-                <span class="cpc-hist-resumen__monto">S/ {{ number_format($historialVenta['total'], 2) }}</span>
+                <span class="cpc-hist-resumen__monto">S/ {{ fmt_precio($historialVenta['total']) }}</span>
             </div>
         </div>
 
         {{-- Barra de progreso ────────────────────────────────────────── --}}
         <div class="cpc-hist-progress">
             <div class="cpc-hist-progress__labels">
-                <span>Pagado: <strong>S/ {{ number_format($historialVenta['monto_pagado'], 2) }}</strong></span>
+                <span>Pagado: <strong>S/ {{ fmt_precio($historialVenta['monto_pagado']) }}</strong></span>
                 @if($historialVenta['saldo_pendiente'] > 0)
-                    <span>Pendiente: <strong style="color:var(--cpc-amber)">S/ {{ number_format($historialVenta['saldo_pendiente'], 2) }}</strong></span>
+                    <span>Pendiente: <strong style="color:var(--cpc-amber)">S/ {{ fmt_precio($historialVenta['saldo_pendiente']) }}</strong></span>
                 @else
                     <span style="color:var(--cpc-green)"><strong>Pagado completo</strong></span>
                 @endif
@@ -70,7 +70,7 @@
                     <div class="cpc-hist-item__num">{{ $i + 1 }}</div>
                     <div class="cpc-hist-item__body">
                         <div class="cpc-hist-item__top">
-                            <span class="cpc-hist-item__monto">S/ {{ number_format($pago['monto'], 2) }}</span>
+                            <span class="cpc-hist-item__monto">S/ {{ fmt_precio($pago['monto']) }}</span>
                             <span class="cpc-hist-item__metodo">{{ $pago['metodo'] }}</span>
                             <span class="cpc-hist-item__fecha">{{ $pago['fecha'] }} <small>{{ $pago['hora'] }}</small></span>
                         </div>
@@ -132,16 +132,16 @@
         <div class="cpc-modal-info">
             <div class="cpc-modal-info__row">
                 <span class="cpc-modal-info__label">Total venta</span>
-                <span class="cpc-modal-info__val">S/ {{ number_format($ventaModal['total'], 2) }}</span>
+                <span class="cpc-modal-info__val">S/ {{ fmt_precio($ventaModal['total']) }}</span>
             </div>
             <div class="cpc-modal-info__row">
                 <span class="cpc-modal-info__label">Ya pagado</span>
-                <span class="cpc-modal-info__val">S/ {{ number_format($ventaModal['monto_pagado'], 2) }}</span>
+                <span class="cpc-modal-info__val">S/ {{ fmt_precio($ventaModal['monto_pagado']) }}</span>
             </div>
             <div class="cpc-modal-info__row">
                 <span class="cpc-modal-info__label">Saldo pendiente</span>
                 <span class="cpc-modal-info__val cpc-modal-info__val--saldo {{ $ventaModal['es_vencida'] ? 'cpc-modal-info__val--vencida' : '' }}">
-                    S/ {{ number_format($ventaModal['saldo_pendiente'], 2) }}
+                    S/ {{ fmt_precio($ventaModal['saldo_pendiente']) }}
                 </span>
             </div>
             @if($ventaModal['vencimiento'])

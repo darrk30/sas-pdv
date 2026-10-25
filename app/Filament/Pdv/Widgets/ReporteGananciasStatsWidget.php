@@ -39,22 +39,22 @@ class ReporteGananciasStatsWidget extends BaseWidget
                 ->color('primary')
                 ->chart($s['ingresos'] ?? []),
 
-            Stat::make('Utilidad cobrada', 'S/ ' . number_format($util, 2))
-                ->description('costo: S/ ' . number_format($r['costoTotal'] ?? 0, 2))
+            Stat::make('Utilidad cobrada', 'S/ ' . fmt_precio($util))
+                ->description('costo: S/ ' . fmt_precio($r['costoTotal'] ?? 0))
                 ->descriptionIcon($util >= 0 ? 'heroicon-o-arrow-trending-up' : 'heroicon-o-arrow-trending-down')
                 ->color($util >= 0 ? 'success' : 'danger')
                 ->chart($s['utilidad'] ?? []),
 
             Stat::make('Margen bruto', number_format($margen, 1) . '%')
-                ->description('neto: S/ ' . number_format($r['ventasNetas'] ?? 0, 2))
+                ->description('neto: S/ ' . fmt_precio($r['ventasNetas'] ?? 0))
                 ->descriptionIcon('heroicon-o-chart-bar')
                 ->color($margenColor)
                 ->chart($s['ingresos'] ?? []),
         ];
 
         if (($r['creditoPendiente'] ?? 0) > 0) {
-            $stats[] = Stat::make('Crédito pendiente', 'S/ ' . number_format($r['creditoPendiente'], 2))
-                ->description('utilidad en riesgo: S/ ' . number_format($r['utilidadEnRiesgo'] ?? 0, 2))
+            $stats[] = Stat::make('Crédito pendiente', 'S/ ' . fmt_precio($r['creditoPendiente']))
+                ->description('utilidad en riesgo: S/ ' . fmt_precio($r['utilidadEnRiesgo'] ?? 0))
                 ->descriptionIcon('heroicon-o-clock')
                 ->color('warning');
         }

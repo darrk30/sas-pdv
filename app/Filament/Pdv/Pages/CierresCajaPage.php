@@ -93,7 +93,7 @@ class CierresCajaPage extends Page implements HasTable
 
                 TextColumn::make('total_sistema')
                     ->label('Total sistema')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->placeholder('—')
                     ->sortable()
                     ->alignEnd(),

@@ -55,7 +55,16 @@ class ProductCatalog extends Component
 
     public function updatedBusqueda(): void
     {
-        $this->perPage = 48;
+        $this->busqueda = trim($this->busqueda);
+        $this->perPage  = 48;
+    }
+
+    private function palabrasBusqueda(): array
+    {
+        return collect(preg_split('/\s+/', trim($this->busqueda)))
+            ->filter(fn($w) => mb_strlen($w) >= 1)
+            ->values()
+            ->all();
     }
 
     public function cargarMas(): void
@@ -193,7 +202,10 @@ class ProductCatalog extends Component
             ]);
 
         if ($this->busqueda !== '') {
-            $query->where('nombre', 'like', "%{$this->busqueda}%");
+            $palabras = $this->palabrasBusqueda();
+            foreach ($palabras as $palabra) {
+                $query->where('nombre', 'like', "%{$palabra}%");
+            }
         }
 
         return $query->orderBy('nombre')->get();
@@ -279,12 +291,15 @@ class ProductCatalog extends Component
             ]);
 
         if ($this->busqueda !== '') {
-            $b = $this->busqueda;
-            $query->where(function ($q) use ($b) {
-                $q->where('nombre', 'like', "%{$b}%")
-                  ->orWhere('codigo_interno', 'like', "%{$b}%")
-                  ->orWhere('codigo_barras', 'like', "%{$b}%");
-            });
+            $palabras = $this->palabrasBusqueda();
+            foreach ($palabras as $palabra) {
+                $like = "%{$palabra}%";
+                $query->where(fn($q) =>
+                    $q->where('nombre', 'like', $like)
+                      ->orWhere('codigo_interno', 'like', $like)
+                      ->orWhere('codigo_barras', 'like', $like)
+                );
+            }
         }
 
         if ($this->categoriaId !== null) {

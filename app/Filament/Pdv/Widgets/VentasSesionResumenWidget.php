@@ -75,7 +75,7 @@ class VentasSesionResumenWidget extends BaseWidget
         ];
 
         if ((float) ($row->descuento_total ?? 0) > 0) {
-            $stats[] = Stat::make('Descuentos', '- S/ ' . number_format((float) $row->descuento_total, 2))
+            $stats[] = Stat::make('Descuentos', '- S/ ' . fmt_precio((float) $row->descuento_total))
                 ->description('Total en descuentos')
                 ->descriptionIcon('heroicon-o-tag')
                 ->color('danger')
@@ -138,7 +138,7 @@ class VentasSesionResumenWidget extends BaseWidget
         })->sortByDesc('total');
 
         foreach ($metodos as $m) {
-            $stats[] = Stat::make($m->nombre, 'S/ ' . number_format((float) $m->total, 2))
+            $stats[] = Stat::make($m->nombre, 'S/ ' . fmt_precio((float) $m->total))
                 ->description('Método de pago')
                 ->descriptionIcon('heroicon-o-credit-card')
                 ->color('info')

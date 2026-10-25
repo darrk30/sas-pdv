@@ -337,7 +337,7 @@ class ReporteVendedoresPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('ingresos')
                     ->label('Total facturado')
-                    ->state(fn($record) => 'S/ ' . number_format((float) ($record['ingresos'] ?? 0), 2))
+                    ->state(fn($record) => 'S/ ' . fmt_precio((float) ($record['ingresos'] ?? 0)))
                     ->sortable()
                     ->alignEnd()
                     ->color('primary')
@@ -345,7 +345,7 @@ class ReporteVendedoresPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('cobrado')
                     ->label('Cobrado')
-                    ->state(fn($record) => 'S/ ' . number_format((float) ($record['cobrado'] ?? 0), 2))
+                    ->state(fn($record) => 'S/ ' . fmt_precio((float) ($record['cobrado'] ?? 0)))
                     ->sortable()
                     ->alignEnd()
                     ->color('success'),
@@ -353,7 +353,7 @@ class ReporteVendedoresPage extends Page implements HasForms, HasTable
                 TextColumn::make('credito_pendiente')
                     ->label('Crédito pend.')
                     ->state(fn($record): string => (float) ($record['credito_pendiente'] ?? 0) > 0
-                        ? 'S/ ' . number_format((float) $record['credito_pendiente'], 2)
+                        ? 'S/ ' . fmt_precio((float) $record['credito_pendiente'])
                         : '—'
                     )
                     ->sortable()
@@ -362,7 +362,7 @@ class ReporteVendedoresPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('costo')
                     ->label('Costo')
-                    ->state(fn($record) => 'S/ ' . number_format((float) ($record['costo'] ?? 0), 2))
+                    ->state(fn($record) => 'S/ ' . fmt_precio((float) ($record['costo'] ?? 0)))
                     ->sortable()
                     ->alignEnd()
                     ->color('danger')
@@ -370,7 +370,7 @@ class ReporteVendedoresPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('utilidad')
                     ->label('Utilidad')
-                    ->state(fn($record) => 'S/ ' . number_format((float) ($record['utilidad'] ?? 0), 2))
+                    ->state(fn($record) => 'S/ ' . fmt_precio((float) ($record['utilidad'] ?? 0)))
                     ->sortable()
                     ->alignEnd()
                     ->color(fn($record): string => (float) ($record['utilidad'] ?? 0) >= 0 ? 'success' : 'danger')

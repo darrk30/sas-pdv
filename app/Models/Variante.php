@@ -25,7 +25,7 @@ class Variante extends Model
     ];
 
     protected $casts = [
-        'precio_final'        => 'decimal:2',
+        'precio_final'        => 'decimal:4',
         'precio_costo'        => 'decimal:4',
         'factor_presentacion' => 'decimal:4',
     ];

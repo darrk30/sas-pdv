@@ -51,7 +51,7 @@ class ClientesStatsWidget extends BaseWidget
                 ->color($conCredito > 0 ? 'warning' : 'gray')
                 ->icon('heroicon-o-credit-card');
 
-            $stats[] = Stat::make('Cuentas por cobrar', 'S/ ' . number_format($totalPendiente, 2))
+            $stats[] = Stat::make('Cuentas por cobrar', 'S/ ' . fmt_precio($totalPendiente))
                 ->description('Saldo total pendiente')
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color($totalPendiente > 0 ? 'danger' : 'gray')

@@ -18,7 +18,7 @@
             <div class="fi-wi-stats-overview-stat-label-ctn">
                 <span class="fi-wi-stats-overview-stat-label">Cobrado</span>
             </div>
-            <div class="fi-wi-stats-overview-stat-value">S/ {{ number_format($resumen['cobrado'], 2) }}</div>
+            <div class="fi-wi-stats-overview-stat-value">S/ {{ fmt_precio($resumen['cobrado']) }}</div>
             <div class="fi-wi-stats-overview-stat-description">monto recibido</div>
         </div>
     </div>
@@ -28,7 +28,7 @@
             <div class="fi-wi-stats-overview-stat-label-ctn">
                 <span class="fi-wi-stats-overview-stat-label">Utilidad</span>
             </div>
-            <div class="fi-wi-stats-overview-stat-value">S/ {{ number_format($resumen['utilidad'], 2) }}</div>
+            <div class="fi-wi-stats-overview-stat-value">S/ {{ fmt_precio($resumen['utilidad']) }}</div>
             <div class="fi-wi-stats-overview-stat-description">venta neta − costo</div>
         </div>
     </div>
@@ -39,7 +39,7 @@
             <div class="fi-wi-stats-overview-stat-label-ctn">
                 <span class="fi-wi-stats-overview-stat-label">Crédito pendiente</span>
             </div>
-            <div class="fi-wi-stats-overview-stat-value">S/ {{ number_format($resumen['creditoPendiente'], 2) }}</div>
+            <div class="fi-wi-stats-overview-stat-value">S/ {{ fmt_precio($resumen['creditoPendiente']) }}</div>
             <div class="fi-wi-stats-overview-stat-description">por cobrar</div>
         </div>
     </div>

@@ -23,7 +23,7 @@
             <div class="pdv-modal__header">
                 <div>
                     <h3 class="pdv-modal__titulo">¡Venta completada!</h3>
-                    <p class="pdv-modal__subtitulo">{{ $ventaNumero }} &nbsp;·&nbsp; S/ {{ number_format($ventaTotal, 2) }}</p>
+                    <p class="pdv-modal__subtitulo">{{ $ventaNumero }} &nbsp;·&nbsp; S/ {{ fmt_precio($ventaTotal) }}</p>
                 </div>
                 <button class="pdv-modal__cerrar" wire:click="cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

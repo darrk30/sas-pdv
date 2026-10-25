@@ -46,7 +46,7 @@ class CuponesTable
                         fn($state, Cupon $r) =>
                         $r->tipo_descuento === 'porcentaje'
                             ? number_format($state, 0) . '%'
-                            : 'S/ ' . number_format($state, 2)
+                            : 'S/ ' . fmt_precio($state)
                     )
                     ->alignRight(),
 
@@ -54,7 +54,7 @@ class CuponesTable
                     ->label('Condición')
                     ->state(fn(Cupon $r) => collect([
                         $r->cantidad_minima ? "≥ {$r->cantidad_minima} productos" : null,
-                        $r->monto_minimo    ? 'S/ ' . number_format($r->monto_minimo, 2) . ' mín.' : null,
+                        $r->monto_minimo    ? 'S/ ' . fmt_precio($r->monto_minimo) . ' mín.' : null,
                     ])->filter()->implode(' · ') ?: '—')
                     ->color('gray'),
 

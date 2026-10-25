@@ -188,18 +188,18 @@
                 @endif
                 <div class="pd-precio-fila">
                     <span class="pd-precio">
-                        S/ <span x-text="(parseFloat(precioActual) * cantidad).toFixed(2)">{{ number_format($precioFinal, 2) }}</span>
+                        S/ <span x-text="fmtPrecio(parseFloat(precioActual) * cantidad)">{{ fmt_precio($precioFinal) }}</span>
                     </span>
                     @if ($tieneDescuento && $pct > 0)
                         <span class="pd-badge-desc">-{{ $pctFormateado }}%</span>
                     @endif
                 </div>
                 @if ($tieneDescuento)
-                    <span class="pd-precio-original">S/ {{ number_format($producto->precio_venta, 2) }}</span>
+                    <span class="pd-precio-original">S/ {{ fmt_precio($producto->precio_venta) }}</span>
                 @endif
                 <span class="pd-precio-desde"
                       x-show="cantidad > 1"
-                      x-text="`c/u S/ ${precioActual}`">
+                      x-text="`c/u S/ ${fmtPrecio(precioActual)}`">
                 </span>
             </div>
 
@@ -255,17 +255,17 @@
                                                     @click="seleccionar(attr.id, val)"
                                                 >
                                                     <span x-text="val.label"></span>
-                                                    <span x-show="val.precio_adicional > 0"
+                                                    <span x-show="val.precio_adicional > 0 && !producto.comparteStock"
                                                           class="modal-var__extra-badge"
-                                                          x-text="`+S/ ${parseFloat(val.precio_adicional).toFixed(2)}`">
+                                                          x-text="`+S/ ${fmtPrecio(val.precio_adicional)}`">
                                                     </span>
                                                 </button>
 
                                                 {{-- Precio extra debajo de color --}}
                                                 <span
-                                                    x-show="attr.tipo === 'color' && val.precio_adicional > 0"
+                                                    x-show="attr.tipo === 'color' && val.precio_adicional > 0 && !producto.comparteStock"
                                                     class="modal-var__extra-badge"
-                                                    x-text="`+S/ ${parseFloat(val.precio_adicional).toFixed(2)}`">
+                                                    x-text="`+S/ ${fmtPrecio(val.precio_adicional)}`">
                                                 </span>
 
                                             </div>

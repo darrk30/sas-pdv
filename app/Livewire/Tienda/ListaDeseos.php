@@ -84,9 +84,7 @@ class ListaDeseos extends Component
             $item = $this->itemDelUsuario((int) $rawId);
             if (! $item) continue;
 
-            $precio = $item->variante
-                ? (float) $item->variante->precio_final
-                : $this->calcularPrecioProducto($item->producto);
+            $precio = $this->calcularPrecioVariante($item->variante, $item->producto);
 
             try {
                 $carritoItem = $carrito->items()
@@ -209,10 +207,8 @@ class ListaDeseos extends Component
         $datos = [];
         foreach ($items as $item) {
             if (! $this->esDisponible($item)) continue;
-            $precioUnit = $item->variante
-                ? (float) $item->variante->precio_final
-                : $this->calcularPrecioProducto($item->producto);
-            $datos[(string) $item->id] = round($precioUnit * $item->cantidad, 2);
+            $precioUnit = $this->calcularPrecioVariante($item->variante, $item->producto);
+            $datos[(string) $item->id] = round($precioUnit * $item->cantidad, 4);
         }
         return $datos;
     }
@@ -230,7 +226,18 @@ class ListaDeseos extends Component
         return ListaDeseo::where('id', $id)
             ->where('empresa_id', $this->empresaId)
             ->where('user_id', Auth::guard('cliente')->id())
-            ->with(['variante', 'producto'])
+            ->with(['variante.valores', 'producto'])
             ->first();
+    }
+
+    private function calcularPrecioVariante($variante, $producto): float
+    {
+        if (! $variante) return $this->calcularPrecioProducto($producto);
+        if ($producto?->comparte_stock) {
+            return (float) $variante->precio_final;
+        }
+        $base   = $this->calcularPrecioProducto($producto);
+        $extras = $variante->valores->sum(fn($pav) => (float)($pav->precio_adicional ?? 0));
+        return $base + $extras;
     }
 }

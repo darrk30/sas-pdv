@@ -54,8 +54,9 @@ class Producto extends Model
         'comparte_stock'   => 'boolean',
         'venta_sin_stock'  => 'boolean',
         'vendible' => 'boolean',
-        'precio_costo' => 'decimal:4',
-        'precio_venta' => 'float',
+        'precio_costo'          => 'decimal:4',
+        'precio_venta'          => 'decimal:4',
+        'precio_con_descuento'  => 'decimal:4',
         'estado' => EstadoGeneral::class, // Cast automático a Enum
         'etiqueta' => ProductoEtiqueta::class, // Cast automático a Enum
     ];

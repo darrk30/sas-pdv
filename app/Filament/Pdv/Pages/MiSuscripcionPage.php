@@ -77,7 +77,7 @@ class MiSuscripcionPage extends Page implements HasTable
 
                 TextColumn::make('monto')
                     ->label('Monto')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->sortable()
                     ->weight('bold'),
 

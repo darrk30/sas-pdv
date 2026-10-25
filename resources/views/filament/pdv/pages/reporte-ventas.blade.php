@@ -7,7 +7,7 @@
 <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-400">
     <span class="font-medium text-gray-800 dark:text-gray-200">Por método de pago:</span>
     @foreach($resumen['porMetodo'] as $m)
-        <span>{{ $m['nombre'] }} <strong class="text-gray-900 dark:text-white">S/ {{ number_format($m['total'], 2) }}</strong></span>
+        <span>{{ $m['nombre'] }} <strong class="text-gray-900 dark:text-white">S/ {{ fmt_precio($m['total']) }}</strong></span>
     @endforeach
 </div>
 @endif
@@ -138,8 +138,8 @@
                                             <span style="font-size:.72rem;color:var(--vs-text-muted);margin-left:.15rem">{{ $simbolo }}</span>
                                         @endif
                                     </td>
-                                    <td style="text-align:center">S/ {{ number_format($d->precio_unitario, 2) }}</td>
-                                    <td style="text-align:center">S/ {{ number_format($d->total, 2) }}</td>
+                                    <td style="text-align:center">S/ {{ fmt_precio($d->precio_unitario) }}</td>
+                                    <td style="text-align:center">S/ {{ fmt_precio($d->total) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -152,7 +152,7 @@
                         <div class="vs-modal__total-fila vs-modal__total-fila--descuento">
                             <span>Descuento</span>
                             <span class="vs-descuento-col">
-                                <span>−S/ {{ number_format($vm->descuento_total, 2) }}</span>
+                                <span>−S/ {{ fmt_precio($vm->descuento_total) }}</span>
                                 @if($vm->cupon)
                                     <span class="vs-cupon-badge">{{ $vm->cupon->codigo }}</span>
                                 @endif
@@ -162,24 +162,24 @@
                     @if(!$esTicketVm && $vm->op_gravadas > 0)
                     <div class="vs-modal__total-fila">
                         <span>Op. Gravada</span>
-                        <span>S/ {{ number_format($vm->op_gravadas, 2) }}</span>
+                        <span>S/ {{ fmt_precio($vm->op_gravadas) }}</span>
                     </div>
                     @endif
                     @if(!$esTicketVm && $vm->igv > 0)
                     <div class="vs-modal__total-fila">
                         <span>IGV (18%)</span>
-                        <span>S/ {{ number_format($vm->igv, 2) }}</span>
+                        <span>S/ {{ fmt_precio($vm->igv) }}</span>
                     </div>
                     @endif
                     @if(($vm->costo_envio ?? 0) > 0 && !($vm->envio_facturado ?? false))
                     <div class="vs-modal__total-fila" style="color:var(--fi-color-gray-500);font-style:italic;">
                         <span>Costo de envío <span style="font-size:0.7em;background:var(--fi-color-gray-100);color:var(--fi-color-gray-500);padding:1px 5px;border-radius:4px;font-style:normal;">concepto</span></span>
-                        <span>S/ {{ number_format($vm->costo_envio, 2) }}</span>
+                        <span>S/ {{ fmt_precio($vm->costo_envio) }}</span>
                     </div>
                     @endif
                     <div class="vs-modal__total-fila vs-modal__total-fila--grande">
                         <span>Total</span>
-                        <span>S/ {{ number_format($vm->total, 2) }}</span>
+                        <span>S/ {{ fmt_precio($vm->total) }}</span>
                     </div>
                 </div>
 
@@ -193,13 +193,13 @@
                                     <span class="vs-modal__pago-ref">{{ $pago->referencia }}</span>
                                 @endif
                             </div>
-                            <span class="vs-modal__pago-monto">S/ {{ number_format($pago->monto, 2) }}</span>
+                            <span class="vs-modal__pago-monto">S/ {{ fmt_precio($pago->monto) }}</span>
                         </div>
                     @endforeach
                     @if($vm->saldo_pendiente > 0)
                         <div class="vs-modal__pago-item vs-modal__pago-item--pendiente">
                             <span>Saldo pendiente</span>
-                            <span>S/ {{ number_format($vm->saldo_pendiente, 2) }}</span>
+                            <span>S/ {{ fmt_precio($vm->saldo_pendiente) }}</span>
                         </div>
                     @endif
                 </div>
@@ -232,7 +232,7 @@
             <div class="vs-modal__header">
                 <div>
                     <h3 class="vs-modal__titulo">Anular venta</h3>
-                    <p class="vs-modal__subtitulo">{{ $codAnular }} · S/ {{ number_format($va->total, 2) }}</p>
+                    <p class="vs-modal__subtitulo">{{ $codAnular }} · S/ {{ fmt_precio($va->total) }}</p>
                 </div>
                 <button class="vs-modal__cerrar" wire:click="cerrarAnular">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -249,7 +249,7 @@
                     </svg>
                     <div>
                         <p class="vs-anular-alerta__titulo">Esta acción no se puede deshacer</p>
-                        <p class="vs-anular-alerta__texto">Se registrará una devolución de <strong>S/ {{ number_format($va->total, 2) }}</strong> y la venta quedará marcada como anulada.</p>
+                        <p class="vs-anular-alerta__texto">Se registrará una devolución de <strong>S/ {{ fmt_precio($va->total) }}</strong> y la venta quedará marcada como anulada.</p>
                     </div>
                 </div>
 
@@ -258,7 +258,7 @@
                     @foreach($va->pagos as $pago)
                         <div class="vs-modal__pago-item">
                             <span class="vs-modal__pago-metodo">{{ $pago->metodoPago?->nombre ?? '—' }}</span>
-                            <span class="vs-modal__pago-monto">S/ {{ number_format($pago->monto, 2) }}</span>
+                            <span class="vs-modal__pago-monto">S/ {{ fmt_precio($pago->monto) }}</span>
                         </div>
                     @endforeach
                 </div>
@@ -334,7 +334,7 @@
         <div class="vs-modal__header">
             <div>
                 <h3 class="vs-modal__titulo">Emitir comprobante electrónico</h3>
-                <p class="vs-modal__subtitulo">Ticket <strong>{{ $convertirCodigo }}</strong> · S/ {{ number_format($convertirTotal, 2) }}</p>
+                <p class="vs-modal__subtitulo">Ticket <strong>{{ $convertirCodigo }}</strong> · S/ {{ fmt_precio($convertirTotal) }}</p>
             </div>
             <button class="vs-modal__cerrar" wire:click="cerrarConvertir">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
@@ -389,9 +389,9 @@
         </div>
 
         <div class="vs-conv-igv-preview">
-            <div class="vs-conv-igv-row"><span>Op. Gravadas</span><span>S/ {{ number_format($convertirOpGravadas, 2) }}</span></div>
-            <div class="vs-conv-igv-row"><span>IGV ({{ $convertirIgvPct }}%)</span><span>S/ {{ number_format($convertirIgv, 2) }}</span></div>
-            <div class="vs-conv-igv-row vs-conv-igv-row--total"><span>Total</span><span>S/ {{ number_format($convertirTotal, 2) }}</span></div>
+            <div class="vs-conv-igv-row"><span>Op. Gravadas</span><span>S/ {{ fmt_precio($convertirOpGravadas) }}</span></div>
+            <div class="vs-conv-igv-row"><span>IGV ({{ $convertirIgvPct }}%)</span><span>S/ {{ fmt_precio($convertirIgv) }}</span></div>
+            <div class="vs-conv-igv-row vs-conv-igv-row--total"><span>Total</span><span>S/ {{ fmt_precio($convertirTotal) }}</span></div>
         </div>
 
         <div class="vs-modal__footer">

@@ -56,22 +56,22 @@ class CreditosClienteStatsWidget extends BaseWidget
 
         return [
             Stat::make('Total créditos', $totalCreditos)
-                ->description('S/ ' . number_format((float) ($row->total_facturado ?? 0), 2) . ' facturado')
+                ->description('S/ ' . fmt_precio((float) ($row->total_facturado ?? 0)) . ' facturado')
                 ->descriptionIcon('heroicon-o-document-text')
                 ->color('primary'),
 
-            Stat::make('Cobrado', 'S/ ' . number_format($totalCobrado, 2))
+            Stat::make('Cobrado', 'S/ ' . fmt_precio($totalCobrado))
                 ->description('Pagos recibidos')
                 ->descriptionIcon('heroicon-o-check-circle')
                 ->color('success'),
 
-            Stat::make('Por cobrar', 'S/ ' . number_format($totalPendiente, 2))
+            Stat::make('Por cobrar', 'S/ ' . fmt_precio($totalPendiente))
                 ->description('Saldo pendiente total')
                 ->descriptionIcon('heroicon-o-clock')
                 ->color($totalPendiente > 0 ? 'warning' : 'gray'),
 
             Stat::make('Vencidas', $cuentasVencidas . ' cta' . ($cuentasVencidas !== 1 ? 's' : ''))
-                ->description('S/ ' . number_format($montoVencido, 2) . ' en riesgo')
+                ->description('S/ ' . fmt_precio($montoVencido) . ' en riesgo')
                 ->descriptionIcon('heroicon-o-exclamation-triangle')
                 ->color($cuentasVencidas > 0 ? 'danger' : 'gray'),
         ];

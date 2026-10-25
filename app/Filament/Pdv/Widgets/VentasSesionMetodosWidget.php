@@ -50,7 +50,7 @@ class VentasSesionMetodosWidget extends BaseWidget
 
         $stats = $metodos->map(fn ($m) => Stat::make(
                 $m->nombre,
-                'S/ ' . number_format((float) $m->total, 2)
+                'S/ ' . fmt_precio((float) $m->total)
             )
             ->description('Recaudado este turno')
             ->descriptionIcon('heroicon-o-banknotes')
@@ -60,7 +60,7 @@ class VentasSesionMetodosWidget extends BaseWidget
 
         if (count($stats) > 1) {
             $sumaTotal = $metodos->sum('total');
-            $stats[]   = Stat::make('Total cobrado', 'S/ ' . number_format((float) $sumaTotal, 2))
+            $stats[]   = Stat::make('Total cobrado', 'S/ ' . fmt_precio((float) $sumaTotal))
                 ->description('Suma de todos los métodos')
                 ->descriptionIcon('heroicon-o-calculator')
                 ->color('primary')

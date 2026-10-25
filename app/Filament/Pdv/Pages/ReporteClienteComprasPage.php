@@ -167,32 +167,32 @@ class ReporteClienteComprasPage extends Page implements HasTable
                     })
                     ->description(fn($record): ?string =>
                         in_array($record->estado_pago, ['pendiente', 'parcial'])
-                            ? 'pend. S/ ' . number_format((float) $record->saldo_pendiente, 2)
+                            ? 'pend. S/ ' . fmt_precio((float) $record->saldo_pendiente)
                             : null
                     ),
 
                 TextColumn::make('total')
                     ->label('Total')
-                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->formatStateUsing(fn($state): string => 'S/ ' . fmt_precio((float) $state))
                     ->alignRight(),
 
                 TextColumn::make('igv')
                     ->label('IGV')
                     ->formatStateUsing(fn($state): string =>
-                        (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—'
+                        (float) $state > 0 ? 'S/ ' . fmt_precio((float) $state) : '—'
                     )
                     ->alignRight()
                     ->color('gray'),
 
                 TextColumn::make('costo_total')
                     ->label('Costo')
-                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->formatStateUsing(fn($state): string => 'S/ ' . fmt_precio((float) $state))
                     ->alignRight()
                     ->color('warning'),
 
                 TextColumn::make('utilidad')
                     ->label('Utilidad')
-                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->formatStateUsing(fn($state): string => 'S/ ' . fmt_precio((float) $state))
                     ->alignRight()
                     ->color(fn($state): string => (float) $state >= 0 ? 'success' : 'danger'),
             ])

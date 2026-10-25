@@ -18,7 +18,7 @@
         $gananciaBruta  = $r['gananciaBruta'];
         $porCobrar      = $tieneCuentas ? ($r['porCobrar'] ?? 0) : 0;
 
-        $fmt = fn($v) => 'S/ ' . number_format((float) $v, 2);
+        $fmt = fn($v) => 'S/ ' . fmt_precio((float) $v);
         $gastosIdx = collect($gastosMetodo)->keyBy('nombre');
 
         // Indexar ventasMetodo por nombre para acceso rápido

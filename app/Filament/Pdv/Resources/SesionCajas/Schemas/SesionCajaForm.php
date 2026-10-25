@@ -142,10 +142,10 @@ class SesionCajaForm
                         ->label('')
                         ->live()
                         ->afterStateUpdated(function (array $state, callable $set, callable $get) {
-                            $cajero  = round(collect($state)->sum(fn($p) => (float)($p['importe_cajero'] ?? 0)), 2);
-                            $sistema = round((float)($get('total_sistema') ?? 0), 2);
+                            $cajero  = collect($state)->sum(fn($p) => (float)($p['importe_cajero'] ?? 0));
+                            $sistema = (float)($get('total_sistema') ?? 0);
                             $set('total_cajero',     $cajero);
-                            $set('diferencia_total', round($cajero - $sistema, 2));
+                            $set('diferencia_total', round($cajero - $sistema, 4));
                         })
                         ->schema([
                             Grid::make(['default' => 2, 'md' => 4])->schema([
@@ -173,7 +173,7 @@ class SesionCajaForm
                                     ->afterStateUpdated(function ($state, $get, $set) {
                                         $sistema = (float) ($get('importe_sistema') ?? 0);
                                         $cajero  = (float) ($state ?? 0);
-                                        $set('diferencia', round($cajero - $sistema, 2));
+                                        $set('diferencia', round($cajero - $sistema, 4));
                                     }),
 
                                 TextInput::make('diferencia')

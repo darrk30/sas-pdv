@@ -234,14 +234,14 @@ class ReporteVendedorVentasPage extends Page implements HasTable
                     ->state(fn($record): string => ($record['estado_pago'] ?? '') === 'pendiente' ? 'Crédito' : 'Contado')
                     ->color(fn($record): string => ($record['estado_pago'] ?? '') === 'pendiente' ? 'warning' : 'success')
                     ->description(fn($record): ?string => ($record['estado_pago'] ?? '') === 'pendiente'
-                        ? 'Pag. S/ ' . number_format((float)($record['monto_pagado'] ?? 0), 2)
-                          . ' · Pend. S/ ' . number_format((float)($record['saldo_pendiente'] ?? 0), 2)
+                        ? 'Pag. S/ ' . fmt_precio((float)($record['monto_pagado'] ?? 0))
+                          . ' · Pend. S/ ' . fmt_precio((float)($record['saldo_pendiente'] ?? 0))
                         : null
                     ),
 
                 TextColumn::make('total')
                     ->label('Total')
-                    ->state(fn($record): string => 'S/ ' . number_format((float) ($record['total'] ?? 0), 2))
+                    ->state(fn($record): string => 'S/ ' . fmt_precio((float) ($record['total'] ?? 0)))
                     ->sortable()
                     ->alignEnd()
                     ->color('primary')
@@ -250,7 +250,7 @@ class ReporteVendedorVentasPage extends Page implements HasTable
                 TextColumn::make('igv')
                     ->label('IGV')
                     ->state(fn($record): string => (float) ($record['igv'] ?? 0) > 0
-                        ? 'S/ ' . number_format((float) $record['igv'], 2)
+                        ? 'S/ ' . fmt_precio((float) $record['igv'])
                         : '—'
                     )
                     ->sortable()
@@ -260,7 +260,7 @@ class ReporteVendedorVentasPage extends Page implements HasTable
 
                 TextColumn::make('costo_total')
                     ->label('Costo')
-                    ->state(fn($record): string => 'S/ ' . number_format((float) ($record['costo_total'] ?? 0), 2))
+                    ->state(fn($record): string => 'S/ ' . fmt_precio((float) ($record['costo_total'] ?? 0)))
                     ->sortable()
                     ->alignEnd()
                     ->color('danger')
@@ -268,7 +268,7 @@ class ReporteVendedorVentasPage extends Page implements HasTable
 
                 TextColumn::make('utilidad')
                     ->label('Utilidad')
-                    ->state(fn($record): string => 'S/ ' . number_format((float) ($record['utilidad'] ?? 0), 2))
+                    ->state(fn($record): string => 'S/ ' . fmt_precio((float) ($record['utilidad'] ?? 0)))
                     ->sortable()
                     ->alignEnd()
                     ->color(fn($record): string => (float) ($record['utilidad'] ?? 0) >= 0 ? 'success' : 'danger')

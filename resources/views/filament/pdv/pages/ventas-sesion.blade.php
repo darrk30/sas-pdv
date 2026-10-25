@@ -22,7 +22,7 @@
         <div class="vs-modal__header">
             <div>
                 <h3 class="vs-modal__titulo">Emitir comprobante electrónico</h3>
-                <p class="vs-modal__subtitulo">Ticket <strong>{{ $convertirCodigo }}</strong> · S/ {{ number_format($convertirTotal, 2) }}</p>
+                <p class="vs-modal__subtitulo">Ticket <strong>{{ $convertirCodigo }}</strong> · S/ {{ fmt_precio($convertirTotal) }}</p>
             </div>
             <button class="vs-modal__cerrar" wire:click="cerrarConvertir">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
@@ -97,15 +97,15 @@
         <div class="vs-conv-igv-preview">
             <div class="vs-conv-igv-row">
                 <span>Op. Gravadas</span>
-                <span>S/ {{ number_format($convertirOpGravadas, 2) }}</span>
+                <span>S/ {{ fmt_precio($convertirOpGravadas) }}</span>
             </div>
             <div class="vs-conv-igv-row">
                 <span>IGV ({{ $convertirIgvPct }}%)</span>
-                <span>S/ {{ number_format($convertirIgv, 2) }}</span>
+                <span>S/ {{ fmt_precio($convertirIgv) }}</span>
             </div>
             <div class="vs-conv-igv-row vs-conv-igv-row--total">
                 <span>Total</span>
-                <span>S/ {{ number_format($convertirTotal, 2) }}</span>
+                <span>S/ {{ fmt_precio($convertirTotal) }}</span>
             </div>
         </div>
 

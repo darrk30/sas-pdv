@@ -81,13 +81,13 @@
                                     ? number_format($item['cantidad'], 0)
                                     : number_format($item['cantidad'], 3) }}
                             </td>
-                            <td class="text-right vdm-num">S/ {{ number_format($item['precio_unitario'], 2) }}</td>
+                            <td class="text-right vdm-num">S/ {{ fmt_precio($item['precio_unitario']) }}</td>
                             @if(collect($detalleItems)->sum('descuento') > 0)
                             <td class="text-right vdm-num vdm-num--desc">
-                                {{ $item['descuento'] > 0 ? '−S/ ' . number_format($item['descuento'], 2) : '—' }}
+                                {{ $item['descuento'] > 0 ? '−S/ ' . fmt_precio($item['descuento']) : '—' }}
                             </td>
                             @endif
-                            <td class="text-right vdm-num vdm-num--total">S/ {{ number_format($item['total'], 2) }}</td>
+                            <td class="text-right vdm-num vdm-num--total">S/ {{ fmt_precio($item['total']) }}</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -99,18 +99,18 @@
                 @if($detalleVenta['igv'] > 0)
                 <div class="vdm-totales__fila">
                     <span>Subtotal (sin IGV)</span>
-                    <span>S/ {{ number_format($detalleVenta['total'] - $detalleVenta['igv'], 2) }}</span>
+                    <span>S/ {{ fmt_precio($detalleVenta['total'] - $detalleVenta['igv']) }}</span>
                 </div>
                 <div class="vdm-totales__fila">
                     <span>IGV (18%)</span>
-                    <span>S/ {{ number_format($detalleVenta['igv'], 2) }}</span>
+                    <span>S/ {{ fmt_precio($detalleVenta['igv']) }}</span>
                 </div>
                 @endif
                 @if(($detalleVenta['descuento_total'] ?? 0) > 0)
                 <div class="vdm-totales__fila vdm-totales__fila--descuento">
                     <span>Descuento</span>
                     <span class="vdm-descuento-col">
-                        <span>−S/ {{ number_format($detalleVenta['descuento_total'], 2) }}</span>
+                        <span>−S/ {{ fmt_precio($detalleVenta['descuento_total']) }}</span>
                         @if(!empty($detalleVenta['cupon_codigo']))
                             <span class="vdm-cupon-badge">{{ $detalleVenta['cupon_codigo'] }}</span>
                         @endif
@@ -120,12 +120,12 @@
                 @if(($detalleVenta['costo_envio'] ?? 0) > 0 && !($detalleVenta['envio_facturado'] ?? false))
                 <div class="vdm-totales__fila" style="color:var(--fi-color-gray-500);font-style:italic;">
                     <span>Costo de envío <span style="font-size:0.7em;background:var(--fi-color-gray-100);color:var(--fi-color-gray-500);padding:1px 5px;border-radius:4px;font-style:normal;">concepto</span></span>
-                    <span>S/ {{ number_format($detalleVenta['costo_envio'], 2) }}</span>
+                    <span>S/ {{ fmt_precio($detalleVenta['costo_envio']) }}</span>
                 </div>
                 @endif
                 <div class="vdm-totales__fila vdm-totales__fila--total">
                     <span>Total</span>
-                    <span>S/ {{ number_format($detalleVenta['total'], 2) }}</span>
+                    <span>S/ {{ fmt_precio($detalleVenta['total']) }}</span>
                 </div>
 
                 @if(count($detallePagos) > 0)
@@ -133,7 +133,7 @@
                 @foreach($detallePagos as $pago)
                 <div class="vdm-totales__fila vdm-totales__fila--pago">
                     <span>{{ $pago['metodo'] }}</span>
-                    <span>S/ {{ number_format($pago['monto'], 2) }}</span>
+                    <span>S/ {{ fmt_precio($pago['monto']) }}</span>
                 </div>
                 @endforeach
                 @endif
@@ -142,7 +142,7 @@
                 <div class="vdm-totales__sep"></div>
                 <div class="vdm-totales__fila vdm-totales__fila--pendiente">
                     <span>Saldo pendiente</span>
-                    <span>S/ {{ number_format($detalleVenta['saldo_pendiente'], 2) }}</span>
+                    <span>S/ {{ fmt_precio($detalleVenta['saldo_pendiente']) }}</span>
                 </div>
                 @endif
             </div>

@@ -26,19 +26,19 @@ class ReportePeriodoVentasStatsWidget extends BaseWidget
                 ->descriptionIcon('heroicon-o-shopping-cart')
                 ->color('primary'),
 
-            Stat::make('Cobrado', 'S/ ' . number_format($r['cobrado'] ?? 0, 2))
+            Stat::make('Cobrado', 'S/ ' . fmt_precio($r['cobrado'] ?? 0))
                 ->description('monto recibido')
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color('success'),
 
-            Stat::make('Utilidad', 'S/ ' . number_format($util, 2))
+            Stat::make('Utilidad', 'S/ ' . fmt_precio($util))
                 ->description($util >= 0 ? 'beneficio neto' : 'pérdida neta')
                 ->descriptionIcon($util >= 0 ? 'heroicon-o-arrow-trending-up' : 'heroicon-o-arrow-trending-down')
                 ->color($util >= 0 ? 'success' : 'danger'),
         ];
 
         if (($r['creditoPendiente'] ?? 0) > 0) {
-            $stats[] = Stat::make('Crédito pendiente', 'S/ ' . number_format($r['creditoPendiente'], 2))
+            $stats[] = Stat::make('Crédito pendiente', 'S/ ' . fmt_precio($r['creditoPendiente']))
                 ->description('por cobrar')
                 ->descriptionIcon('heroicon-o-clock')
                 ->color('warning');

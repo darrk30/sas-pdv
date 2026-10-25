@@ -64,7 +64,7 @@ class IngresoEgresosTable
 
                 TextColumn::make('monto')
                     ->label('Monto')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->sortable()
                     ->color(fn($record) => $record->tipo === TipoMovimiento::Ingreso ? 'success' : 'danger'),
 
@@ -122,7 +122,7 @@ class IngresoEgresosTable
                                 Notification::make()
                                     ->danger()
                                     ->title('No se puede anular')
-                                    ->body("El saldo en {$metodo} quedaría negativo (S/ " . number_format((float)$saldoActual - (float)$record->monto, 2) . ").")
+                                    ->body("El saldo en {$metodo} quedaría negativo (S/ " . fmt_precio((float)$saldoActual - (float)$record->monto) . ").")
                                     ->send();
                                 return;
                             }
