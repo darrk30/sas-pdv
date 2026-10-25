@@ -55,7 +55,7 @@ class ProveedoresStatsWidget extends BaseWidget
                 ->color($conDeuda > 0 ? 'warning' : 'gray')
                 ->icon('heroicon-o-credit-card');
 
-            $stats[] = Stat::make('Cuentas por pagar', 'S/ ' . number_format($saldoTotal, 2))
+            $stats[] = Stat::make('Cuentas por pagar', 'S/ ' . fmt_precio($saldoTotal))
                 ->description('Saldo total con proveedores')
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color($saldoTotal > 0 ? 'danger' : 'gray')

@@ -144,14 +144,14 @@ class ResumenBoletasPage extends Page implements HasTable
         foreach ($nuevas as $v) {
             $num = str_pad((string) $v->correlativo, 8, '0', STR_PAD_LEFT);
             $label = ($v->serie?->serie ?? '?') . '-' . $num
-                . ' — S/ ' . number_format($v->total, 2);
+                . ' — S/ ' . fmt_precio($v->total);
             $options[$v->id] = $label;
         }
 
         foreach ($bajas as $v) {
             $num = str_pad((string) $v->correlativo, 8, '0', STR_PAD_LEFT);
             $label = ($v->serie?->serie ?? '?') . '-' . $num
-                . ' — S/ ' . number_format($v->total, 2)
+                . ' — S/ ' . fmt_precio($v->total)
                 . ' [ANULADA — dar de baja]';
             $options[$v->id] = $label;
         }

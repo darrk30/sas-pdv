@@ -38,11 +38,11 @@ class OrdenDetalle extends Model
         'precio_unitario' => 'decimal:4',
         'valor_unitario'  => 'decimal:4',
         'costo_unitario'  => 'decimal:4',
-        'descuento'       => 'decimal:2',
-        'subtotal'        => 'decimal:2',
-        'igv'             => 'decimal:2',
-        'total'           => 'decimal:2',
-        'costo_total'     => 'decimal:2',
+        'descuento'       => 'decimal:4',
+        'subtotal'        => 'decimal:4',
+        'igv'             => 'decimal:4',
+        'total'           => 'decimal:4',
+        'costo_total'     => 'decimal:4',
         'enviado_cocina'  => 'boolean',
     ];
 
@@ -77,11 +77,11 @@ class OrdenDetalle extends Model
         float $descuento = 0,
         float $tasaIgv = 0.18,
     ): array {
-        $total         = round($precioUnitario * $cantidad - $descuento, 2);
+        $total         = round($precioUnitario * $cantidad - $descuento, 4);
         $valorUnitario = round($precioUnitario / (1 + $tasaIgv), 4);
-        $subtotal      = round($cantidad * $valorUnitario, 2);
-        $igv           = round($total - $subtotal + $descuento / (1 + $tasaIgv), 2);
-        $costoTotal    = round($cantidad * $costoUnitario, 2);
+        $subtotal      = round($cantidad * $valorUnitario, 4);
+        $igv           = round($total - $subtotal + $descuento / (1 + $tasaIgv), 4);
+        $costoTotal    = round($cantidad * $costoUnitario, 4);
 
         return compact('valorUnitario', 'subtotal', 'igv', 'total', 'costoTotal');
     }

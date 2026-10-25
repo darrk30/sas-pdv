@@ -53,11 +53,11 @@ class EditSesionCaja extends EditRecord
     {
         $totales = $this->calcularTotalesPorMetodo($this->record);
 
-        $sistemaTotal             = round($totales->sum(), 2);
+        $sistemaTotal             = round($totales->sum(), 4);
         $data['total_sistema']    = $sistemaTotal;
-        $cajero                   = round((float) $this->record->pagos->sum('importe_cajero'), 2);
+        $cajero                   = (float) $this->record->pagos->sum('importe_cajero');
         $data['total_cajero']     = $cajero;
-        $data['diferencia_total'] = round($cajero - $sistemaTotal, 2);
+        $data['diferencia_total'] = round($cajero - $sistemaTotal, 4);
         $data['total_creditos']   = $this->calcularCreditosSesion($this->record);
 
         return $data;
@@ -79,21 +79,21 @@ class EditSesionCaja extends EditRecord
 
         // Recalcular importe_sistema y diferencia por fila con valores reales de BD
         foreach ($sesion->pagos as $pago) {
-            $sistema = round((float) ($totales[$pago->metodo_pago_id] ?? 0), 2);
-            $cajero  = round((float) ($pago->importe_cajero ?? 0), 2);
+            $sistema = round((float) ($totales[$pago->metodo_pago_id] ?? 0), 4);
+            $cajero  = (float) ($pago->importe_cajero ?? 0);
             $pago->update([
                 'importe_sistema' => $sistema,
-                'diferencia'      => round($cajero - $sistema, 2),
+                'diferencia'      => round($cajero - $sistema, 4),
             ]);
         }
 
-        $cajeroTotal  = round((float) $sesion->pagos()->sum('importe_cajero'), 2);
-        $sistemaTotal = round($totales->sum(), 2);
+        $cajeroTotal  = (float) $sesion->pagos()->sum('importe_cajero');
+        $sistemaTotal = round($totales->sum(), 4);
 
         $sesion->update([
             'total_sistema'    => $sistemaTotal,
             'total_cajero'     => $cajeroTotal,
-            'diferencia_total' => round($cajeroTotal - $sistemaTotal, 2),
+            'diferencia_total' => round($cajeroTotal - $sistemaTotal, 4),
             'total_creditos'   => $this->calcularCreditosSesion($sesion),
         ]);
     }
@@ -123,7 +123,7 @@ class EditSesionCaja extends EditRecord
         $totales = $this->calcularTotalesPorMetodo($sesion);
 
         foreach ($totales as $mpId => $importe) {
-            $importe = round($importe, 2);
+            $importe = round($importe, 4);
             // firstOrCreate: si ya existe, no toca importe_cajero; si es nuevo, lo inicializa en 0
             $pago = SesionCajaPago::firstOrCreate(
                 ['sesion_caja_id' => $sesion->id, 'metodo_pago_id' => $mpId],
@@ -145,7 +145,7 @@ class EditSesionCaja extends EditRecord
     {
         return round((float) Transaccion::where('sesion_caja_id', $sesion->id)
             ->where('estado', EstadoMovimiento::PorCobrar->value)
-            ->sum('monto'), 2);
+            ->sum('monto'), 4);
     }
 
     private function calcularTotalesPorMetodo(SesionCaja $sesion): Collection

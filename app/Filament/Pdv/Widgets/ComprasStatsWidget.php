@@ -40,12 +40,12 @@ class ComprasStatsWidget extends BaseWidget
 
         return [
             Stat::make('Pendientes de despacho', $pendientesDespacho)
-                ->description('S/ ' . number_format($montoDespacho, 2) . ' en compras')
+                ->description('S/ ' . fmt_precio($montoDespacho) . ' en compras')
                 ->descriptionIcon('heroicon-o-truck')
                 ->color($pendientesDespacho > 0 ? 'warning' : 'gray'),
 
             Stat::make('Pendientes de pago', $pendientesPago)
-                ->description('S/ ' . number_format($saldoPorPagar, 2) . ' por pagar')
+                ->description('S/ ' . fmt_precio($saldoPorPagar) . ' por pagar')
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color($pendientesPago > 0 ? 'danger' : 'gray'),
         ];

@@ -67,13 +67,13 @@
         @foreach($metodos as $m)
             <div class="vsm-card">
                 <span class="vsm-card__name">{{ $m['nombre'] }}</span>
-                <span class="vsm-card__amount">S/ {{ number_format($m['total'], 2) }}</span>
+                <span class="vsm-card__amount">S/ {{ fmt_precio($m['total']) }}</span>
             </div>
         @endforeach
         @if(count($metodos) > 1)
             <div class="vsm-card vsm-card--total">
                 <span class="vsm-card__name">Total</span>
-                <span class="vsm-card__amount">S/ {{ number_format($total, 2) }}</span>
+                <span class="vsm-card__amount">S/ {{ fmt_precio($total) }}</span>
             </div>
         @endif
     </div>

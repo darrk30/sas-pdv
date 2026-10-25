@@ -99,7 +99,7 @@ class CobrarPedido extends Page
 
         $this->autoSeleccionarComprobante();
         $this->autoSeleccionarClienteGeneral();
-        $this->montoPagoInput = number_format((float) $this->orden->total, 2, '.', '');
+        $this->montoPagoInput = fmt_precio((float) $this->orden->total);
         $metodos = $this->getMetodosPago();
         $efectivo = $metodos->first(fn ($m) => mb_strtolower($m->nombre) === 'efectivo');
         $this->metodoPagoId = ($efectivo ?? $metodos->first())?->id;
@@ -302,7 +302,7 @@ class CobrarPedido extends Page
             ];
         }
 
-        $this->montoPagoInput = number_format(max(0, $this->getTotalConDescuento() - ($totalAcumulado + $monto)), 2, '.', '');
+        $this->montoPagoInput = fmt_precio(max(0, $this->getTotalConDescuento() - ($totalAcumulado + $monto)));
         $this->pagoReferencia = '';
     }
 
@@ -400,7 +400,7 @@ class CobrarPedido extends Page
             if ($totalPagado < $totalDescuento - 0.01) {
                 Notification::make()
                     ->title('Monto insuficiente')
-                    ->body('Total: S/ ' . number_format($totalDescuento, 2) . ' — Pagado: S/ ' . number_format($totalPagado, 2))
+                    ->body('Total: S/ ' . fmt_precio($totalDescuento) . ' — Pagado: S/ ' . fmt_precio($totalPagado))
                     ->warning()
                     ->send();
                 return;
@@ -606,7 +606,7 @@ class CobrarPedido extends Page
             $parts[] = 'Mesa: ' . $this->orden->mesa->nombre;
             if ($this->orden->mesa->piso) $parts[] = $this->orden->mesa->piso->nombre;
         }
-        $parts[] = 'Total: S/ ' . number_format((float) $this->orden->total, 2);
+        $parts[] = 'Total: S/ ' . fmt_precio((float) $this->orden->total);
         return implode(' · ', $parts);
     }
 

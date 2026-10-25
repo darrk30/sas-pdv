@@ -99,7 +99,7 @@
                                 wire:key="var-{{ $var['id'] }}">
                                 <div class="ev-prod-info">
                                     <div class="ev-prod-name">{{ $prod['nombre'] }} ({{ $var['nombre'] }})</div>
-                                    <div class="ev-prod-price">S/ {{ number_format($var['precio'], 2) }}</div>
+                                    <div class="ev-prod-price">S/ {{ fmt_precio($var['precio']) }}</div>
                                 </div>
                                 <div class="ev-prod-stock">
                                     {{ $var['stock_real'] !== null ? number_format($var['stock_real'], 0).' uds' : '—' }}
@@ -112,7 +112,7 @@
                                 wire:key="prod-{{ $prod['id'] }}">
                                 <div class="ev-prod-info">
                                     <div class="ev-prod-name">{{ $prod['nombre'] }}</div>
-                                    <div class="ev-prod-price">S/ {{ number_format($prod['precio'], 2) }}</div>
+                                    <div class="ev-prod-price">S/ {{ fmt_precio($prod['precio']) }}</div>
                                 </div>
                                 <div class="ev-prod-stock">
                                     {{ $prod['stock_real'] !== null ? number_format($prod['stock_real'], 0).' uds' : '—' }}
@@ -154,8 +154,8 @@
                     <div class="ev-td ev-td--price">
                         <x-filament::input.wrapper>
                             <x-filament::input
-                                type="number" step="0.01" min="0"
-                                value="{{ number_format((float)$item['precio'], 2, '.', '') }}"
+                                type="number" step="0.0001" min="0"
+                                value="{{ number_format((float)$item['precio'], 4, '.', '') }}"
                                 wire:change="actualizarPrecio('{{ $key }}', $event.target.value)"
                                 style="text-align:right;width:6rem;" />
                         </x-filament::input.wrapper>
@@ -174,7 +174,7 @@
                         </div>
                     </div>
                     <div class="ev-td ev-td--sub">
-                        S/ {{ number_format((float)$item['precio'] * (float)$item['cantidad'], 2) }}
+                        S/ {{ fmt_precio((float)$item['precio'] * (float)$item['cantidad']) }}
                     </div>
                     <div class="ev-td ev-td--del">
                         <button type="button" class="ev-del-btn" wire:click="eliminarItem('{{ $key }}')" title="Quitar producto">
@@ -214,7 +214,7 @@
                 <div class="ev-pago-monto">
                     <x-filament::input.wrapper>
                         <x-filament::input
-                            type="number" min="0" step="0.01"
+                            type="number" min="0" step="0.0001"
                             value="{{ $pago['monto'] }}"
                             placeholder="Monto"
                             wire:change="actualizarMontoPago({{ $idx }}, $event.target.value)" />
@@ -262,32 +262,32 @@
             <div class="ev-totales">
                 <div class="ev-total-line">
                     <span>Subtotal</span>
-                    <span>S/ {{ number_format($this->getSubtotal(), 2) }}</span>
+                    <span>S/ {{ fmt_precio($this->getSubtotal()) }}</span>
                 </div>
                 @if($this->getDescuento() > 0)
                 <div class="ev-total-line ev-total-line--desc">
                     <span>Descuento</span>
-                    <span>− S/ {{ number_format($this->getDescuento(), 2) }}</span>
+                    <span>− S/ {{ fmt_precio($this->getDescuento()) }}</span>
                 </div>
                 @endif
                 @if(! $esTicketActual)
                 <div class="ev-total-line ev-total-line--muted">
                     <span>Op. gravadas</span>
-                    <span>S/ {{ number_format($this->getOpGravadas(), 2) }}</span>
+                    <span>S/ {{ fmt_precio($this->getOpGravadas()) }}</span>
                 </div>
                 <div class="ev-total-line ev-total-line--muted">
                     <span>IGV ({{ number_format($venta?->empresa?->igv_porcentaje ?? 18, 0) }}%)</span>
-                    <span>S/ {{ number_format($this->getIgv(), 2) }}</span>
+                    <span>S/ {{ fmt_precio($this->getIgv()) }}</span>
                 </div>
                 @endif
                 <div class="ev-total-line ev-grand">
                     <span>Total</span>
-                    <span>S/ {{ number_format($this->getTotal(), 2) }}</span>
+                    <span>S/ {{ fmt_precio($this->getTotal()) }}</span>
                 </div>
                 @if(count($pagos) > 0)
                 <div class="ev-total-line ev-total-line--muted" style="margin-top:.25rem;">
                     <span>Pagado</span>
-                    <span>S/ {{ number_format($this->getTotalPagado(), 2) }}</span>
+                    <span>S/ {{ fmt_precio($this->getTotalPagado()) }}</span>
                 </div>
                 @endif
                 @if($this->getVuelto() > 0)
@@ -296,7 +296,7 @@
                         <x-filament::icon icon="heroicon-m-arrow-uturn-left" style="width:.9rem;height:.9rem;" />
                         Vuelto
                     </span>
-                    <span class="ev-vuelto-monto">S/ {{ number_format($this->getVuelto(), 2) }}</span>
+                    <span class="ev-vuelto-monto">S/ {{ fmt_precio($this->getVuelto()) }}</span>
                 </div>
                 @endif
             </div>

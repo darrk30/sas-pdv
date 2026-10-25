@@ -228,8 +228,8 @@ body {
         <tr>
             <td class="c">{{ $cantFmt }}</td>
             <td>{{ $d->descripcion }}</td>
-            <td class="r">{{ number_format($d->precio_unitario,2) }}</td>
-            <td class="r">{{ number_format($d->total,2) }}</td>
+            <td class="r">{{ fmt_precio($d->precio_unitario) }}</td>
+            <td class="r">{{ fmt_precio($d->total) }}</td>
         </tr>
         @endforeach
     </tbody>
@@ -241,7 +241,7 @@ body {
     @if($hayFilasTotales)
     <table>
         @if((float)$venta->descuento_total > 0)
-        <tr><td>DESCUENTO</td><td class="val">- S/ {{ number_format($venta->descuento_total,2) }}</td></tr>
+        <tr><td>DESCUENTO</td><td class="val">- S/ {{ fmt_precio($venta->descuento_total) }}</td></tr>
         @endif
         @if($tieneIgv)
         <tr><td>SUB TOTAL</td><td class="val">S/ {{ number_format((float)$venta->op_gravadas + (float)$venta->op_exoneradas,2) }}</td></tr>
@@ -252,7 +252,7 @@ body {
     <div class="sep" style="margin:1mm 0"></div>
     @endif
     <div class="tot-total">
-        <table><tr><td>TOTAL</td><td class="val">S/ {{ number_format($venta->total,2) }}</td></tr></table>
+        <table><tr><td>TOTAL</td><td class="val">S/ {{ fmt_precio($venta->total) }}</td></tr></table>
     </div>
     @if($venta->total_letras)
     <div class="letras">SON: {{ strtoupper($venta->total_letras) }}</div>
@@ -273,9 +273,9 @@ body {
             @endif
             <strong style="font-size:7pt">FORMAS DE PAGO</strong><br>
             @foreach($pagos as $pago)
-            {{ strtoupper($pago->metodoPago?->nombre ?? 'EFECTIVO') }}: S/ {{ number_format($pago->monto,2) }}<br>
+            {{ strtoupper($pago->metodoPago?->nombre ?? 'EFECTIVO') }}: S/ {{ fmt_precio($pago->monto) }}<br>
             @endforeach
-            @if($vuelto > 0)VUELTO: S/ {{ number_format($vuelto,2) }}<br>@endif
+            @if($vuelto > 0)VUELTO: S/ {{ fmt_precio($vuelto) }}<br>@endif
         </td>
     </tr>
 </table>
@@ -287,14 +287,14 @@ body {
     @foreach($pagos as $pago)
     <tr>
         <td>{{ strtoupper($pago->metodoPago?->nombre ?? 'EFECTIVO') }}</td>
-        <td class="val">S/ {{ number_format($pago->monto,2) }}</td>
+        <td class="val">S/ {{ fmt_precio($pago->monto) }}</td>
     </tr>
     @endforeach
     @if($vuelto > 0)
-    <tr><td>VUELTO</td><td class="val">S/ {{ number_format($vuelto,2) }}</td></tr>
+    <tr><td>VUELTO</td><td class="val">S/ {{ fmt_precio($vuelto) }}</td></tr>
     @endif
     @if((float)($venta->saldo_pendiente??0)>0)
-    <tr><td><em>Saldo pendiente</em></td><td class="val">S/ {{ number_format($venta->saldo_pendiente,2) }}</td></tr>
+    <tr><td><em>Saldo pendiente</em></td><td class="val">S/ {{ fmt_precio($venta->saldo_pendiente) }}</td></tr>
     @endif
 </table>
 </div>

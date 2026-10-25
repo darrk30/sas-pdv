@@ -425,14 +425,14 @@
             <div class="tarjeta__precio-fila">
                 <span class="tarjeta__precio">
                     @if ($tieneExtra)desde @endif
-                    S/ {{ number_format($precioFinal, 2) }}
+                    S/ {{ fmt_precio($precioFinal) }}
                 </span>
                 @if ($tieneDescuento && $pct > 0)
                     <span class="tarjeta__badge-oferta">-{{ $pctFormateado }}%</span>
                 @endif
             </div>
             @if ($tieneDescuento)
-                <span class="tarjeta__precio-original">S/ {{ number_format($producto->precio_venta, 2) }}</span>
+                <span class="tarjeta__precio-original">S/ {{ fmt_precio($producto->precio_venta) }}</span>
             @endif
         </div>
 

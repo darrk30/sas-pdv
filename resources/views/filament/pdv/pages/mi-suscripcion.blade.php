@@ -54,7 +54,7 @@
 
                     <div class="msp-plan-price">
                         <span class="msp-price-sym">S/</span>
-                        <span class="msp-price-amount">{{ number_format((float) $sus->precio_pagado, 2) }}</span>
+                        <span class="msp-price-amount">{{ fmt_precio((float) $sus->precio_pagado) }}</span>
                         <span class="msp-price-cycle">/ {{ $plan->ciclo_facturacion }}</span>
                     </div>
 

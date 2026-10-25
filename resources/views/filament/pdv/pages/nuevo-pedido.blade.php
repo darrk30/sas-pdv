@@ -283,7 +283,7 @@
                     const e = this.carrito[k];
                     if (e.tipo !== p.tipo || e.id !== p.id) continue;
                     if (!!e.es_cortesia !== cortesia) continue;
-                    if (!cortesia && Math.abs((parseFloat(e.precio) || 0) - newPrecio) >= 0.005) continue;
+                    if (!cortesia && Math.abs((parseFloat(e.precio) || 0) - newPrecio) >= 0.0001) continue;
                     matchKey = k; break;
                 }
 
@@ -326,7 +326,7 @@
                     const other = this.carrito[k];
                     if (other.tipo !== item.tipo || other.id !== item.id) continue;
                     if (!!other.es_cortesia !== turningOn) continue;
-                    if (!turningOn && Math.abs((parseFloat(other.precio) || 0) - newPrecio) >= 0.005) continue;
+                    if (!turningOn && Math.abs((parseFloat(other.precio) || 0) - newPrecio) >= 0.0001) continue;
                     siblingKey = k; break;
                 }
 
@@ -520,7 +520,7 @@
                         </div>
                         <div class="pdv-item__subtotal pdv-item__subtotal--big"
                              :class="item.es_cortesia ? 'pdv-item__subtotal--gratis' : ''"
-                             x-text="item.es_cortesia ? 'Gratis' : 'S/ ' + item.precio.toFixed(2) + ' c/u'"></div>
+                             x-text="item.es_cortesia ? 'Gratis' : 'S/ ' + fmtPrecio(item.precio) + ' c/u'"></div>
                         <div class="pdv-item__bottom">
                             <div class="pdv-qty">
                                 <button class="pdv-qty__btn pdv-qty__btn--menos" type="button" @click="decrement(key)">
@@ -678,5 +678,14 @@
 </div>
 
 <link rel="stylesheet" href="{{ asset('css/nuevo-pedido.css') }}?v={{ filemtime(public_path('css/nuevo-pedido.css')) }}">
+<script>
+window.fmtPrecio = window.fmtPrecio || function(v) {
+    var s = parseFloat(v).toFixed(4).replace(/0+$/, '');
+    var dot = s.indexOf('.');
+    if (dot === -1) { s += '.00'; }
+    else if (s.length - dot - 1 < 2) { s = s.padEnd(dot + 3, '0'); }
+    return s;
+};
+</script>
 
 </x-filament-panels::page>

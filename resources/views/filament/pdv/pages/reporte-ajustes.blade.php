@@ -68,11 +68,11 @@
                                 <tr>
                                     <td>{{ $d->nombre_producto }}</td>
                                     <td class="rc-ta-right">
-                                        {{ number_format($d->cantidad, 2) }}
+                                        {{ fmt_precio($d->cantidad) }}
                                         <span style="font-size:.65rem;color:var(--vs-text-muted)">{{ $d->unidad?->simbolo }}</span>
                                     </td>
                                     <td class="rc-ta-right">S/ {{ number_format($d->costo_unitario, 4) }}</td>
-                                    <td class="rc-ta-right">S/ {{ number_format($d->costo_total, 2) }}</td>
+                                    <td class="rc-ta-right">S/ {{ fmt_precio($d->costo_total) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -82,7 +82,7 @@
                 <div class="rc-modal-totales">
                     <div class="rc-modal-total-fila rc-modal-total-fila--grande">
                         <span>Valor total</span>
-                        <span>S/ {{ number_format((float)$ad->valor_total, 2) }}</span>
+                        <span>S/ {{ fmt_precio((float)$ad->valor_total) }}</span>
                     </div>
                 </div>
             </div>

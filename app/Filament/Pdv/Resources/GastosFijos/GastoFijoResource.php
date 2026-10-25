@@ -232,7 +232,7 @@ class GastoFijoResource extends Resource
                         Notification::make()
                             ->success()
                             ->title('Pago registrado')
-                            ->body('S/ ' . number_format($data['monto'], 2) . ' — próximo pago: ' . $record->fresh()->proxima_fecha_pago?->format('d/m/Y'))
+                            ->body('S/ ' . fmt_precio($data['monto']) . ' — próximo pago: ' . $record->fresh()->proxima_fecha_pago?->format('d/m/Y'))
                             ->send();
                     }),
 

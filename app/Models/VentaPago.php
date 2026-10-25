@@ -20,7 +20,7 @@ class VentaPago extends Model
     ];
 
     protected $casts = [
-        'monto' => 'decimal:2',
+        'monto' => 'decimal:4',
     ];
 
     public function venta(): BelongsTo

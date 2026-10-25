@@ -443,7 +443,7 @@
                         </button>
                     </div>
                     <div class="pdv-item__subtotal pdv-item__subtotal--big {{ $itemEsCortesia ? 'pdv-item__subtotal--gratis' : '' }}">
-                        {{ $itemEsCortesia ? 'Gratis' : 'S/ ' . number_format($item['precio'], 2) . ' c/u' }}
+                        {{ $itemEsCortesia ? 'Gratis' : 'S/ ' . fmt_precio($item['precio']) . ' c/u' }}
                     </div>
                     <div class="pdv-item__bottom">
                         <div class="pdv-qty">
@@ -460,7 +460,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                             </button>
                         </div>
-                        <span class="pdv-item__precio-unit pdv-item__precio-unit--total">{{ $itemEsCortesia ? 'S/ 0.00' : 'S/ ' . number_format($itemTotal, 2) }}</span>
+                        <span class="pdv-item__precio-unit pdv-item__precio-unit--total">{{ $itemEsCortesia ? 'S/ 0.00' : 'S/ ' . fmt_precio($itemTotal) }}</span>
                     </div>
                     <div class="pdv-item__nota-wrap"
                         x-data="{ open: false, nota: @js($item['nota'] ?? '') }">
@@ -498,7 +498,7 @@
                             @endif
                         </div>
                         <div class="pdv-item__subtotal pdv-item__subtotal--big">
-                            S/ {{ number_format($det->precio_unitario, 2) }} c/u
+                            S/ {{ fmt_precio($det->precio_unitario) }} c/u
                         </div>
                         <div class="pdv-item__bottom">
                             @if(! $soloLectura)
@@ -518,7 +518,7 @@
                             @else
                                 <span class="pdv-qty__num">{{ (int) $det->cantidad }} unid.</span>
                             @endif
-                            <span class="pdv-item__precio-unit pdv-item__precio-unit--total">S/ {{ number_format($cantMostrar * $det->precio_unitario, 2) }}</span>
+                            <span class="pdv-item__precio-unit pdv-item__precio-unit--total">S/ {{ fmt_precio($cantMostrar * $det->precio_unitario) }}</span>
                         </div>
                         @if(! $soloLectura)
                             <div class="pdv-item__nota-wrap"
@@ -638,12 +638,12 @@
                 <div class="pdv-carrito__totales">
                     <div class="pdv-carrito__fila">
                         <span class="pdv-carrito__total-label">Total{{ ($deltaExistentes != 0 || $totalPendiente > 0) ? ' estimado' : '' }}</span>
-                        <span class="pdv-carrito__total-monto">S/ {{ number_format($totalCompleto, 2) }}</span>
+                        <span class="pdv-carrito__total-monto">S/ {{ fmt_precio($totalCompleto) }}</span>
                     </div>
                     @if($totalPendiente > 0)
                     <div class="pdv-carrito__fila ep-fila--pendiente">
                         <span>Por enviar</span>
-                        <span>+ S/ {{ number_format($totalPendiente, 2) }}</span>
+                        <span>+ S/ {{ fmt_precio($totalPendiente) }}</span>
                     </div>
                     @endif
                 </div>
@@ -704,6 +704,13 @@
 <link rel="stylesheet" href="{{ asset('css/edit-pedido.css') }}?v={{ filemtime(public_path('css/edit-pedido.css')) }}">
 
 <script>
+window.fmtPrecio = window.fmtPrecio || function(v) {
+    var s = parseFloat(v).toFixed(4).replace(/0+$/, '');
+    var dot = s.indexOf('.');
+    if (dot === -1) { s += '.00'; }
+    else if (s.length - dot - 1 < 2) { s = s.padEnd(dot + 3, '0'); }
+    return s;
+};
 document.addEventListener('alpine:init', () => {
     Alpine.store('carritoResumen', @js($this->getAlpineStoreResumen()));
 });

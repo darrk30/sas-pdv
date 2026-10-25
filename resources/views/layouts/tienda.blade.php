@@ -110,16 +110,23 @@
     {{-- ── JS global: carrito store, fly-to-cart ──────────────────────────── --}}
     <script src="{{ asset('tienda/js/app.js') }}?v=1" data-navigate-once></script>
     {{-- Modal de variantes (necesario en cualquier página con tarjetas de producto) --}}
-    <script src="{{ asset('tienda/js/modal-variante.js') }}?v=3" data-navigate-once></script>
+    <script src="{{ asset('tienda/js/modal-variante.js') }}?v=5" data-navigate-once></script>
     {{-- Componentes Alpine cargados globalmente para que estén en el registry antes de wire:navigate --}}
-    <script src="{{ asset('tienda/js/producto-detalle.js') }}?v=7" data-navigate-once></script>
-    <script src="{{ asset('tienda/js/lista-deseos.js') }}?v=2" data-navigate-once></script>
+    <script src="{{ asset('tienda/js/producto-detalle.js') }}?v=8" data-navigate-once></script>
+    <script src="{{ asset('tienda/js/lista-deseos.js') }}?v=3" data-navigate-once></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" data-navigate-once></script>
 
     {{-- ── JS específico de cada página ───────────────────────────────────── --}}
     @stack('scripts')
 
-    <script>
+    <script data-navigate-once>
+        window.fmtPrecio = function(v) {
+            var s = parseFloat(v).toFixed(4).replace(/0+$/, '');
+            var dot = s.indexOf('.');
+            if (dot === -1) { s += '.00'; }
+            else if (s.length - dot - 1 < 2) { s = s.padEnd(dot + 3, '0'); }
+            return s;
+        };
         document.addEventListener('livewire:navigated', () => window.scrollTo(0, 0));
         window.addEventListener('scroll-top', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     </script>

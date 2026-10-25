@@ -175,8 +175,8 @@
                         <td class="cp-td cp-td--center">
                             <span class="cp-cant">{{ (float)$det->cantidad == (int)$det->cantidad ? (int)$det->cantidad : $det->cantidad }}</span>
                         </td>
-                        <td class="cp-td cp-td--right">S/ {{ number_format($det->precio_unitario, 2) }}</td>
-                        <td class="cp-td cp-td--right cp-td--bold">S/ {{ number_format($det->total, 2) }}</td>
+                        <td class="cp-td cp-td--right">S/ {{ fmt_precio($det->precio_unitario) }}</td>
+                        <td class="cp-td cp-td--right cp-td--bold">S/ {{ fmt_precio($det->total) }}</td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -243,15 +243,15 @@
                         <x-filament::input
                             type="number"
                             wire:model.live.debounce.300ms="montoPagoInput"
-                            min="0" step="0.01"
-                            placeholder="{{ number_format($totalDesc, 2) }}"
+                            min="0" step="0.0001"
+                            placeholder="{{ fmt_precio($totalDesc) }}"
                         />
                     </x-filament::input.wrapper>
                 </div>
                 @if($vuelto > 0.005)
                 <div class="cp-vuelto-preview">
                     <div class="cp-vuelto-preview__label">Vuelto (S/)</div>
-                    <div class="cp-vuelto-preview__valor">S/ {{ number_format($vuelto, 2) }}</div>
+                    <div class="cp-vuelto-preview__valor">S/ {{ fmt_precio($vuelto) }}</div>
                 </div>
                 @endif
             </div>
@@ -276,7 +276,7 @@
                         <x-filament::badge color="warning" size="xs">CRÉDITO</x-filament::badge>
                         @endif
                     </span>
-                    <span class="cp-pago-item__monto">S/ {{ number_format($pago['monto'], 2) }}</span>
+                    <span class="cp-pago-item__monto">S/ {{ fmt_precio($pago['monto']) }}</span>
                     <button class="cp-pago-del" wire:click="eliminarPago({{ $i }})" title="Eliminar">
                         <x-filament::icon icon="heroicon-m-x-mark" style="width:.8rem;height:.8rem;" />
                     </button>
@@ -306,16 +306,16 @@
                 @if($esFE)
                 <div class="cp-rf">
                     <span>Op. gravada</span>
-                    <span>S/ {{ number_format($baseImpon, 2) }}</span>
+                    <span>S/ {{ fmt_precio($baseImpon) }}</span>
                 </div>
                 <div class="cp-rf">
                     <span>IGV ({{ (int)$igvPct }}%)</span>
-                    <span>S/ {{ number_format($igvMonto, 2) }}</span>
+                    <span>S/ {{ fmt_precio($igvMonto) }}</span>
                 </div>
                 @else
                 <div class="cp-rf">
                     <span>Subtotal</span>
-                    <span>S/ {{ number_format($totalBase, 2) }}</span>
+                    <span>S/ {{ fmt_precio($totalBase) }}</span>
                 </div>
                 @endif
 
@@ -332,7 +332,7 @@
                         </x-filament::input.wrapper>
                     </div>
                     <span class="{{ $descuento > 0 ? 'cp-rf__desc-valor' : '' }}">
-                        {{ $descuento > 0 ? '- S/ ' . number_format($descuento, 2) : 'S/ 0.00' }}
+                        {{ $descuento > 0 ? '- S/ ' . fmt_precio($descuento) : 'S/ 0.00' }}
                     </span>
                 </div>
             </div>
@@ -342,29 +342,29 @@
             @if($esFE)
             <div class="cp-rf cp-rf--sub">
                 <span>Subtotal</span>
-                <span>S/ {{ number_format($baseImpon, 2) }}</span>
+                <span>S/ {{ fmt_precio($baseImpon) }}</span>
             </div>
             @endif
 
             <div class="cp-total-bloque">
                 <span class="cp-total-bloque__label">Total a pagar</span>
-                <span class="cp-total-bloque__valor">S/ {{ number_format($totalDesc, 2) }}</span>
+                <span class="cp-total-bloque__valor">S/ {{ fmt_precio($totalDesc) }}</span>
             </div>
 
             @if(! empty($pagosAgregados))
             <div class="cp-resumen-sep"></div>
             <div class="cp-rf">
                 <span>Monto recibido</span>
-                <span>S/ {{ number_format($totalPagado, 2) }}</span>
+                <span>S/ {{ fmt_precio($totalPagado) }}</span>
             </div>
             @if($vuelto > 0.005)
             <div class="cp-rf cp-rf--vuelto">
                 <span>Vuelto</span>
-                <span>S/ {{ number_format($vuelto, 2) }}</span>
+                <span>S/ {{ fmt_precio($vuelto) }}</span>
             </div>
             <div class="cp-vuelto-nota">
                 <x-filament::icon icon="heroicon-o-information-circle" style="width:.85rem;height:.85rem;flex-shrink:0;" />
-                <span>El cambio a entregar es S/ {{ number_format($vuelto, 2) }}</span>
+                <span>El cambio a entregar es S/ {{ fmt_precio($vuelto) }}</span>
             </div>
             @endif
             @endif

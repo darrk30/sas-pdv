@@ -7,8 +7,8 @@
 
     $ganColor = $dif > 0 ? '#16a34a' : ($dif < 0 ? '#dc2626' : 'var(--gray-500,#6b7280)');
     $ganLabel = $dif > 0
-        ? '+S/ ' . number_format($dif, 2)
-        : ($dif < 0 ? '−S/ ' . number_format(abs($dif), 2) : 'S/ 0.00');
+        ? '+S/ ' . fmt_precio($dif)
+        : ($dif < 0 ? '−S/ ' . fmt_precio(abs($dif)) : 'S/ 0.00');
 @endphp
 
 <x-filament-widgets::widget>
@@ -113,10 +113,10 @@
     <div style="margin-bottom:1.25rem;">
         <div class="cg-bar-labels">
             <span class="cg-bar-label">
-                S/ {{ number_format($d['totalNeto'], 2) }}
+                S/ {{ fmt_precio($d['totalNeto']) }}
                 <span>vendido neto</span>
             </span>
-            <span class="cg-bar-label">Meta S/ {{ number_format($d['meta'], 2) }}</span>
+            <span class="cg-bar-label">Meta S/ {{ fmt_precio($d['meta']) }}</span>
         </div>
 
         <div style="position:relative;height:.65rem;border-radius:9999px;background:var(--gray-100,#f3f4f6);overflow:hidden;">
@@ -129,11 +129,11 @@
             </span>
             @if($ganando)
                 <span style="font-size:.72rem;font-weight:600;color:#16a34a;">
-                    ✓ +S/ {{ number_format($dif, 2) }} sobre la meta
+                    ✓ +S/ {{ fmt_precio($dif) }} sobre la meta
                 </span>
             @else
                 <span style="font-size:.72rem;font-weight:600;color:#d97706;">
-                    Faltan S/ {{ number_format(abs($dif), 2) }} para cubrir gastos
+                    Faltan S/ {{ fmt_precio(abs($dif)) }} para cubrir gastos
                 </span>
             @endif
         </div>
@@ -149,16 +149,16 @@
             <div style="display:flex;flex-direction:column;gap:.3rem;">
                 <div class="cg-breakdown-row">
                     <span style="color:var(--gray-700,#374151);">Cobrado</span>
-                    <span style="font-weight:600;">S/ {{ number_format($d['totalBruto'], 2) }}</span>
+                    <span style="font-weight:600;">S/ {{ fmt_precio($d['totalBruto']) }}</span>
                 </div>
                 <div class="cg-breakdown-row">
                     <span style="color:var(--gray-500,#6b7280);">− IGV (va a SUNAT)</span>
-                    <span style="color:#dc2626;">−S/ {{ number_format($d['totalIgv'], 2) }}</span>
+                    <span style="color:#dc2626;">−S/ {{ fmt_precio($d['totalIgv']) }}</span>
                 </div>
                 <div class="cg-breakdown-divider"></div>
                 <div class="cg-breakdown-row cg-breakdown-row--total">
                     <span>= Avance real</span>
-                    <span style="color:{{ $ganando ? '#16a34a' : '#d97706' }};">S/ {{ number_format($d['totalNeto'], 2) }}</span>
+                    <span style="color:{{ $ganando ? '#16a34a' : '#d97706' }};">S/ {{ fmt_precio($d['totalNeto']) }}</span>
                 </div>
             </div>
         </div>
@@ -168,16 +168,16 @@
             <div style="display:flex;flex-direction:column;gap:.3rem;">
                 <div class="cg-breakdown-row">
                     <span style="color:var(--gray-700,#374151);">Gastos fijos (mes)</span>
-                    <span style="font-weight:600;">S/ {{ number_format($d['totalFijosMensual'], 2) }}</span>
+                    <span style="font-weight:600;">S/ {{ fmt_precio($d['totalFijosMensual']) }}</span>
                 </div>
                 <div class="cg-breakdown-row">
                     <span style="color:var(--gray-500,#6b7280);">+ Gastos variables</span>
-                    <span>S/ {{ number_format($d['gastosVariables'], 2) }}</span>
+                    <span>S/ {{ fmt_precio($d['gastosVariables']) }}</span>
                 </div>
                 <div class="cg-breakdown-divider"></div>
                 <div class="cg-breakdown-row cg-breakdown-row--total">
                     <span>= Meta del período</span>
-                    <span>S/ {{ number_format($d['meta'], 2) }}</span>
+                    <span>S/ {{ fmt_precio($d['meta']) }}</span>
                 </div>
             </div>
         </div>
@@ -186,8 +186,8 @@
 
     <p class="cg-note">
         <strong>¿Por qué restamos el IGV?</strong>
-        Cuando cobras S/ {{ number_format($d['totalBruto'], 2) }}, el IGV (S/ {{ number_format($d['totalIgv'], 2) }}) lo retienes para pagarlo a SUNAT — ese dinero no es ganancia del negocio.
-        Tu avance real es solo lo que queda después: S/ {{ number_format($d['totalNeto'], 2) }}.
+        Cuando cobras S/ {{ fmt_precio($d['totalBruto']) }}, el IGV (S/ {{ fmt_precio($d['totalIgv']) }}) lo retienes para pagarlo a SUNAT — ese dinero no es ganancia del negocio.
+        Tu avance real es solo lo que queda después: S/ {{ fmt_precio($d['totalNeto']) }}.
     </p>
 
 </x-filament::section>

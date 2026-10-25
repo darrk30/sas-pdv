@@ -2,7 +2,7 @@
 
 @php
     $imagen    = $promo->imagen ? Storage::url($promo->imagen) : null;
-    $precio    = number_format((float) $promo->precio, 2);
+    $precio    = fmt_precio((float) $promo->precio);
     $fechaFin  = $promo->fecha_fin?->format('d/m/Y');
     $tieneCode = ! is_null($promo->codigo_promo);
     $stockMax  = $promo->stockPredictivo();

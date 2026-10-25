@@ -314,24 +314,24 @@ class ReporteVentasPeriodoPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('ingresos')
                     ->label('Total facturado')
-                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->formatStateUsing(fn($state): string => 'S/ ' . fmt_precio((float) $state))
                     ->alignRight(),
 
                 TextColumn::make('igv')
                     ->label('IGV')
-                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->formatStateUsing(fn($state): string => 'S/ ' . fmt_precio((float) $state))
                     ->alignRight()
                     ->color('gray'),
 
                 TextColumn::make('costo')
                     ->label('Costo')
-                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->formatStateUsing(fn($state): string => 'S/ ' . fmt_precio((float) $state))
                     ->alignRight()
                     ->color('warning'),
 
                 TextColumn::make('utilidad')
                     ->label('Utilidad')
-                    ->formatStateUsing(fn($state): string => 'S/ ' . number_format((float) $state, 2))
+                    ->formatStateUsing(fn($state): string => 'S/ ' . fmt_precio((float) $state))
                     ->alignRight()
                     ->color(fn($state): string => (float) $state >= 0 ? 'success' : 'danger'),
             ])

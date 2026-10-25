@@ -30,9 +30,9 @@ class ReporteVentasStatsWidget extends BaseWidget
                 ->color('primary')
                 ->chart($s['cantidad'] ?? []),
 
-            Stat::make('Total cobrado', 'S/ ' . number_format($r['total'] ?? 0, 2))
+            Stat::make('Total cobrado', 'S/ ' . fmt_precio($r['total'] ?? 0))
                 ->description(($r['descuentoTotal'] ?? 0) > 0
-                    ? 'desc: − S/ ' . number_format($r['descuentoTotal'], 2)
+                    ? 'desc: − S/ ' . fmt_precio($r['descuentoTotal'])
                     : 'últimos 7 días en gráfica')
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color('success')
@@ -40,7 +40,7 @@ class ReporteVentasStatsWidget extends BaseWidget
         ];
 
         if (($r['creditoPendiente'] ?? 0) > 0) {
-            $stats[] = Stat::make('Crédito pendiente', 'S/ ' . number_format($r['creditoPendiente'], 2))
+            $stats[] = Stat::make('Crédito pendiente', 'S/ ' . fmt_precio($r['creditoPendiente']))
                 ->description('por cobrar')
                 ->descriptionIcon('heroicon-o-clock')
                 ->color('warning');

@@ -71,7 +71,7 @@
                  const c = {};
                  for (const k in this.carrito) {
                      const e = this.carrito[k];
-                     c[k] = { key: k, tipo: e.tipo, id: e.id, nombre: e.nombre, precio: parseFloat(e.precio)||0, precio_normal: parseFloat(e.precio_normal)||0, cortesia: !!e.cortesia, puede_cortesia: !!e.puede_cortesia, cantidad: parseFloat(e.cantidad)||0, decimal: !!e.decimal, stock_max: e.stock_max??null, venta_sin_stock: !!e.venta_sin_stock, detalles_resumen: e.detalles_resumen||[] };
+                     c[k] = { key: k, tipo: e.tipo, id: e.id, nombre: e.nombre, precio: parseFloat(e.precio)||0, precio_normal: parseFloat(e.precio_normal)||0, precio_original: parseFloat(e.precio_original||e.precio_normal||e.precio)||0, cortesia: !!e.cortesia, puede_cortesia: !!e.puede_cortesia, cantidad: parseFloat(e.cantidad)||0, decimal: !!e.decimal, stock_max: e.stock_max??null, venta_sin_stock: !!e.venta_sin_stock, detalles_resumen: e.detalles_resumen||[] };
                  }
                  return c;
              },
@@ -83,7 +83,7 @@
                  return total;
              },
              _resolveKey(c, baseKey, esCortesia, precio) {
-                 const matches = (it) => !!it.cortesia === esCortesia && (esCortesia || Math.abs((parseFloat(it.precio)||0) - precio) < 0.005);
+                 const matches = (it) => !!it.cortesia === esCortesia && (esCortesia || Math.abs((parseFloat(it.precio)||0) - precio) < 0.0001);
                  if (!c[baseKey]) return baseKey;
                  if (matches(c[baseKey])) return baseKey;
                  let i = 2;
@@ -112,11 +112,16 @@
                  Alpine.store('carritoResumen', r);
              },
              addToCart(p) {
-                 const esCortesia = !!p.es_cortesia;
-                 const precio     = parseFloat(p.precio) || 0;
-                 const addQty     = parseFloat(p.cantidad) || 1;
-                 const baseKey    = p.tipo + '_' + p.id;
-                 const stockMax   = p.stock_max ?? null;
+                 const esCortesia    = !!p.es_cortesia;
+                 const precioRaw     = parseFloat(p.precio) || 0;
+                 const precioNormRaw = parseFloat(p.precio_normal || p.precio) || 0;
+                 const _esTicket     = (this.$wire.tipoComprobante ?? 'ticket') === 'ticket';
+                 const _fac          = _esTicket ? 10000 : 100;
+                 const precio        = Math.round(precioRaw * _fac) / _fac;
+                 const precioNorm    = Math.round(precioNormRaw * _fac) / _fac;
+                 const addQty        = parseFloat(p.cantidad) || 1;
+                 const baseKey       = p.tipo + '_' + p.id;
+                 const stockMax      = p.stock_max ?? null;
 
                  if (stockMax !== null && !(p.venta_sin_stock)) {
                      const enCarrito = this._qtyForBase(p.tipo, p.id);
@@ -129,7 +134,7 @@
                      const it = c[key];
                      c[key].cantidad = it.decimal ? Math.round((it.cantidad + addQty) * 1000)/1000 : it.cantidad + addQty;
                  } else {
-                     c[key] = { key: key, tipo: p.tipo, id: p.id, nombre: p.nombre, precio: precio, precio_normal: parseFloat(p.precio_normal||p.precio)||0, cortesia: esCortesia, puede_cortesia: !!p.puede_cortesia, cantidad: addQty, decimal: !!p.es_decimal, stock_max: stockMax, venta_sin_stock: !!p.venta_sin_stock, detalles_resumen: p.detalles_resumen||[] };
+                     c[key] = { key: key, tipo: p.tipo, id: p.id, nombre: p.nombre, precio: precio, precio_normal: precioNorm, precio_original: precioNormRaw, cortesia: esCortesia, puede_cortesia: !!p.puede_cortesia, cantidad: addQty, decimal: !!p.es_decimal, stock_max: stockMax, venta_sin_stock: !!p.venta_sin_stock, detalles_resumen: p.detalles_resumen||[] };
                  }
                  this.carrito = c;
                  this.syncResumen();
@@ -171,13 +176,34 @@
              }
          }"
          @cerrar-carrito-mobile.window="carritoOpen = false"
+         @pdv-redondear-precios.window="
+            const _dec = $event.detail.dec;
+            const _fac = Math.pow(10, _dec);
+            const _c   = _clone();
+            for (const _k in _c) {
+                let _np;
+                if (_dec === 4) {
+                    const _orig = parseFloat(_c[_k].precio_original) || parseFloat(_c[_k].precio);
+                    const _rb   = Math.round(_orig * 100) / 100;
+                    _np = Math.abs(parseFloat(_c[_k].precio) - _rb) < 0.001 ? _orig : parseFloat(_c[_k].precio);
+                } else {
+                    _np = Math.round(parseFloat(_c[_k].precio) * _fac) / _fac;
+                }
+                _c[_k].precio = _np;
+                _c[_k].precio_normal = _np;
+            }
+            carrito = _c;
+            syncResumen();
+            const _tot = Object.values(_c).reduce((s,it) => it.cortesia ? s : s + parseFloat(it.cantidad)*parseFloat(it.precio), 0);
+            window.dispatchEvent(new CustomEvent('pdv-carrito-sync',{detail:{carrito:_c,resumen:Alpine.store('carritoResumen'),total:_tot}}));"
          @pdv-carrito-sync.window="
             const _fr = $event.detail.carrito;
             const _me = {};
             for (const _k in _fr) {
+                const _po = carrito[_k]?.precio_original ?? _fr[_k].precio_original;
                 _me[_k] = _t[_k]
-                    ? { ..._fr[_k], cantidad: carrito[_k]?.cantidad ?? _fr[_k].cantidad, precio: carrito[_k]?.precio ?? _fr[_k].precio }
-                    : _fr[_k];
+                    ? { ..._fr[_k], cantidad: carrito[_k]?.cantidad ?? _fr[_k].cantidad, precio_original: _po }
+                    : { ..._fr[_k], precio_original: _po };
             }
             carrito = _me;
             Alpine.store('carritoResumen', $event.detail.resumen)"
@@ -349,29 +375,29 @@
                                     <span x-show="item.cortesia" class="pdv-item__precio-gratis" style="display:none">Gratis</span>
                                     <span
                                         x-show="!item.cortesia"
-                                        x-data="{ editing: false, val: parseFloat(item.precio).toFixed(2), saved: parseFloat(item.precio).toFixed(2) }"
+                                        x-data="{ editing: false, val: fmtPrecio(item.precio), saved: fmtPrecio(item.precio) }"
                                         class="pdv-item__precio-editable"
-                                        @pdv-carrito-sync.window="if (!editing) { const _ev = $event.detail.carrito[key]; if (_ev) { val = parseFloat(_ev.precio).toFixed(2); saved = val; } }"
+                                        @pdv-carrito-sync.window="if (!editing) { const _ev = $event.detail.carrito[key]; if (_ev) { val = fmtPrecio(_ev.precio); saved = val; } }"
                                         style="display:none"
                                     >
                                         <span x-show="item.precio_normal > item.precio" class="pdv-item__precio-tachado" style="display:none">
-                                            S/ <span x-text="parseFloat(item.precio_normal).toFixed(2)"></span>
+                                            S/ <span x-text="fmtPrecio(item.precio_normal)"></span>
                                         </span>
                                         <span
                                             x-show="!editing"
                                             @click="editing = true; $nextTick(() => $refs.priceInp?.select())"
                                             :class="item.precio_normal > item.precio ? 'pdv-item__precio-valor pdv-item__precio-valor--oferta' : 'pdv-item__precio-valor'"
                                             title="Toca para editar el precio"
-                                        >S/ <span x-text="parseFloat(val).toFixed(2)"></span> c/u</span>
+                                        >S/ <span x-text="fmtPrecio(val)"></span> c/u</span>
                                         <input
                                             x-ref="priceInp"
                                             x-show="editing"
                                             x-model="val"
                                             type="number"
-                                            min="0.01"
-                                            step="0.01"
+                                            min="0.0001"
+                                            step="0.0001"
                                             class="pdv-item__precio-input"
-                                            @blur="const _p = Math.max(0.01, parseFloat(val) || 0.01); val = _p.toFixed(2); editing = false; $wire.carrito = _clone(); $wire.actualizarPrecio(item.key, _p)"
+                                            @blur="const _p = Math.max(0.0001, parseFloat(val) || 0.0001); val = fmtPrecio(_p); editing = false; $wire.carrito = _clone(); $wire.actualizarPrecio(item.key, _p)"
                                             @keydown.enter="$el.blur()"
                                             @keydown.escape="editing = false; val = saved"
                                         />
@@ -420,7 +446,7 @@
                                     </button>
                                 </div>
                                 <span class="pdv-item__subtotal" :class="{'pdv-item__subtotal--gratis': item.cortesia}"
-                                      x-text="'S/ ' + (parseFloat(item.cantidad) * parseFloat(item.precio)).toFixed(2)"></span>
+                                      x-text="'S/ ' + fmtPrecio(parseFloat(item.cantidad) * parseFloat(item.precio))"></span>
                             </div>
                         </div>
                     </div>
@@ -435,7 +461,7 @@
                     </div>
                     <div class="pdv-carrito__fila">
                         <span class="pdv-carrito__total-label">Total</span>
-                        <span class="pdv-carrito__total-monto" x-text="'S/ ' + carritoTotal.toFixed(2)"></span>
+                        <span class="pdv-carrito__total-monto" x-text="'S/ ' + fmtPrecio(carritoTotal)"></span>
                     </div>
                 </div>
                 <button class="pdv-btn-venta" @click="$wire.carrito = _clone(); $wire.abrirModalPago()" type="button"
@@ -526,15 +552,16 @@
                          const d = parseFloat((this.descuentoInput + '').replace(',', '.') || '0');
                          return Math.max(0, Math.min(d, this.totalBase));
                      },
-                     get totalConDescuento() { return Math.round(Math.max(0, this.totalBase - this.descuento) * 100) / 100; },
-                     get totalPagado()       { return Math.round(this.pagosAgregados.reduce((s, p) => s + parseFloat(p.monto), 0) * 100) / 100; },
-                     get saldoRestante()     { return Math.round((this.totalConDescuento - this.totalPagado) * 100) / 100; },
-                     get totalEsCero()       { return this.totalConDescuento <= 0.01; },
+                     _rnd(v) { return this.esTicket ? Math.round(v * 10000) / 10000 : Math.round(v * 100) / 100; },
+                     get totalConDescuento() { return this._rnd(Math.max(0, this.totalBase - this.descuento)); },
+                     get totalPagado()       { return this._rnd(this.pagosAgregados.reduce((s, p) => s + parseFloat(p.monto), 0)); },
+                     get saldoRestante()     { return this._rnd(this.totalConDescuento - this.totalPagado); },
+                     get totalEsCero()       { return this.totalConDescuento <= 0.001; },
                      get facturaValida()     { return !this.esFactura || ($wire.clienteTipoDoc || '').toLowerCase() === 'ruc'; },
-                     get listo()             { return ((this.saldoRestante <= 0.01 && this.pagosAgregados.length > 0) || this.totalEsCero) && this.facturaValida; },
+                     get listo()             { return ((this.saldoRestante <= 0.001 && this.pagosAgregados.length > 0) || this.totalEsCero) && this.facturaValida; },
                      get opGravadas()        { return this.esTicket ? 0 : Math.round(this.totalConDescuento / 1.18 * 100) / 100; },
                      get igv()               { return this.esTicket ? 0 : Math.round((this.totalConDescuento - this.opGravadas) * 100) / 100; },
-                     fmt(n) { return parseFloat(n).toFixed(2); },
+                     fmt(n) { return fmtPrecio(n); },
 
                      autoSeleccionarEfectivo() {
                          if (this.metodoPagoId) return;
@@ -735,7 +762,7 @@
                                             class="pdv-pago-input"
                                             x-model="montoPagoInput"
                                             min="0"
-                                            step="0.10"
+                                            step="0.0001"
                                             placeholder="0.00"
                                         />
                                     </div>
@@ -1012,6 +1039,13 @@ html, body.fi-body { overflow: hidden; }
 
 <script>
 window.__pdvInitCarrito = @js($carrito);
+window.fmtPrecio = function(v) {
+    var s = parseFloat(v).toFixed(4).replace(/0+$/, '');
+    var dot = s.indexOf('.');
+    if (dot === -1) { s += '.00'; }
+    else if (s.length - dot - 1 < 2) { s = s.padEnd(dot + 3, '0'); }
+    return s;
+};
 document.addEventListener('alpine:init', () => {
     Alpine.store('carritoResumen', @js($this->getCarritoResumen()));
 });

@@ -60,16 +60,16 @@ class ReporteProductosStatsWidget extends BaseWidget
 
         return [
             Stat::make('Productos distintos', number_format($productos))
-                ->description(number_format($unidades, 2) . ' unidades vendidas')
+                ->description(fmt_precio($unidades) . ' unidades vendidas')
                 ->descriptionIcon('heroicon-o-cube')
                 ->color('gray'),
 
-            Stat::make('Ingresos', 'S/ ' . number_format($ingresos, 2))
-                ->description('costo: S/ ' . number_format($costo, 2))
+            Stat::make('Ingresos', 'S/ ' . fmt_precio($ingresos))
+                ->description('costo: S/ ' . fmt_precio($costo))
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color('primary'),
 
-            Stat::make('Utilidad', 'S/ ' . number_format($utilidad, 2))
+            Stat::make('Utilidad', 'S/ ' . fmt_precio($utilidad))
                 ->description('margen: ' . number_format($margenPct, 1) . '%')
                 ->descriptionIcon('heroicon-o-arrow-trending-up')
                 ->color($margenPct >= 20 ? 'success' : ($margenPct > 0 ? 'warning' : 'danger')),

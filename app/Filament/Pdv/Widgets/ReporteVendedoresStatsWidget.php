@@ -31,20 +31,20 @@ class ReporteVendedoresStatsWidget extends BaseWidget
                 ->color('primary')
                 ->chart($s['cantidad'] ?? []),
 
-            Stat::make('Ingresos brutos', 'S/ ' . number_format($r['ingresosBrutos'] ?? 0, 2))
+            Stat::make('Ingresos brutos', 'S/ ' . fmt_precio($r['ingresosBrutos'] ?? 0))
                 ->description('total facturado')
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color('success')
                 ->chart($s['ingresos'] ?? []),
 
-            Stat::make('Utilidad bruta', 'S/ ' . number_format($util, 2))
-                ->description('costo: S/ ' . number_format($r['costoTotal'] ?? 0, 2))
+            Stat::make('Utilidad bruta', 'S/ ' . fmt_precio($util))
+                ->description('costo: S/ ' . fmt_precio($r['costoTotal'] ?? 0))
                 ->descriptionIcon($util >= 0 ? 'heroicon-o-arrow-trending-up' : 'heroicon-o-arrow-trending-down')
                 ->color($util >= 0 ? 'success' : 'danger'),
         ];
 
         if (($r['creditoPendiente'] ?? 0) > 0) {
-            $stats[] = Stat::make('Crédito pendiente', 'S/ ' . number_format($r['creditoPendiente'], 2))
+            $stats[] = Stat::make('Crédito pendiente', 'S/ ' . fmt_precio($r['creditoPendiente']))
                 ->description('por cobrar')
                 ->descriptionIcon('heroicon-o-clock')
                 ->color('warning');

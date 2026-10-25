@@ -74,6 +74,7 @@ class ProductoForm
                                     TextInput::make('precio_venta')
                                         ->label('Precio Venta')
                                         ->numeric()
+                                        ->step(0.0001)
                                         ->prefix('S/')
                                         ->required()
                                         ->default(0)
@@ -83,13 +84,13 @@ class ProductoForm
                                         ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                             $precio      = floatval($state ?: 0);
                                             $descuento   = floatval($get('porcentaje_descuento') ?: 0);
-                                            $precioFinal = round($precio - ($precio * ($descuento / 100)), 2);
+                                            $precioFinal = round($precio - ($precio * ($descuento / 100)), 4);
                                             $set('precio_con_descuento', $precioFinal);
                                         }),
 
                                     TextInput::make('precio_costo')
                                         ->numeric()
-                                        ->step(0.01)
+                                        ->step(0.0001)
                                         ->prefix('S/ ')
                                         ->default(0)
                                         ->dehydrateStateUsing(fn($state) => empty($state) ? 0 : $state),
@@ -107,14 +108,14 @@ class ProductoForm
                                         ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                             $descuento   = floatval($state ?: 0);
                                             $precio      = floatval($get('precio_venta') ?: 0);
-                                            $precioFinal = round($precio - ($precio * ($descuento / 100)), 2);
+                                            $precioFinal = round($precio - ($precio * ($descuento / 100)), 4);
                                             $set('precio_con_descuento', $precioFinal);
                                         }),
 
                                     TextInput::make('precio_con_descuento')
                                         ->label('Precio final al cliente')
                                         ->numeric()
-                                        ->step(0.01)
+                                        ->step(0.0001)
                                         ->prefix('S/')
                                         ->default(0)
                                         ->minValue(0)
@@ -125,7 +126,7 @@ class ProductoForm
                                             $precioFinal = floatval($state ?: 0);
                                             $precio      = floatval($get('precio_venta') ?: 0);
                                             $descuento = $precio > 0
-                                                ? round(($precio - $precioFinal) / $precio * 100, 2)
+                                                ? round(($precio - $precioFinal) / $precio * 100, 4)
                                                 : 0;
                                             $set('porcentaje_descuento', $descuento);
                                         })
@@ -134,7 +135,7 @@ class ProductoForm
                                             $precio = floatval($get('precio_venta') ?: 0);
                                             if ($stored == 0 && $precio > 0) {
                                                 $descuento = floatval($get('porcentaje_descuento') ?: 0);
-                                                return round($precio - ($precio * ($descuento / 100)), 2);
+                                                return round($precio - ($precio * ($descuento / 100)), 4);
                                             }
                                             return $stored;
                                         }),
@@ -468,6 +469,7 @@ class ProductoForm
                                                             TextInput::make('extra')
                                                                 ->label('Precio Extra (S/)')
                                                                 ->numeric()
+                                                                ->step(0.0001)
                                                                 ->default(0)
                                                                 ->prefix('S/')
                                                                 ->required()
@@ -768,7 +770,7 @@ class ProductoForm
                                             ->label(fn (Get $get): string => (bool) $get('../../comparte_stock') ? 'Precio de venta' : 'Precio Final')
                                             ->prefix('S/')
                                             ->numeric()
-                                            ->step(0.01)
+                                            ->step(0.0001)
                                             ->minValue(0)
                                             ->readOnly(fn (Get $get): bool => ! (bool) $get('../../comparte_stock'))
                                             ->dehydrated(true),
@@ -777,7 +779,7 @@ class ProductoForm
                                             ->label('Costo')
                                             ->prefix('S/')
                                             ->numeric()
-                                            ->step(0.01)
+                                            ->step(0.0001)
                                             ->minValue(0)
                                             ->nullable(),
 
@@ -992,7 +994,7 @@ class ProductoForm
                                             ->prefix('S/')
                                             ->required()
                                             ->minValue(0)
-                                            ->step(0.01)
+                                            ->step(0.0001)
                                             ->disabled(! (auth()->user()?->can('listas_precios.editar') ?? false))
                                             ->dehydratedWhenHidden(),
                                     ])

@@ -69,11 +69,11 @@ class AjusteForm
                                 self::actualizarTotalGlobal($get, $set);
                             })
                             ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
-                                $data['costo_total'] = round((float) ($data['cantidad'] ?? 0) * (float) ($data['costo_unitario'] ?? 0), 2);
+                                $data['costo_total'] = round((float) ($data['cantidad'] ?? 0) * (float) ($data['costo_unitario'] ?? 0), 4);
                                 return $data;
                             })
                             ->mutateRelationshipDataBeforeSaveUsing(function (array $data): array {
-                                $data['costo_total'] = round((float) ($data['cantidad'] ?? 0) * (float) ($data['costo_unitario'] ?? 0), 2);
+                                $data['costo_total'] = round((float) ($data['cantidad'] ?? 0) * (float) ($data['costo_unitario'] ?? 0), 4);
                                 return $data;
                             })
                             ->table([
@@ -153,7 +153,7 @@ class AjusteForm
                                             $set('costo_unitario', $costoUnitario);
                                         }
 
-                                        $costoTotal = $costoUnitario !== null ? round((float) $costoUnitario, 2) : null;
+                                        $costoTotal = $costoUnitario !== null ? round((float) $costoUnitario, 4) : null;
                                         $set('cantidad', 1);
                                         $set('costo_total', $costoTotal);
                                         self::actualizarTotalGlobal($get, $set, true);
@@ -205,6 +205,7 @@ class AjusteForm
                                 TextInput::make('costo_unitario')
                                     ->label('Costo unitario')
                                     ->numeric()
+                                    ->step(0.0001)
                                     ->minValue(0)
                                     ->required()
                                     ->live(onBlur: true)
@@ -255,7 +256,7 @@ class AjusteForm
         $costo    = (float) $get('costo_unitario');
 
         if ($cantidad > 0 && $costo >= 0) {
-            $set('costo_total', round($cantidad * $costo, 2));
+            $set('costo_total', round($cantidad * $costo, 4));
         } else {
             $set('costo_total', null);
         }
@@ -333,9 +334,9 @@ class AjusteForm
 
         // Si estamos dentro del repeater, subimos dos niveles para setear el valor padre
         if ($isInsideRepeater) {
-            $set('../../valor_total', round($total, 2));
+            $set('../../valor_total', round($total, 4));
         } else {
-            $set('valor_total', round($total, 2));
+            $set('valor_total', round($total, 4));
         }
     }
 }

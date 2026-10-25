@@ -35,7 +35,7 @@ class ReporteVentasPeriodoStatsWidget extends BaseWidget
                 ->color('primary')
                 ->chart($s['cantidad'] ?? []),
 
-            Stat::make('Total facturado', 'S/ ' . number_format($r['ingresosBrutos'] ?? 0, 2))
+            Stat::make('Total facturado', 'S/ ' . fmt_precio($r['ingresosBrutos'] ?? 0))
                 ->description(($r['tIngresos'] ?? null)
                     ? (($r['tIngresos']['arriba'] ? '↑' : '↓') . ' vs ' . $lbl)
                     : 'últimos 7 días')
@@ -43,19 +43,19 @@ class ReporteVentasPeriodoStatsWidget extends BaseWidget
                 ->color('success')
                 ->chart($s['ingresos'] ?? []),
 
-            Stat::make('Total sin IGV', 'S/ ' . number_format($r['ventasNetas'] ?? 0, 2))
+            Stat::make('Total sin IGV', 'S/ ' . fmt_precio($r['ventasNetas'] ?? 0))
                 ->description('neto sin impuesto')
                 ->descriptionIcon('heroicon-o-receipt-percent')
                 ->color('gray')
                 ->chart($s['ingresos'] ?? []),
 
-            Stat::make('Costo de ventas', 'S/ ' . number_format($r['costoTotal'] ?? 0, 2))
+            Stat::make('Costo de ventas', 'S/ ' . fmt_precio($r['costoTotal'] ?? 0))
                 ->description('costo de productos')
                 ->descriptionIcon('heroicon-o-cube')
                 ->color('warning')
                 ->chart($s['ingresos'] ?? []),
 
-            Stat::make('Utilidad bruta', 'S/ ' . number_format($util, 2))
+            Stat::make('Utilidad bruta', 'S/ ' . fmt_precio($util))
                 ->description($tDir ? ($tDir . ' vs ' . $lbl) : 'últimos 7 días')
                 ->descriptionIcon($util >= 0 ? 'heroicon-o-arrow-trending-up' : 'heroicon-o-arrow-trending-down')
                 ->color($util >= 0 ? 'success' : 'danger')

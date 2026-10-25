@@ -26,13 +26,13 @@ class GastosFijosMetaWidget extends BaseWidget
         $semanal  = $gastosFijos->sum(fn ($g) => $g->frecuencia->montoEnPeriodo((float) $g->monto, FrecuenciaGasto::Semanal));
 
         return [
-            Stat::make('Total gastos fijos mensual', 'S/ ' . number_format($mensual, 2))
+            Stat::make('Total gastos fijos mensual', 'S/ ' . fmt_precio($mensual))
                 ->description('Suma de todos los gastos fijos activos por mes')
                 ->descriptionIcon('heroicon-o-calendar')
                 ->color('indigo')
                 ->icon('heroicon-o-clipboard-document-list'),
 
-            Stat::make('Equivalente semanal', 'S/ ' . number_format($semanal, 2))
+            Stat::make('Equivalente semanal', 'S/ ' . fmt_precio($semanal))
                 ->description('Mismo total distribuido por semana')
                 ->descriptionIcon('heroicon-o-calendar-days')
                 ->color('warning')

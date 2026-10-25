@@ -176,7 +176,7 @@ class EditarVentaPage extends Page
         $this->clienteBusqueda = $venta->cliente_nombre ?? '';
 
         // Inicializar descuento
-        $this->descuentoInput = number_format((float) $venta->descuento_total, 2, '.', '');
+        $this->descuentoInput = fmt_precio((float) $venta->descuento_total);
 
         // Inicializar items desde detalles (solo en memoria, nunca se toca la DB hasta guardar)
         $this->items = [];
@@ -416,7 +416,8 @@ class EditarVentaPage extends Page
 
     public function actualizarPrecio(string $key, string $val): void
     {
-        $precio = max(0, round((float) $val, 2));
+        $dec    = $this->esTiketActual() ? 4 : 2;
+        $precio = max(0, round((float) $val, $dec));
         if (! isset($this->items[$key])) { return; }
         $items = $this->items;
         $items[$key]['precio'] = $precio;
@@ -496,7 +497,8 @@ class EditarVentaPage extends Page
 
     public function actualizarMontoPago(int $idx, string $val): void
     {
-        $monto = max(0, round((float) $val, 2));
+        $p     = $this->esTiketActual() ? 4 : 2;
+        $monto = max(0, round((float) $val, $p));
         $pagos = $this->pagos;
         $pagos[$idx]['monto'] = $monto;
         $this->pagos = $pagos;
@@ -513,22 +515,26 @@ class EditarVentaPage extends Page
 
     public function getSubtotal(): float
     {
-        return round(collect($this->items)->sum(fn ($i) => (float) $i['precio'] * (float) $i['cantidad']), 2);
+        $p = $this->esTiketActual() ? 4 : 2;
+        return round(collect($this->items)->sum(fn ($i) => (float) $i['precio'] * (float) $i['cantidad']), $p);
     }
 
     public function getDescuento(): float
     {
-        return round(max(0, (float) $this->descuentoInput), 2);
+        $p = $this->esTiketActual() ? 4 : 2;
+        return round(max(0, (float) $this->descuentoInput), $p);
     }
 
     public function getTotal(): float
     {
-        return round(max(0, $this->getSubtotal() - $this->getDescuento()), 2);
+        $p = $this->esTiketActual() ? 4 : 2;
+        return round(max(0, $this->getSubtotal() - $this->getDescuento()), $p);
     }
 
     public function getTotalPagado(): float
     {
-        return round(collect($this->pagos)->sum(fn ($p) => (float) $p['monto']), 2);
+        $p = $this->esTiketActual() ? 4 : 2;
+        return round(collect($this->pagos)->sum(fn ($p2) => (float) $p2['monto']), $p);
     }
 
     public function getOpGravadas(): float
@@ -547,7 +553,8 @@ class EditarVentaPage extends Page
 
     public function getVuelto(): float
     {
-        return round(max(0.0, $this->getTotalPagado() - $this->getTotal()), 2);
+        $p = $this->esTiketActual() ? 4 : 2;
+        return round(max(0.0, $this->getTotalPagado() - $this->getTotal()), $p);
     }
 
     // ── Guardar ───────────────────────────────────────────────────────────────
@@ -565,11 +572,11 @@ class EditarVentaPage extends Page
         $pagado  = $this->getTotalPagado();
         $diff    = round($total - $pagado, 2);
 
-        if ($diff > 0.01) {
+        if ($diff > 0.001) {
             if (empty($this->pagos)) {
-                $this->mensajeConfirmacion = "No se ha registrado ningún método de pago para esta venta (total: S/ " . number_format($total, 2) . "). ¿Desea guardar de todas formas?";
+                $this->mensajeConfirmacion = "No se ha registrado ningún método de pago para esta venta (total: S/ " . fmt_precio($total) . "). ¿Desea guardar de todas formas?";
             } else {
-                $this->mensajeConfirmacion = "Los pagos ingresados (S/ " . number_format($pagado, 2) . ") no cubren el total de la venta (S/ " . number_format($total, 2) . "). Quedaría un saldo pendiente de S/ " . number_format($diff, 2) . ". ¿Desea guardar de todas formas?";
+                $this->mensajeConfirmacion = "Los pagos ingresados (S/ " . fmt_precio($pagado) . ") no cubren el total de la venta (S/ " . fmt_precio($total) . "). Quedaría un saldo pendiente de S/ " . fmt_precio($diff) . ". ¿Desea guardar de todas formas?";
             }
             $this->mostrarConfirmacion = true;
             return;

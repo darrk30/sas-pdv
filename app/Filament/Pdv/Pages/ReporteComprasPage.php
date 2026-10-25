@@ -512,7 +512,7 @@ class ReporteComprasPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('total')
                     ->label('Total')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->sortable()
                     ->alignEnd()
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -521,8 +521,8 @@ class ReporteComprasPage extends Page implements HasForms, HasTable
                     ->label('Saldo')
                     ->state(function (Compra $r): string {
                         $saldo = $this->calcularSaldo($r);
-                        if ($saldo > 0.01) return 'S/ ' . number_format($saldo, 2);
-                        if ($saldo < -0.01) return '⚠ +S/ ' . number_format(abs($saldo), 2);
+                        if ($saldo > 0.01) return 'S/ ' . fmt_precio($saldo);
+                        if ($saldo < -0.01) return '⚠ +S/ ' . fmt_precio(abs($saldo));
                         return '✓ Saldado';
                     })
                     ->color(function (Compra $r): string {

@@ -63,12 +63,12 @@ class Orden extends Model
         'fecha_orden'     => 'datetime',
         'estado'          => EstadoOrden::class,
         'tipo_origen'     => TipoOrigenOrden::class,
-        'costo_envio'     => 'decimal:2',
-        'descuento_total'  => 'decimal:2',
-        'descuento_cupon'  => 'decimal:2',
-        'igv'             => 'decimal:2',
-        'subtotal'        => 'decimal:2',
-        'total'           => 'decimal:2',
+        'costo_envio'     => 'decimal:4',
+        'descuento_total'  => 'decimal:4',
+        'descuento_cupon'  => 'decimal:4',
+        'igv'             => 'decimal:4',
+        'subtotal'        => 'decimal:4',
+        'total'           => 'decimal:4',
     ];
 
     // ── Hooks ────────────────────────────────────────────────────────────

@@ -35,7 +35,7 @@ class ReporteAjustesStatsWidget extends BaseWidget
                 ->descriptionIcon('heroicon-o-arrow-up-tray')
                 ->color('danger'),
 
-            Stat::make('Valor total', 'S/ ' . number_format($r['valorTotal'] ?? 0, 2))
+            Stat::make('Valor total', 'S/ ' . fmt_precio($r['valorTotal'] ?? 0))
                 ->description('costo ajustado')
                 ->descriptionIcon('heroicon-o-currency-dollar')
                 ->color('warning'),

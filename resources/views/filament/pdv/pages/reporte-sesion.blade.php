@@ -81,31 +81,31 @@
             <div class="cc-kpi cc-kpi--red">
                 <span class="cc-kpi__label">Ventas anuladas</span>
                 <span class="cc-kpi__value">{{ number_format($r['cnt_anu'] ?? 0) }}</span>
-                <span class="cc-kpi__sub">S/ {{ number_format($r['tot_anu'] ?? 0, 2) }} anulados</span>
+                <span class="cc-kpi__sub">S/ {{ fmt_precio($r['tot_anu'] ?? 0) }} anulados</span>
             </div>
             <div class="cc-kpi cc-kpi--indigo">
                 <span class="cc-kpi__label">Total facturado</span>
-                <span class="cc-kpi__value">S/ {{ number_format($r['tot_total'] ?? 0, 2) }}</span>
+                <span class="cc-kpi__value">S/ {{ fmt_precio($r['tot_total'] ?? 0) }}</span>
                 <span class="cc-kpi__sub">suma de todas las ventas</span>
             </div>
             <div class="cc-kpi cc-kpi--purple">
                 <span class="cc-kpi__label">IGV facturado</span>
-                <span class="cc-kpi__value">S/ {{ number_format($r['igv'] ?? 0, 2) }}</span>
+                <span class="cc-kpi__value">S/ {{ fmt_precio($r['igv'] ?? 0) }}</span>
                 <span class="cc-kpi__sub">solo facturas y boletas (18%)</span>
             </div>
             <div class="cc-kpi cc-kpi--sky">
                 <span class="cc-kpi__label">Total sin IGV</span>
-                <span class="cc-kpi__value">S/ {{ number_format($r['neta'] ?? 0, 2) }}</span>
+                <span class="cc-kpi__value">S/ {{ fmt_precio($r['neta'] ?? 0) }}</span>
                 <span class="cc-kpi__sub">total − IGV (tickets incluidos)</span>
             </div>
             <div class="cc-kpi cc-kpi--orange">
                 <span class="cc-kpi__label">Costo de ventas</span>
-                <span class="cc-kpi__value">S/ {{ number_format($r['costo'] ?? 0, 2) }}</span>
+                <span class="cc-kpi__value">S/ {{ fmt_precio($r['costo'] ?? 0) }}</span>
                 <span class="cc-kpi__sub">costo de los productos vendidos</span>
             </div>
             <div class="cc-kpi cc-kpi--green">
                 <span class="cc-kpi__label">Utilidad bruta</span>
-                <span class="cc-kpi__value">S/ {{ number_format($r['utilidad'] ?? 0, 2) }}</span>
+                <span class="cc-kpi__value">S/ {{ fmt_precio($r['utilidad'] ?? 0) }}</span>
                 <span class="cc-kpi__sub">total sin IGV − costo</span>
             </div>
             <div class="cc-kpi cc-kpi--teal">
@@ -116,7 +116,7 @@
             @if(($r['descuento'] ?? 0) > 0)
             <div class="cc-kpi cc-kpi--amber">
                 <span class="cc-kpi__label">Descuentos</span>
-                <span class="cc-kpi__value">S/ {{ number_format($r['descuento'], 2) }}</span>
+                <span class="cc-kpi__value">S/ {{ fmt_precio($r['descuento']) }}</span>
                 <span class="cc-kpi__sub">total descontado en ventas</span>
             </div>
             @endif
@@ -126,28 +126,28 @@
         <div class="cc-cuadre-strip">
             <div class="cc-cuadre-item">
                 <span class="cc-cuadre-item__label">Fondo de apertura</span>
-                <span class="cc-cuadre-item__val">S/ {{ number_format($r['monto_apertura'] ?? 0, 2) }}</span>
+                <span class="cc-cuadre-item__val">S/ {{ fmt_precio($r['monto_apertura'] ?? 0) }}</span>
             </div>
             <div class="cc-cuadre-item">
                 <span class="cc-cuadre-item__label">Total sistema</span>
-                <span class="cc-cuadre-item__val">S/ {{ number_format($r['total_sistema'] ?? 0, 2) }}</span>
+                <span class="cc-cuadre-item__val">S/ {{ fmt_precio($r['total_sistema'] ?? 0) }}</span>
                 <span class="cc-cuadre-item__sub">ventas + fondo</span>
             </div>
             <div class="cc-cuadre-item">
                 <span class="cc-cuadre-item__label">Total cajero</span>
-                <span class="cc-cuadre-item__val">S/ {{ number_format($r['total_cajero'] ?? 0, 2) }}</span>
+                <span class="cc-cuadre-item__val">S/ {{ fmt_precio($r['total_cajero'] ?? 0) }}</span>
             </div>
             @if(($r['total_creditos'] ?? 0) > 0)
             <div class="cc-cuadre-item cc-cuadre-item--credit">
                 <span class="cc-cuadre-item__label">Créditos otorgados</span>
-                <span class="cc-cuadre-item__val">S/ {{ number_format($r['total_creditos'], 2) }}</span>
+                <span class="cc-cuadre-item__val">S/ {{ fmt_precio($r['total_creditos']) }}</span>
                 <span class="cc-cuadre-item__sub">no se cuentan físicamente</span>
             </div>
             @endif
             @php $dif = (float)($r['diferencia'] ?? 0); @endphp
             <div class="cc-cuadre-item {{ $dif == 0 ? 'cc-cuadre-item--ok' : ($dif > 0 ? 'cc-cuadre-item--pos' : 'cc-cuadre-item--neg') }}">
                 <span class="cc-cuadre-item__label">Diferencia</span>
-                <span class="cc-cuadre-item__val">{{ $dif >= 0 ? '+' : '' }}S/ {{ number_format($dif, 2) }}</span>
+                <span class="cc-cuadre-item__val">{{ $dif >= 0 ? '+' : '' }}S/ {{ fmt_precio($dif) }}</span>
                 <span class="cc-cuadre-item__sub">cajero − sistema</span>
             </div>
         </div>
@@ -207,7 +207,7 @@
                                         <span class="cc-badge" style="background:#fef3c7;color:#d97706">Crédito</span>
                                         @if(($v->saldo_pendiente ?? 0) > 0)
                                             <span style="display:block;font-size:.68rem;color:#d97706;margin-top:.15rem">
-                                                Saldo: S/ {{ number_format($v->saldo_pendiente, 2) }}
+                                                Saldo: S/ {{ fmt_precio($v->saldo_pendiente) }}
                                             </span>
                                         @endif
                                     @else
@@ -215,8 +215,8 @@
                                     @endif
                                 </td>
                                 <td class="rg-td-right" style="font-size:.78rem;color:var(--vs-text-muted)">{{ $v->detalles_count }}</td>
-                                <td class="rg-td-right"><span class="rg-monto">S/ {{ number_format($v->total, 2) }}</span></td>
-                                <td class="rg-td-right"><span class="rg-monto rg-monto--costo">S/ {{ number_format($v->costo_total, 2) }}</span></td>
+                                <td class="rg-td-right"><span class="rg-monto">S/ {{ fmt_precio($v->total) }}</span></td>
+                                <td class="rg-td-right"><span class="rg-monto rg-monto--costo">S/ {{ fmt_precio($v->costo_total) }}</span></td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -268,7 +268,7 @@
                                 <td class="rg-td-right" style="color:var(--vs-text-muted);font-size:.78rem">
                                     {{ $prod->en_ventas }} venta{{ $prod->en_ventas != 1 ? 's' : '' }}
                                 </td>
-                                <td class="rg-td-right"><span class="rg-monto">S/ {{ number_format($prod->tot, 2) }}</span></td>
+                                <td class="rg-td-right"><span class="rg-monto">S/ {{ fmt_precio($prod->tot) }}</span></td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -317,10 +317,10 @@
                                 @endphp
                                 <tr wire:key="met-{{ $loop->index }}">
                                     <td style="font-weight:600;font-size:.82rem">{{ $met['nombre'] }}</td>
-                                    <td class="rg-td-right"><span class="rg-monto">S/ {{ number_format($met['sistema'], 2) }}</span></td>
+                                    <td class="rg-td-right"><span class="rg-monto">S/ {{ fmt_precio($met['sistema']) }}</span></td>
                                     <td class="rg-td-right">
                                         @if($cajero !== null)
-                                            <span class="rg-monto">S/ {{ number_format($cajero, 2) }}</span>
+                                            <span class="rg-monto">S/ {{ fmt_precio($cajero) }}</span>
                                         @else
                                             <span style="color:var(--vs-text-faint)">—</span>
                                         @endif
@@ -328,7 +328,7 @@
                                     <td class="rg-td-right">
                                         @if($diff !== null)
                                             <span class="cc-diff {{ $diff == 0 ? 'cc-diff--ok' : ($diff > 0 ? 'cc-diff--pos' : 'cc-diff--neg') }}">
-                                                {{ $diff >= 0 ? '+' : '' }}S/ {{ number_format($diff, 2) }}
+                                                {{ $diff >= 0 ? '+' : '' }}S/ {{ fmt_precio($diff) }}
                                             </span>
                                         @else
                                             <span style="color:var(--vs-text-faint)">—</span>
@@ -370,7 +370,7 @@
                                 <tr wire:key="comp-{{ $loop->index }}">
                                     <td><span class="cc-badge {{ $tipoClass }}">{{ $tipoLabel }}</span></td>
                                     <td class="rg-td-right" style="font-weight:600">{{ $comp->count }}</td>
-                                    <td class="rg-td-right"><span class="rg-monto">S/ {{ number_format($comp->total, 2) }}</span></td>
+                                    <td class="rg-td-right"><span class="rg-monto">S/ {{ fmt_precio($comp->total) }}</span></td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -460,7 +460,7 @@
                                     </div>
                                 </td>
                                 <td style="font-size:.78rem">{{ $cv->cliente_nombre ?: '—' }}</td>
-                                <td class="rg-td-right"><span class="rg-monto">S/ {{ number_format($cv->total, 2) }}</span></td>
+                                <td class="rg-td-right"><span class="rg-monto">S/ {{ fmt_precio($cv->total) }}</span></td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -488,22 +488,22 @@
         <div class="cc-mov-resumen">
             <div class="cc-mov-kpi cc-mov-kpi--ing">
                 <span>Ingresos aprobados</span>
-                <strong>S/ {{ number_format($movTotals['ing_apr_tot'], 2) }}</strong>
+                <strong>S/ {{ fmt_precio($movTotals['ing_apr_tot']) }}</strong>
                 <em>{{ $movTotals['ing_apr_cnt'] }} registro{{ $movTotals['ing_apr_cnt'] != 1 ? 's' : '' }}</em>
             </div>
             <div class="cc-mov-kpi cc-mov-kpi--ing-anu">
                 <span>Ingresos anulados</span>
-                <strong>S/ {{ number_format($movTotals['ing_anu_tot'], 2) }}</strong>
+                <strong>S/ {{ fmt_precio($movTotals['ing_anu_tot']) }}</strong>
                 <em>{{ $movTotals['ing_anu_cnt'] }} registro{{ $movTotals['ing_anu_cnt'] != 1 ? 's' : '' }}</em>
             </div>
             <div class="cc-mov-kpi cc-mov-kpi--egr">
                 <span>Egresos aprobados</span>
-                <strong>S/ {{ number_format($movTotals['egr_apr_tot'], 2) }}</strong>
+                <strong>S/ {{ fmt_precio($movTotals['egr_apr_tot']) }}</strong>
                 <em>{{ $movTotals['egr_apr_cnt'] }} registro{{ $movTotals['egr_apr_cnt'] != 1 ? 's' : '' }}</em>
             </div>
             <div class="cc-mov-kpi cc-mov-kpi--egr-anu">
                 <span>Egresos anulados</span>
-                <strong>S/ {{ number_format($movTotals['egr_anu_tot'], 2) }}</strong>
+                <strong>S/ {{ fmt_precio($movTotals['egr_anu_tot']) }}</strong>
                 <em>{{ $movTotals['egr_anu_cnt'] }} registro{{ $movTotals['egr_anu_cnt'] != 1 ? 's' : '' }}</em>
             </div>
         </div>
@@ -557,7 +557,7 @@
                                 <td class="rg-td-right">
                                     @php $esIngreso = str_starts_with($subTabMov, 'ing_'); @endphp
                                     <span class="rg-monto {{ $esIngreso ? 'rg-monto--pos' : 'rg-monto--neg' }}">
-                                        {{ $esIngreso ? '+' : '−' }}S/ {{ number_format($mov->monto, 2) }}
+                                        {{ $esIngreso ? '+' : '−' }}S/ {{ fmt_precio($mov->monto) }}
                                     </span>
                                 </td>
                             </tr>
@@ -605,7 +605,7 @@
                         </span>
                     </dd>
                     <dt>Monto de apertura</dt>
-                    <dd>S/ {{ number_format($sesInfo->monto_apertura ?? 0, 2) }}</dd>
+                    <dd>S/ {{ fmt_precio($sesInfo->monto_apertura ?? 0) }}</dd>
                 </dl>
             </div>
 
@@ -613,11 +613,11 @@
                 <div class="cc-info-section__head">Cuadre de caja</div>
                 <dl class="cc-info-dl">
                     <dt>Total sistema</dt>
-                    <dd><strong>S/ {{ number_format($sesInfo->total_sistema ?? 0, 2) }}</strong></dd>
+                    <dd><strong>S/ {{ fmt_precio($sesInfo->total_sistema ?? 0) }}</strong></dd>
                     <dt>Total cajero</dt>
                     <dd>
                         @if($sesInfo->total_cajero !== null)
-                            <strong>S/ {{ number_format($sesInfo->total_cajero, 2) }}</strong>
+                            <strong>S/ {{ fmt_precio($sesInfo->total_cajero) }}</strong>
                         @else
                             <span style="color:var(--vs-text-faint)">Sin declarar</span>
                         @endif
@@ -627,7 +627,7 @@
                         @if($sesInfo->diferencia_total !== null)
                             @php $dif = (float)$sesInfo->diferencia_total; @endphp
                             <span class="cc-diff {{ $dif == 0 ? 'cc-diff--ok' : ($dif > 0 ? 'cc-diff--pos' : 'cc-diff--neg') }}">
-                                {{ $dif >= 0 ? '+' : '' }}S/ {{ number_format($dif, 2) }}
+                                {{ $dif >= 0 ? '+' : '' }}S/ {{ fmt_precio($dif) }}
                             </span>
                         @else
                             <span style="color:var(--vs-text-faint)">—</span>
@@ -636,7 +636,7 @@
                     @if(($sesInfo->total_creditos ?? 0) > 0)
                     <dt style="color:#d97706">Créditos otorgados</dt>
                     <dd>
-                        <strong style="color:#d97706">S/ {{ number_format($sesInfo->total_creditos, 2) }}</strong>
+                        <strong style="color:#d97706">S/ {{ fmt_precio($sesInfo->total_creditos) }}</strong>
                         <span style="font-size:.72rem;color:var(--vs-text-faint);margin-left:.5rem">no se cuentan físicamente</span>
                     </dd>
                     @endif
@@ -667,17 +667,17 @@
                             @php $dPag = (float)($pag->importe_cajero ?? 0) - (float)$pag->importe_sistema; @endphp
                             <tr wire:key="pag-{{ $pag->id }}">
                                 <td style="font-weight:600;font-size:.82rem">{{ $pag->metodoPago?->nombre ?? '—' }}</td>
-                                <td class="rg-td-right"><span class="rg-monto">S/ {{ number_format($pag->importe_sistema, 2) }}</span></td>
+                                <td class="rg-td-right"><span class="rg-monto">S/ {{ fmt_precio($pag->importe_sistema) }}</span></td>
                                 <td class="rg-td-right">
                                     @if($pag->importe_cajero !== null)
-                                        <span class="rg-monto">S/ {{ number_format($pag->importe_cajero, 2) }}</span>
+                                        <span class="rg-monto">S/ {{ fmt_precio($pag->importe_cajero) }}</span>
                                     @else
                                         <span style="color:var(--vs-text-faint)">—</span>
                                     @endif
                                 </td>
                                 <td class="rg-td-right">
                                     <span class="cc-diff {{ $dPag == 0 ? 'cc-diff--ok' : ($dPag > 0 ? 'cc-diff--pos' : 'cc-diff--neg') }}">
-                                        {{ $dPag >= 0 ? '+' : '' }}S/ {{ number_format($dPag, 2) }}
+                                        {{ $dPag >= 0 ? '+' : '' }}S/ {{ fmt_precio($dPag) }}
                                     </span>
                                 </td>
                             </tr>

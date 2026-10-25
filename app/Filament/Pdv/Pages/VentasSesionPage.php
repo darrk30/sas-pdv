@@ -161,7 +161,7 @@ class VentasSesionPage extends Page implements HasTable
                     ->description(fn (Venta $r): string =>
                         $r->created_at->format('d/m/Y H:i')
                         . ((float) $r->saldo_pendiente > 0
-                            ? '  ⚠ Saldo: S/ ' . number_format((float) $r->saldo_pendiente, 2)
+                            ? '  ⚠ Saldo: S/ ' . fmt_precio((float) $r->saldo_pendiente)
                             : '')
                     )
                     ->weight('medium')
@@ -193,41 +193,39 @@ class VentasSesionPage extends Page implements HasTable
 
                 TextColumn::make('op_gravadas')
                     ->label('Op. Gravada')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : '—')
                     ->alignEnd()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('igv')
                     ->label('IGV')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : '—')
                     ->alignEnd()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('descuento_total')
                     ->label('Descuento')
-                    ->money('PEN')
                     ->alignEnd()
                     ->color('danger')
-                    ->formatStateUsing(fn ($state): string => $state > 0 ? '- ' . number_format((float) $state, 2) : '—')
+                    ->formatStateUsing(fn ($state): string => (float) $state > 0 ? '- S/ ' . fmt_precio((float) $state) : '—')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('total')
                     ->label('Total')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => 'S/ ' . fmt_precio((float) $state))
                     ->alignEnd()
                     ->weight('semibold')
                     ->summarize(
                         Sum::make()
                             ->label('Total turno')
-                            ->money('PEN')
+                            ->formatStateUsing(fn ($state) => 'S/ ' . fmt_precio((float) $state))
                     ),
 
                 TextColumn::make('saldo_pendiente')
                     ->label('Saldo pendiente')
-                    ->money('PEN')
                     ->alignEnd()
                     ->color('danger')
-                    ->formatStateUsing(fn ($state): string => (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—')
+                    ->formatStateUsing(fn ($state): string => (float) $state > 0 ? 'S/ ' . fmt_precio((float) $state) : '—')
                     ->tooltip('Monto aún no pagado de esta venta')
                     ->toggleable(isToggledHiddenByDefault: true),
 
@@ -365,7 +363,7 @@ class VentasSesionPage extends Page implements HasTable
                             'Anular ' . ($record->serie?->serie ?? '---') . '-' . str_pad($record->correlativo, 8, '0', STR_PAD_LEFT)
                         )
                         ->modalDescription(fn (Venta $record): string =>
-                            'Esta acción no se puede deshacer. Se registrará una devolución de S/ ' . number_format($record->total, 2) . '.'
+                            'Esta acción no se puede deshacer. Se registrará una devolución de S/ ' . fmt_precio($record->total) . '.'
                         )
                         ->modalIcon('heroicon-o-x-circle')
                         ->modalIconColor('danger')

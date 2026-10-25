@@ -83,7 +83,7 @@ class NotasPage extends Page implements HasTable
 
                 TextColumn::make('total')
                     ->label('Total')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignRight(),
 
                 TextColumn::make('estado_sunat')

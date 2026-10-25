@@ -233,19 +233,19 @@ class CuentasPorCobrarPage extends Page implements HasTable
 
                 TextColumn::make('total')
                     ->label('Total')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignRight()
                     ->sortable(),
 
                 TextColumn::make('monto_pagado')
                     ->label('Pagado')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignRight()
                     ->color('success'),
 
                 TextColumn::make('saldo_pendiente')
                     ->label('Pendiente')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignRight()
                     ->color(fn ($state): string => (float) $state > 0 ? 'danger' : 'success')
                     ->weight('bold'),
@@ -428,7 +428,7 @@ class CuentasPorCobrarPage extends Page implements HasTable
 
         $this->ventaId     = $ventaId;
         $this->cobroMetodo = null;
-        $this->cobroMonto  = number_format((float) $venta->saldo_pendiente, 2, '.', '');
+        $this->cobroMonto  = fmt_precio((float) $venta->saldo_pendiente);
         $this->cobroRef    = '';
         $this->modalCobro  = true;
         $this->dispatch('open-modal', id: 'cobro-modal');
@@ -454,7 +454,7 @@ class CuentasPorCobrarPage extends Page implements HasTable
             'cobroMetodo.required' => 'Selecciona un método de pago.',
             'cobroMonto.required'  => 'Ingresa el monto a cobrar.',
             'cobroMonto.gt'        => 'El monto debe ser mayor a 0.',
-            'cobroMonto.max'       => 'El monto no puede superar el saldo pendiente (S/ ' . number_format($saldoMax, 2) . ').',
+            'cobroMonto.max'       => 'El monto no puede superar el saldo pendiente (S/ ' . fmt_precio($saldoMax) . ').',
         ]);
 
         $monto = (float) $this->cobroMonto;

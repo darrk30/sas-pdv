@@ -36,7 +36,7 @@ class PromocionesTable
 
                 TextColumn::make('precio')
                     ->label('Precio')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->sortable(),
 
                 TextColumn::make('detalles_count')

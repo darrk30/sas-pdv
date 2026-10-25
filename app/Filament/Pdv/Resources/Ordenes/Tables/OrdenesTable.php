@@ -74,7 +74,7 @@ class OrdenesTable
 
                 TextColumn::make('subtotal')
                     ->label('Subtotal')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignEnd()
                     ->toggleable(),
 
@@ -85,7 +85,7 @@ class OrdenesTable
                         $etiqueta = $record->cupon_id
                             ? ($record->cupon?->codigo ?? 'Cupón')
                             : 'Manual';
-                        return '−S/ ' . number_format((float) $state, 2) . '  ' . $etiqueta;
+                        return '−S/ ' . fmt_precio((float) $state) . '  ' . $etiqueta;
                     })
                     ->badge()
                     ->color('success')
@@ -95,14 +95,14 @@ class OrdenesTable
 
                 TextColumn::make('total')
                     ->label('Total')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->sortable()
                     ->alignEnd(),
 
                 TextColumn::make('saldo_venta')
                     ->label('Saldo pend.')
                     ->formatStateUsing(fn ($state): string =>
-                        (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '')
+                        (float) $state > 0 ? 'S/ ' . fmt_precio((float) $state) : '')
                     ->badge()
                     ->color('warning')
                     ->alignEnd(),

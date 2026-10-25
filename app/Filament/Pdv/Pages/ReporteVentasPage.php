@@ -312,7 +312,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->label('Comprobante')
                     ->state(fn(Venta $r): string => ($r->serie?->serie ?? '---') . '-' . str_pad((string) $r->correlativo, 8, '0', STR_PAD_LEFT))
                     ->description(fn(Venta $r): ?string => (float) $r->saldo_pendiente > 0
-                        ? '⚠ Saldo: S/ ' . number_format((float) $r->saldo_pendiente, 2)
+                        ? '⚠ Saldo: S/ ' . fmt_precio((float) $r->saldo_pendiente)
                         : null)
                     ->weight('medium')
                     ->searchable(false)
@@ -354,13 +354,13 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('op_gravadas')
                     ->label('Op. Gravada')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignEnd()
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('igv')
                     ->label('IGV')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignEnd()
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -370,7 +370,7 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->html()
                     ->formatStateUsing(function ($state, Venta $record): string {
                         if ((float) $state <= 0) return '<span style="color:var(--fi-color-gray-400)">—</span>';
-                        $monto = '<span style="color:#dc2626;font-weight:600">−S/ ' . number_format((float) $state, 2) . '</span>';
+                        $monto = '<span style="color:#dc2626;font-weight:600">−S/ ' . fmt_precio((float) $state) . '</span>';
                         $codigo = $record->cupon?->codigo ?? $record->cupon_codigo_orden;
                         if (! $codigo) return $monto;
                         $badge = '<br><span style="display:inline-block;font-size:.6rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:.25rem;padding:.1rem .35rem">'
@@ -382,17 +382,17 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
 
                 TextColumn::make('total')
                     ->label('Total')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignEnd()
                     ->weight('semibold')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('saldo_pendiente')
                     ->label('Saldo pendiente')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignEnd()
                     ->color('danger')
-                    ->formatStateUsing(fn($state): string => (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—')
+                    ->formatStateUsing(fn($state): string => (float) $state > 0 ? 'S/ ' . fmt_precio((float) $state) : '—')
                     ->tooltip('Monto aún no pagado de esta venta')
                     ->toggleable(isToggledHiddenByDefault: false),
 

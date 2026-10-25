@@ -243,12 +243,12 @@ class KardexPage extends Page implements HasForms, HasTable
                     ->label('Cantidad')
                     ->state(fn (Kardex $record): string =>
                         ($record->tipo === 'entrada' ? '+' : '−')
-                        . number_format((float) $record->cantidad, 2)
+                        . fmt_precio((float) $record->cantidad)
                         . ' ' . ($record->unidad_simbolo ?? $record->unidad ?? '')
                     )
                     ->description(fn (Kardex $record): ?string =>
                         ((float) ($record->factor_conversion ?? 0) && (float) $record->factor_conversion != 1)
-                            ? '= ' . number_format((float) $record->cantidad_base, 2) . ' uds.'
+                            ? '= ' . fmt_precio((float) $record->cantidad_base) . ' uds.'
                             : null
                     )
                     ->color(fn (Kardex $record): string => $record->tipo === 'entrada' ? 'success' : 'danger')
@@ -258,18 +258,18 @@ class KardexPage extends Page implements HasForms, HasTable
                     ->label('Costo / Precio')
                     ->state(fn (Kardex $record): string => $record->tipo === 'entrada'
                         ? ($record->costo_unitario !== null
-                            ? 'S/ ' . number_format((float) $record->costo_unitario, 2)
+                            ? 'S/ ' . fmt_precio((float) $record->costo_unitario)
                             : '—')
                         : ($record->precio_unitario !== null
-                            ? 'S/ ' . number_format((float) $record->precio_unitario, 2)
+                            ? 'S/ ' . fmt_precio((float) $record->precio_unitario)
                             : '—')
                     )
                     ->description(fn (Kardex $record): ?string => $record->tipo === 'entrada'
                         ? ($record->costo_total !== null
-                            ? 'Total: S/ ' . number_format((float) $record->costo_total, 2)
+                            ? 'Total: S/ ' . fmt_precio((float) $record->costo_total)
                             : null)
                         : ($record->precio_total !== null
-                            ? 'Total: S/ ' . number_format((float) $record->precio_total, 2)
+                            ? 'Total: S/ ' . fmt_precio((float) $record->precio_total)
                             : null)
                     )
                     ->alignEnd(),
@@ -279,11 +279,11 @@ class KardexPage extends Page implements HasForms, HasTable
                     ->html()
                     ->state(fn (Kardex $record): string => sprintf(
                         '<span class="text-gray-400 dark:text-gray-500">%s</span> → <span class="%s">%s</span>',
-                        number_format((float) $record->stock_antes, 2),
+                        fmt_precio((float) $record->stock_antes),
                         (float) $record->stock_despues >= (float) $record->stock_antes
                             ? 'text-success-600 dark:text-success-400'
                             : 'text-danger-600 dark:text-danger-400',
-                        number_format((float) $record->stock_despues, 2)
+                        fmt_precio((float) $record->stock_despues)
                     ))
                     ->alignCenter(),
 

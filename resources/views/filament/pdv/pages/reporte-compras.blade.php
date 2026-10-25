@@ -90,11 +90,11 @@
                                 <tr>
                                     <td>{{ $d->nombre_producto }}</td>
                                     <td class="rc-ta-right">
-                                        {{ number_format($d->cantidad, 2) }}
+                                        {{ fmt_precio($d->cantidad) }}
                                         <span style="font-size:.65rem;color:var(--vs-text-muted)">{{ $d->unidad?->simbolo }}</span>
                                     </td>
                                     <td class="rc-ta-right">S/ {{ number_format($d->costo_unitario, 4) }}</td>
-                                    <td class="rc-ta-right">S/ {{ number_format($d->costo_total, 2) }}</td>
+                                    <td class="rc-ta-right">S/ {{ fmt_precio($d->costo_total) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -105,26 +105,26 @@
                     @if($cd->costo_envio > 0)
                         <div class="rc-modal-total-fila">
                             <span>Costo de envío</span>
-                            <span>S/ {{ number_format($cd->costo_envio, 2) }}</span>
+                            <span>S/ {{ fmt_precio($cd->costo_envio) }}</span>
                         </div>
                     @endif
                     @if($cd->descuento > 0)
                         <div class="rc-modal-total-fila">
                             <span>Descuento</span>
-                            <span>− S/ {{ number_format($cd->descuento, 2) }}</span>
+                            <span>− S/ {{ fmt_precio($cd->descuento) }}</span>
                         </div>
                     @endif
                     <div class="rc-modal-total-fila">
                         <span>Subtotal</span>
-                        <span>S/ {{ number_format($cd->subtotal, 2) }}</span>
+                        <span>S/ {{ fmt_precio($cd->subtotal) }}</span>
                     </div>
                     <div class="rc-modal-total-fila">
                         <span>IGV</span>
-                        <span>S/ {{ number_format($cd->igv, 2) }}</span>
+                        <span>S/ {{ fmt_precio($cd->igv) }}</span>
                     </div>
                     <div class="rc-modal-total-fila rc-modal-total-fila--grande">
                         <span>Total</span>
-                        <span>S/ {{ number_format($cd->total, 2) }}</span>
+                        <span>S/ {{ fmt_precio($cd->total) }}</span>
                     </div>
                 </div>
 
@@ -178,12 +178,12 @@
                             {{ $saldoModal > 0.01 ? 'Saldo pendiente por pagar' : 'Compra completamente pagada' }}
                         </div>
                         <div style="font-size:.72rem;color:var(--vs-text-muted);margin-top:.15rem">
-                            Total: S/ {{ number_format($cp->total, 2) }} · Pagado: S/ {{ number_format($totalPagado, 2) }}
+                            Total: S/ {{ fmt_precio($cp->total) }} · Pagado: S/ {{ fmt_precio($totalPagado) }}
                         </div>
                     </div>
                     <div class="rc-saldo-pendiente__monto">
                         @if($saldoModal > 0.01)
-                            S/ {{ number_format($saldoModal, 2) }}
+                            S/ {{ fmt_precio($saldoModal) }}
                         @else
                             ✓ Saldado
                         @endif
@@ -210,7 +210,7 @@
                                 <tr>
                                     <td><span style="font-weight:600">{{ $pago->metodoPago?->nombre ?? '—' }}</span></td>
                                     <td><span style="font-size:.75rem;color:var(--vs-text-muted)">{{ $pago->referencia ?: '—' }}</span></td>
-                                    <td class="rc-ta-right"><span style="font-weight:700;color:#15803d">S/ {{ number_format($pago->monto, 2) }}</span></td>
+                                    <td class="rc-ta-right"><span style="font-weight:700;color:#15803d">S/ {{ fmt_precio($pago->monto) }}</span></td>
                                     <td class="rc-ta-right"><span style="font-size:.72rem;color:var(--vs-text-muted)">{{ $pago->created_at ? \Carbon\Carbon::parse($pago->created_at)->format('d/m/Y') : '—' }}</span></td>
                                 </tr>
                             @endforeach
@@ -218,7 +218,7 @@
                         <tfoot>
                             <tr>
                                 <td colspan="2" style="padding:.5rem;font-weight:700;font-size:.8rem;color:var(--vs-text)">Total pagado</td>
-                                <td class="rc-ta-right" style="padding:.5rem;font-weight:800;color:#15803d">S/ {{ number_format($totalPagado, 2) }}</td>
+                                <td class="rc-ta-right" style="padding:.5rem;font-weight:800;color:#15803d">S/ {{ fmt_precio($totalPagado) }}</td>
                                 <td></td>
                             </tr>
                         </tfoot>

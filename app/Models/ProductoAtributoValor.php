@@ -12,6 +12,10 @@ class ProductoAtributoValor extends Model
 {
     protected $fillable = ['producto_atributo_id', 'valor_id', 'precio_adicional', 'imagen', 'estado'];
 
+    protected $casts = [
+        'precio_adicional' => 'decimal:4',
+    ];
+
     public function valor()
     {
         return $this->belongsTo(Valor::class);

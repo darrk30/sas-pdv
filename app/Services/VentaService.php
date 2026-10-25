@@ -95,25 +95,26 @@ class VentaService
 
             $esTicket = $serie->tipo === TipoComprobante::Ticket;
             $tasaIgv  = $esTicket ? 0.0 : ($igvPct / 100);
+            $pDec     = $esTicket ? 4 : 2;
 
             // ── Totales ───────────────────────────────────────────────────────
 
             $totalBruto        = round(array_sum(array_map(
                 fn($i) => (float) $i['precio'] * (float) $i['cantidad'],
                 $items
-            )), 2);
-            $totalConDescuento = round(max(0.0, $totalBruto - $descuento), 2);
+            )), $pDec);
+            $totalConDescuento = round(max(0.0, $totalBruto - $descuento), $pDec);
             $opGravadas        = $esTicket ? 0.0 : round($totalConDescuento / (1 + $tasaIgv), 2);
             $opInafectas       = $esTicket ? $totalConDescuento : 0.0;
             $igv               = $esTicket ? 0.0 : round($totalConDescuento - $opGravadas, 2);
 
             $pagosContado   = array_values(array_filter($pagos, fn($p) => ($p['condicion_pago'] ?? 'contado') !== 'credito'));
             $pagosCredito   = array_values(array_filter($pagos, fn($p) => ($p['condicion_pago'] ?? 'contado') === 'credito'));
-            $montoContado   = round(array_sum(array_column($pagosContado, 'monto')), 2);
+            $montoContado   = round(array_sum(array_column($pagosContado, 'monto')), $pDec);
             $montoPagado    = min($montoContado, $totalConDescuento);
-            $saldoPendiente = round(max(0.0, $totalConDescuento - $montoPagado), 2);
+            $saldoPendiente = round(max(0.0, $totalConDescuento - $montoPagado), $pDec);
             $tipoPago       = count($pagosCredito) > 0 ? TipoPago::Credito : TipoPago::Contado;
-            $estadoPago     = $saldoPendiente > 0.01 ? 'pendiente' : 'pagado';
+            $estadoPago     = $saldoPendiente > 0.001 ? 'pendiente' : 'pagado';
 
             // ── Cliente ───────────────────────────────────────────────────────
 
@@ -629,15 +630,16 @@ class VentaService
 
             // ── Recalcular totales (usando la serie final) ────────────────────────
 
-            $igvPct  = (float) ($venta->empresa->igv_porcentaje ?? 18);
+            $igvPct   = (float) ($venta->empresa->igv_porcentaje ?? 18);
             $esTicket = $serieActual->tipo === TipoComprobante::Ticket;
             $tasaIgv  = $esTicket ? 0.0 : ($igvPct / 100);
+            $pDec     = $esTicket ? 4 : 2;
 
             $totalBruto        = round(array_sum(array_map(
                 fn ($i) => (float) $i['precio'] * (float) $i['cantidad'],
                 $nuevosItems
-            )), 2);
-            $totalConDescuento = round(max(0.0, $totalBruto - $descuento), 2);
+            )), $pDec);
+            $totalConDescuento = round(max(0.0, $totalBruto - $descuento), $pDec);
             $opGravadas        = $esTicket ? 0.0 : round($totalConDescuento / (1 + $tasaIgv), 2);
             $opInafectas       = $esTicket ? $totalConDescuento : 0.0;
             $igv               = $esTicket ? 0.0 : round($totalConDescuento - $opGravadas, 2);
@@ -718,11 +720,11 @@ class VentaService
                 $pagosContado = array_values(array_filter($pagos, fn ($p) => ($p['condicion_pago'] ?? 'contado') !== 'credito'));
                 $pagosCredito = array_values(array_filter($pagos, fn ($p) => ($p['condicion_pago'] ?? 'contado') === 'credito'));
 
-                $montoContadoSum = round(array_sum(array_column($pagosContado, 'monto')), 2);
+                $montoContadoSum = round(array_sum(array_column($pagosContado, 'monto')), $pDec);
                 $montoPagado     = min($montoContadoSum, $totalConDescuento);
-                $saldoPendiente  = round(max(0.0, $totalConDescuento - $montoPagado), 2);
+                $saldoPendiente  = round(max(0.0, $totalConDescuento - $montoPagado), $pDec);
                 $tipoPago        = count($pagosCredito) > 0 ? TipoPago::Credito : TipoPago::Contado;
-                $estadoPago      = $saldoPendiente > 0.01 ? 'pendiente' : 'pagado';
+                $estadoPago      = $saldoPendiente > 0.001 ? 'pendiente' : 'pagado';
 
                 foreach ($pagosContado as $pago) {
                     VentaPago::create([

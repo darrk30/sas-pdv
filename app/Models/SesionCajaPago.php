@@ -18,9 +18,9 @@ class SesionCajaPago extends Model
     ];
 
     protected $casts = [
-        'importe_sistema' => 'decimal:2',
-        'importe_cajero'  => 'decimal:2',
-        'diferencia'      => 'decimal:2',
+        'importe_sistema' => 'decimal:4',
+        'importe_cajero'  => 'decimal:4',
+        'diferencia'      => 'decimal:4',
     ];
 
     public function sesionCaja(): BelongsTo

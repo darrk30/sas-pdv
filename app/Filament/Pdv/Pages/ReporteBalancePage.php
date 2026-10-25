@@ -281,7 +281,7 @@ class ReporteBalancePage extends Page implements HasForms
                 + (float) ($movimientos->get($m->id) ?? 0)
                 - (float) ($gastos->get($m->id)     ?? 0)
                 - (float) ($compras->get($m->id)    ?? 0),
-                2
+                4
             ),
         ])->all();
     }

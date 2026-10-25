@@ -1,4 +1,4 @@
-@push('styles')
+﻿@push('styles')
 <link rel="stylesheet" href="{{ asset('tienda/css/checkout.css') }}?v=2">
 @endpush
 
@@ -158,9 +158,9 @@
                                 @endif
                                 @if ($disponible)
                                     <span class="cr-precio-unit-mob">
-                                        S/ {{ number_format($totalLinea, 2) }}
+                                        S/ {{ fmt_precio($totalLinea) }}
                                         @if ($item->cantidad > 1)
-                                            <small style="font-weight:400;color:#6b7280;font-size:.7em"> · c/u S/ {{ number_format($item->precio_unitario, 2) }}</small>
+                                            <small style="font-weight:400;color:#6b7280;font-size:.7em"> · c/u S/ {{ fmt_precio($item->precio_unitario) }}</small>
                                         @endif
                                     </span>
                                 @endif
@@ -189,9 +189,9 @@
 
                             <div class="cr-precio-wrap">
                                 @if ($disponible)
-                                    <span class="cr-precio">S/ {{ number_format($totalLinea, 2) }}</span>
+                                    <span class="cr-precio">S/ {{ fmt_precio($totalLinea) }}</span>
                                     @if ($item->cantidad > 1)
-                                        <span class="cr-precio-unit">c/u S/ {{ number_format($item->precio_unitario, 2) }}</span>
+                                        <span class="cr-precio-unit">c/u S/ {{ fmt_precio($item->precio_unitario) }}</span>
                                     @endif
                                 @else
                                     <span class="cr-precio" style="color:#d1d5db">—</span>
@@ -229,25 +229,25 @@
                         Subtotal
                         <small class="cr-resumen-hint">({{ $items->count() }} {{ $items->count() === 1 ? 'producto' : 'productos' }})</small>
                     </span>
-                    <span class="cr-resumen-valor">S/ {{ number_format($subtotal, 2) }}</span>
+                    <span class="cr-resumen-valor">S/ {{ fmt_precio($subtotal) }}</span>
                 </div>
                 @include('livewire.tienda.partials.cupon-box', ['cuponDescuento' => $cuponDescuento])
                 <div class="cr-resumen-divider"></div>
                 @if ($cuponDescuento > 0)
                 <div class="cr-resumen-linea cr-resumen-linea--descuento">
                     <span class="cr-resumen-label">Descuento <small class="cr-cupon-badge-tag">{{ $cuponCodigo }}</small></span>
-                    <span class="cr-resumen-valor cr-resumen-valor--verde">−S/ {{ number_format($cuponDescuento, 2) }}</span>
+                    <span class="cr-resumen-valor cr-resumen-valor--verde">−S/ {{ fmt_precio($cuponDescuento) }}</span>
                 </div>
                 @endif
                 @if ($costoEnvio > 0)
                 <div class="cr-resumen-linea">
                     <span class="cr-resumen-label">Envío</span>
-                    <span class="cr-resumen-valor">S/ {{ number_format($costoEnvio, 2) }}</span>
+                    <span class="cr-resumen-valor">S/ {{ fmt_precio($costoEnvio) }}</span>
                 </div>
                 @endif
                 <div class="cr-resumen-total">
                     <span class="cr-resumen-total-label">Total</span>
-                    <span class="cr-resumen-total-valor">S/ {{ number_format($total, 2) }}</span>
+                    <span class="cr-resumen-total-valor">S/ {{ fmt_precio($total) }}</span>
                 </div>
                 @php $hayDisponibles = collect($disponibilidad)->contains(true); @endphp
                 <button type="button"
@@ -338,9 +338,9 @@
                                     <span class="cr-no-disp-badge">No disponible</span>
                                 @else
                                     <span class="cr-precio-unit-mob">
-                                        S/ {{ number_format($totalLinea, 2) }}
+                                        S/ {{ fmt_precio($totalLinea) }}
                                         @if ($item->cantidad > 1)
-                                            <small style="font-weight:400;color:#6b7280;font-size:.7em"> · c/u S/ {{ number_format($item->precio_unitario, 2) }}</small>
+                                            <small style="font-weight:400;color:#6b7280;font-size:.7em"> · c/u S/ {{ fmt_precio($item->precio_unitario) }}</small>
                                         @endif
                                     </span>
                                 @endif
@@ -369,9 +369,9 @@
 
                             <div class="cr-precio-wrap">
                                 @if ($disponible)
-                                    <span class="cr-precio">S/ {{ number_format($totalLinea, 2) }}</span>
+                                    <span class="cr-precio">S/ {{ fmt_precio($totalLinea) }}</span>
                                     @if ($item->cantidad > 1)
-                                        <span class="cr-precio-unit">c/u S/ {{ number_format($item->precio_unitario, 2) }}</span>
+                                        <span class="cr-precio-unit">c/u S/ {{ fmt_precio($item->precio_unitario) }}</span>
                                     @endif
                                 @else
                                     <span class="cr-precio" style="color:#d1d5db">—</span>
@@ -412,19 +412,19 @@
                         Subtotal
                         <small class="cr-resumen-hint">({{ $countDisp }} {{ $countDisp === 1 ? 'producto' : 'productos' }})</small>
                     </span>
-                    <span class="cr-resumen-valor">S/ {{ number_format($subtotal, 2) }}</span>
+                    <span class="cr-resumen-valor">S/ {{ fmt_precio($subtotal) }}</span>
                 </div>
                 @include('livewire.tienda.partials.cupon-box', ['cuponDescuento' => $cuponDescuento])
                 <div class="cr-resumen-divider"></div>
                 @if ($cuponDescuento > 0)
                 <div class="cr-resumen-linea cr-resumen-linea--descuento">
                     <span class="cr-resumen-label">Descuento <small class="cr-cupon-badge-tag">{{ $cuponCodigo }}</small></span>
-                    <span class="cr-resumen-valor cr-resumen-valor--verde">−S/ {{ number_format($cuponDescuento, 2) }}</span>
+                    <span class="cr-resumen-valor cr-resumen-valor--verde">−S/ {{ fmt_precio($cuponDescuento) }}</span>
                 </div>
                 @endif
                 <div class="cr-resumen-total">
                     <span class="cr-resumen-total-label">Total</span>
-                    <span class="cr-resumen-total-valor">S/ {{ number_format($total, 2) }}</span>
+                    <span class="cr-resumen-total-valor">S/ {{ fmt_precio($total) }}</span>
                 </div>
                 <button type="button"
                         class="cr-btn-orden {{ $hayDisponiblesGuest ? 'cr-btn-orden--activo' : '' }}"
@@ -547,12 +547,12 @@
         @if ($cuponDescuento > 0)
         <div class="conf-modal__descuento">
             <span>Descuento <small class="cr-cupon-badge-tag">{{ $cuponCodigo }}</small></span>
-            <span style="color:#16a34a;font-weight:600">−S/ {{ number_format($cuponDescuento, 2) }}</span>
+            <span style="color:#16a34a;font-weight:600">−S/ {{ fmt_precio($cuponDescuento) }}</span>
         </div>
         @endif
         <div class="conf-modal__total">
             <span>Total a pagar</span>
-            <span class="conf-modal__total-valor">S/ {{ number_format($total, 2) }}</span>
+            <span class="conf-modal__total-valor">S/ {{ fmt_precio($total) }}</span>
         </div>
 
         <div class="conf-modal__acciones">
@@ -598,7 +598,7 @@
             </p>
 
             <div class="ord-modal__total">
-                Total a pagar: <strong>S/ {{ number_format($ordenTotal, 2) }}</strong>
+                Total a pagar: <strong>S/ {{ fmt_precio($ordenTotal) }}</strong>
             </div>
 
             <a href="{{ $whatsappUrl }}"

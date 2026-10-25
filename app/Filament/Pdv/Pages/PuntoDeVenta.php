@@ -150,6 +150,10 @@ class PuntoDeVenta extends Page
         if (! $serie) { return; }
         $this->tipoComprobante = $tipo;
         $this->serieId = $serie->id;
+
+        // Avisar a Alpine para que redondee los precios del carrito en el cliente
+        $dec = $tipo === TipoComprobante::Ticket->value ? 4 : 2;
+        $this->js("window.dispatchEvent(new CustomEvent('pdv-redondear-precios',{detail:{dec:{$dec}}}))");
     }
 
     private function autoSeleccionarComprobante(): void
@@ -497,7 +501,7 @@ class PuntoDeVenta extends Page
     {
         if (! isset($this->carrito[$key])) { return; }
         $carrito = $this->carrito;
-        $carrito[$key]['precio'] = round(max(0.01, $precio), 2);
+        $carrito[$key]['precio'] = round(max(0.0001, $precio), $this->esTicket() ? 4 : 2);
         $this->carrito = $carrito;
         $this->syncAlpineStore();
     }
@@ -601,6 +605,11 @@ class PuntoDeVenta extends Page
 
     private function pushCarrito(string $key, string $tipo, int $id, string $nombre, float $precio, bool $esCortesia = false, bool $esDecimal = false, float $precioNormal = 0, bool $puedeCortesia = false, float $cantidadAgregar = 1.0, array $extra = []): void
     {
+        $dec            = $this->esTicket() ? 4 : 2;
+        $precioOriginal = round($precioNormal ?: $precio, 4); // precio catálogo, siempre 4 dec
+        $precio         = round($precio, $dec);
+        $precioNormal   = round($precioOriginal, $dec);       // misma precisión que precio
+
         $carrito = $this->carrito;
         if (isset($carrito[$key])) {
             $carrito[$key]['cantidad'] += $cantidadAgregar;
@@ -612,12 +621,13 @@ class PuntoDeVenta extends Page
             return;
         } else {
             $carrito[$key] = array_merge([
-                'key'           => $key,
-                'tipo'          => $tipo,
-                'id'            => $id,
-                'nombre'        => $nombre,
-                'precio'        => $precio,
-                'precio_normal' => $precioNormal ?: $precio,
+                'key'            => $key,
+                'tipo'           => $tipo,
+                'id'             => $id,
+                'nombre'         => $nombre,
+                'precio'         => $precio,
+                'precio_normal'  => $precioNormal,
+                'precio_original'=> $precioOriginal,
                 'cortesia'      => $esCortesia,
                 'puede_cortesia'=> $puedeCortesia,
                 'decimal'       => $esDecimal,
@@ -695,7 +705,7 @@ class PuntoDeVenta extends Page
 
         $this->autoSeleccionarEfectivo();
         if ($this->metodoPagoId) {
-            $this->montoPagoInput = number_format($this->getSaldoRestante(), 2, '.', '');
+            $this->montoPagoInput = fmt_precio($this->getSaldoRestante());
         }
     }
 
@@ -729,7 +739,7 @@ class PuntoDeVenta extends Page
         $this->metodoPagoId   = $id;
         $this->pagoReferencia = '';
         $saldo = $this->getSaldoRestante();
-        $this->montoPagoInput = $saldo > 0 ? number_format($saldo, 2, '.', '') : '0.00';
+        $this->montoPagoInput = $saldo > 0 ? fmt_precio($saldo) : '0.00';
     }
 
     public function setMontoExacto(): void
@@ -737,7 +747,7 @@ class PuntoDeVenta extends Page
         $this->autoSeleccionarEfectivo();
 
         $saldo = $this->getSaldoRestante();
-        $this->montoPagoInput = number_format(max(0, $saldo), 2, '.', '');
+        $this->montoPagoInput = fmt_precio(max(0, $saldo));
     }
 
     public function ajustarMonto(float $delta): void
@@ -745,7 +755,7 @@ class PuntoDeVenta extends Page
         $this->autoSeleccionarEfectivo();
 
         $actual = (float) str_replace(',', '.', $this->montoPagoInput ?: '0');
-        $this->montoPagoInput = number_format(max(0, $actual + $delta), 2, '.', '');
+        $this->montoPagoInput = fmt_precio(max(0, $actual + $delta));
     }
 
     private function autoSeleccionarEfectivo(): void
@@ -810,7 +820,7 @@ class PuntoDeVenta extends Page
         }
 
         $saldo = $this->getSaldoRestante();
-        $this->montoPagoInput = $saldo > 0 ? number_format($saldo, 2, '.', '') : '0.00';
+        $this->montoPagoInput = $saldo > 0 ? fmt_precio($saldo) : '0.00';
         $this->pagoReferencia = '';
     }
 
@@ -822,7 +832,7 @@ class PuntoDeVenta extends Page
 
         $saldo = $this->getSaldoRestante();
         if ($saldo > 0) {
-            $this->montoPagoInput = number_format($saldo, 2, '.', '');
+            $this->montoPagoInput = fmt_precio($saldo);
         }
     }
 
@@ -834,7 +844,8 @@ class PuntoDeVenta extends Page
 
     public function getTotalConDescuento(): float
     {
-        return round(max(0.0, $this->getTotal() - $this->getDescuento()), 2);
+        $p = $this->esTicket() ? 4 : 2;
+        return round(max(0.0, $this->getTotal() - $this->getDescuento()), $p);
     }
 
     public function esTicket(): bool
@@ -856,12 +867,14 @@ class PuntoDeVenta extends Page
 
     public function getTotalPagado(): float
     {
-        return round(collect($this->pagosAgregados)->sum('monto'), 2);
+        $p = $this->esTicket() ? 4 : 2;
+        return round(collect($this->pagosAgregados)->sum('monto'), $p);
     }
 
     public function getSaldoRestante(): float
     {
-        return round($this->getTotalConDescuento() - $this->getTotalPagado(), 2);
+        $p = $this->esTicket() ? 4 : 2;
+        return round($this->getTotalConDescuento() - $this->getTotalPagado(), $p);
     }
 
     public function totalEsCero(): bool
@@ -892,7 +905,7 @@ class PuntoDeVenta extends Page
             return;
         }
 
-        if ($this->getSaldoRestante() > 0.01) {
+        if ($this->getSaldoRestante() > 0.001) {
             Notification::make()->title('El monto pagado es insuficiente')->warning()->send();
             return;
         }

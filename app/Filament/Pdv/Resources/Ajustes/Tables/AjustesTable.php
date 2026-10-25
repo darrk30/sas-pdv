@@ -70,7 +70,7 @@ class AjustesTable
 
                 TextColumn::make('valor_total')
                     ->label('Total')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->sortable()
                     ->alignEnd(),
 

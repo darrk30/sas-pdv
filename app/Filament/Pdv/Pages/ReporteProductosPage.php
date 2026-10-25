@@ -214,7 +214,7 @@ class ReporteProductosPage extends Page implements HasTable
 
                 TextColumn::make('ingresos')
                     ->label('Ventas')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->sortable()
                     ->alignEnd()
                     ->color('primary')
@@ -222,7 +222,7 @@ class ReporteProductosPage extends Page implements HasTable
 
                 TextColumn::make('costo')
                     ->label('Costo')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->sortable()
                     ->alignEnd()
                     ->color('danger')
@@ -230,7 +230,7 @@ class ReporteProductosPage extends Page implements HasTable
 
                 TextColumn::make('utilidad')
                     ->label('Utilidad')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->sortable()
                     ->alignEnd()
                     ->color(fn ($record): string => (float) $record->utilidad >= 0 ? 'success' : 'danger')

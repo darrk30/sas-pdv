@@ -287,7 +287,7 @@ class ReporteGananciasPage extends Page implements HasTable
                     ->label('Comprobante')
                     ->state(fn (Venta $r): string => ($r->serie?->serie ?? '---') . '-' . str_pad((string) $r->correlativo, 8, '0', STR_PAD_LEFT))
                     ->description(fn (Venta $r): ?string => (float) $r->saldo_pendiente > 0
-                        ? '⚠ Saldo: S/ ' . number_format((float) $r->saldo_pendiente, 2)
+                        ? '⚠ Saldo: S/ ' . fmt_precio((float) $r->saldo_pendiente)
                         : null)
                     ->weight('medium')
                     ->searchable(false)
@@ -310,7 +310,7 @@ class ReporteGananciasPage extends Page implements HasTable
                     ->label('Pago')
                     ->state(fn (Venta $r): string => match ($r->estado_pago ?? 'pagado') {
                         'pendiente' => 'Crédito',
-                        'parcial'   => 'Parcial · S/ ' . number_format((float) $r->monto_pagado, 2) . ' pag.',
+                        'parcial'   => 'Parcial · S/ ' . fmt_precio((float) $r->monto_pagado) . ' pag.',
                         default     => 'Contado',
                     })
                     ->badge()
@@ -323,22 +323,22 @@ class ReporteGananciasPage extends Page implements HasTable
 
                 TextColumn::make('total')
                     ->label('Total')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignEnd()
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('venta_neta')
                     ->label('Venta neta')
-                    ->state(fn (Venta $r): string => 'S/ ' . number_format((float) $r->total - (float) $r->igv, 2))
+                    ->state(fn (Venta $r): string => 'S/ ' . fmt_precio((float) $r->total - (float) $r->igv))
                     ->description(fn (Venta $r): ?string => (float) $r->igv > 0
-                        ? 'IGV: S/ ' . number_format((float) $r->igv, 2)
+                        ? 'IGV: S/ ' . fmt_precio((float) $r->igv)
                         : null)
                     ->alignEnd()
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('costo_total')
                     ->label('Costo')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignEnd()
                     ->color('danger')
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -347,12 +347,12 @@ class ReporteGananciasPage extends Page implements HasTable
                     ->label('Utilidad')
                     ->state(function (Venta $r): string {
                         $u = self::calcularUtilidad($r);
-                        return ($u['cobrada'] >= 0 ? '' : '- ') . 'S/ ' . number_format(abs($u['cobrada']), 2);
+                        return ($u['cobrada'] >= 0 ? '' : '- ') . 'S/ ' . fmt_precio(abs($u['cobrada']));
                     })
                     ->description(function (Venta $r): ?string {
                         $u = self::calcularUtilidad($r);
                         return $u['riesgo'] > 0
-                            ? 'riesgo: S/ ' . number_format($u['riesgo'], 2)
+                            ? 'riesgo: S/ ' . fmt_precio($u['riesgo'])
                             : null;
                     })
                     ->color(fn (Venta $r): string => self::calcularUtilidad($r)['cobrada'] >= 0 ? 'success' : 'danger')
@@ -362,10 +362,10 @@ class ReporteGananciasPage extends Page implements HasTable
 
                 TextColumn::make('saldo_pendiente')
                     ->label('Saldo pendiente')
-                    ->money('PEN')
+                    ->formatStateUsing(fn ($state) => $state !== null ? 'S/ ' . fmt_precio((float) $state) : null)
                     ->alignEnd()
                     ->color('warning')
-                    ->formatStateUsing(fn ($state): string => (float) $state > 0 ? 'S/ ' . number_format((float) $state, 2) : '—')
+                    ->formatStateUsing(fn ($state): string => (float) $state > 0 ? 'S/ ' . fmt_precio((float) $state) : '—')
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('margen')

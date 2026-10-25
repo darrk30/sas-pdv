@@ -67,9 +67,17 @@
                     }
 
                     $tieneDescuento = ($producto?->porcentaje_descuento ?? 0) > 0 && $producto?->precio_con_descuento;
-                    $precioUnit = $variante
-                        ? (float) $variante->precio_final
-                        : ($tieneDescuento ? (float) $producto->precio_con_descuento : (float) ($producto?->precio_venta ?? 0));
+                    $precioBase = $tieneDescuento ? (float) $producto->precio_con_descuento : (float) ($producto?->precio_venta ?? 0);
+                    if ($variante) {
+                        if ($producto?->comparte_stock) {
+                            $precioUnit = (float) $variante->precio_final;
+                        } else {
+                            $extras = $variante->valores->sum(fn($pav) => (float)($pav->precio_adicional ?? 0));
+                            $precioUnit = $precioBase + $extras;
+                        }
+                    } else {
+                        $precioUnit = $precioBase;
+                    }
 
                     $total = $precioUnit * $item->cantidad;
 
@@ -159,9 +167,9 @@
                     {{-- Precio --}}
                     <div class="ld__precio-wrap">
                         @if ($disponible)
-                            <span class="ld__precio">S/ {{ number_format($total, 2) }}</span>
+                            <span class="ld__precio">S/ {{ fmt_precio($total) }}</span>
                             @if ($item->cantidad > 1)
-                                <span class="ld__precio-unit">c/u S/ {{ number_format($precioUnit, 2) }}</span>
+                                <span class="ld__precio-unit">c/u S/ {{ fmt_precio($precioUnit) }}</span>
                             @endif
                         @else
                             <span class="ld__precio" style="color:#d1d5db">—</span>
