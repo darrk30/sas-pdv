@@ -60,7 +60,8 @@
              get carritoVacio() { return Object.keys(this.carrito).length === 0; },
              get itemCount()    { return Object.keys(this.carrito).length; },
              get carritoTotal() {
-                 return Object.values(this.carrito).reduce(function(s,it){ return it.cortesia ? s : s + parseFloat(it.cantidad) * parseFloat(it.precio); }, 0);
+                 const raw = Object.values(this.carrito).reduce(function(s,it){ return it.cortesia ? s : s + parseFloat(it.cantidad) * parseFloat(it.precio); }, 0);
+                 return Math.round(raw * 10) / 10;
              },
              init() {
                  this._t = {};
@@ -446,7 +447,7 @@
                                     </button>
                                 </div>
                                 <span class="pdv-item__subtotal" :class="{'pdv-item__subtotal--gratis': item.cortesia}"
-                                      x-text="'S/ ' + fmtPrecio(parseFloat(item.cantidad) * parseFloat(item.precio))"></span>
+                                      x-text="'S/ ' + fmtPrecio(Math.round(parseFloat(item.cantidad) * parseFloat(item.precio) * 10) / 10)"></span>
                             </div>
                         </div>
                     </div>
@@ -552,7 +553,7 @@
                          const d = parseFloat((this.descuentoInput + '').replace(',', '.') || '0');
                          return Math.max(0, Math.min(d, this.totalBase));
                      },
-                     _rnd(v) { return this.esTicket ? Math.round(v * 10000) / 10000 : Math.round(v * 100) / 100; },
+                     _rnd(v) { return this.esTicket ? Math.round(v * 10) / 10 : Math.round(v * 100) / 100; },
                      get totalConDescuento() { return this._rnd(Math.max(0, this.totalBase - this.descuento)); },
                      get totalPagado()       { return this._rnd(this.pagosAgregados.reduce((s, p) => s + parseFloat(p.monto), 0)); },
                      get saldoRestante()     { return this._rnd(this.totalConDescuento - this.totalPagado); },

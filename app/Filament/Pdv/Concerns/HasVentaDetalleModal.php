@@ -3,6 +3,7 @@
 namespace App\Filament\Pdv\Concerns;
 
 use App\Enums\CondicionPago;
+use App\Enums\TipoComprobante;
 use App\Models\Venta;
 use Carbon\Carbon;
 use Filament\Facades\Filament;
@@ -40,6 +41,7 @@ trait HasVentaDetalleModal
                                     : (string) $venta->tipo_pago,
             'estado_pago'      => $venta->estado_pago,
             'fecha_vencimiento'=> $venta->fecha_vencimiento?->format('d/m/Y'),
+            'es_ticket'        => $venta->serie?->tipo === TipoComprobante::Ticket,
             'igv'              => (float) $venta->igv,
             'descuento_total'  => (float) $venta->descuento_total,
             'cupon_codigo'     => $this->resolverCuponCodigo($venta),

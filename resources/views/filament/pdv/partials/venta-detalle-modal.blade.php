@@ -87,7 +87,7 @@
                                 {{ $item['descuento'] > 0 ? '−S/ ' . fmt_precio($item['descuento']) : '—' }}
                             </td>
                             @endif
-                            <td class="text-right vdm-num vdm-num--total">S/ {{ fmt_precio($item['total']) }}</td>
+                            <td class="text-right vdm-num vdm-num--total">S/ {{ fmt_precio($detalleVenta['es_ticket'] ? round($item['total'], 1) : $item['total']) }}</td>
                         </tr>
                         @endforeach
                     </tbody>

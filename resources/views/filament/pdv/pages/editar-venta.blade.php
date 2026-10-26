@@ -174,7 +174,7 @@
                         </div>
                     </div>
                     <div class="ev-td ev-td--sub">
-                        S/ {{ fmt_precio((float)$item['precio'] * (float)$item['cantidad']) }}
+                        S/ {{ fmt_precio($this->esTiketActual() ? round((float)$item['precio'] * (float)$item['cantidad'], 1) : (float)$item['precio'] * (float)$item['cantidad']) }}
                     </div>
                     <div class="ev-td ev-td--del">
                         <button type="button" class="ev-del-btn" wire:click="eliminarItem('{{ $key }}')" title="Quitar producto">
@@ -262,7 +262,7 @@
             <div class="ev-totales">
                 <div class="ev-total-line">
                     <span>Subtotal</span>
-                    <span>S/ {{ fmt_precio($this->getSubtotal()) }}</span>
+                    <span>S/ {{ fmt_precio($this->esTiketActual() ? round($this->getSubtotal(), 1) : $this->getSubtotal()) }}</span>
                 </div>
                 @if($this->getDescuento() > 0)
                 <div class="ev-total-line ev-total-line--desc">

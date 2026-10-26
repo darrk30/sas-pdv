@@ -99,20 +99,22 @@ class VentaService
 
             // ── Totales ───────────────────────────────────────────────────────
 
+            $tDec = $esTicket ? 1 : 2;  // precisión del TOTAL (1 dec para ticket, 2 para boleta/factura)
+
             $totalBruto        = round(array_sum(array_map(
                 fn($i) => (float) $i['precio'] * (float) $i['cantidad'],
                 $items
-            )), $pDec);
-            $totalConDescuento = round(max(0.0, $totalBruto - $descuento), $pDec);
+            )), $tDec);
+            $totalConDescuento = round(max(0.0, $totalBruto - $descuento), $tDec);
             $opGravadas        = $esTicket ? 0.0 : round($totalConDescuento / (1 + $tasaIgv), 2);
             $opInafectas       = $esTicket ? $totalConDescuento : 0.0;
             $igv               = $esTicket ? 0.0 : round($totalConDescuento - $opGravadas, 2);
 
             $pagosContado   = array_values(array_filter($pagos, fn($p) => ($p['condicion_pago'] ?? 'contado') !== 'credito'));
             $pagosCredito   = array_values(array_filter($pagos, fn($p) => ($p['condicion_pago'] ?? 'contado') === 'credito'));
-            $montoContado   = round(array_sum(array_column($pagosContado, 'monto')), $pDec);
+            $montoContado   = round(array_sum(array_column($pagosContado, 'monto')), 2);
             $montoPagado    = min($montoContado, $totalConDescuento);
-            $saldoPendiente = round(max(0.0, $totalConDescuento - $montoPagado), $pDec);
+            $saldoPendiente = round(max(0.0, $totalConDescuento - $montoPagado), 2);
             $tipoPago       = count($pagosCredito) > 0 ? TipoPago::Credito : TipoPago::Contado;
             $estadoPago     = $saldoPendiente > 0.001 ? 'pendiente' : 'pagado';
 
@@ -212,6 +214,7 @@ class VentaService
                     precioUnitario: $precio,
                     costoUnitario: $costoUnitario,
                     tasaIgv: $tasaIgv,
+                    tDec: $esTicket ? 1 : 4,
                 );
 
                 $tipoItem   = match ($tipo) {
@@ -635,11 +638,13 @@ class VentaService
             $tasaIgv  = $esTicket ? 0.0 : ($igvPct / 100);
             $pDec     = $esTicket ? 4 : 2;
 
+            $tDec = $esTicket ? 1 : 2;
+
             $totalBruto        = round(array_sum(array_map(
                 fn ($i) => (float) $i['precio'] * (float) $i['cantidad'],
                 $nuevosItems
-            )), $pDec);
-            $totalConDescuento = round(max(0.0, $totalBruto - $descuento), $pDec);
+            )), $tDec);
+            $totalConDescuento = round(max(0.0, $totalBruto - $descuento), $tDec);
             $opGravadas        = $esTicket ? 0.0 : round($totalConDescuento / (1 + $tasaIgv), 2);
             $opInafectas       = $esTicket ? $totalConDescuento : 0.0;
             $igv               = $esTicket ? 0.0 : round($totalConDescuento - $opGravadas, 2);
@@ -659,6 +664,7 @@ class VentaService
                 $calc = VentaDetalle::calcular(
                     cantidad: $cantidad, precioUnitario: $precio,
                     costoUnitario: $costoUnitario, tasaIgv: $tasaIgv,
+                    tDec: $esTicket ? 1 : 4,
                 );
 
                 $tipoItem = match ($tipo) {
@@ -720,9 +726,9 @@ class VentaService
                 $pagosContado = array_values(array_filter($pagos, fn ($p) => ($p['condicion_pago'] ?? 'contado') !== 'credito'));
                 $pagosCredito = array_values(array_filter($pagos, fn ($p) => ($p['condicion_pago'] ?? 'contado') === 'credito'));
 
-                $montoContadoSum = round(array_sum(array_column($pagosContado, 'monto')), $pDec);
+                $montoContadoSum = round(array_sum(array_column($pagosContado, 'monto')), 2);
                 $montoPagado     = min($montoContadoSum, $totalConDescuento);
-                $saldoPendiente  = round(max(0.0, $totalConDescuento - $montoPagado), $pDec);
+                $saldoPendiente  = round(max(0.0, $totalConDescuento - $montoPagado), 2);
                 $tipoPago        = count($pagosCredito) > 0 ? TipoPago::Credito : TipoPago::Contado;
                 $estadoPago      = $saldoPendiente > 0.001 ? 'pendiente' : 'pagado';
 
