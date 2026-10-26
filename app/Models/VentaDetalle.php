@@ -75,8 +75,9 @@ class VentaDetalle extends Model
         float $costoUnitario = 0,
         float $descuento = 0,
         float $tasaIgv = 0.18,
+        int   $tDec = 4,
     ): array {
-        $total         = round($precioUnitario * $cantidad, 4);
+        $total         = round($precioUnitario * $cantidad, $tDec);
         $valorUnitario = round($precioUnitario / (1 + $tasaIgv), 4);
         $subtotal      = round($cantidad * $valorUnitario, 4);
         $valorTotal    = round($subtotal - $descuento, 4);

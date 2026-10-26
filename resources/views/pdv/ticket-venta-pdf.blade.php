@@ -229,7 +229,7 @@ body {
             <td class="c">{{ $cantFmt }}</td>
             <td>{{ $d->descripcion }}</td>
             <td class="r">{{ fmt_precio($d->precio_unitario) }}</td>
-            <td class="r">{{ fmt_precio($d->total) }}</td>
+            <td class="r">{{ fmt_precio(round((float)$d->total, 1)) }}</td>
         </tr>
         @endforeach
     </tbody>

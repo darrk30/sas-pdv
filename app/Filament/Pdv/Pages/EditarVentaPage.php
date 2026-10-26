@@ -521,20 +521,18 @@ class EditarVentaPage extends Page
 
     public function getDescuento(): float
     {
-        $p = $this->esTiketActual() ? 4 : 2;
-        return round(max(0, (float) $this->descuentoInput), $p);
+        return round(max(0, (float) $this->descuentoInput), 2);
     }
 
     public function getTotal(): float
     {
-        $p = $this->esTiketActual() ? 4 : 2;
+        $p = $this->esTiketActual() ? 1 : 2;
         return round(max(0, $this->getSubtotal() - $this->getDescuento()), $p);
     }
 
     public function getTotalPagado(): float
     {
-        $p = $this->esTiketActual() ? 4 : 2;
-        return round(collect($this->pagos)->sum(fn ($p2) => (float) $p2['monto']), $p);
+        return round(collect($this->pagos)->sum(fn ($p2) => (float) $p2['monto']), 2);
     }
 
     public function getOpGravadas(): float
@@ -553,8 +551,7 @@ class EditarVentaPage extends Page
 
     public function getVuelto(): float
     {
-        $p = $this->esTiketActual() ? 4 : 2;
-        return round(max(0.0, $this->getTotalPagado() - $this->getTotal()), $p);
+        return round(max(0.0, $this->getTotalPagado() - $this->getTotal()), 2);
     }
 
     // ── Guardar ───────────────────────────────────────────────────────────────

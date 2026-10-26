@@ -844,7 +844,7 @@ class PuntoDeVenta extends Page
 
     public function getTotalConDescuento(): float
     {
-        $p = $this->esTicket() ? 4 : 2;
+        $p = $this->esTicket() ? 1 : 2;
         return round(max(0.0, $this->getTotal() - $this->getDescuento()), $p);
     }
 
@@ -867,14 +867,12 @@ class PuntoDeVenta extends Page
 
     public function getTotalPagado(): float
     {
-        $p = $this->esTicket() ? 4 : 2;
-        return round(collect($this->pagosAgregados)->sum('monto'), $p);
+        return round(collect($this->pagosAgregados)->sum('monto'), 2);
     }
 
     public function getSaldoRestante(): float
     {
-        $p = $this->esTicket() ? 4 : 2;
-        return round($this->getTotalConDescuento() - $this->getTotalPagado(), $p);
+        return round($this->getTotalConDescuento() - $this->getTotalPagado(), 2);
     }
 
     public function totalEsCero(): bool

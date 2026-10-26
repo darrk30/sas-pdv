@@ -625,7 +625,7 @@ class Carrito extends Component
         $metodoTipo        = $metodoEnvioSel?->tipo ?? null; // 'delivery' | 'provincial' | 'retiro' | null
         $requiereDireccion = in_array($metodoTipo, ['delivery', 'provincial']);
         $cuponDescuento    = $this->cuponId ? (float) $this->cuponDescuento : 0.0;
-        $total             = max(0.0, $subtotal - $cuponDescuento) + $costoEnvio;
+        $total             = round(max(0.0, $subtotal - $cuponDescuento) + $costoEnvio, 1);
 
         return view('livewire.tienda.carrito', compact(
             'items', 'subtotal', 'disponibilidad', 'puedeIncrementar', 'esGuest',
@@ -688,7 +688,7 @@ class Carrito extends Component
 
         $subtotal       = $items->sum(fn($i) => $i->precio_unitario * $i->cantidad);
         $descuentoCupon = $this->cuponId ? min((float) $this->cuponDescuento, $subtotal) : 0.0;
-        $total          = max(0.0, $subtotal - $descuentoCupon) + $costoEnvio;
+        $total          = round(max(0.0, $subtotal - $descuentoCupon) + $costoEnvio, 1);
 
         // ── Validar precios contra BD (previene manipulación por inspector) ──
         $preciosCambiados = false;
