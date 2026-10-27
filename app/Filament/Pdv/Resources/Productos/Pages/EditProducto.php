@@ -294,12 +294,12 @@ class EditProducto extends EditRecord
 
         $variantes = $producto->variantes()
             ->where('estado', 'activo')
-            ->with('valores.valor')
             ->get();
 
         foreach ($variantes as $variante) {
+            // $v es ProductoAtributoValor, que sí tiene precio_adicional directamente
             $extras = $variante->valores->sum(
-                fn($v) => (float) ($v->valor?->precio_adicional ?? 0)
+                fn($v) => (float) ($v->precio_adicional ?? 0)
             );
 
             $variante->update(['precio_final' => $precioBase + $extras]);

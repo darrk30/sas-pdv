@@ -83,7 +83,8 @@ class VentasSesionPage extends Page implements HasTable
         $opts    = [];
 
         if ($empresa->tieneModulo('punto_de_venta')) {
-            $opts['pdv'] = 'PDV';
+            $opts['pdv']          = 'PDV';
+            $opts['pdv_delivery'] = 'PDV Delivery';
         }
         if ($empresa->tieneModulo('restaurante')) {
             $opts['restaurante'] = 'Mesa';
@@ -250,19 +251,21 @@ class VentasSesionPage extends Page implements HasTable
                         $record->tipo ?? (str_starts_with($record->notas ?? '', 'Delivery') ? 'delivery' : null)
                     )
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'pdv'         => 'PDV',
-                        'restaurante' => 'Mesa',
-                        'delivery'    => 'Delivery',
-                        'llevar'      => 'Llevar',
-                        'web'         => 'Web',
-                        default       => strtoupper($state ?? '—'),
+                        'pdv'          => 'PDV',
+                        'pdv_delivery' => 'PDV Delivery',
+                        'restaurante'  => 'Mesa',
+                        'delivery'     => 'Delivery',
+                        'llevar'       => 'Llevar',
+                        'web'          => 'Web',
+                        default        => strtoupper($state ?? '—'),
                     })
                     ->color(fn (?string $state): string => match ($state) {
-                        'pdv'         => 'info',
-                        'restaurante' => 'success',
-                        'delivery'    => 'warning',
-                        'llevar'      => 'primary',
-                        default       => 'gray',
+                        'pdv'          => 'info',
+                        'pdv_delivery' => 'warning',
+                        'restaurante'  => 'success',
+                        'delivery'     => 'warning',
+                        'llevar'       => 'primary',
+                        default        => 'gray',
                     })
                     ->toggleable(isToggledHiddenByDefault: false),
 

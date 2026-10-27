@@ -62,6 +62,11 @@ class PdvPanelProvider extends PanelProvider
         );
 
         FilamentView::registerRenderHook(
+            PanelsRenderHook::GLOBAL_SEARCH_AFTER,
+            fn () => view('filament.pdv.components.crear-producto-rapido-btn'),
+        );
+
+        FilamentView::registerRenderHook(
             PanelsRenderHook::BODY_END,
             fn () => view('filament.pdv.components.barcode-scanner'),
         );
@@ -146,12 +151,14 @@ class PdvPanelProvider extends PanelProvider
                 Css::make('pdv-venta-detalle',     asset('css/venta-detalle-modal.css')),
                 Css::make('pdv-cuentas-cobrar',    asset('css/cuentas-por-cobrar.css')),
                 Css::make('pdv-editar-venta',      asset('css/editar-venta.css')),
-                Css::make('pdv-dashboard-widgets', asset('css/pdv-dashboard-widgets.css')),
+                Css::make('pdv-dashboard-widgets',    asset('css/pdv-dashboard-widgets.css')),
+                Css::make('pdv-crear-prod-rapido',   asset('css/crear-producto-rapido.css')),
             ])
             ->tenantMiddleware([
                 VerificarEmpresaActiva::class,
                 ValidarEstadoUsuarioEmpresa::class,
             ], isPersistent: true)
+            ->globalSearch(false)
             ->sidebarCollapsibleOnDesktop()
             ->maxContentWidth(Width::Full)
             ->spa()

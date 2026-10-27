@@ -62,6 +62,7 @@ class VentaService
         bool    $stockYaReservado   = false,
         ?string $fechaVencimiento   = null,
         ?string $notas              = null,
+        bool    $deliveryActivo     = false,
     ): Venta {
         $venta = null;
 
@@ -69,7 +70,8 @@ class VentaService
             $empresaId, $serieId, $clienteId, $clienteNombre, $clienteTipoDoc,
             $items, $pagos, $descuento, $despachoRequerido, $despachoDireccion,
             $despachoDepartamento, $despachoProvincia, $despachoDistrito,
-            $conceptoPrefix, $igvPct, $stockYaReservado, $fechaVencimiento, $notas, &$venta
+            $conceptoPrefix, $igvPct, $stockYaReservado, $fechaVencimiento, $notas,
+            $deliveryActivo, &$venta
         ) {
             // ── Serie / correlativo ───────────────────────────────────────────
 
@@ -130,6 +132,7 @@ class VentaService
 
             $venta = Venta::create([
                 'empresa_id'         => $empresaId,
+                'tipo'               => $deliveryActivo ? 'pdv_delivery' : 'pdv',
                 'sesion_caja_id'     => $sesionCaja->id,
                 'cliente_id'         => $clienteId,
                 'cliente_nombre'     => $clienteNombreFinal,
