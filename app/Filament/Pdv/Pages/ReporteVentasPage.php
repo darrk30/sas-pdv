@@ -222,7 +222,8 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
         $opts    = [];
 
         if ($empresa->tieneModulo('punto_de_venta')) {
-            $opts['pdv'] = 'PDV';
+            $opts['pdv']          = 'PDV';
+            $opts['pdv_delivery'] = 'PDV Delivery';
         }
         if ($empresa->tieneModulo('restaurante')) {
             $opts['restaurante'] = 'Mesa';
@@ -410,18 +411,20 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     ->label('Origen')
                     ->badge()
                     ->formatStateUsing(fn(?string $state): string => match ($state) {
-                        'pdv'         => 'PDV',
-                        'restaurante' => 'Mesa',
-                        'delivery'    => 'Delivery',
-                        'llevar'      => 'Llevar',
-                        'web'         => 'Web',
+                        'pdv'          => 'PDV',
+                        'pdv_delivery' => 'PDV Delivery',
+                        'restaurante'  => 'Mesa',
+                        'delivery'     => 'Delivery',
+                        'llevar'       => 'Llevar',
+                        'web'          => 'Web',
                         default       => strtoupper($state ?? '—'),
                     })
                     ->color(fn(?string $state): string => match ($state) {
-                        'pdv'         => 'info',
-                        'restaurante' => 'success',
-                        'delivery'    => 'warning',
-                        'llevar'      => 'primary',
+                        'pdv'          => 'info',
+                        'pdv_delivery' => 'warning',
+                        'restaurante'  => 'success',
+                        'delivery'     => 'warning',
+                        'llevar'       => 'primary',
                         default       => 'gray',
                     })
                     ->toggleable(isToggledHiddenByDefault: false),

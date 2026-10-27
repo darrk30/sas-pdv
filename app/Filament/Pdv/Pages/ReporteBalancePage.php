@@ -41,6 +41,7 @@ class ReporteBalancePage extends Page implements HasForms
     public ?string $filtroRango      = 'hoy';
     public ?string $filtroFechaDesde = null;
     public ?string $filtroFechaHasta = null;
+    public ?int    $filtroUsuario    = null;
 
     public function mount(): void
     {
@@ -51,13 +52,14 @@ class ReporteBalancePage extends Page implements HasForms
             'filtroRango'      => 'hoy',
             'filtroFechaDesde' => $hoy,
             'filtroFechaHasta' => $hoy,
+            'filtroUsuario'    => null,
         ]);
     }
 
     public function form(Schema $schema): Schema
     {
         return $schema->components([
-            Grid::make(['default' => 1, 'md' => 3])->schema([
+            Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])->schema([
                 Select::make('filtroRango')
                     ->label('Período')
                     ->options([
@@ -85,6 +87,17 @@ class ReporteBalancePage extends Page implements HasForms
                             $this->filtroFechaHasta = $hasta;
                         }
                     }),
+
+                Select::make('filtroUsuario')
+                    ->label('Vendedor')
+                    ->options(fn () => Filament::getTenant()
+                        ->usuarios()
+                        ->orderBy('name')
+                        ->pluck('name', 'users.id'))
+                    ->placeholder('Todos')
+                    ->native(false)
+                    ->live()
+                    ->afterStateUpdated(fn ($state) => $this->filtroUsuario = $state ? (int) $state : null),
 
                 DatePicker::make('filtroFechaDesde')
                     ->label('Desde')
@@ -143,6 +156,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->where('estado', 'completada')
             ->whereDate('fecha_emision', '>=', $desde)
             ->whereDate('fecha_emision', '<=', $hasta)
+            ->when($this->filtroUsuario, fn ($q) => $q->where('vendedor_id', $this->filtroUsuario))
             ->selectRaw('
                 COUNT(*) AS total_ventas,
                 COALESCE(SUM(monto_pagado), 0)    AS monto_cobrado,
@@ -157,6 +171,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->where('estado', 'aprobado')
             ->where('fecha_hora', '>=', $desde)
             ->where('fecha_hora', '<=', $hasta . ' 23:59:59')
+            ->when($this->filtroUsuario, fn ($q) => $q->where('user_id', $this->filtroUsuario))
             ->selectRaw("
                 COALESCE(SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE 0 END), 0) AS ingresos,
                 COALESCE(SUM(CASE WHEN tipo = 'egreso'  THEN monto ELSE 0 END), 0) AS egresos
@@ -172,6 +187,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->where('estado', '!=', 'anulado')
             ->where('fecha', '>=', $desde)
             ->where('fecha', '<=', $hasta)
+            ->when($this->filtroUsuario, fn ($q) => $q->where('user_id', $this->filtroUsuario))
             ->sum('monto');
 
         // Compras confirmadas del período — incluye pagado y parcial (ambos son egresos reales)
@@ -182,6 +198,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->whereIn('compras.estado_pago', ['pagado', 'parcial'])
             ->where('compras.created_at', '>=', $desde)
             ->where('compras.created_at', '<=', $hasta . ' 23:59:59')
+            ->when($this->filtroUsuario, fn ($q) => $q->where('compras.user_id', $this->filtroUsuario))
             ->sum('compra_pagos.monto');
 
         // Gastos fijos prorrateados (solo para ganancia estimada)
@@ -235,6 +252,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->whereIn('venta_pagos.metodo_pago_id', $ids)
             ->whereDate('ventas.fecha_emision', '>=', $desde)
             ->whereDate('ventas.fecha_emision', '<=', $hasta)
+            ->when($this->filtroUsuario, fn ($q) => $q->where('ventas.vendedor_id', $this->filtroUsuario))
             ->selectRaw('venta_pagos.metodo_pago_id, SUM(venta_pagos.monto) AS total')
             ->groupBy('venta_pagos.metodo_pago_id')
             ->pluck('total', 'metodo_pago_id');
@@ -246,6 +264,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->whereIn('metodo_pago_id', $ids)
             ->where('fecha_hora', '>=', $desde)
             ->where('fecha_hora', '<=', $hasta . ' 23:59:59')
+            ->when($this->filtroUsuario, fn ($q) => $q->where('user_id', $this->filtroUsuario))
             ->selectRaw("metodo_pago_id, SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE -monto END) AS saldo")
             ->groupBy('metodo_pago_id')
             ->pluck('saldo', 'metodo_pago_id');
@@ -257,6 +276,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->whereIn('metodo_pago_id', $ids)
             ->where('fecha', '>=', $desde)
             ->where('fecha', '<=', $hasta)
+            ->when($this->filtroUsuario, fn ($q) => $q->where('user_id', $this->filtroUsuario))
             ->selectRaw('metodo_pago_id, SUM(monto) AS total')
             ->groupBy('metodo_pago_id')
             ->pluck('total', 'metodo_pago_id');
@@ -270,6 +290,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->whereIn('compra_pagos.metodo_pago_id', $ids)
             ->where('compras.created_at', '>=', $desde)
             ->where('compras.created_at', '<=', $hasta . ' 23:59:59')
+            ->when($this->filtroUsuario, fn ($q) => $q->where('compras.user_id', $this->filtroUsuario))
             ->selectRaw('compra_pagos.metodo_pago_id, SUM(compra_pagos.monto) AS total')
             ->groupBy('compra_pagos.metodo_pago_id')
             ->pluck('total', 'metodo_pago_id');
@@ -298,6 +319,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->where('gastos.estado', '!=', 'anulado')
             ->whereDate('gastos.fecha', '>=', $desde)
             ->whereDate('gastos.fecha', '<=', $hasta)
+            ->when($this->filtroUsuario, fn ($q) => $q->where('gastos.user_id', $this->filtroUsuario))
             ->selectRaw('metodos_pago.id AS metodo_id, metodos_pago.nombre, SUM(gastos.monto) AS total')
             ->groupBy('metodos_pago.id', 'metodos_pago.nombre')
             ->get()
@@ -312,6 +334,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->whereIn('compras.estado_pago', ['pagado', 'parcial'])
             ->whereDate('compras.created_at', '>=', $desde)
             ->whereDate('compras.created_at', '<=', $hasta)
+            ->when($this->filtroUsuario, fn ($q) => $q->where('compras.user_id', $this->filtroUsuario))
             ->selectRaw('metodos_pago.id AS metodo_id, metodos_pago.nombre, SUM(compra_pagos.monto) AS total')
             ->groupBy('metodos_pago.id', 'metodos_pago.nombre')
             ->get()
@@ -355,6 +378,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->where('ingresos_egresos.estado', 'aprobado')
             ->whereDate('ingresos_egresos.fecha_hora', '>=', $desde)
             ->whereDate('ingresos_egresos.fecha_hora', '<=', $hasta)
+            ->when($this->filtroUsuario, fn ($q) => $q->where('ingresos_egresos.user_id', $this->filtroUsuario))
             ->selectRaw('metodos_pago.nombre, SUM(ingresos_egresos.monto) AS total')
             ->groupBy('metodos_pago.id', 'metodos_pago.nombre')
             ->get()
@@ -377,6 +401,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->where('metodos_pago.condicion_pago', 'contado')
             ->whereDate('ventas.fecha_emision', '>=', $desde)
             ->whereDate('ventas.fecha_emision', '<=', $hasta)
+            ->when($this->filtroUsuario, fn ($q) => $q->where('ventas.vendedor_id', $this->filtroUsuario))
             ->selectRaw('metodos_pago.nombre, metodos_pago.condicion_pago, SUM(venta_pagos.monto) AS total')
             ->groupBy('metodos_pago.id', 'metodos_pago.nombre', 'metodos_pago.condicion_pago')
             ->get();
@@ -390,6 +415,7 @@ class ReporteBalancePage extends Page implements HasForms
             ->where('metodos_pago.condicion_pago', 'credito')
             ->whereDate('ventas.fecha_emision', '>=', $desde)
             ->whereDate('ventas.fecha_emision', '<=', $hasta)
+            ->when($this->filtroUsuario, fn ($q) => $q->where('ventas.vendedor_id', $this->filtroUsuario))
             ->selectRaw('metodos_pago.nombre, metodos_pago.condicion_pago, SUM(ventas.saldo_pendiente) AS total')
             ->groupBy('metodos_pago.id', 'metodos_pago.nombre', 'metodos_pago.condicion_pago')
             ->get();

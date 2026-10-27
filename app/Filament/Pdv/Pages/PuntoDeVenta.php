@@ -991,6 +991,7 @@ class PuntoDeVenta extends Page
                 igvPct:                18.0,
                 fechaVencimiento:  $fechaVencimiento,
                 notas:             $notas,
+                deliveryActivo:    $this->deliveryActivo,
             );
         } catch (\Exception $e) {
             if ($e->getMessage() === '__SIN_SESION__') {

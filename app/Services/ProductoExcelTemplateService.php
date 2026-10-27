@@ -72,6 +72,16 @@ class ProductoExcelTemplateService
         'S' => ['COMPARTE_STOCK',       17, false, 'TRUE,FALSE',                        'TRUE = las presentaciones/variantes comparten el mismo stock. FALSE = cada una tiene su propio stock. Vacío = no cambia.'],
     ];
 
+    private const COLS_VARIANTES = [
+        'A' => ['CODIGO_INTERNO (*)', 20, true,  null, 'Requerido. Código interno del producto padre al que pertenece esta variante.'],
+        'B' => ['CODIGO_VARIANTE',    20, false, null, 'Código propio de la variante. Se genera automáticamente si se deja vacío.'],
+        'C' => ['COMBINACION (*)',    40, true,  null, "Requerido. Define los atributos y valores de la variante.\nFormato: ATRIBUTO:VALOR / ATRIBUTO2:VALOR2\nEjemplo: Talla:M / Color:Rojo\n\nSepara múltiples atributos con  /  (barra con espacios).\nEl nombre del atributo y el valor se crean si no existen."],
+        'D' => ['PRECIO_EXTRA',       28, false, null, "Precio adicional por valor de atributo.\n\n• Si la combinación tiene UN solo atributo:\n  Escribe solo el número. Ej: 10\n  (se aplica al único valor)\n\n• Si la combinación tiene MÁS de un atributo:\n  Especifica a qué valor(es) con el formato:\n  Valor:precio\n  Ej:  M:5            (solo Talla:M recibe +5)\n  Ej:  M:5 / Rojo:3  (M recibe +5 y Rojo +3)\n\n  Los valores no mencionados quedan en 0."],
+        'E' => ['PRECIO_COSTO',       15, false, null, 'Costo de esta variante. Vacío = usa el costo del producto.'],
+        'F' => ['STOCK_INICIAL',      14, false, null, 'Stock de arranque para esta variante. Se aplica si el producto tiene control de stock y el stock actual es 0.'],
+        'G' => ['CODIGO_BARRAS',      18, false, null, 'Código de barras específico de esta variante (EAN-13, Code128, etc.).'],
+    ];
+
     private const COLS_PRECIOS = [
         'A' => ['CODIGO_INTERNO (*)',    20, true,  null,   'Requerido. Identifica el producto.'],
         'B' => ['PRECIO_VENTA',         16, false, null,   'Nuevo precio de venta. Vacío = no cambia.'],
@@ -133,7 +143,9 @@ class ProductoExcelTemplateService
 
     public function generarPlantillaNuevos(): Spreadsheet
     {
-        return $this->construir('Importar Nuevos Productos', self::COLS_NUEVOS, self::EJEMPLO_NUEVOS);
+        $spreadsheet = $this->construir('Productos', self::COLS_NUEVOS, self::EJEMPLO_NUEVOS);
+        $this->agregarHojaVariantes($spreadsheet);
+        return $spreadsheet;
     }
 
     public function generarPlantillaActualizar(): Spreadsheet
@@ -144,6 +156,50 @@ class ProductoExcelTemplateService
     public function generarPlantillaPrecios(): Spreadsheet
     {
         return $this->construir('Actualizar Precios', self::COLS_PRECIOS, self::EJEMPLO_PRECIOS);
+    }
+
+    // ── Hoja de variantes ────────────────────────────────────────────────────
+
+    private function agregarHojaVariantes(Spreadsheet $spreadsheet): void
+    {
+        $sheet    = $spreadsheet->createSheet();
+        $sheet->setTitle('Variantes');
+        $columnas = self::COLS_VARIANTES;
+        $ultima   = array_key_last($columnas);
+
+        $this->escribirHeaders($sheet, $columnas);
+        $this->aplicarComentarios($sheet, $columnas);
+        $this->aplicarAnchos($sheet, $columnas);
+        $this->congelarPrimeraFila($sheet);
+
+        // Filas de ejemplo (varias para ilustrar el formato)
+        // Ejemplos: 1 atributo → precio directo | 2 atributos → Valor:precio
+        $ejemplos = [
+            ['A' => 'PERFUME-001', 'B' => '',          'C' => 'Presentación:30ml',       'D' => '0',          'E' => '8.00',  'F' => '50', 'G' => ''],
+            ['A' => 'PERFUME-001', 'B' => '',          'C' => 'Presentación:50ml',       'D' => '10',         'E' => '8.00',  'F' => '30', 'G' => ''],
+            ['A' => 'PERFUME-001', 'B' => '',          'C' => 'Presentación:100ml',      'D' => '30',         'E' => '8.00',  'F' => '20', 'G' => ''],
+            ['A' => 'CAMISETA-001','B' => 'CAM-S-BL',  'C' => 'Talla:S / Color:Blanco', 'D' => '',           'E' => '12.00', 'F' => '15', 'G' => '7501234000001'],
+            ['A' => 'CAMISETA-001','B' => '',           'C' => 'Talla:M / Color:Blanco', 'D' => 'M:5',        'E' => '12.00', 'F' => '10', 'G' => ''],
+            ['A' => 'CAMISETA-001','B' => '',           'C' => 'Talla:M / Color:Negro',  'D' => 'M:5 / Negro:3','E' => '12.00', 'F' => '8', 'G' => ''],
+        ];
+
+        foreach ($ejemplos as $i => $ej) {
+            $fila = self::FILA_EJEMPLO + $i;
+            foreach ($columnas as $col => $_) {
+                if (isset($ej[$col])) {
+                    $sheet->setCellValue($col . $fila, $ej[$col]);
+                }
+            }
+            $sheet->getStyle('A' . $fila . ':' . $ultima . $fila)->applyFromArray([
+                'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_EJEMPLO]],
+                'font'    => ['italic' => true, 'size' => 11, 'color' => ['rgb' => '92400E']],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::COLOR_BORDE]]],
+            ]);
+        }
+
+        $sheet->getComment('A' . self::FILA_EJEMPLO)
+            ->getText()
+            ->createTextRun('Estas son filas de EJEMPLO. Puedes modificarlas o eliminarlas.');
     }
 
     // ── Construcción interna ──────────────────────────────────────────────────
