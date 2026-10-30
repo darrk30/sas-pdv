@@ -11,9 +11,14 @@
 .cats-strip {
     margin-top: 1.25rem;
     margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 .cats-strip__inner {
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -21,11 +26,46 @@
     scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding-bottom: 4px; /* evita que el box-shadow se corte */
+    padding-bottom: 4px;
+    cursor: grab;
+    user-select: none;
+}
+
+.cats-strip__inner--drag {
+    cursor: grabbing;
 }
 
 .cats-strip__inner::-webkit-scrollbar {
     display: none;
+}
+
+/* ── Botones de flecha (solo PC) ─────────────────────────────── */
+.cats-strip__btn {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 1.5px solid var(--color-borde);
+    background: var(--color-fondo-card);
+    color: var(--color-texto-muted);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color .15s, color .15s, background .15s;
+}
+
+.cats-strip__btn:hover {
+    border-color: var(--color-primario);
+    color: var(--color-primario);
+    background: rgba(79,171,234,.07);
+}
+
+@media (max-width: 768px) {
+    .cats-strip__btn { display: none; }
+    .cats-strip { gap: 0; }
 }
 
 /* ── Pill ────────────────────────────────────────────────────── */

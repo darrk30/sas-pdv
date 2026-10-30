@@ -24,7 +24,7 @@ class GestionInventarioStatsWidget extends BaseWidget
         $counts = Inventario::query()
             ->where('empresa_id', Filament::getTenant()->id)
             ->where('estado_almacen', 'activo')
-            ->whereHas('producto', fn (Builder $q) => $q->where('estado', '!=', 'archivado'))
+            ->whereHas('producto', fn (Builder $q) => $q->where('estado', '!=', 'archivado')->where('control_de_stock', true))
             ->selectRaw("
                 SUM(CASE WHEN estado_inventario = 'disponible'   THEN 1 ELSE 0 END) AS disponible,
                 SUM(CASE WHEN estado_inventario = 'por_agotarse' THEN 1 ELSE 0 END) AS por_agotarse,

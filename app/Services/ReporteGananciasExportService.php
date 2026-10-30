@@ -372,4 +372,67 @@ class ReporteGananciasExportService
             'Content-Disposition' => 'attachment; filename="' . $nombre . '"',
         ]);
     }
+
+    // ── Guardar en disco (para cola) ──────────────────────────────────────────
+
+    public function guardarExcel(
+        Collection $ventas,
+        array $filtrosInfo,
+        array $columnasVisibles,
+        array $resumen,
+        Empresa $empresa,
+        string $rutaAbsoluta
+    ): void {
+        $activeColumns = $this->getActiveColumns($columnasVisibles);
+
+        $writer = new \OpenSpout\Writer\XLSX\Writer();
+        $writer->openToFile($rutaAbsoluta);
+        $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues(array_values($activeColumns)));
+        foreach ($ventas as $venta) {
+            $row = [];
+            foreach (array_keys($activeColumns) as $key) {
+                $row[] = $this->valor($venta, $key);
+            }
+            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($row));
+        }
+        $writer->close();
+    }
+
+    public function guardarPdf(
+        Collection $ventas,
+        array $filtrosInfo,
+        array $columnasVisibles,
+        array $resumen,
+        Empresa $empresa,
+        string $rutaAbsoluta,
+        string $usuarioNombre = 'Sistema'
+    ): void {
+        $activeColumns = $this->getActiveColumns($columnasVisibles);
+
+        $rows = $ventas->map(function (Venta $v) use ($activeColumns): array {
+            $row = ['_saldo_pendiente' => (float) $v->saldo_pendiente];
+            foreach (array_keys($activeColumns) as $key) {
+                $row[$key] = $this->valor($v, $key);
+            }
+            return $row;
+        });
+
+        $totales = [
+            'total'           => (float) $ventas->sum('total'),
+            'venta_neta'      => (float) $ventas->sum(fn($v) => (float) $v->total - (float) $v->igv),
+            'costo_total'     => (float) $ventas->sum('costo_total'),
+            'utilidad'        => (float) $ventas->sum(fn($v) => self::calcularUtilidad($v)['cobrada']),
+            'utilidad_riesgo' => (float) $ventas->sum(fn($v) => self::calcularUtilidad($v)['riesgo']),
+            'saldo_pendiente' => (float) $ventas->sum('saldo_pendiente'),
+        ];
+
+        $moneyKeys = self::MONEY_COLS;
+
+        Pdf::loadView('reports.reporte-ganancias-pdf', compact(
+            'ventas', 'rows', 'filtrosInfo', 'activeColumns',
+            'resumen', 'empresa', 'totales', 'moneyKeys', 'usuarioNombre'
+        ))->setPaper('a4', 'landscape')
+        ->setOption(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => false, 'defaultFont' => 'DejaVu Sans'])
+        ->save($rutaAbsoluta);
+    }
 }

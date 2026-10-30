@@ -284,4 +284,66 @@ class ReporteVendedoresExportService
             'Content-Disposition' => 'attachment; filename="' . $nombre . '"',
         ]);
     }
+
+    // ── Guardar en disco (para cola) ──────────────────────────────────────────
+
+    public function guardarExcel(
+        Collection $vendedores,
+        array $filtrosInfo,
+        array $resumen,
+        Empresa $empresa,
+        string $rutaAbsoluta
+    ): void {
+        $writer = new \OpenSpout\Writer\XLSX\Writer();
+        $writer->openToFile($rutaAbsoluta);
+        $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues(array_values(self::COLS)));
+        foreach ($vendedores as $v) {
+            $row = [];
+            foreach (array_keys(self::COLS) as $key) {
+                $row[] = $this->valor($v, $key);
+            }
+            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($row));
+        }
+        $writer->close();
+    }
+
+    public function guardarPdf(
+        Collection $vendedores,
+        array $filtrosInfo,
+        array $resumen,
+        Empresa $empresa,
+        string $rutaAbsoluta,
+        string $usuarioNombre = 'Sistema'
+    ): void {
+        $moneyKeys = self::MONEY_COLS;
+        $cols      = self::COLS;
+
+        $keyedRows = $vendedores->map(function ($r) {
+            $row = [];
+            foreach (array_keys(self::COLS) as $key) {
+                $row[$key] = $this->valor($r, $key);
+            }
+            return $row;
+        });
+
+        $totales = [];
+        foreach (self::MONEY_COLS as $key) {
+            $totales[$key] = $vendedores->sum(fn($r) => (float) ($r[$key] ?? 0));
+        }
+        $totales['cantidad'] = $vendedores->sum(fn($r) => (int) ($r['cantidad'] ?? 0));
+
+        Pdf::loadView('reports.reporte-vendedores-pdf', [
+            'vendedores'    => $vendedores,
+            'rows'          => $keyedRows,
+            'cols'          => $cols,
+            'filtrosInfo'   => $filtrosInfo,
+            'resumen'       => $resumen,
+            'empresa'       => $empresa,
+            'totales'       => $totales,
+            'moneyKeys'     => $moneyKeys,
+            'usuarioNombre' => $usuarioNombre,
+        ])->setPaper('a4', 'landscape')
+        ->setOption(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => false, 'defaultFont' => 'DejaVu Sans'])
+        ->save($rutaAbsoluta);
+    }
 }

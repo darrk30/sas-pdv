@@ -10,6 +10,8 @@ class ReporteGananciasStatsWidget extends BaseWidget
 {
     protected static bool $isDiscovered = false;
 
+    protected ?string $pollingInterval = null;
+
     protected int|array|null $columns = ['default' => 2, 'sm' => 2, 'lg' => 4];
 
     #[Reactive]

@@ -325,4 +325,59 @@ class ReporteComprasExportService
             'Content-Disposition' => 'attachment; filename="' . $nombre . '"',
         ]);
     }
+
+    // ── Guardar en disco (para cola) ──────────────────────────────────────────
+
+    public function guardarExcel(
+        Collection $compras,
+        array $filtrosInfo,
+        array $columnasVisibles,
+        array $resumen,
+        Empresa $empresa,
+        string $rutaAbsoluta
+    ): void {
+        $activeColumns = $this->getActiveColumns($columnasVisibles);
+
+        $writer = new \OpenSpout\Writer\XLSX\Writer();
+        $writer->openToFile($rutaAbsoluta);
+        $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues(array_values($activeColumns)));
+        foreach ($compras as $compra) {
+            $row = [];
+            foreach (array_keys($activeColumns) as $key) {
+                $row[] = $this->valor($compra, $key);
+            }
+            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($row));
+        }
+        $writer->close();
+    }
+
+    public function guardarPdf(
+        Collection $compras,
+        array $filtrosInfo,
+        array $columnasVisibles,
+        array $resumen,
+        Empresa $empresa,
+        string $rutaAbsoluta,
+        string $usuarioNombre = 'Sistema'
+    ): void {
+        $activeColumns = $this->getActiveColumns($columnasVisibles);
+
+        $rows = $compras->map(function (Compra $c) use ($activeColumns): array {
+            $row = [];
+            foreach (array_keys($activeColumns) as $key) {
+                $row[$key] = $this->valor($c, $key);
+            }
+            return $row;
+        });
+
+        $totales   = ['total' => (float) $compras->sum('total'), 'saldo' => $resumen['saldo'] ?? 0];
+        $moneyKeys = self::MONEY_COLS;
+
+        Pdf::loadView('reports.reporte-compras-pdf', compact(
+            'compras', 'rows', 'filtrosInfo', 'activeColumns',
+            'resumen', 'empresa', 'totales', 'moneyKeys', 'usuarioNombre'
+        ))->setPaper('a4', 'landscape')
+        ->setOption(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => false, 'defaultFont' => 'DejaVu Sans'])
+        ->save($rutaAbsoluta);
+    }
 }

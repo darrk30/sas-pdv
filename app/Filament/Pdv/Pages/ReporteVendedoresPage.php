@@ -3,7 +3,8 @@
 namespace App\Filament\Pdv\Pages;
 
 use App\Enums\EstadoVenta;
-use App\Services\ReporteVendedoresExportService;
+use App\Jobs\GenerarReporteJob;
+use App\Models\ReporteDescarga;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -280,24 +281,64 @@ class ReporteVendedoresPage extends Page implements HasForms, HasTable
                 ->label('Excel')
                 ->icon('heroicon-o-table-cells')
                 ->color('success')
-                ->action(fn() => app(ReporteVendedoresExportService::class)->generarExcel(
-                    $this->getVendedoresParaExportar(),
-                    $this->getFiltrosInfo(),
-                    $this->getResumen(),
-                    Filament::getTenant(),
-                )),
+                ->action(fn() => $this->despacharReporte('excel')),
 
             Action::make('descargarPdf')
                 ->label('PDF')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('danger')
-                ->action(fn() => app(ReporteVendedoresExportService::class)->generarPdf(
-                    $this->getVendedoresParaExportar(),
-                    $this->getFiltrosInfo(),
-                    $this->getResumen(),
-                    Filament::getTenant(),
-                )),
+                ->action(fn() => $this->despacharReporte('pdf')),
         ];
+    }
+
+    private const UMBRAL_COLA_EXCEL = 1000;
+    private const UMBRAL_COLA_PDF   = 1000;
+
+    private function despacharReporte(string $tipo): mixed
+    {
+        // Vendedores siempre tiene pocas filas (una por vendedor)
+        $vendedores = $this->getVendedoresParaExportar();
+        $count      = $vendedores->count();
+        $umbral     = $tipo === 'pdf' ? self::UMBRAL_COLA_PDF : self::UMBRAL_COLA_EXCEL;
+
+        if ($count <= $umbral) {
+            $service = app(\App\Services\ReporteVendedoresExportService::class);
+
+            return $tipo === 'pdf'
+                ? $service->generarPdf($vendedores, $this->getFiltrosInfo(), $this->getResumen(), Filament::getTenant())
+                : $service->generarExcel($vendedores, $this->getFiltrosInfo(), $this->getResumen(), Filament::getTenant());
+        }
+
+        $reporte = ReporteDescarga::create([
+            'empresa_id' => Filament::getTenant()->id,
+            'user_id'    => auth()->id(),
+            'tipo'       => $tipo,
+            'reporte'    => 'vendedores',
+            'estado'     => 'pendiente',
+            'filtros'    => [
+                'filtroFechaDesde' => $this->filtroFechaDesde,
+                'filtroFechaHasta' => $this->filtroFechaHasta,
+                'filtroVendedor'   => $this->filtroVendedor,
+                'filtrosInfo'      => $this->getFiltrosInfo(),
+                'resumen'          => $this->getResumen(),
+            ],
+        ]);
+
+        GenerarReporteJob::dispatch($reporte->id);
+
+        \Filament\Notifications\Notification::make()
+            ->title('Reporte en proceso')
+            ->body("Son {$count} registros, se genera en segundo plano. Recibirás una notificación cuando esté listo.")
+            ->info()
+            ->actions([
+                Action::make('ver_descargas')
+                    ->label('Ver descargas')
+                    ->url(ReporteDescargasPage::getUrl(panel: 'pdv', tenant: Filament::getTenant()))
+                    ->button(),
+            ])
+            ->send();
+
+        return null;
     }
 
     // ── Tabla Filament ────────────────────────────────────────────────────────

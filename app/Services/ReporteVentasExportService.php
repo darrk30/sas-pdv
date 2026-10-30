@@ -115,6 +115,76 @@ class ReporteVentasExportService
         ]);
     }
 
+    public function guardarExcel(
+        Collection $ventas,
+        array $filtrosInfo,
+        array $columnasVisibles,
+        array $resumen,
+        Empresa $empresa,
+        string $rutaAbsoluta
+    ): void {
+        $activeColumns = $this->getActiveColumns($columnasVisibles);
+
+        $writer = new \OpenSpout\Writer\XLSX\Writer();
+        $writer->openToFile($rutaAbsoluta);
+
+        // Fila de encabezados
+        $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues(array_values($activeColumns)));
+
+        // Filas de datos
+        foreach ($ventas as $venta) {
+            $row = [];
+            foreach (array_keys($activeColumns) as $key) {
+                $row[] = $this->valor($venta, $key);
+            }
+            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($row));
+        }
+
+        $writer->close();
+    }
+
+    public function guardarPdf(
+        Collection $ventas,
+        array $filtrosInfo,
+        array $columnasVisibles,
+        array $resumen,
+        Empresa $empresa,
+        string $rutaAbsoluta,
+        string $usuarioNombre = 'Sistema'
+    ): void {
+        $activeColumns = $this->getActiveColumns($columnasVisibles);
+
+        $rows = $ventas->map(function (Venta $v) use ($activeColumns) {
+            $row = ['_saldo_pendiente' => (float) ($v->saldo_pendiente ?? 0)];
+            foreach (array_keys($activeColumns) as $key) {
+                $row[$key] = $this->valor($v, $key);
+            }
+            return $row;
+        });
+
+        $completadas = $ventas->where('estado', \App\Enums\EstadoVenta::Completada);
+        $totales = [
+            'op_gravadas'     => (float) $completadas->sum('op_gravadas'),
+            'igv'             => (float) $completadas->sum('igv'),
+            'descuento_total' => (float) $ventas->sum('descuento_total'),
+            'total'           => (float) $ventas->sum('total'),
+            'saldo_pendiente' => (float) $completadas->sum('saldo_pendiente'),
+        ];
+
+        $moneyKeys = self::MONEY_COLS;
+
+        Pdf::loadView('reports.reporte-ventas-pdf', compact(
+            'ventas', 'rows', 'filtrosInfo', 'activeColumns',
+            'resumen', 'empresa', 'totales', 'moneyKeys', 'usuarioNombre'
+        ))->setPaper('a4', 'landscape')
+        ->setOption([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled'      => false,
+            'defaultFont'          => 'DejaVu Sans',
+        ])
+        ->save($rutaAbsoluta);
+    }
+
     private function buildSpreadsheet(
         Collection $ventas,
         array $filtrosInfo,

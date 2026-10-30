@@ -5,7 +5,8 @@ namespace App\Filament\Pdv\Pages;
 use App\Filament\Pdv\Widgets\GestionInventarioStatsWidget;
 use App\Models\AjusteDetalle;
 use App\Models\Inventario;
-use App\Services\InventarioExportService;
+use App\Jobs\GenerarReporteJob;
+use App\Models\ReporteDescarga;
 use BackedEnum;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use Filament\Facades\Filament;
@@ -65,7 +66,7 @@ class GestionInventario extends Page implements HasTable
         $counts = Inventario::query()
             ->where('empresa_id', $empresaId)
             ->where('estado_almacen', 'activo')
-            ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado'))
+            ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado')->where('control_de_stock', true))
             ->selectRaw("
                 SUM(CASE WHEN estado_inventario = 'disponible'   THEN 1 ELSE 0 END) AS disponible,
                 SUM(CASE WHEN estado_inventario = 'por_agotarse' THEN 1 ELSE 0 END) AS por_agotarse,
@@ -131,7 +132,7 @@ class GestionInventario extends Page implements HasTable
             ->query(
                 Inventario::query()
                     ->where('estado_almacen', 'activo')
-                    ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado'))
+                    ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado')->where('control_de_stock', true))
                     ->orderByRaw("FIELD(estado_inventario, 'disponible', 'por_agotarse', 'agotado')")
                     ->with([
                         'producto',
@@ -258,17 +259,61 @@ class GestionInventario extends Page implements HasTable
                     ->label('Excel')
                     ->icon('heroicon-o-table-cells')
                     ->color('success')
-                    ->action(fn() => app(InventarioExportService::class)
-                        ->generarExcel(Filament::getTenant(), $this->getStats())),
+                    ->action(fn() => $this->despacharReporte('excel')),
 
                 Action::make('exportarPdf')
                     ->label('PDF')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('danger')
-                    ->action(fn() => app(InventarioExportService::class)
-                        ->generarPdf(Filament::getTenant(), $this->getStats())),
+                    ->action(fn() => $this->despacharReporte('pdf')),
             ])
             ->recordActions([]);
+    }
+
+    private const UMBRAL_COLA_EXCEL = 1000;
+    private const UMBRAL_COLA_PDF   = 1000;
+
+    private function despacharReporte(string $tipo): mixed
+    {
+        $umbral = $tipo === 'pdf' ? self::UMBRAL_COLA_PDF : self::UMBRAL_COLA_EXCEL;
+
+        $count = \App\Models\Inventario::where('empresa_id', Filament::getTenant()->id)
+            ->where('estado_almacen', 'activo')
+            ->whereHas('producto', fn($q) => $q->where('estado', '!=', 'archivado')->where('control_de_stock', true))
+            ->count();
+
+        if ($count <= $umbral) {
+            $service = app(\App\Services\InventarioExportService::class);
+
+            return $tipo === 'pdf'
+                ? $service->generarPdf(Filament::getTenant(), $this->getStats())
+                : $service->generarExcel(Filament::getTenant(), $this->getStats());
+        }
+
+        $reporte = \App\Models\ReporteDescarga::create([
+            'empresa_id' => Filament::getTenant()->id,
+            'user_id'    => auth()->id(),
+            'tipo'       => $tipo,
+            'reporte'    => 'inventario',
+            'estado'     => 'pendiente',
+            'filtros'    => ['stats' => $this->getStats()],
+        ]);
+
+        \App\Jobs\GenerarReporteJob::dispatch($reporte->id);
+
+        \Filament\Notifications\Notification::make()
+            ->title('Reporte en proceso')
+            ->body("Son {$count} productos, se genera en segundo plano. Recibirás una notificación cuando esté listo.")
+            ->info()
+            ->actions([
+                \Filament\Actions\Action::make('ver_descargas')
+                    ->label('Ver descargas')
+                    ->url(\App\Filament\Pdv\Pages\ReporteDescargasPage::getUrl(panel: 'pdv', tenant: Filament::getTenant()))
+                    ->button(),
+            ])
+            ->send();
+
+        return null;
     }
 
     public static function canAccess(): bool

@@ -4,7 +4,8 @@ namespace App\Filament\Pdv\Pages;
 
 use App\Models\Kardex;
 use App\Models\Producto;
-use App\Services\KardexExportService;
+use App\Jobs\GenerarReporteJob;
+use App\Models\ReporteDescarga;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -368,6 +369,7 @@ class KardexPage extends Page implements HasForms, HasTable
 
         $productos = Producto::where('empresa_id', $empresaId)
             ->whereIn('estado', ['activo', 'inactivo', 'archivado'])
+            ->where('control_de_stock', true)
             ->with(['variantes' => fn ($q) => $q->with('valores.valor')])
             ->orderBy('nombre')
             ->get(['id', 'nombre', 'estado']);
@@ -416,13 +418,57 @@ class KardexPage extends Page implements HasForms, HasTable
 
     public function exportarExcel(): mixed
     {
-        return app(KardexExportService::class)
-            ->generarExcel(Filament::getTenant(), $this->getFiltros(), $this->getResumen());
+        return $this->despacharReporte('excel');
     }
 
     public function exportarPdf(): mixed
     {
-        return app(KardexExportService::class)
-            ->generarPdf(Filament::getTenant(), $this->getFiltros(), $this->getResumen());
+        return $this->despacharReporte('pdf');
+    }
+
+    private const UMBRAL_COLA_EXCEL = 1000;
+    private const UMBRAL_COLA_PDF   = 1000;
+
+    private function despacharReporte(string $tipo): mixed
+    {
+        $umbral  = $tipo === 'pdf' ? self::UMBRAL_COLA_PDF : self::UMBRAL_COLA_EXCEL;
+        $filtros = $this->getFiltros();
+
+        $q = Kardex::where('empresa_id', Filament::getTenant()->id);
+        $this->aplicarFiltros($q);
+        $count = $q->count();
+
+        if ($count <= $umbral) {
+            $service = app(\App\Services\KardexExportService::class);
+
+            return $tipo === 'pdf'
+                ? $service->generarPdf(Filament::getTenant(), $filtros, $this->getResumen())
+                : $service->generarExcel(Filament::getTenant(), $filtros, $this->getResumen());
+        }
+
+        $reporte = ReporteDescarga::create([
+            'empresa_id' => Filament::getTenant()->id,
+            'user_id'    => auth()->id(),
+            'tipo'       => $tipo,
+            'reporte'    => 'kardex',
+            'estado'     => 'pendiente',
+            'filtros'    => array_merge($filtros, ['resumen' => $this->getResumen()]),
+        ]);
+
+        GenerarReporteJob::dispatch($reporte->id);
+
+        \Filament\Notifications\Notification::make()
+            ->title('Reporte en proceso')
+            ->body("Son {$count} registros, se genera en segundo plano. Recibirás una notificación cuando esté listo.")
+            ->info()
+            ->actions([
+                Action::make('ver_descargas')
+                    ->label('Ver descargas')
+                    ->url(ReporteDescargasPage::getUrl(panel: 'pdv', tenant: Filament::getTenant()))
+                    ->button(),
+            ])
+            ->send();
+
+        return null;
     }
 }

@@ -182,4 +182,53 @@ class GastoExportService
 
         return $spreadsheet;
     }
+
+    // ── Guardar en archivo (para jobs en cola) ────────────────────────────────
+
+    public function guardarExcel(Empresa $empresa, string $rutaAbsoluta): void
+    {
+        $gastos = $this->baseQuery($empresa)->get();
+
+        $writer = new \OpenSpout\Writer\XLSX\Writer();
+        $writer->openToFile($rutaAbsoluta);
+
+        $headers = ['CÓDIGO', 'FECHA', 'CATEGORÍA', 'DESCRIPCIÓN', 'EMPLEADO', 'MONTO (S/)', 'ESTADO', 'REGISTRADO POR', 'ARCHIVO', 'REGISTRADO'];
+        $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($headers));
+
+        foreach ($gastos as $g) {
+            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([
+                $g->serie . '-' . str_pad($g->correlativo, 6, '0', STR_PAD_LEFT),
+                $g->fecha?->format('d/m/Y') ?? '',
+                $g->categoria?->getLabel() ?? '',
+                $g->descripcion,
+                $g->empleado?->name ?? '—',
+                (float) $g->monto,
+                $g->estado?->getLabel() ?? '',
+                $g->registradoPor?->name ?? '',
+                $g->archivo_adjunto ? 'Sí' : 'No',
+                $g->created_at?->format('d/m/Y H:i') ?? '',
+            ]));
+        }
+
+        $writer->close();
+    }
+
+    public function guardarPdf(Empresa $empresa, string $rutaAbsoluta, string $usuarioNombre = 'Sistema'): void
+    {
+        $gastos  = $this->baseQuery($empresa)->get();
+        $resumen = $this->calcularResumen($gastos);
+
+        Pdf::loadView('reports.gastos-pdf', [
+            'empresa'       => $empresa,
+            'gastos'        => $gastos,
+            'resumen'       => $resumen,
+            'usuarioNombre' => $usuarioNombre,
+        ])->setPaper('a4', 'landscape')
+        ->setOption([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled'      => false,
+            'defaultFont'          => 'DejaVu Sans',
+        ])
+        ->save($rutaAbsoluta);
+    }
 }

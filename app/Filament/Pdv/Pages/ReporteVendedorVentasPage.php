@@ -4,6 +4,8 @@ namespace App\Filament\Pdv\Pages;
 
 use App\Enums\EstadoVenta;
 use App\Models\Serie;
+use App\Jobs\GenerarReporteJob;
+use App\Models\ReporteDescarga;
 use App\Services\ReporteVendedorVentasExportService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -131,6 +133,9 @@ class ReporteVendedorVentasPage extends Page implements HasTable
         return $info;
     }
 
+    private const UMBRAL_COLA_EXCEL = 1000;
+    private const UMBRAL_COLA_PDF   = 1000;
+
     private function accionesExportacion(): array
     {
         return [
@@ -138,26 +143,63 @@ class ReporteVendedorVentasPage extends Page implements HasTable
                 ->label('Excel')
                 ->icon('heroicon-o-table-cells')
                 ->color('success')
-                ->action(fn() => app(ReporteVendedorVentasExportService::class)->generarExcel(
-                    $this->getVentasParaExportar(),
-                    $this->getFiltrosInfo(),
-                    $this->getResumen(),
-                    Filament::getTenant(),
-                    $this->vendedorNombre ?? 'Vendedor',
-                )),
+                ->action(fn() => $this->despacharReporte('excel')),
 
             Action::make('descargarPdf')
                 ->label('PDF')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('danger')
-                ->action(fn() => app(ReporteVendedorVentasExportService::class)->generarPdf(
-                    $this->getVentasParaExportar(),
-                    $this->getFiltrosInfo(),
-                    $this->getResumen(),
-                    Filament::getTenant(),
-                    $this->vendedorNombre ?? 'Vendedor',
-                )),
+                ->action(fn() => $this->despacharReporte('pdf')),
         ];
+    }
+
+    private function despacharReporte(string $tipo): mixed
+    {
+        $umbral = $tipo === 'pdf' ? self::UMBRAL_COLA_PDF : self::UMBRAL_COLA_EXCEL;
+        $count  = $this->buildQuery()->count();
+
+        if ($count <= $umbral) {
+            $ventas  = $this->getVentasParaExportar();
+            $service = app(ReporteVendedorVentasExportService::class);
+
+            return $tipo === 'pdf'
+                ? $service->generarPdf($ventas, $this->getFiltrosInfo(), $this->getResumen(), Filament::getTenant(), $this->vendedorNombre ?? 'Vendedor')
+                : $service->generarExcel($ventas, $this->getFiltrosInfo(), $this->getResumen(), Filament::getTenant(), $this->vendedorNombre ?? 'Vendedor');
+        }
+
+        $reporte = ReporteDescarga::create([
+            'empresa_id' => Filament::getTenant()->id,
+            'user_id'    => auth()->id(),
+            'tipo'       => $tipo,
+            'reporte'    => 'vendedor_ventas',
+            'estado'     => 'pendiente',
+            'filtros'    => [
+                'vendedorId'     => $this->vendedorId,
+                'vendedorNombre' => $this->vendedorNombre,
+                'fechaDesde'     => $this->fechaDesde,
+                'fechaHasta'     => $this->fechaHasta,
+                'serie'          => $this->tableFilters['serie']['serie'] ?? null,
+                'correlativo'    => $this->tableFilters['correlativo']['correlativo'] ?? null,
+                'filtrosInfo'    => $this->getFiltrosInfo(),
+                'resumen'        => $this->getResumen(),
+            ],
+        ]);
+
+        GenerarReporteJob::dispatch($reporte->id);
+
+        \Filament\Notifications\Notification::make()
+            ->title('Reporte en proceso')
+            ->body("Son {$count} registros, se genera en segundo plano. Recibirás una notificación cuando esté listo.")
+            ->info()
+            ->actions([
+                Action::make('ver_descargas')
+                    ->label('Ver descargas')
+                    ->url(ReporteDescargasPage::getUrl(panel: 'pdv', tenant: Filament::getTenant()))
+                    ->button(),
+            ])
+            ->send();
+
+        return null;
     }
 
     // ── Tabla Filament ────────────────────────────────────────────────────────

@@ -22,7 +22,8 @@ use App\Models\VentaPago;
 use App\Services\KardexService;
 use App\Services\PdfVentaService;
 use App\Services\VentaService;
-use App\Services\ReporteVentasExportService;
+use App\Jobs\GenerarReporteVentasJob;
+use App\Models\ReporteDescarga;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -298,8 +299,6 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                             ->limit(1),
                     ])
                     ->withCount([
-                        'detalles',
-                        'notas',
                         'detalles as cortesias_count' => fn($q) => $q->where('precio_unitario', 0),
                     ]);
 
@@ -455,7 +454,14 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                     Action::make('ver')
                         ->label('Ver detalle')
                         ->icon('heroicon-o-eye')
-                        ->action(fn(Venta $record) => $this->abrirDetalle($record->id)),
+                        ->modalHeading(fn(Venta $record): string =>
+                            ($record->serie?->serie ?? '—') . '-' . str_pad((string) $record->correlativo, 8, '0', STR_PAD_LEFT)
+                        )
+                        ->modalContent(fn(Venta $record) => view(
+                            'filament.pdv.components.venta-detalle-modal',
+                            ['venta' => $record->load(['serie', 'detalles.producto:id,codigo_interno', 'pagos.metodoPago'])]
+                        ))
+                        ->modalFooterActions([]),
 
                     $this->buildImprimirTicketAction(),
 
@@ -500,7 +506,32 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
                         ->visible(fn(Venta $record): bool => ! $record->estaAnulada())
-                        ->action(fn(Venta $record) => $this->abrirAnular($record->id)),
+                        ->modalHeading(fn(Venta $record): string =>
+                            'Anular ' . ($record->serie?->serie ?? '---') . '-' . str_pad($record->correlativo, 8, '0', STR_PAD_LEFT)
+                        )
+                        ->modalDescription(fn(Venta $record): string =>
+                            'Esta acción no se puede deshacer. Se registrará una devolución de S/ ' . fmt_precio($record->total) . '.'
+                        )
+                        ->modalIcon('heroicon-o-x-circle')
+                        ->modalIconColor('danger')
+                        ->form(fn(Venta $record): array => [
+                            \Filament\Forms\Components\Toggle::make('revertir_stock')
+                                ->label('Revertir inventario')
+                                ->helperText('Se devolverá el stock de los productos con control de inventario y se registrará en el kardex.')
+                                ->default(true)
+                                ->visible(fn() => $this->tieneItemsConStockRecord($record)),
+                            \Filament\Forms\Components\TextInput::make('motivo_baja')
+                                ->label('Motivo de anulación (SUNAT)')
+                                ->default('Error en emisión')
+                                ->maxLength(100)
+                                ->helperText('Solo aplica para facturas. Las boletas usan el Resumen Diario (RC).')
+                                ->visible(fn() => $this->necesitaBajaSunatRecord($record)),
+                        ])
+                        ->action(fn(Venta $record, array $data) => $this->confirmarAnularRecord(
+                            $record,
+                            (bool) ($data['revertir_stock'] ?? true),
+                            (string) ($data['motivo_baja'] ?? 'Error en emisión'),
+                        )),
 
                     Action::make('enviarBajaSunat')
                         ->label('Enviar baja a SUNAT')
@@ -582,46 +613,76 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
                 ->label('Excel')
                 ->icon('heroicon-o-table-cells')
                 ->color('success')
-                ->action(function () {
-                    return app(ReporteVentasExportService::class)->generarExcel(
-                        $this->getVentasParaExportar(),
-                        $this->getFiltrosInfo(),
-                        $this->getColumnasVisibles(),
-                        $this->getResumen(),
-                        Filament::getTenant(),
-                    );
-                }),
+                ->action(fn() => $this->despacharReporte('excel')),
 
             Action::make('descargarPdf')
                 ->label('PDF')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('danger')
-                ->action(function () {
-                    return app(ReporteVentasExportService::class)->generarPdf(
-                        $this->getVentasParaExportar(),
-                        $this->getFiltrosInfo(),
-                        $this->getColumnasVisibles(),
-                        $this->getResumen(),
-                        Filament::getTenant(),
-                    );
-                }),
+                ->action(fn() => $this->despacharReporte('pdf')),
         ];
     }
 
-    private function getVentasParaExportar(): \Illuminate\Database\Eloquent\Collection
+    private const UMBRAL_COLA_EXCEL = 1000;
+    private const UMBRAL_COLA_PDF   = 1000;
+
+    private function despacharReporte(string $tipo): mixed
     {
-        $q = Venta::where('empresa_id', Filament::getTenant()->id)
-            ->with(['serie', 'pagos.metodoPago'])
-            ->withCount([
-                'detalles',
-                'notas',
-                'detalles as cortesias_count' => fn($q) => $q->where('precio_unitario', 0),
-            ])
-            ->orderBy('created_at', 'desc');
+        $umbral = $tipo === 'pdf' ? self::UMBRAL_COLA_PDF : self::UMBRAL_COLA_EXCEL;
 
+        $q = Venta::where('empresa_id', Filament::getTenant()->id);
         $this->aplicarFiltros($q);
+        $count = $q->count();
 
-        return $q->get();
+        // Pocos registros → descarga directa e instantánea
+        if ($count <= $umbral) {
+            $ventas = $q->with(['serie', 'pagos.metodoPago'])
+                ->withCount(['detalles', 'notas', 'detalles as cortesias_count' => fn($q) => $q->where('precio_unitario', 0)])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            $service = app(\App\Services\ReporteVentasExportService::class);
+
+            return $tipo === 'pdf'
+                ? $service->generarPdf($ventas, [], $this->getColumnasVisibles(), $this->getResumen(), Filament::getTenant())
+                : $service->generarExcel($ventas, [], $this->getColumnasVisibles(), $this->getResumen(), Filament::getTenant());
+        }
+
+        // Muchos registros → cola en background
+        $reporte = ReporteDescarga::create([
+            'empresa_id'  => Filament::getTenant()->id,
+            'user_id'     => auth()->id(),
+            'tipo'        => $tipo,
+            'reporte'     => 'ventas',
+            'estado'      => 'pendiente',
+            'filtros'     => [
+                'filtroFechaDesde'  => $this->filtroFechaDesde,
+                'filtroFechaHasta'  => $this->filtroFechaHasta,
+                'filtroCliente'     => $this->filtroCliente,
+                'filtroSerie'       => $this->filtroSerie,
+                'filtroCorrelativo' => $this->filtroCorrelativo,
+                'filtroMetodo'      => $this->filtroMetodo,
+                'filtroEstado'      => $this->filtroEstado,
+                'filtroOrigen'      => $this->filtroOrigen,
+                'columnasVisibles'  => $this->getColumnasVisibles(),
+            ],
+        ]);
+
+        GenerarReporteVentasJob::dispatch($reporte->id);
+
+        \Filament\Notifications\Notification::make()
+            ->title('Reporte en proceso')
+            ->body("Son {$count} registros, se genera en segundo plano. Recibirás una notificación cuando esté listo.")
+            ->info()
+            ->actions([
+                Action::make('ver_descargas')
+                    ->label('Ver descargas')
+                    ->url(ReporteDescargasPage::getUrl(panel: 'pdv', tenant: Filament::getTenant()))
+                    ->button(),
+            ])
+            ->send();
+
+        return null;
     }
 
     private function getColumnasVisibles(): array
@@ -644,44 +705,6 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
         return $visible;
     }
 
-    private function getFiltrosInfo(): array
-    {
-        $info = [];
-
-        if (! empty($this->filtroFechaDesde) || ! empty($this->filtroFechaHasta)) {
-            $desde = ! empty($this->filtroFechaDesde)
-                ? \Illuminate\Support\Carbon::parse($this->filtroFechaDesde)->format('d/m/Y H:i')
-                : '—';
-            $hasta = ! empty($this->filtroFechaHasta)
-                ? \Illuminate\Support\Carbon::parse($this->filtroFechaHasta)->format('d/m/Y H:i')
-                : '—';
-            $info['Período'] = "{$desde} → {$hasta}";
-        }
-
-        if (! empty($this->filtroCliente)) {
-            $info['Cliente'] = $this->filtroCliente;
-        }
-
-        if (! empty($this->filtroCorrelativo)) {
-            $info['Correlativo'] = $this->filtroCorrelativo;
-        }
-
-        if (! empty($this->filtroSerie)) {
-            $info['Serie'] = $this->filtroSerie;
-        }
-
-        if (! empty($this->filtroMetodo)) {
-            $nombre = MetodoPago::find($this->filtroMetodo)?->nombre ?? $this->filtroMetodo;
-            $info['Método de pago'] = $nombre;
-        }
-
-        if (! empty($this->filtroEstado)) {
-            $info['Estado'] = ucfirst($this->filtroEstado);
-        }
-
-        return $info;
-    }
-
     // ── Resumen (refleja los filtros activos) ─────────────────────────────────
 
     public function getResumen(): array
@@ -689,35 +712,28 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
         $base = Venta::where('empresa_id', Filament::getTenant()->id);
         $this->aplicarFiltros($base);
 
-        $completadas      = (clone $base)->where('estado', EstadoVenta::Completada->value);
-        $count            = (clone $completadas)->count();
-        $total            = (float) (clone $completadas)->sum('monto_pagado');
-        $descuentoTotal   = (float) (clone $completadas)->sum('descuento_total');
-        $cortesias        = (clone $completadas)->whereHas('detalles', fn($q) => $q->where('precio_unitario', 0))->count();
-        $creditoPendiente = (float) (clone $completadas)->whereIn('estado_pago', ['pendiente', 'parcial'])->sum('saldo_pendiente');
-        $anuladas         = (clone $base)->where('estado', EstadoVenta::Anulada->value)->count();
+        $completada = EstadoVenta::Completada->value;
+        $anulada    = EstadoVenta::Anulada->value;
 
-        $porMetodo = VentaPago::whereHas('venta', function ($q) {
-            $q->where('empresa_id', Filament::getTenant()->id)
-                ->where('estado', EstadoVenta::Completada->value);
-            $this->aplicarFiltros($q);
-        })
-            ->with(['metodoPago:id,nombre,condicion_pago', 'venta:id,estado_pago'])
-            ->get()
-            ->filter(
-                fn($p) =>
-                $p->metodoPago?->condicion_pago !== CondicionPago::Credito
-                    || $p->venta?->estado_pago === 'pendiente'
-            )
-            ->groupBy('metodo_pago_id')
-            ->map(fn($pagos) => [
-                'nombre' => $pagos->first()->metodoPago?->nombre ?? 'N/A',
-                'total'  => (float) $pagos->sum('monto'),
-            ])
-            ->values()
-            ->toArray();
+        $row = (clone $base)
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN estado = ? THEN 1 ELSE 0 END), 0)                                                                                                                           AS cnt_completadas,
+                COALESCE(SUM(CASE WHEN estado = ? THEN monto_pagado ELSE 0 END), 0)                                                                                                               AS total_cobrado,
+                COALESCE(SUM(CASE WHEN estado = ? THEN descuento_total ELSE 0 END), 0)                                                                                                            AS descuento_total,
+                COALESCE(SUM(CASE WHEN estado = ? AND estado_pago IN ('pendiente','parcial') THEN saldo_pendiente ELSE 0 END), 0)                                                                  AS credito_pendiente,
+                COALESCE(SUM(CASE WHEN estado = ? THEN 1 ELSE 0 END), 0)                                                                                                                          AS cnt_anuladas,
+                COALESCE(SUM(CASE WHEN estado = ? AND EXISTS(SELECT 1 FROM venta_detalles vd WHERE vd.venta_id = ventas.id AND vd.precio_unitario = 0) THEN 1 ELSE 0 END), 0)                      AS cortesias
+            ", [$completada, $completada, $completada, $completada, $anulada, $completada])
+            ->first();
 
-        return compact('count', 'total', 'descuentoTotal', 'cortesias', 'anuladas', 'porMetodo', 'creditoPendiente');
+        $count            = (int)   $row->cnt_completadas;
+        $total            = (float) $row->total_cobrado;
+        $descuentoTotal   = (float) $row->descuento_total;
+        $creditoPendiente = (float) $row->credito_pendiente;
+        $anuladas         = (int)   $row->cnt_anuladas;
+        $cortesias        = (int)   $row->cortesias;
+
+        return compact('count', 'total', 'descuentoTotal', 'cortesias', 'anuladas', 'creditoPendiente');
     }
 
     public function getSparklines(): array
@@ -739,43 +755,30 @@ class ReporteVentasPage extends Page implements HasForms, HasTable
         return ['cantidad' => $qty, 'total' => $tot];
     }
 
-    // ── Modal detalle ─────────────────────────────────────────────────────────
+    // ── Modal anular (Filament nativo) ───────────────────────────────────────
 
-    public ?int $ventaModalId = null;
-
-    public function abrirDetalle(int $ventaId): void
+    public function tieneItemsConStockRecord(Venta $venta): bool
     {
-        $this->ventaModalId = $ventaId;
-    }
-    public function cerrarDetalle(): void
-    {
-        $this->ventaModalId = null;
+        $venta->loadMissing(['detalles.producto', 'detalles.variante.producto']);
+        $this->ventaAnularId = $venta->id;
+        return $this->tieneItemsConStock();
     }
 
-    public function getVentaModal(): ?Venta
+    public function necesitaBajaSunatRecord(Venta $venta): bool
     {
-        if (! $this->ventaModalId) return null;
-
-        $venta = Venta::with([
-            'serie',
-            'detalles.producto.unidadMedida:id,simbolo',
-            'detalles.variante.producto.unidadMedida:id,simbolo',
-            'pagos.metodoPago',
-            'cupon',
-        ])->find($this->ventaModalId);
-
-        // Fallback: buscar cupón desde la orden relacionada (ventas antes del campo cupon_id)
-        if ($venta && ! $venta->cupon && (float) $venta->descuento_total > 0) {
-            $orden = \App\Models\Orden::where('venta_id', $venta->id)
-                ->with('cupon:id,codigo')
-                ->first();
-            $venta->setRelation('cupon', $orden?->cupon);
-        }
-
-        return $venta;
+        return Filament::getTenant()->tieneFacturacionElectronica()
+            && $this->estadoNecesitaBaja($venta);
     }
 
-    // ── Modal anular ──────────────────────────────────────────────────────────
+    public function confirmarAnularRecord(Venta $venta, bool $revertirStock, string $motivoBaja): void
+    {
+        $this->ventaAnularId = $venta->id;
+        $this->revertirStock = $revertirStock;
+        $this->motivoBaja    = $motivoBaja;
+        $this->confirmarAnular();
+    }
+
+    // ── Modal anular (implementación interna) ────────────────────────────────
 
     public ?int  $ventaAnularId  = null;
     public bool  $modalAnular    = false;

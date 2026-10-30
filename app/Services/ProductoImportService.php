@@ -185,7 +185,8 @@ class ProductoImportService
     public function importarActualizar(string $ruta, int $empresaId): array
     {
         $this->inicializar($empresaId);
-        $filas = $this->leerExcel($ruta);
+        $spreadsheet = IOFactory::load($ruta);
+        $filas       = $this->leerHoja($spreadsheet->getActiveSheet());
 
         foreach ($filas as $num => $fila) {
             try {
@@ -219,7 +220,7 @@ class ProductoImportService
                 $this->asignarDecimalSiNoVacio($cambios, 'precio_con_descuento', $fila['F'] ?? null);
                 $this->asignarSiNoVacio($cambios, 'codigo_barras',               $fila['K'] ?? null);
 
-                $unidadId = $this->resolverUnidad($fila['G'] ?? null);
+                $unidadId = $this->resolverUnidad($fila['G'] ?? null, false);
                 if ($unidadId !== null) $cambios['unidad_medida_id'] = $unidadId;
 
                 $estado = $this->resolverEstado($fila['H'] ?? null);
@@ -339,6 +340,12 @@ class ProductoImportService
             }
         }
 
+        // Procesar hoja Variantes si existe
+        $hojaVariantes = $spreadsheet->getSheetByName('Variantes');
+        if ($hojaVariantes !== null) {
+            $this->procesarVariantesActualizar($hojaVariantes);
+        }
+
         return $this->resultado();
     }
 
@@ -349,7 +356,8 @@ class ProductoImportService
     public function importarPrecios(string $ruta, int $empresaId): array
     {
         $this->inicializar($empresaId);
-        $filas = $this->leerExcel($ruta);
+        $spreadsheet = IOFactory::load($ruta);
+        $filas       = $this->leerHoja($spreadsheet->getActiveSheet());
 
         foreach ($filas as $num => $fila) {
             try {
@@ -370,7 +378,6 @@ class ProductoImportService
                 }
 
                 // A=CODIGO_INTERNO, B=PRECIO_VENTA, C=DESCUENTO, D=PRECIO_CON_DESCUENTO
-                // precio_costo NO se actualiza (costo promedio = solo vía compras/ajustes)
                 $cambios = [];
                 $this->asignarDecimalSiNoVacio($cambios, 'precio_venta',         $fila['B'] ?? null);
                 $this->asignarDecimalSiNoVacio($cambios, 'porcentaje_descuento', $fila['C'] ?? null);
@@ -378,6 +385,17 @@ class ProductoImportService
 
                 if (! empty($cambios)) {
                     $producto->update($cambios);
+
+                    // Recalcular precio_final de todas las variantes activas
+                    if (isset($cambios['precio_venta']) || isset($cambios['porcentaje_descuento']) || isset($cambios['precio_con_descuento'])) {
+                        $precioBase = (float) $producto->precio_con_descuento;
+                        Variante::where('producto_id', $producto->id)
+                            ->where('estado', 'activo')
+                            ->with('valores')
+                            ->each(fn($v) => $v->update([
+                                'precio_final' => $precioBase + (float) $v->valores->sum('precio_adicional'),
+                            ]));
+                    }
                 }
 
                 $this->actualizados++;
@@ -388,6 +406,12 @@ class ProductoImportService
                 $this->errores[] = "Fila {$num}: " . $e->getMessage();
                 $this->omitidos++;
             }
+        }
+
+        // Procesar hoja Variantes si existe (actualizar precio_extra por valor)
+        $hojaVariantes = $spreadsheet->getSheetByName('Variantes');
+        if ($hojaVariantes !== null) {
+            $this->procesarVariantesPrecios($hojaVariantes);
         }
 
         return $this->resultado();
@@ -507,18 +531,24 @@ class ProductoImportService
     private function unidadDefault(): ?int
     {
         if ($this->unidadDefaultId === null) {
+            // Preferir "Unidad" (NIU) como default; si no existe, usar la primera disponible
             $this->unidadDefaultId = UnidadesMedida::where('empresa_id', $this->empresaId)
-                ->value('id');
+                ->where(fn($q) => $q
+                    ->whereRaw('LOWER(nombre) = ?', ['unidad'])
+                    ->orWhereRaw('LOWER(simbolo) = ?', ['niu'])
+                )
+                ->value('id')
+                ?? UnidadesMedida::where('empresa_id', $this->empresaId)->value('id');
         }
         return $this->unidadDefaultId;
     }
 
-    private function resolverUnidad(?string $valor): ?int
+    private function resolverUnidad(?string $valor, bool $usarDefaultSiVacio = true): ?int
     {
         $raw = trim($valor ?? '');
 
-        // Celda vacía → usar unidad por defecto
-        if ($raw === '') return $this->unidadDefault();
+        // Celda vacía → usar default (solo en importarNuevos) o no cambiar (en importarActualizar)
+        if ($raw === '') return $usarDefaultSiVacio ? $this->unidadDefault() : null;
 
         // Clave normalizada para el caché (todo minúscula, sin espacios extras)
         $key = mb_strtolower($raw);
@@ -819,6 +849,334 @@ class ProductoImportService
                         ->whereIn('variante_id', $idsActivas)
                         ->update(['estado_almacen' => 'activo']);
                 }
+            }
+        }
+    }
+
+    /**
+     * Actualizar precio_extra de variantes desde la hoja "Variantes" de la plantilla precios.
+     * Columnas: A=CODIGO_VARIANTE, B=CODIGO_INTERNO, C=COMBINACION, D=PRECIO_EXTRA(*)
+     *
+     * Identificación: por CODIGO_VARIANTE (col A) si se proporciona;
+     *                 si no, por CODIGO_INTERNO (B) + COMBINACION (C).
+     * Recalcula precio_final tras actualizar los PAVs.
+     */
+    private function procesarVariantesPrecios(Worksheet $sheet): void
+    {
+        $filas = $this->leerHoja($sheet);
+
+        foreach ($filas as $num => $fila) {
+            try {
+                $codigoInterno  = trim($fila['A'] ?? '');
+                $codigoVariante = trim($fila['B'] ?? '');
+                $combinacion    = trim($fila['C'] ?? '');
+                $rawExtra       = trim($fila['D'] ?? '');
+
+                if ($codigoVariante === '' && ($codigoInterno === '' || $combinacion === '')) {
+                    $this->omitidos++;
+                    continue;
+                }
+                if ($rawExtra === '') {
+                    $this->omitidos++;
+                    continue;
+                }
+
+                $variante   = null;
+                $producto   = null;
+                $combinData = [];
+
+                if ($codigoVariante !== '') {
+                    $variante = Variante::where('empresa_id', $this->empresaId)
+                        ->where('codigo', $codigoVariante)
+                        ->first();
+
+                    if (! $variante) {
+                        $this->errores[] = "Variante fila {$num}: código '{$codigoVariante}' no encontrado.";
+                        $this->omitidos++;
+                        continue;
+                    }
+
+                    $producto = Producto::find($variante->producto_id);
+
+                    $pavIds = \App\Models\VarianteValor::where('variante_id', $variante->id)
+                        ->pluck('producto_atributo_valors_id');
+                    foreach ($pavIds as $pavId) {
+                        $pav   = ProductoAtributoValor::find($pavId);
+                        $valor = \App\Models\Valor::find($pav?->valor_id);
+                        if ($pav && $valor) {
+                            $combinData[] = ['valorNombre' => $valor->nombre, 'pav' => $pav];
+                        }
+                    }
+                } else {
+                    $producto = Producto::where('empresa_id', $this->empresaId)
+                        ->where('codigo_interno', $codigoInterno)
+                        ->first();
+
+                    if (! $producto) {
+                        $this->errores[] = "Variante fila {$num}: producto '{$codigoInterno}' no encontrado.";
+                        $this->omitidos++;
+                        continue;
+                    }
+
+                    $pares  = array_map('trim', explode('/', $combinacion));
+                    $valido = true;
+
+                    foreach ($pares as $par) {
+                        $partes = array_map('trim', explode(':', $par, 2));
+                        if (count($partes) !== 2 || $partes[0] === '' || $partes[1] === '') {
+                            $this->errores[] = "Variante fila {$num}: formato inválido '{$par}'. Esperado → Atributo:Valor";
+                            $valido = false;
+                            break;
+                        }
+                        [$atributoNombre, $valorNombre] = $partes;
+                        $atributo     = $this->resolverAtributo($atributoNombre);
+                        $valor        = $this->resolverValor($valorNombre, $atributo->id);
+                        $pa           = $this->resolverProductoAtributo($producto->id, $atributo->id);
+                        $pav          = $this->resolverProductoAtributoValor($pa->id, $valor->id);
+                        $combinData[] = ['valorNombre' => $valorNombre, 'pav' => $pav];
+                    }
+
+                    if (! $valido) {
+                        $this->omitidos++;
+                        continue;
+                    }
+
+                    $pavIds   = array_map(fn($d) => $d['pav']->id, $combinData);
+                    $variante = $this->buscarVariantePorPavs($producto->id, $pavIds);
+
+                    if (! $variante) {
+                        $this->errores[] = "Variante fila {$num}: combinación '{$combinacion}' no encontrada en '{$codigoInterno}'.";
+                        $this->omitidos++;
+                        continue;
+                    }
+                }
+
+                // Actualizar PAVs mencionados en PRECIO_EXTRA
+                $extrasMap  = $this->parsearExtras($rawExtra, $combinData);
+                $totalExtra = 0.0;
+
+                foreach ($combinData as $d) {
+                    if (isset($extrasMap[$d['pav']->id])) {
+                        $extra = $extrasMap[$d['pav']->id];
+                        if ((float) $d['pav']->precio_adicional !== (float) $extra) {
+                            $d['pav']->update(['precio_adicional' => $extra]);
+                            $cacheKey = $d['pav']->producto_atributo_id . ':' . $d['pav']->valor_id;
+                            unset($this->prodAtribValoresCache[$cacheKey]);
+                        }
+                    }
+                    $totalExtra += (float) $d['pav']->precio_adicional;
+                }
+
+                // Recalcular precio_final de la variante
+                $variante->update([
+                    'precio_final' => (float) $producto->precio_con_descuento + $totalExtra,
+                ]);
+
+                $this->variantesActualizadas++;
+
+            } catch (\Illuminate\Database\QueryException $e) {
+                $this->errores[] = "Variante fila {$num}: " . $this->mensajeDb($e);
+                $this->omitidos++;
+            } catch (\Throwable $e) {
+                $this->errores[] = "Variante fila {$num}: " . $e->getMessage();
+                $this->omitidos++;
+            }
+        }
+    }
+
+    /**
+     * Actualizar variantes existentes desde la hoja "Variantes" de la plantilla actualizar.
+     * Columnas: A=CODIGO_INTERNO, B=CODIGO_VARIANTE(*), C=COMBINACION,
+     *           D=PRECIO_EXTRA, E=PRECIO_COSTO, F=STOCK_INICIAL, G=CODIGO_BARRAS
+     *
+     * Identificación: por CODIGO_VARIANTE (col B) si se proporciona;
+     *                 si no, por CODIGO_INTERNO (A) + COMBINACION (C).
+     */
+    private function procesarVariantesActualizar(Worksheet $sheet): void
+    {
+        $filas = $this->leerHoja($sheet);
+
+        foreach ($filas as $num => $fila) {
+            try {
+                $codigoInterno  = trim($fila['A'] ?? '');
+                $codigoVariante = trim($fila['B'] ?? '');
+                $combinacion    = trim($fila['C'] ?? '');
+
+                if ($codigoVariante === '' && ($codigoInterno === '' || $combinacion === '')) {
+                    $this->omitidos++;
+                    continue;
+                }
+
+                $variante   = null;
+                $producto   = null;
+                $combinData = [];
+
+                if ($codigoVariante !== '') {
+                    // Buscar variante directamente por su código
+                    $variante = Variante::where('empresa_id', $this->empresaId)
+                        ->where('codigo', $codigoVariante)
+                        ->first();
+
+                    if (! $variante) {
+                        $this->errores[] = "Variante fila {$num}: código de variante '{$codigoVariante}' no encontrado.";
+                        $this->omitidos++;
+                        continue;
+                    }
+
+                    $producto = Producto::find($variante->producto_id);
+
+                    // Construir combinData desde los PAVs de la variante (para parsear PRECIO_EXTRA)
+                    $pavIds = \App\Models\VarianteValor::where('variante_id', $variante->id)
+                        ->pluck('producto_atributo_valors_id');
+
+                    foreach ($pavIds as $pavId) {
+                        $pav   = ProductoAtributoValor::find($pavId);
+                        $valor = \App\Models\Valor::find($pav?->valor_id);
+                        if ($pav && $valor) {
+                            $combinData[] = ['valorNombre' => $valor->nombre, 'pav' => $pav];
+                        }
+                    }
+                } else {
+                    // Buscar por producto + combinación
+                    $producto = Producto::where('empresa_id', $this->empresaId)
+                        ->where('codigo_interno', $codigoInterno)
+                        ->first();
+
+                    if (! $producto) {
+                        $this->errores[] = "Variante fila {$num}: producto '{$codigoInterno}' no encontrado.";
+                        $this->omitidos++;
+                        continue;
+                    }
+
+                    $pares = array_map('trim', explode('/', $combinacion));
+                    $valido = true;
+
+                    foreach ($pares as $par) {
+                        $partes = array_map('trim', explode(':', $par, 2));
+                        if (count($partes) !== 2 || $partes[0] === '' || $partes[1] === '') {
+                            $this->errores[] = "Variante fila {$num}: formato inválido '{$par}'. Esperado → Atributo:Valor";
+                            $valido = false;
+                            break;
+                        }
+                        [$atributoNombre, $valorNombre] = $partes;
+                        $atributo    = $this->resolverAtributo($atributoNombre);
+                        $valor       = $this->resolverValor($valorNombre, $atributo->id);
+                        $pa          = $this->resolverProductoAtributo($producto->id, $atributo->id);
+                        $pav         = $this->resolverProductoAtributoValor($pa->id, $valor->id);
+                        $combinData[] = ['valorNombre' => $valorNombre, 'pav' => $pav];
+                    }
+
+                    if (! $valido) {
+                        $this->omitidos++;
+                        continue;
+                    }
+
+                    $pavIds   = array_map(fn($d) => $d['pav']->id, $combinData);
+                    $variante = $this->buscarVariantePorPavs($producto->id, $pavIds);
+
+                    if (! $variante) {
+                        $this->errores[] = "Variante fila {$num}: combinación '{$combinacion}' no encontrada en '{$codigoInterno}'.";
+                        $this->omitidos++;
+                        continue;
+                    }
+                }
+
+                // ── Actualizar precio_extra (PAVs) ────────────────────────────
+                $update   = [];
+                $rawExtra = trim($fila['D'] ?? '');
+
+                if ($rawExtra !== '' && ! empty($combinData)) {
+                    $extrasMap  = $this->parsearExtras($rawExtra, $combinData);
+                    $totalExtra = 0.0;
+
+                    foreach ($combinData as $d) {
+                        if (isset($extrasMap[$d['pav']->id])) {
+                            $extra = $extrasMap[$d['pav']->id];
+                            if ((float) $d['pav']->precio_adicional !== (float) $extra) {
+                                $d['pav']->update(['precio_adicional' => $extra]);
+                                $cacheKey = $d['pav']->producto_atributo_id . ':' . $d['pav']->valor_id;
+                                unset($this->prodAtribValoresCache[$cacheKey]);
+                            }
+                        }
+                        $totalExtra += (float) $d['pav']->precio_adicional;
+                    }
+
+                    $update['precio_final'] = (float) $producto->precio_con_descuento + $totalExtra;
+                }
+
+                // ── Otros campos de la variante ───────────────────────────────
+                $precioCosto  = $this->parseDecimal($fila['E'] ?? null);
+                $codigoBarras = trim($fila['G'] ?? '');
+
+                if ($precioCosto !== null) $update['precio_costo']  = $precioCosto;
+                if ($codigoBarras !== '')  $update['codigo_barras'] = $codigoBarras;
+
+                if (! empty($update)) {
+                    $variante->update($update);
+                }
+
+                // ── Stock inicial: solo si nunca tuvo stock ───────────────────
+                $stockInicialRaw = $this->parseDecimal($fila['F'] ?? null);
+                if ($stockInicialRaw !== null && $stockInicialRaw > 0 && $producto->control_de_stock) {
+                    $inventario = Inventario::where('empresa_id', $this->empresaId)
+                        ->where('producto_id', $producto->id)
+                        ->where('variante_id', $variante->id)
+                        ->first();
+
+                    $sinMovimientos = ! \App\Models\Kardex::where('empresa_id', $this->empresaId)
+                        ->where('producto_id', $producto->id)
+                        ->exists();
+
+                    $stockActual = (float) ($inventario?->stock_real ?? 0);
+
+                    if ($sinMovimientos && $stockActual == 0) {
+                        if ($inventario) {
+                            $inventario->update([
+                                'stock_real'        => $stockInicialRaw,
+                                'stock_reserva'     => $stockInicialRaw,
+                                'estado_inventario' => 'disponible',
+                            ]);
+                        } else {
+                            Inventario::create([
+                                'empresa_id'        => $this->empresaId,
+                                'producto_id'       => $producto->id,
+                                'variante_id'       => $variante->id,
+                                'stock_real'        => $stockInicialRaw,
+                                'stock_reserva'     => $stockInicialRaw,
+                                'stock_minimo'      => 0,
+                                'estado_almacen'    => 'activo',
+                                'estado_inventario' => 'disponible',
+                            ]);
+                        }
+
+                        $this->kardex->registrar([
+                            'empresa_id'      => $this->empresaId,
+                            'user_id'         => auth()->id(),
+                            'producto_id'     => $producto->id,
+                            'producto_nombre' => $producto->nombre,
+                            'tipo'            => 'entrada',
+                            'concepto'        => 'Stock inicial (importación masiva)',
+                            'cantidad'        => $stockInicialRaw,
+                            'cantidad_base'   => $stockInicialRaw,
+                            'costo_unitario'  => null,
+                            'costo_total'     => null,
+                            'stock_antes'     => 0,
+                            'stock_despues'   => $stockInicialRaw,
+                            'fecha'           => now(),
+                        ]);
+                    } else {
+                        $this->errores[] = "Variante fila {$num}: STOCK_INICIAL ignorado (ya tiene stock o movimientos previos).";
+                    }
+                }
+
+                $this->variantesActualizadas++;
+
+            } catch (\Illuminate\Database\QueryException $e) {
+                $this->errores[] = "Variante fila {$num}: " . $this->mensajeDb($e);
+                $this->omitidos++;
+            } catch (\Throwable $e) {
+                $this->errores[] = "Variante fila {$num}: " . $e->getMessage();
+                $this->omitidos++;
             }
         }
     }

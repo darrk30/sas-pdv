@@ -29,6 +29,7 @@ class StockBajoWidget extends BaseWidget
                 Inventario::query()
                     ->with(['producto', 'variante.valores.valor'])
                     ->where('empresa_id', Filament::getTenant()->id)
+                    ->whereHas('producto', fn ($q) => $q->where('control_de_stock', true))
                     ->where(function ($q) {
                         $q->where('stock_reserva', '<=', 0)
                           ->orWhere(function ($q2) {
