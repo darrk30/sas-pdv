@@ -2,12 +2,15 @@
 
 namespace App\Filament\Pdv\Resources\Atributos\Schemas;
 
+use App\Models\ProductoAtributoValor;
+use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
@@ -73,6 +76,26 @@ class AtributoForm
                                     ->columns(2)
                                     ->addActionLabel('Añadir opción')
                                     ->collapsible()
+                                    ->deleteAction(
+                                        fn (Action $action) => $action->action(function (array $arguments, Repeater $component) {
+                                            $itemKey = $arguments['item'] ?? null;
+                                            $item    = $component->getState()[$itemKey] ?? [];
+                                            $valorId = $item['id'] ?? null;
+
+                                            if ($valorId && ProductoAtributoValor::where('valor_id', $valorId)->exists()) {
+                                                Notification::make()
+                                                    ->title('No se puede eliminar')
+                                                    ->body('Este valor está siendo usado en variantes de productos.')
+                                                    ->danger()
+                                                    ->send();
+                                                return;
+                                            }
+
+                                            $items = $component->getState();
+                                            unset($items[$itemKey]);
+                                            $component->state(array_values($items));
+                                        })
+                                    )
 
                                     // 🌟 LA MAGIA 1: Antes de CREAR el registro en BD
                                     ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
