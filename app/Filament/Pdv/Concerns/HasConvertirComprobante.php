@@ -47,7 +47,82 @@ trait HasConvertirComprobante
                 && ! $record->estaAnulada()
                 && Filament::getTenant()->tieneFacturacionElectronica()
             )
-            ->action(fn (Venta $record) => $this->abrirConvertir($record->id));
+            ->modalHeading('Emitir comprobante electrónico')
+            ->modalDescription(fn (Venta $record): string =>
+                'Ticket ' . ($record->serie?->serie ?? '') . '-' .
+                str_pad((string) $record->correlativo, 8, '0', STR_PAD_LEFT) .
+                ' · S/ ' . fmt_precio($record->total)
+            )
+            ->form(fn (Venta $record): array => [
+                \Filament\Forms\Components\ToggleButtons::make('tipo')
+                    ->label('Tipo de comprobante')
+                    ->options(['boleta' => 'Boleta', 'factura' => 'Factura'])
+                    ->icons(['boleta' => 'heroicon-o-receipt-percent', 'factura' => 'heroicon-o-document-text'])
+                    ->default('boleta')
+                    ->inline()
+                    ->required(),
+                \Filament\Forms\Components\Select::make('cliente_id')
+                    ->label('Cliente (opcional)')
+                    ->searchable()
+                    ->nullable()
+                    ->placeholder('Buscar por nombre o documento…')
+                    ->getSearchResultsUsing(fn (string $search): array =>
+                        Cliente::where('empresa_id', Filament::getTenant()->id)
+                            ->where(fn ($q) => $q
+                                ->where('nombre', 'like', "%{$search}%")
+                                ->orWhere('apellidos', 'like', "%{$search}%")
+                                ->orWhere('numero_documento', 'like', "%{$search}%")
+                            )
+                            ->limit(6)
+                            ->get()
+                            ->mapWithKeys(fn ($c) => [
+                                $c->id => $c->nombre_completo . ' · ' . strtoupper($c->tipo_documento->value) . ' ' . $c->numero_documento,
+                            ])
+                            ->all()
+                    )
+                    ->getOptionLabelUsing(fn ($value): string =>
+                        Cliente::find($value)?->nombre_completo ?? ''
+                    ),
+                \Filament\Forms\Components\Placeholder::make('igv_preview')
+                    ->label('Desglose')
+                    ->content(function () use ($record): \Illuminate\Support\HtmlString {
+                        $igvPct     = (float) (Filament::getTenant()->igv_porcentaje ?? 18);
+                        $divisor    = 1 + $igvPct / 100;
+                        $total      = (float) $record->total;
+                        $opGravadas = round($total / $divisor, 2);
+                        $igv        = round($total - $opGravadas, 2);
+
+                        return new \Illuminate\Support\HtmlString(
+                            '<div style="display:grid;gap:.3rem;font-size:.875rem;padding:.5rem 0">' .
+                            '<div style="display:flex;justify-content:space-between"><span>Op. Gravadas</span><span>S/ ' . fmt_precio($opGravadas) . '</span></div>' .
+                            '<div style="display:flex;justify-content:space-between"><span>IGV (' . $igvPct . '%)</span><span>S/ ' . fmt_precio($igv) . '</span></div>' .
+                            '<div style="display:flex;justify-content:space-between;font-weight:600;border-top:1px solid currentColor;padding-top:.3rem;margin-top:.1rem"><span>Total</span><span>S/ ' . fmt_precio($total) . '</span></div>' .
+                            '</div>'
+                        );
+                    }),
+            ])
+            ->action(fn (Venta $record, array $data) => $this->confirmarConvertirRecord($record, $data));
+    }
+
+    public function confirmarConvertirRecord(Venta $venta, array $data): void
+    {
+        $this->convertirVentaId = $venta->id;
+        $this->convertirTipo    = $data['tipo'] ?? 'boleta';
+
+        $clienteId = $data['cliente_id'] ?? null;
+        if ($clienteId && $cliente = Cliente::find($clienteId)) {
+            $this->convertirClienteId      = $cliente->id;
+            $this->convertirClienteNombre  = $cliente->nombre_completo;
+            $this->convertirClienteTipoDoc = $cliente->tipo_documento->value;
+            $this->convertirClienteNumDoc  = $cliente->numero_documento;
+        } else {
+            $this->convertirClienteId      = null;
+            $this->convertirClienteNombre  = '';
+            $this->convertirClienteTipoDoc = '';
+            $this->convertirClienteNumDoc  = '';
+        }
+
+        $this->confirmarConvertir();
     }
 
     // ── Métodos ───────────────────────────────────────────────────────────────

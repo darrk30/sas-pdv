@@ -5,7 +5,8 @@ namespace App\Filament\Pdv\Pages;
 use App\Enums\EstadoVenta;
 use App\Models\User;
 use App\Models\Venta;
-use App\Services\ReporteGananciasExportService;
+use App\Jobs\GenerarReporteJob;
+use App\Models\ReporteDescarga;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -165,37 +166,66 @@ class ReporteGananciasPage extends Page implements HasTable
                 ->label('Excel')
                 ->icon('heroicon-o-table-cells')
                 ->color('success')
-                ->action(function () {
-                    return app(ReporteGananciasExportService::class)->generarExcel(
-                        $this->getVentasParaExportar(),
-                        $this->getFiltrosInfo(),
-                        $this->getColumnasVisibles(),
-                        $this->getResumen(),
-                        Filament::getTenant(),
-                    );
-                }),
+                ->action(fn() => $this->despacharReporte('excel')),
             Action::make('descargarPdf')
                 ->label('PDF')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('danger')
-                ->action(function () {
-                    return app(ReporteGananciasExportService::class)->generarPdf(
-                        $this->getVentasParaExportar(),
-                        $this->getFiltrosInfo(),
-                        $this->getColumnasVisibles(),
-                        $this->getResumen(),
-                        Filament::getTenant(),
-                    );
-                }),
+                ->action(fn() => $this->despacharReporte('pdf')),
         ];
     }
 
-    private function getVentasParaExportar(): \Illuminate\Database\Eloquent\Collection
+    private const UMBRAL_COLA_EXCEL = 1000;
+    private const UMBRAL_COLA_PDF   = 1000;
+
+    private function despacharReporte(string $tipo): mixed
     {
-        return (clone $this->baseQuery())
-            ->with(['serie', 'vendedor:id,name'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $umbral = $tipo === 'pdf' ? self::UMBRAL_COLA_PDF : self::UMBRAL_COLA_EXCEL;
+        $count  = $this->baseQuery()->count();
+
+        if ($count <= $umbral) {
+            $ventas = $this->baseQuery()
+                ->with(['serie', 'vendedor:id,name'])
+                ->get();
+
+            $service = app(\App\Services\ReporteGananciasExportService::class);
+
+            return $tipo === 'pdf'
+                ? $service->generarPdf($ventas, $this->getFiltrosInfo(), $this->getColumnasVisibles(), $this->getResumen(), Filament::getTenant())
+                : $service->generarExcel($ventas, $this->getFiltrosInfo(), $this->getColumnasVisibles(), $this->getResumen(), Filament::getTenant());
+        }
+
+        $reporte = ReporteDescarga::create([
+            'empresa_id' => Filament::getTenant()->id,
+            'user_id'    => auth()->id(),
+            'tipo'       => $tipo,
+            'reporte'    => 'ganancias',
+            'estado'     => 'pendiente',
+            'filtros'    => [
+                'desde'            => $this->tableFilters['desde']['desde'] ?? null,
+                'hasta'            => $this->tableFilters['hasta']['hasta'] ?? null,
+                'vendedor'         => $this->tableFilters['vendedor']['vendedor'] ?? null,
+                'filtrosInfo'      => $this->getFiltrosInfo(),
+                'columnasVisibles' => $this->getColumnasVisibles(),
+                'resumen'          => $this->getResumen(),
+            ],
+        ]);
+
+        GenerarReporteJob::dispatch($reporte->id);
+
+        \Filament\Notifications\Notification::make()
+            ->title('Reporte en proceso')
+            ->body("Son {$count} registros, se genera en segundo plano. Recibirás una notificación cuando esté listo.")
+            ->info()
+            ->actions([
+                Action::make('ver_descargas')
+                    ->label('Ver descargas')
+                    ->url(ReporteDescargasPage::getUrl(panel: 'pdv', tenant: Filament::getTenant()))
+                    ->button(),
+            ])
+            ->send();
+
+        return null;
     }
 
     private function getFiltrosInfo(): array

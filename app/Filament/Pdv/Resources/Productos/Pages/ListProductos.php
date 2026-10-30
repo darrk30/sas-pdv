@@ -2,8 +2,12 @@
 
 namespace App\Filament\Pdv\Resources\Productos\Pages;
 
+use App\Filament\Pdv\Pages\ReporteDescargasPage;
 use App\Filament\Pdv\Resources\Productos\ProductoResource;
 use App\Filament\Pdv\Widgets\ProductosStatsWidget;
+use App\Jobs\GenerarReporteJob;
+use App\Models\Producto;
+use App\Models\ReporteDescarga;
 use App\Services\ProductoExcelTemplateService;
 use App\Services\ProductoExportService;
 use App\Services\ProductoImportService;
@@ -97,6 +101,42 @@ class ListProductos extends ListRecords
         return [ProductosStatsWidget::class];
     }
 
+    private const UMBRAL_COLA_EXCEL = 1000;
+
+    private function exportarProductos(): mixed
+    {
+        $count = Producto::where('empresa_id', Filament::getTenant()->id)->count();
+
+        if ($count <= self::UMBRAL_COLA_EXCEL) {
+            return app(ProductoExportService::class)->exportar(Filament::getTenant());
+        }
+
+        $reporte = ReporteDescarga::create([
+            'empresa_id' => Filament::getTenant()->id,
+            'user_id'    => auth()->id(),
+            'tipo'       => 'excel',
+            'reporte'    => 'productos',
+            'estado'     => 'pendiente',
+            'filtros'    => [],
+        ]);
+
+        GenerarReporteJob::dispatch($reporte->id);
+
+        Notification::make()
+            ->title('Exportación en proceso')
+            ->body("Son {$count} productos, se genera en segundo plano. Recibirás una notificación cuando esté listo.")
+            ->info()
+            ->actions([
+                Action::make('ver_descargas')
+                    ->label('Ver descargas')
+                    ->url(ReporteDescargasPage::getUrl(panel: 'pdv', tenant: Filament::getTenant()))
+                    ->button(),
+            ])
+            ->send();
+
+        return null;
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -112,9 +152,7 @@ class ListProductos extends ListRecords
                     ->label('Exportar Excel')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    ->action(function (): StreamedResponse {
-                        return app(ProductoExportService::class)->exportar(Filament::getTenant());
-                    }),
+                    ->action(fn() => $this->exportarProductos()),
 
                 // ── Productos: Nuevo / Actualizar ─────────────────────────────
                 Action::make('importar_productos')

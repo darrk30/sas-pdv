@@ -22,8 +22,9 @@ class ProductosTable
                     ->label('')
                     ->disk('public')
                     ->defaultImageUrl(asset('img/placeholder-producto.svg'))
-                    ->size(40)
+                    ->imageSize(40)
                     ->square()
+                    ->checkFileExistence(false)
                     ->extraImgAttributes(['class' => 'rounded object-cover']),
 
                 TextColumn::make('nombre')
@@ -155,7 +156,6 @@ class ProductosTable
                         "window.dispatchEvent(new CustomEvent('open-barcode-scanner', { detail: { path: 'productos_barcode_filter' } }))"
                     )),
             ])
-            ->reorderable('orden')
-            ->defaultSort('orden', 'asc');
+            ->defaultSort('id', 'desc');
     }
 }

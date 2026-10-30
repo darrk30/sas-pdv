@@ -267,4 +267,53 @@ class KardexExportService
         }
         return $info;
     }
+
+    // ── Guardar en disco (para cola) ──────────────────────────────────────────
+
+    public function guardarExcel(Empresa $empresa, array $filtros, array $resumen, string $rutaAbsoluta): void
+    {
+        $movimientos  = $this->baseQuery($empresa, $filtros)->get();
+        $origenLabels = [
+            'App\\Models\\Ajuste' => 'Ajuste',
+            'App\\Models\\Compra' => 'Compra',
+            'App\\Models\\Venta'  => 'Venta',
+        ];
+
+        $writer = new \OpenSpout\Writer\XLSX\Writer();
+        $writer->openToFile($rutaAbsoluta);
+        $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues(
+            ['Fecha', 'Producto', 'Concepto', 'Origen', 'Tipo', 'Cantidad', 'Stock Antes', 'Stock Después', 'Usuario']
+        ));
+        foreach ($movimientos as $mov) {
+            $esEntrada = $mov->tipo === 'entrada';
+            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([
+                \Carbon\Carbon::parse($mov->fecha)->format('d/m/Y H:i'),
+                $mov->producto_nombre . ($mov->variante_nombre ? ' (' . $mov->variante_nombre . ')' : ''),
+                $mov->concepto,
+                $origenLabels[$mov->movible_type] ?? '—',
+                ucfirst($mov->tipo),
+                ($esEntrada ? '+' : '-') . number_format((float) $mov->cantidad, 2),
+                number_format((float) $mov->stock_antes, 2),
+                number_format((float) $mov->stock_despues, 2),
+                $mov->user?->name ?? 'Sistema',
+            ]));
+        }
+        $writer->close();
+    }
+
+    public function guardarPdf(Empresa $empresa, array $filtros, array $resumen, string $rutaAbsoluta, string $usuarioNombre = 'Sistema'): void
+    {
+        $movimientos = $this->baseQuery($empresa, $filtros)->limit(1_000)->get();
+        $origenMeta  = [
+            'App\\Models\\Ajuste' => 'Ajuste',
+            'App\\Models\\Compra' => 'Compra',
+            'App\\Models\\Venta'  => 'Venta',
+        ];
+
+        Pdf::loadView('reports.kardex-pdf', compact(
+            'movimientos', 'empresa', 'filtros', 'resumen', 'usuarioNombre', 'origenMeta'
+        ))->setPaper('a4', 'landscape')
+        ->setOption(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => false, 'defaultFont' => 'DejaVu Sans'])
+        ->save($rutaAbsoluta);
+    }
 }

@@ -27,7 +27,7 @@ tbody tr.anulada td { color: #9ca3af; }
 <table style="margin-bottom:6px;">
     <tr>
         <td style="background:#1E3A5F;padding:8px 12px;vertical-align:middle;">
-            <div style="font-size:11px;font-weight:bold;color:#fff;">{{ strtoupper($empresa->nombre) }}</div>
+            <div style="font-size:11px;font-weight:bold;color:#fff;">{{ strtoupper($empresa->nombre ?? '') }}</div>
             <div style="font-size:8.5px;color:#c7d7ee;margin-top:2px;">RUC {{ $empresa->ruc ?? '' }}</div>
         </td>
         <td style="background:#1E3A5F;padding:8px 12px;text-align:right;vertical-align:middle;">

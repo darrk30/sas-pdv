@@ -3,6 +3,7 @@
 namespace App\Filament\Pdv\Pages;
 
 use App\Enums\EstadoSunat;
+use App\Enums\TipoComprobante;
 use App\Filament\Pdv\Concerns\HasFullWidthPage;
 use App\Models\Nota;
 use App\Models\ResumenSunat;
@@ -178,8 +179,9 @@ class NotasPage extends Page implements HasTable
 
         $nota->loadMissing(['serie', 'venta.serie']);
 
-        // Serie empieza con 'F' → nota de factura → RA; 'B' → nota de boleta → RC
-        $esDeFactura = strtoupper($nota->serie->serie[0] ?? 'B') === 'F';
+        // Usar el tipo del comprobante original (venta), no el prefijo de la serie de la nota.
+        // "NC01" puede referir tanto una factura como una boleta; el tipo de la venta es el dato correcto.
+        $esDeFactura = $nota->venta?->serie?->tipo === TipoComprobante::Factura;
 
         if ($esDeFactura) {
             $this->anularNotaViaRA($nota, $empresa, $motivo);

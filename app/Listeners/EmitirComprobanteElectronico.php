@@ -53,11 +53,26 @@ class EmitirComprobanteElectronico
                         'qr_data'           => $response->qrData,
                         'total_letras'      => $response->totalLetras,
                     ]);
+                } elseif ($response->xmlBase64) {
+                    // El facturador generó el XML pero SUNAT no lo procesó
+                    // (servicio caído, timeout, error de infra) → guardar datos y dejar PorEnviar
+                    $this->guardarArchivos($venta, $response);
+                    $venta->update(array_filter([
+                        'path_xml'          => $venta->path_xml,
+                        'hash'              => $response->hash,
+                        'qr_data'           => $response->qrData,
+                        'total_letras'      => $response->totalLetras,
+                        'sunat_success'     => false,
+                        'sunat_codigo'      => $response->errorCode,
+                        'sunat_descripcion' => $response->mensajeError(),
+                        'estado_sunat'      => EstadoSunat::PorEnviar,
+                    ], fn ($v) => $v !== null));
                 } else {
+                    // El facturador no pudo generar el XML (error de firma o configuración)
                     $venta->update([
-                        'sunat_success' => false,
-                        'sunat_mensaje' => $response->mensajeError(),
-                        'estado_sunat'  => EstadoSunat::Error,
+                        'sunat_success'     => false,
+                        'sunat_descripcion' => $response->mensajeError(),
+                        'estado_sunat'      => EstadoSunat::Error,
                     ]);
                 }
             } else {
@@ -70,12 +85,22 @@ class EmitirComprobanteElectronico
                         'total_letras' => $response->totalLetras,
                         'estado_sunat' => EstadoSunat::PorEnviar,
                     ], fn ($v) => $v !== null));
+                } elseif ($response->xmlBase64) {
+                    $this->guardarArchivos($venta, $response);
+                    $venta->update(array_filter([
+                        'path_xml'          => $venta->path_xml,
+                        'hash'              => $response->hash,
+                        'qr_data'           => $response->qrData,
+                        'total_letras'      => $response->totalLetras,
+                        'sunat_success'     => false,
+                        'sunat_descripcion' => $response->mensajeError(),
+                        'estado_sunat'      => EstadoSunat::PorEnviar,
+                    ], fn ($v) => $v !== null));
                 } else {
-                    // El facturador falló al generar el XML
                     $venta->update([
-                        'sunat_success' => false,
-                        'sunat_mensaje' => $response->mensajeError(),
-                        'estado_sunat'  => EstadoSunat::Error,
+                        'sunat_success'     => false,
+                        'sunat_descripcion' => $response->mensajeError(),
+                        'estado_sunat'      => EstadoSunat::Error,
                     ]);
                 }
             }
@@ -86,9 +111,9 @@ class EmitirComprobanteElectronico
             ]);
 
             $venta->update([
-                'sunat_success' => false,
-                'sunat_mensaje' => $e->getMessage(),
-                'estado_sunat'  => EstadoSunat::Error,
+                'sunat_success'     => false,
+                'sunat_descripcion' => $e->getMessage(),
+                'estado_sunat'      => EstadoSunat::Error,
             ]);
         }
     }

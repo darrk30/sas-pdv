@@ -702,10 +702,25 @@ class EditarVentaPage extends Page
                         'estado_sunat' => EstadoSunat::PorEnviar->value,
                     ], fn ($v) => $v !== null));
                 }
+            } elseif ($response->xmlBase64) {
+                // XML generado pero SUNAT no lo procesó → guardar y dejar PorEnviar
+                $pathXml = "{$base}.xml";
+                Storage::disk('local')->put($pathXml, base64_decode($response->xmlBase64));
+
+                $venta->update(array_filter([
+                    'path_xml'          => $pathXml,
+                    'hash'              => $response->hash,
+                    'qr_data'           => $response->qrData,
+                    'total_letras'      => $response->totalLetras,
+                    'sunat_success'     => false,
+                    'sunat_codigo'      => $response->errorCode,
+                    'sunat_descripcion' => $response->mensajeError(),
+                    'estado_sunat'      => EstadoSunat::PorEnviar->value,
+                ], fn ($v) => $v !== null));
             } else {
+                // El facturador no pudo generar el XML
                 $venta->update([
                     'sunat_success'     => false,
-                    'sunat_mensaje'     => $response->mensajeError(),
                     'sunat_descripcion' => $response->mensajeError(),
                     'estado_sunat'      => EstadoSunat::Error->value,
                 ]);
@@ -716,9 +731,9 @@ class EditarVentaPage extends Page
                 'error'    => $e->getMessage(),
             ]);
             $venta->update([
-                'sunat_success' => false,
-                'sunat_mensaje' => $e->getMessage(),
-                'estado_sunat'  => EstadoSunat::Error->value,
+                'sunat_success'     => false,
+                'sunat_descripcion' => $e->getMessage(),
+                'estado_sunat'      => EstadoSunat::Error->value,
             ]);
         }
     }

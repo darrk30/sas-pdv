@@ -55,7 +55,9 @@ class ProductoResource extends Resource
     // Excluye productos archivados del listado y de las búsquedas del resource.
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('estado', '!=', 'archivado');
+        return parent::getEloquentQuery()
+            ->where('estado', '!=', 'archivado')
+            ->with(['categoria', 'marca', 'unidadMedida', 'produccion']);
     }
 
     public static function getRelations(): array

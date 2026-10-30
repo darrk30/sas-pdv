@@ -163,8 +163,8 @@ class PdvPanelProvider extends PanelProvider
             ->maxContentWidth(Width::Full)
             ->spa()
             ->databaseTransactions()
-            ->databaseNotifications(livewireComponent: PdvDatabaseNotifications::class)
-            ->databaseNotificationsPolling('30s')
+            ->databaseNotifications(livewireComponent: PdvDatabaseNotifications::class, isLazy: false)
+            ->databaseNotificationsPolling('5s')
             ->tenant(Empresa::class, slugAttribute: 'slug')
             ->tenantRegistration(RegistrarLocalPage::class)
             ->tenantDomain('{tenant:slug}.' . config('app.domain'));

@@ -3,7 +3,8 @@
 namespace App\Filament\Pdv\Pages;
 
 use App\Models\Compra;
-use App\Services\ReporteComprasExportService;
+use App\Jobs\GenerarReporteJob;
+use App\Models\ReporteDescarga;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -346,39 +347,76 @@ class ReporteComprasPage extends Page implements HasForms, HasTable
                 ->label('Excel')
                 ->icon('heroicon-o-table-cells')
                 ->color('success')
-                ->action(function () {
-                    return app(ReporteComprasExportService::class)->generarExcel(
-                        $this->getComprasParaExportar(),
-                        $this->getFiltrosInfo(),
-                        $this->getColumnasVisibles(),
-                        $this->getResumen(),
-                        Filament::getTenant(),
-                    );
-                }),
+                ->action(fn() => $this->despacharReporte('excel')),
             Action::make('descargarPdf')
                 ->label('PDF')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('danger')
-                ->action(function () {
-                    return app(ReporteComprasExportService::class)->generarPdf(
-                        $this->getComprasParaExportar(),
-                        $this->getFiltrosInfo(),
-                        $this->getColumnasVisibles(),
-                        $this->getResumen(),
-                        Filament::getTenant(),
-                    );
-                }),
+                ->action(fn() => $this->despacharReporte('pdf')),
         ];
     }
 
-    private function getComprasParaExportar(): \Illuminate\Database\Eloquent\Collection
+    private const UMBRAL_COLA_EXCEL = 1000;
+    private const UMBRAL_COLA_PDF   = 1000;
+
+    private function despacharReporte(string $tipo): mixed
     {
-        $q = Compra::with(['proveedor:id,nombre', 'registradoPor:id,name'])
-            ->withSum('pagos', 'monto')
-            ->orderByDesc('fecha_compra')
-            ->orderByDesc('id');
+        $umbral = $tipo === 'pdf' ? self::UMBRAL_COLA_PDF : self::UMBRAL_COLA_EXCEL;
+
+        $q = Compra::query();
         $this->aplicarFiltros($q);
-        return $q->get();
+        $count = $q->count();
+
+        if ($count <= $umbral) {
+            $compras = (clone $q)
+                ->with(['proveedor:id,nombre', 'registradoPor:id,name'])
+                ->withSum('pagos', 'monto')
+                ->orderBy('fecha_compra', 'desc')
+                ->get();
+
+            $service = app(\App\Services\ReporteComprasExportService::class);
+
+            return $tipo === 'pdf'
+                ? $service->generarPdf($compras, $this->getFiltrosInfo(), $this->getColumnasVisibles(), $this->getResumen(), Filament::getTenant())
+                : $service->generarExcel($compras, $this->getFiltrosInfo(), $this->getColumnasVisibles(), $this->getResumen(), Filament::getTenant());
+        }
+
+        $reporte = ReporteDescarga::create([
+            'empresa_id' => Filament::getTenant()->id,
+            'user_id'    => auth()->id(),
+            'tipo'       => $tipo,
+            'reporte'    => 'compras',
+            'estado'     => 'pendiente',
+            'filtros'    => [
+                'filtroFechaDesde'      => $this->filtroFechaDesde,
+                'filtroFechaHasta'      => $this->filtroFechaHasta,
+                'filtroUsuario'         => $this->filtroUsuario,
+                'filtroEstado'          => $this->filtroEstado,
+                'filtroEstadoPago'      => $this->filtroEstadoPago,
+                'filtroTipoComprobante' => $this->filtroTipoComprobante,
+                'filtroSerie'           => $this->filtroSerie,
+                'filtroCorrelativo'     => $this->filtroCorrelativo,
+                'filtrosInfo'           => $this->getFiltrosInfo(),
+                'columnasVisibles'      => $this->getColumnasVisibles(),
+                'resumen'               => $this->getResumen(),
+            ],
+        ]);
+
+        GenerarReporteJob::dispatch($reporte->id);
+
+        \Filament\Notifications\Notification::make()
+            ->title('Reporte en proceso')
+            ->body("Son {$count} registros, se genera en segundo plano. Recibirás una notificación cuando esté listo.")
+            ->info()
+            ->actions([
+                Action::make('ver_descargas')
+                    ->label('Ver descargas')
+                    ->url(ReporteDescargasPage::getUrl(panel: 'pdv', tenant: Filament::getTenant()))
+                    ->button(),
+            ])
+            ->send();
+
+        return null;
     }
 
     private function getFiltrosInfo(): array

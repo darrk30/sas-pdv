@@ -35,7 +35,7 @@ class ProductoExcelTemplateService
         'D' => ['PRECIO_COSTO',         16, false, null,                           'Opcional. Costo del producto.'],
         'E' => ['DESCUENTO',            12, false, null,                           'Porcentaje de descuento 0-100. Ej: 10 (= 10%).'],
         'F' => ['PRECIO_CON_DESCUENTO', 22, false, null,                           'Se calcula automáticamente. No editar.'],
-        'G' => ['UNIDAD_MEDIDA',        16, false, null,                           "Escribe el SÍMBOLO de la unidad de medida.\nEjemplos: und  kg  lt  m  doc  caja\n(No el nombre completo, solo el símbolo)"],
+        'G' => ['UNIDAD_MEDIDA',        16, false, null,                           "Nombre o símbolo de la unidad (sin distinción de mayúsculas).\nPor nombre: Unidad, Kilogramo, Litro, Metro...\nPor símbolo SUNAT: NIU, KGM, LTR, MTR...\nVacío = usa 'Unidad' por defecto."],
         'H' => ['ESTADO',               13, false, 'activo,inactivo,archivado',    'Selecciona de la lista. Por defecto: activo.'],
         'I' => ['STOCK_MINIMO',         14, false, null,                           'Stock mínimo para alerta de bajo inventario.'],
         'J' => ['STOCK_INICIAL',        14, false, null,                           'Stock de arranque al crear el producto.'],
@@ -57,7 +57,7 @@ class ProductoExcelTemplateService
         'D' => ['PRECIO_COSTO',         16, false, null,                                'Ignorado al actualizar. El costo se gestiona vía compras o ajustes.'],
         'E' => ['DESCUENTO',            12, false, null,                                'Porcentaje 0-100. Dejar vacío para no cambiar.'],
         'F' => ['PRECIO_CON_DESCUENTO', 22, false, null,                                'Se calcula automáticamente. No editar.'],
-        'G' => ['UNIDAD_MEDIDA',        16, false, null,                                "Escribe el SÍMBOLO de la unidad.\nEjemplos: und  kg  lt  m  doc  caja\nDejar vacío para no cambiar."],
+        'G' => ['UNIDAD_MEDIDA',        16, false, null,                                "Nombre o símbolo de la unidad (sin distinción de mayúsculas).\nPor nombre: Unidad, Kilogramo, Litro, Metro...\nPor símbolo SUNAT: NIU, KGM, LTR, MTR...\nVacío = no cambia."],
         'H' => ['ESTADO',               13, false, 'activo,inactivo,archivado',         'Selecciona de la lista. Dejar vacío para no cambiar.'],
         'I' => ['STOCK_MINIMO',         14, false, null,                                'Dejar vacío para no cambiar.'],
         'J' => ['STOCK_INICIAL',        14, false, null,                                "Solo se aplica si el producto nunca tuvo stock registrado (stock = 0 y sin movimientos previos).\nVacío = no hacer nada."],
@@ -73,8 +73,8 @@ class ProductoExcelTemplateService
     ];
 
     private const COLS_VARIANTES = [
-        'A' => ['CODIGO_INTERNO (*)', 20, true,  null, 'Requerido. Código interno del producto padre al que pertenece esta variante.'],
-        'B' => ['CODIGO_VARIANTE',    20, false, null, 'Código propio de la variante. Se genera automáticamente si se deja vacío.'],
+        'A' => ['CODIGO_PRODUCTO (*)', 20, true,  null, 'Requerido. Código del producto al que pertenece esta variante.'],
+        'B' => ['CODIGO_VARIANTE',     20, false, null, 'Código propio de la variante. Se genera automáticamente si se deja vacío.'],
         'C' => ['COMBINACION (*)',    40, true,  null, "Requerido. Define los atributos y valores de la variante.\nFormato: ATRIBUTO:VALOR / ATRIBUTO2:VALOR2\nEjemplo: Talla:M / Color:Rojo\n\nSepara múltiples atributos con  /  (barra con espacios).\nEl nombre del atributo y el valor se crean si no existen."],
         'D' => ['PRECIO_EXTRA',       28, false, null, "Precio adicional por valor de atributo.\n\n• Si la combinación tiene UN solo atributo:\n  Escribe solo el número. Ej: 10\n  (se aplica al único valor)\n\n• Si la combinación tiene MÁS de un atributo:\n  Especifica a qué valor(es) con el formato:\n  Valor:precio\n  Ej:  M:5            (solo Talla:M recibe +5)\n  Ej:  M:5 / Rojo:3  (M recibe +5 y Rojo +3)\n\n  Los valores no mencionados quedan en 0."],
         'E' => ['PRECIO_COSTO',       15, false, null, 'Costo de esta variante. Vacío = usa el costo del producto.'],
@@ -82,11 +82,28 @@ class ProductoExcelTemplateService
         'G' => ['CODIGO_BARRAS',      18, false, null, 'Código de barras específico de esta variante (EAN-13, Code128, etc.).'],
     ];
 
+    private const COLS_VARIANTES_ACTUALIZAR = [
+        'A' => ['CODIGO_PRODUCTO',  20, false, null, "Código del producto padre.\nNecesario solo si no proporcionas CODIGO_VARIANTE en col B."],
+        'B' => ['CODIGO_VARIANTE',  20, false, null, "Código propio de la variante para identificarla directamente.\nSi lo proporcionas, col A y C pueden quedar vacíos."],
+        'C' => ['COMBINACION',      40, false, null, "Necesario solo si no proporcionas CODIGO_VARIANTE.\nFormato: Talla:M / Color:Rojo\nVacío = no cambiar la combinación."],
+        'D' => ['PRECIO_EXTRA',     28, false, null, "Precio adicional por atributo/valor. Vacío = no cambiar.\nFormatos: solo el número (1 atributo) o Valor:precio (varios).\nEj: 10   o   Talla:6   o   Talla:6 / Color:3"],
+        'E' => ['PRECIO_COSTO',     15, false, null, 'Costo de la variante. Vacío = no cambiar.'],
+        'F' => ['STOCK_INICIAL',    14, false, null, "Solo se aplica si la variante nunca tuvo stock registrado (stock = 0 y sin movimientos).\nVacío = no hacer nada."],
+        'G' => ['CODIGO_BARRAS',    18, false, null, 'Código de barras de la variante. Vacío = no cambiar.'],
+    ];
+
     private const COLS_PRECIOS = [
         'A' => ['CODIGO_INTERNO (*)',    20, true,  null,   'Requerido. Identifica el producto.'],
         'B' => ['PRECIO_VENTA',         16, false, null,   'Nuevo precio de venta. Vacío = no cambia.'],
         'C' => ['DESCUENTO',            12, false, null,   'Porcentaje 0-100. Vacío = no cambia.'],
         'D' => ['PRECIO_CON_DESCUENTO', 22, false, null,   'Se calcula automáticamente. No editar.'],
+    ];
+
+    private const COLS_VARIANTES_PRECIOS = [
+        'A' => ['CODIGO_PRODUCTO',  20, false, null, "Código del producto padre.\nNecesario solo si no proporcionas CODIGO_VARIANTE en col B."],
+        'B' => ['CODIGO_VARIANTE',  20, false, null, "Código propio de la variante para identificarla directamente.\nSi lo proporcionas, col A y C pueden quedar vacíos."],
+        'C' => ['COMBINACION',      40, false, null, "Para identificar la variante cuando no hay CODIGO_VARIANTE.\nFormato: Talla:M / Color:Rojo"],
+        'D' => ['PRECIO_EXTRA (*)', 28, true,  null, "Requerido. Precio adicional por valor de atributo.\nFormatos: solo el número (1 atributo) o Valor:precio (varios).\nEj: 10   o   Talla:6   o   Talla:6 / Color:3\nActualiza el atributo indicado y recalcula el precio final."],
     ];
 
     // ── Ejemplos (sin PRECIO_CON_DESCUENTO — lo pone la fórmula) ─────────────
@@ -97,7 +114,7 @@ class ProductoExcelTemplateService
         'C' => '25.90',
         'D' => '15.00',
         'E' => '10',
-        'G' => 'und',
+        'G' => 'NIU',
         'H' => 'activo',
         'I' => '5',
         'J' => '100',
@@ -150,12 +167,16 @@ class ProductoExcelTemplateService
 
     public function generarPlantillaActualizar(): Spreadsheet
     {
-        return $this->construir('Actualizar Productos', self::COLS_ACTUALIZAR, self::EJEMPLO_ACTUALIZAR);
+        $spreadsheet = $this->construir('Actualizar Productos', self::COLS_ACTUALIZAR, self::EJEMPLO_ACTUALIZAR);
+        $this->agregarHojaVariantesActualizar($spreadsheet);
+        return $spreadsheet;
     }
 
     public function generarPlantillaPrecios(): Spreadsheet
     {
-        return $this->construir('Actualizar Precios', self::COLS_PRECIOS, self::EJEMPLO_PRECIOS);
+        $spreadsheet = $this->construir('Actualizar Precios', self::COLS_PRECIOS, self::EJEMPLO_PRECIOS);
+        $this->agregarHojaVariantesPrecios($spreadsheet);
+        return $spreadsheet;
     }
 
     // ── Hoja de variantes ────────────────────────────────────────────────────
@@ -200,6 +221,83 @@ class ProductoExcelTemplateService
         $sheet->getComment('A' . self::FILA_EJEMPLO)
             ->getText()
             ->createTextRun('Estas son filas de EJEMPLO. Puedes modificarlas o eliminarlas.');
+    }
+
+    private function agregarHojaVariantesPrecios(Spreadsheet $spreadsheet): void
+    {
+        $sheet    = $spreadsheet->createSheet();
+        $sheet->setTitle('Variantes');
+        $columnas = self::COLS_VARIANTES_PRECIOS;
+        $ultima   = array_key_last($columnas);
+
+        $this->escribirHeaders($sheet, $columnas);
+        $this->aplicarComentarios($sheet, $columnas);
+        $this->aplicarAnchos($sheet, $columnas);
+        $this->congelarPrimeraFila($sheet);
+
+        // Ejemplos: identificar por código de variante o por producto+combinación
+        $ejemplos = [
+            ['A' => '',            'B' => 'PROD_2_001',   'C' => '',                       'D' => '5'],
+            ['A' => 'PERFUME-001', 'B' => '',             'C' => 'Presentación:50ml',      'D' => '10'],
+            ['A' => 'CAMISETA-001','B' => '',             'C' => 'Talla:M / Color:Blanco', 'D' => 'M:5'],
+            ['A' => 'CAMISETA-001','B' => '',             'C' => 'Talla:M / Color:Negro',  'D' => 'M:5 / Negro:3'],
+        ];
+
+        foreach ($ejemplos as $i => $ej) {
+            $fila = self::FILA_EJEMPLO + $i;
+            foreach ($columnas as $col => $_) {
+                if (isset($ej[$col])) {
+                    $sheet->setCellValue($col . $fila, $ej[$col]);
+                }
+            }
+            $sheet->getStyle('A' . $fila . ':' . $ultima . $fila)->applyFromArray([
+                'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_EJEMPLO]],
+                'font'    => ['italic' => true, 'size' => 11, 'color' => ['rgb' => '92400E']],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::COLOR_BORDE]]],
+            ]);
+        }
+
+        $sheet->getComment('A' . self::FILA_EJEMPLO)
+            ->getText()
+            ->createTextRun("Estas son filas de EJEMPLO. Puedes modificarlas o eliminarlas.\nCol A: código de la variante (directo). Si está vacío, usa B + C.\nPRECIO_EXTRA actualiza el precio adicional por atributo/valor y recalcula el precio final.");
+    }
+
+    private function agregarHojaVariantesActualizar(Spreadsheet $spreadsheet): void
+    {
+        $sheet    = $spreadsheet->createSheet();
+        $sheet->setTitle('Variantes');
+        $columnas = self::COLS_VARIANTES_ACTUALIZAR;
+        $ultima   = array_key_last($columnas);
+
+        $this->escribirHeaders($sheet, $columnas);
+        $this->aplicarComentarios($sheet, $columnas);
+        $this->aplicarAnchos($sheet, $columnas);
+        $this->congelarPrimeraFila($sheet);
+
+        // Ejemplos representativos para actualizar variantes
+        $ejemplos = [
+            ['A' => '',            'B' => 'PROD_2_001',  'C' => '',                       'D' => '5',   'E' => '',     'F' => '',  'G' => ''],
+            ['A' => 'CAMISETA-001','B' => '',            'C' => 'Talla:M / Color:Blanco', 'D' => 'M:5', 'E' => '12.00','F' => '',  'G' => ''],
+            ['A' => 'CAMISETA-001','B' => '',            'C' => 'Talla:S / Color:Negro',  'D' => '',    'E' => '',     'F' => '20','G' => '7501234000099'],
+        ];
+
+        foreach ($ejemplos as $i => $ej) {
+            $fila = self::FILA_EJEMPLO + $i;
+            foreach ($columnas as $col => $_) {
+                if (isset($ej[$col])) {
+                    $sheet->setCellValue($col . $fila, $ej[$col]);
+                }
+            }
+            $sheet->getStyle('A' . $fila . ':' . $ultima . $fila)->applyFromArray([
+                'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_EJEMPLO]],
+                'font'    => ['italic' => true, 'size' => 11, 'color' => ['rgb' => '92400E']],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::COLOR_BORDE]]],
+            ]);
+        }
+
+        $sheet->getComment('B' . self::FILA_EJEMPLO)
+            ->getText()
+            ->createTextRun("Estas son filas de EJEMPLO. Puedes modificarlas o eliminarlas.\nCol B (CODIGO_VARIANTE): basta con este código para identificar la variante.\nSi no tienes el código, usa CODIGO_INTERNO + COMBINACION.");
     }
 
     // ── Construcción interna ──────────────────────────────────────────────────

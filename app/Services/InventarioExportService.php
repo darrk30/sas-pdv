@@ -243,4 +243,38 @@ class InventarioExportService
 
         return $spreadsheet;
     }
+
+    // ── Guardar en disco (para cola) ──────────────────────────────────────────
+
+    public function guardarExcel(Empresa $empresa, array $stats, string $rutaAbsoluta): void
+    {
+        $registros = $this->baseQuery($empresa)->get();
+
+        $writer = new \OpenSpout\Writer\XLSX\Writer();
+        $writer->openToFile($rutaAbsoluta);
+        $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues(
+            ['Producto', 'Código', 'Stock Actual', 'Stock Mínimo', 'Estado']
+        ));
+        foreach ($registros as $inv) {
+            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([
+                $this->resolverNombre($inv),
+                $this->resolverCodigo($inv),
+                (float) $inv->stock_real,
+                (float) ($inv->stock_minimo ?? 0),
+                $this->resolverEstado($inv),
+            ]));
+        }
+        $writer->close();
+    }
+
+    public function guardarPdf(Empresa $empresa, array $stats, string $rutaAbsoluta, string $usuarioNombre = 'Sistema'): void
+    {
+        $registros = $this->baseQuery($empresa)->get();
+
+        Pdf::loadView('reports.inventario-pdf', compact(
+            'registros', 'empresa', 'stats', 'usuarioNombre'
+        ))->setPaper('a4', 'portrait')
+        ->setOption(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => false, 'defaultFont' => 'DejaVu Sans'])
+        ->save($rutaAbsoluta);
+    }
 }

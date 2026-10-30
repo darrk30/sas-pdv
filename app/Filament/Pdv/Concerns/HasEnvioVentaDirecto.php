@@ -23,18 +23,18 @@ trait HasEnvioVentaDirecto
             /** @var FacturadorService $service */
             $service  = app(FacturadorService::class);
             $response = $service->enviarComprobante($venta, enviarSunat: true);
-            if ($response->ok) {
-                $serie       = $venta->serie->serie ?? 'X';
-                $correlativo = str_pad((string) $venta->correlativo, 8, '0', STR_PAD_LEFT);
-                $base        = "empresas/{$venta->empresa_id}/comprobantes/{$serie}-{$correlativo}";
 
+            $serie       = $venta->serie->serie ?? 'X';
+            $correlativo = str_pad((string) $venta->correlativo, 8, '0', STR_PAD_LEFT);
+            $base        = "empresas/{$venta->empresa_id}/comprobantes/{$serie}-{$correlativo}";
+
+            if ($response->ok) {
                 $pathXml = $pathCdr = null;
 
                 if ($response->xmlBase64) {
                     $pathXml = "{$base}.xml";
                     Storage::disk('local')->put($pathXml, base64_decode($response->xmlBase64));
                 }
-
                 if ($response->cdrZip) {
                     $pathCdr = "{$base}-CDR.zip";
                     Storage::disk('local')->put($pathCdr, base64_decode($response->cdrZip));
@@ -58,17 +58,38 @@ trait HasEnvioVentaDirecto
                     ->body($response->sunatDescription)
                     ->success()
                     ->send();
+            } elseif ($response->xmlBase64) {
+                // XML generado pero SUNAT no lo procesó → guardar y dejar PorEnviar para reintentar
+                $pathXml = "{$base}.xml";
+                Storage::disk('local')->put($pathXml, base64_decode($response->xmlBase64));
+
+                $venta->update(array_filter([
+                    'path_xml'          => $pathXml,
+                    'hash'              => $response->hash,
+                    'qr_data'           => $response->qrData,
+                    'total_letras'      => $response->totalLetras,
+                    'sunat_success'     => false,
+                    'sunat_codigo'      => $response->errorCode,
+                    'sunat_descripcion' => $response->mensajeError(),
+                    'estado_sunat'      => EstadoSunat::PorEnviar,
+                ], fn ($v) => $v !== null));
+
+                Notification::make()
+                    ->title('XML generado — SUNAT no disponible')
+                    ->body('El comprobante está firmado y listo. Se intentará enviar a SUNAT más tarde.')
+                    ->warning()
+                    ->send();
             } else {
+                // El facturador no pudo generar el XML
                 $venta->update([
                     'sunat_success'     => false,
                     'sunat_codigo'      => $response->sunatCode ?? $response->errorCode,
                     'sunat_descripcion' => $response->mensajeError(),
-                    'sunat_mensaje'     => $response->mensajeError(),
                     'estado_sunat'      => EstadoSunat::Error,
                 ]);
 
                 Notification::make()
-                    ->title('SUNAT rechazó el comprobante')
+                    ->title('Error al generar el comprobante')
                     ->body($response->mensajeError())
                     ->danger()
                     ->send();
@@ -77,7 +98,6 @@ trait HasEnvioVentaDirecto
             $venta->update([
                 'sunat_success'     => false,
                 'sunat_descripcion' => $e->getMessage(),
-                'sunat_mensaje'     => $e->getMessage(),
                 'estado_sunat'      => EstadoSunat::Error,
             ]);
 

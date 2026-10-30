@@ -354,4 +354,12 @@ class ProductoExportService
             return "{$nombre}:{$extra}";
         })->implode(' / ');
     }
+
+    // ── Guardar en archivo (para jobs en cola) ────────────────────────────────
+
+    public function guardar(Empresa $empresa, string $rutaAbsoluta): void
+    {
+        $spreadsheet = $this->buildSpreadsheet($empresa);
+        (new Xlsx($spreadsheet))->save($rutaAbsoluta);
+    }
 }
