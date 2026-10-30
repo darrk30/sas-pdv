@@ -2,7 +2,9 @@
 @if ($categorias->isNotEmpty())
 
 <nav class="cats-strip" aria-label="Categorías">
-    <div class="cats-strip__inner">
+    <div class="cats-strip__inner"
+         x-data
+         @wheel.prevent="$el.scrollLeft += $event.deltaY">
 
         {{-- "Todas" pill --}}
         <button type="button" wire:click="seleccionar(0)"
