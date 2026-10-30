@@ -23,7 +23,7 @@ class InventarioExportService
         return Inventario::query()
             ->where('empresa_id', $empresa->id)
             ->where('estado_almacen', 'activo')
-            ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado'))
+            ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado')->where('control_de_stock', true))
             ->with(['producto', 'variante.valores.valor', 'variante.producto'])
             ->orderByRaw("FIELD(estado_inventario, 'agotado', 'por_agotarse', 'disponible')");
     }
