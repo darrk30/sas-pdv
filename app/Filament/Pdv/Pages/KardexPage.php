@@ -369,6 +369,7 @@ class KardexPage extends Page implements HasForms, HasTable
 
         $productos = Producto::where('empresa_id', $empresaId)
             ->whereIn('estado', ['activo', 'inactivo', 'archivado'])
+            ->where('control_de_stock', true)
             ->with(['variantes' => fn ($q) => $q->with('valores.valor')])
             ->orderBy('nombre')
             ->get(['id', 'nombre', 'estado']);

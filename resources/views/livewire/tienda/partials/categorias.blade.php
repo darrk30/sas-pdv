@@ -2,9 +2,12 @@
 @if ($categorias->isNotEmpty())
 
 <nav class="cats-strip" aria-label="Categorías">
-    <div class="cats-strip__inner"
-         x-data
-         @wheel.prevent="$el.scrollLeft += $event.deltaY">
+
+    {{-- Flecha izquierda (solo PC) --}}
+    <button type="button" class="cats-strip__btn" aria-label="Anterior"
+            @click="$refs.inner.scrollBy({ left: -200, behavior: 'smooth' })">&#8249;</button>
+
+    <div class="cats-strip__inner" x-ref="inner">
 
         {{-- "Todas" pill --}}
         <button type="button" wire:click="seleccionar(0)"
@@ -32,6 +35,11 @@
         @endforeach
 
     </div>
+
+    {{-- Flecha derecha (solo PC) --}}
+    <button type="button" class="cats-strip__btn" aria-label="Siguiente"
+            @click="$refs.inner.scrollBy({ left: 200, behavior: 'smooth' })">&#8250;</button>
+
 </nav>
 
 @endif

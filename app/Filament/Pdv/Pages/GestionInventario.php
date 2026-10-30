@@ -66,7 +66,7 @@ class GestionInventario extends Page implements HasTable
         $counts = Inventario::query()
             ->where('empresa_id', $empresaId)
             ->where('estado_almacen', 'activo')
-            ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado'))
+            ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado')->where('control_de_stock', true))
             ->selectRaw("
                 SUM(CASE WHEN estado_inventario = 'disponible'   THEN 1 ELSE 0 END) AS disponible,
                 SUM(CASE WHEN estado_inventario = 'por_agotarse' THEN 1 ELSE 0 END) AS por_agotarse,
@@ -132,7 +132,7 @@ class GestionInventario extends Page implements HasTable
             ->query(
                 Inventario::query()
                     ->where('estado_almacen', 'activo')
-                    ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado'))
+                    ->whereHas('producto', fn(Builder $q) => $q->where('estado', '!=', 'archivado')->where('control_de_stock', true))
                     ->orderByRaw("FIELD(estado_inventario, 'disponible', 'por_agotarse', 'agotado')")
                     ->with([
                         'producto',
@@ -279,7 +279,7 @@ class GestionInventario extends Page implements HasTable
 
         $count = \App\Models\Inventario::where('empresa_id', Filament::getTenant()->id)
             ->where('estado_almacen', 'activo')
-            ->whereHas('producto', fn($q) => $q->where('estado', '!=', 'archivado'))
+            ->whereHas('producto', fn($q) => $q->where('estado', '!=', 'archivado')->where('control_de_stock', true))
             ->count();
 
         if ($count <= $umbral) {
