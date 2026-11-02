@@ -197,8 +197,7 @@ class FacturadorService
      */
     public function sincronizarEmpresa(Empresa $empresa): FacturadorResponse
     {
-        $empresa->loadMissing('facturacion');
-        $config = $empresa->facturacion;
+        $config = $empresa->facturacionEfectiva();
 
         if (! $config?->facturador_url || ! $config?->facturador_api_token) {
             return FacturadorResponse::fromError('Empresa sin URL o token del facturador configurados.');
@@ -251,10 +250,10 @@ class FacturadorService
      */
     public function enviarComprobante(Venta $venta, bool $enviarSunat = true): FacturadorResponse
     {
-        $venta->loadMissing(['empresa.facturacion', 'serie', 'detalles.producto']);
+        $venta->loadMissing(['empresa', 'serie', 'detalles.producto']);
 
         $empresa = $venta->empresa;
-        $config  = $empresa?->facturacion;
+        $config  = $empresa?->facturacionEfectiva();
 
         if (! $config) {
             return FacturadorResponse::fromError('Empresa sin configuración de facturación.');
@@ -305,11 +304,11 @@ class FacturadorService
      */
     public function enviarNota(Nota $nota, Venta $ventaOriginal): FacturadorResponse
     {
-        $nota->loadMissing(['empresa.facturacion', 'serie']);
+        $nota->loadMissing(['empresa', 'serie']);
         $ventaOriginal->loadMissing(['serie', 'detalles.producto']);
 
         $empresa = $nota->empresa;
-        $config  = $empresa?->facturacion;
+        $config  = $empresa?->facturacionEfectiva();
 
         if (! $config) {
             return FacturadorResponse::fromError('Empresa sin configuración de facturación.');
@@ -357,11 +356,11 @@ class FacturadorService
      */
     public function enviarResumen(ResumenSunat $resumen, Collection $ventas): FacturadorResponse
     {
-        $resumen->loadMissing('empresa.facturacion');
+        $resumen->loadMissing('empresa');
         $ventas->loadMissing('serie');
 
         $empresa = $resumen->empresa;
-        $config  = $empresa?->facturacion;
+        $config  = $empresa?->facturacionEfectiva();
 
         if (! $config) {
             return FacturadorResponse::fromError('Empresa sin configuración de facturación.');
@@ -400,11 +399,11 @@ class FacturadorService
      */
     public function enviarBaja(ResumenSunat $resumen, Collection $ventas, string $motivo = 'Error en emisión'): FacturadorResponse
     {
-        $resumen->loadMissing('empresa.facturacion');
+        $resumen->loadMissing('empresa');
         $ventas->loadMissing('serie');
 
         $empresa = $resumen->empresa;
-        $config  = $empresa?->facturacion;
+        $config  = $empresa?->facturacionEfectiva();
 
         if (! $config) {
             return FacturadorResponse::fromError('Empresa sin configuración de facturación.');
@@ -469,11 +468,11 @@ class FacturadorService
      */
     public function enviarResumenNotas(ResumenSunat $resumen, Collection $notas): FacturadorResponse
     {
-        $resumen->loadMissing('empresa.facturacion');
+        $resumen->loadMissing('empresa');
         $notas->loadMissing(['serie', 'venta']);
 
         $empresa = $resumen->empresa;
-        $config  = $empresa?->facturacion;
+        $config  = $empresa?->facturacionEfectiva();
 
         if (! $config) {
             return FacturadorResponse::fromError('Empresa sin configuración de facturación.');
@@ -503,11 +502,11 @@ class FacturadorService
      */
     public function enviarBajaNota(ResumenSunat $resumen, Collection $notas, string $motivo = 'Error en emisión'): FacturadorResponse
     {
-        $resumen->loadMissing('empresa.facturacion');
+        $resumen->loadMissing('empresa');
         $notas->loadMissing('serie');
 
         $empresa = $resumen->empresa;
-        $config  = $empresa?->facturacion;
+        $config  = $empresa?->facturacionEfectiva();
 
         if (! $config) {
             return FacturadorResponse::fromError('Empresa sin configuración de facturación.');

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Empresas\Schemas;
 
 use App\Enums\EstadoGeneral;
+use App\Models\Empresa;
 use App\Models\Plan;
 use App\Models\Role;
 use App\Models\User;
@@ -83,6 +84,28 @@ class EmpresaForm
                                     TextInput::make('country_code')->label('Cod. País')->default('PE'),
                                     TextInput::make('cod_local')->label('Cod. Local')->default('0000'),
                                 ]),
+                            ]),
+
+                        Tab::make('Sucursal')
+                            ->icon('heroicon-o-building-office-2')
+                            ->schema([
+                                Section::make('Empresa matriz')
+                                    ->description('Si esta empresa es una sucursal, vincúlala aquí. Heredará el plan y la suscripción de la empresa matriz.')
+                                    ->icon('heroicon-o-link')
+                                    ->schema([
+                                        Select::make('empresa_padre_id')
+                                            ->label('Empresa Matriz')
+                                            ->placeholder('Es empresa independiente (sin matriz)')
+                                            ->options(fn ($record) => Empresa::whereNull('empresa_padre_id')
+                                                ->when($record, fn ($q) => $q->where('id', '!=', $record->id))
+                                                ->orderBy('name')
+                                                ->pluck('name', 'id'))
+                                            ->searchable()
+                                            ->native(false)
+                                            ->nullable()
+                                            ->helperText('Al asignar una empresa matriz, esta empresa usará el plan y suscripción de la matriz.'),
+                                    ]),
+
                             ]),
 
                         Tab::make('Sistema')

@@ -7,6 +7,7 @@ use App\Filament\Resources\Empresas\Pages\EditEmpresa;
 use App\Filament\Resources\Empresas\Pages\ListEmpresas;
 use App\Filament\Resources\Empresas\Pages\ViewEmpresaStats;
 use App\Filament\Resources\Empresas\RelationManagers\PagosRelationManager;
+use App\Filament\Resources\Empresas\RelationManagers\SucursalesRelationManager;
 use App\Filament\Resources\Empresas\RelationManagers\UsuariosRelationManager;
 use App\Filament\Resources\Empresas\Schemas\EmpresaForm;
 use App\Filament\Resources\Empresas\Tables\EmpresasTable;
@@ -43,6 +44,7 @@ class EmpresaResource extends Resource
     public static function getRelations(): array
     {
         return [
+            SucursalesRelationManager::class,
             PagosRelationManager::class,
             UsuariosRelationManager::class,
         ];

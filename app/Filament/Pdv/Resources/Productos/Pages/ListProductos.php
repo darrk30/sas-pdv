@@ -288,6 +288,59 @@ class ListProductos extends ListRecords
                     ->modalSubmitActionLabel('Actualizar precios')
                     ->modalWidth('lg'),
 
+                Action::make('importar_lista_precios')
+                    ->label('Lista de Precios')
+                    ->icon('heroicon-o-tag')
+                    ->visible(fn () => Filament::getTenant()?->tienePlanListaPrecios() ?? false)
+                    ->form([
+                        FormActions::make([
+                            Action::make('descargar_plantilla_lista_precios')
+                                ->label('Descargar plantilla — Lista de Precios')
+                                ->icon('heroicon-o-arrow-down-tray')
+                                ->color('info')
+                                ->action(function (): StreamedResponse {
+                                    $s = app(ProductoExcelTemplateService::class)->generarPlantillaListaPrecios();
+                                    $n = 'plantilla-lista-precios.xlsx';
+                                    return response()->streamDownload(fn () => (new Xlsx($s))->save('php://output'), $n, [
+                                        'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                        'Content-Disposition' => "attachment; filename=\"{$n}\"",
+                                    ]);
+                                }),
+                        ]),
+
+                        FileUpload::make('archivo')
+                            ->label('Archivo Excel (.xlsx)')
+                            ->acceptedFileTypes([
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            ])
+                            ->required(),
+                    ])
+                    ->action(function (array $data) {
+                        $ruta = $this->resolverRuta($data['archivo']);
+
+                        if (! $ruta) {
+                            Notification::make()
+                                ->title('No se pudo leer el archivo')
+                                ->body('Por favor, vuelve a subir el archivo e inténtalo de nuevo.')
+                                ->danger()->send();
+                            return;
+                        }
+
+                        $empresaId = Filament::getTenant()->id;
+                        $servicio  = app(ProductoImportService::class);
+
+                        try {
+                            $resultado = $servicio->importarListaPrecios($ruta, $empresaId);
+                            $this->notificarResultado($resultado, 'lista_precios');
+                        } finally {
+                            @unlink($ruta);
+                        }
+                    })
+                    ->modalHeading('Importar Lista de Precios')
+                    ->modalDescription('Descarga la plantilla, complétala y súbela. Los productos no encontrados se omiten. Las listas inexistentes se crean automáticamente.')
+                    ->modalSubmitActionLabel('Importar lista de precios')
+                    ->modalWidth('lg'),
+
             ])
             ->label('Importar / Exportar')
             ->icon('heroicon-o-arrows-up-down')
@@ -321,10 +374,11 @@ class ListProductos extends ListRecords
     private function notificarResultado(array $r, string $tipo): void
     {
         $tipoLabel = match ($tipo) {
-            'nuevos'     => 'Importación de nuevos productos',
-            'actualizar' => 'Actualización de productos',
-            'precios'    => 'Actualización de precios',
-            default      => 'Importación',
+            'nuevos'        => 'Importación de nuevos productos',
+            'actualizar'    => 'Actualización de productos',
+            'precios'       => 'Actualización de precios',
+            'lista_precios' => 'Importación de lista de precios',
+            default         => 'Importación',
         };
 
         $hayErrores = ! empty($r['errores']);

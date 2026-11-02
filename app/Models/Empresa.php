@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 class Empresa extends Model
 {
     protected $fillable = [
+        'empresa_padre_id',
         'name',
         'ruc',
         'logo',
@@ -85,9 +86,40 @@ class Empresa extends Model
         );
     }
 
+    public function empresaPadre()
+    {
+        return $this->belongsTo(Empresa::class, 'empresa_padre_id');
+    }
+
+    public function sucursales()
+    {
+        return $this->hasMany(Empresa::class, 'empresa_padre_id');
+    }
+
+    public function esSucursal(): bool
+    {
+        return $this->empresa_padre_id !== null;
+    }
+
+    public function esMatriz(): bool
+    {
+        return $this->empresa_padre_id === null;
+    }
+
     public function suscripcion()
     {
         return $this->hasOne(Suscripcion::class);
+    }
+
+    /** Devuelve la suscripción efectiva: propia si es matriz, del padre si es sucursal. */
+    public function suscripcionEfectiva(): ?Suscripcion
+    {
+        if ($this->esSucursal()) {
+            $this->loadMissing('empresaPadre.suscripcion');
+            return $this->empresaPadre?->suscripcion;
+        }
+        $this->loadMissing('suscripcion');
+        return $this->suscripcion;
     }
 
     public function facturacion()
@@ -95,10 +127,30 @@ class Empresa extends Model
         return $this->hasOne(EmpresaFacturacion::class);
     }
 
+    /** Para sucursales, devuelve la config FE del padre si la propia es null. */
+    public function facturacionEfectiva(): ?EmpresaFacturacion
+    {
+        $this->loadMissing('facturacion');
+
+        if ($this->facturacion !== null) {
+            return $this->facturacion;
+        }
+
+        if ($this->esSucursal()) {
+            $this->loadMissing('empresaPadre.facturacion');
+            return $this->empresaPadre?->facturacion;
+        }
+
+        return null;
+    }
+
     public function planActual(): ?Plan
     {
-        $this->loadMissing('suscripcion.plan');
-        return $this->suscripcion?->plan;
+        $suscripcion = $this->suscripcionEfectiva();
+        if ($suscripcion && ! $suscripcion->relationLoaded('plan')) {
+            $suscripcion->load('plan');
+        }
+        return $suscripcion?->plan;
     }
 
     public function totalProductos(): int
@@ -145,7 +197,7 @@ class Empresa extends Model
     public function tieneFacturacionElectronica(): bool
     {
         return $this->tieneFeature('facturacion_electronica')
-            && $this->facturacion !== null;
+            && $this->facturacionEfectiva() !== null;
     }
 
     public function tieneVariantes(): bool
@@ -282,7 +334,12 @@ class Empresa extends Model
 
     public function tieneModulo(string $modulo): bool
     {
-        $activos  = $this->modulos_activos ?? [];
+        if ($this->esSucursal()) {
+            $this->loadMissing('empresaPadre');
+            $activos = $this->empresaPadre?->modulos_activos ?? [];
+        } else {
+            $activos = $this->modulos_activos ?? [];
+        }
         $defaults = static::defaultModulos();
         return (bool) ($activos[$modulo] ?? $defaults[$modulo] ?? true);
     }

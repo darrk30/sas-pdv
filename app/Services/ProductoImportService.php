@@ -9,6 +9,8 @@ use App\Models\Categoria;
 use App\Models\Inventario;
 use App\Models\Marca;
 use App\Models\Produccion;
+use App\Models\ListaPrecio;
+use App\Models\ListaPrecioProducto;
 use App\Models\Producto;
 use App\Models\ProductoAtributo;
 use App\Models\ProductoAtributoValor;
@@ -412,6 +414,109 @@ class ProductoImportService
         $hojaVariantes = $spreadsheet->getSheetByName('Variantes');
         if ($hojaVariantes !== null) {
             $this->procesarVariantesPrecios($hojaVariantes);
+        }
+
+        return $this->resultado();
+    }
+
+    // ── Lista de Precios ──────────────────────────────────────────────────────
+
+    public function importarListaPrecios(string $ruta, int $empresaId): array
+    {
+        $this->inicializar($empresaId);
+        $spreadsheet = IOFactory::load($ruta);
+        $filas       = $this->leerHoja($spreadsheet->getActiveSheet());
+
+        $codigoActual  = null; // último código de producto leído
+        $productoActual = null; // modelo Producto en curso
+
+        // Cache de listas normalizadas para evitar múltiples queries
+        $cacheListas = []; // 'normalizado' => ListaPrecio
+
+        foreach ($filas as $num => $fila) {
+            try {
+                $codigoCol = trim($fila['A'] ?? '');
+                $nombreLista = trim($fila['B'] ?? '');
+                $precioRaw   = trim($fila['C'] ?? '');
+
+                // Actualizar el producto en curso si la col A no está vacía
+                if ($codigoCol !== '') {
+                    $codigoActual = $codigoCol;
+                    $productoActual = Producto::where('empresa_id', $empresaId)
+                        ->where('codigo_interno', $codigoActual)
+                        ->first();
+
+                    if (! $productoActual) {
+                        $this->errores[] = "Fila {$num}: código '{$codigoActual}' no encontrado — fila omitida.";
+                        $this->omitidos++;
+                        $codigoActual = '__skip__'; // marcar para saltar filas siguientes del mismo bloque
+                        continue;
+                    }
+                }
+
+                // Si el bloque de producto anterior no existía, saltamos
+                if ($codigoActual === null || $codigoActual === '__skip__') {
+                    $this->omitidos++;
+                    continue;
+                }
+
+                if ($nombreLista === '') {
+                    $this->errores[] = "Fila {$num}: nombre de lista vacío — fila omitida.";
+                    $this->omitidos++;
+                    continue;
+                }
+
+                if ($precioRaw === '' || ! is_numeric($precioRaw)) {
+                    $this->errores[] = "Fila {$num}: precio inválido '{$precioRaw}' — fila omitida.";
+                    $this->omitidos++;
+                    continue;
+                }
+
+                $precio = round((float) $precioRaw, 4);
+
+                // Buscar o crear la lista de precios (case-insensitive)
+                $clave = mb_strtolower(trim($nombreLista));
+                if (! isset($cacheListas[$clave])) {
+                    // Buscar ignorando mayúsculas
+                    $lista = ListaPrecio::where('empresa_id', $empresaId)
+                        ->whereRaw('LOWER(nombre) = ?', [$clave])
+                        ->first();
+
+                    if (! $lista) {
+                        $lista = ListaPrecio::create([
+                            'empresa_id' => $empresaId,
+                            'nombre'     => $nombreLista,
+                            'activa'     => true,
+                        ]);
+                        $this->creados++;
+                    }
+
+                    $cacheListas[$clave] = $lista;
+                }
+
+                $lista = $cacheListas[$clave];
+
+                // updateOrCreate del precio en la lista
+                $existing = ListaPrecioProducto::where('lista_precio_id', $lista->id)
+                    ->where('producto_id', $productoActual->id)
+                    ->first();
+
+                if ($existing) {
+                    $existing->update(['precio' => $precio]);
+                    $this->actualizados++;
+                } else {
+                    ListaPrecioProducto::create([
+                        'lista_precio_id' => $lista->id,
+                        'producto_id'     => $productoActual->id,
+                        'precio'          => $precio,
+                    ]);
+                    $this->actualizados++;
+                }
+
+            } catch (\Throwable $e) {
+                $this->errores[] = "Fila {$num}: " . $e->getMessage();
+                $this->omitidos++;
+            }
         }
 
         return $this->resultado();

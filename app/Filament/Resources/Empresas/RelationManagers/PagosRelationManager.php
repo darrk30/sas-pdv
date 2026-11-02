@@ -29,6 +29,36 @@ class PagosRelationManager extends RelationManager
     protected static string $relationship = 'pagos';
     protected static ?string $title = 'Historial de Pagos';
 
+    /**
+     * Para sucursales, devuelve la relación pagos de la empresa matriz
+     * para que el historial de pagos sea el mismo en ambas.
+     */
+    public function getRelationship(): \Illuminate\Database\Eloquent\Relations\Relation
+    {
+        $empresa = $this->getOwnerRecord();
+
+        if ($empresa->esSucursal() && $empresa->empresa_padre_id) {
+            $padre = \App\Models\Empresa::find($empresa->empresa_padre_id);
+            if ($padre) {
+                return $padre->pagos();
+            }
+        }
+
+        return parent::getRelationship();
+    }
+
+    /** Devuelve la empresa efectiva: si es sucursal, retorna el padre. */
+    private function empresaEfectiva(): \App\Models\Empresa
+    {
+        $empresa = $this->getOwnerRecord();
+
+        if ($empresa->esSucursal() && $empresa->empresa_padre_id) {
+            return \App\Models\Empresa::find($empresa->empresa_padre_id) ?? $empresa;
+        }
+
+        return $empresa;
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -93,8 +123,10 @@ class PagosRelationManager extends RelationManager
                 CreateAction::make()
                     ->modalHeading('Registrar Pago Manualmente')
                     ->label('Registrar Pago')
-                    ->before(function (CreateAction $action, $livewire) {
-                        if (! $livewire->ownerRecord->suscripcion) {
+                    ->hidden(fn () => $this->getOwnerRecord()->esSucursal())
+                    ->before(function (CreateAction $action) {
+                        $empresa = $this->empresaEfectiva();
+                        if (! $empresa->suscripcion) {
                             Notification::make()
                                 ->warning()
                                 ->title('Falta Suscripción')
@@ -103,9 +135,9 @@ class PagosRelationManager extends RelationManager
                             $action->halt();
                         }
                     })
-                    ->after(function ($record, $livewire) {
+                    ->after(function ($record) {
                         if ($record->estado === 'aprobado') {
-                            static::aplicarAprobacion($record, $livewire->ownerRecord);
+                            static::aplicarAprobacion($record, $this->empresaEfectiva());
                         }
                     }),
             ])
@@ -117,8 +149,8 @@ class PagosRelationManager extends RelationManager
                     ->visible(fn ($record) => $record->estado === 'pendiente')
                     ->requiresConfirmation()
                     ->modalHeading('Aprobar pago y renovar suscripción')
-                    ->modalDescription(function ($record, $livewire) {
-                        $empresa     = $livewire->ownerRecord;
+                    ->modalDescription(function ($record) {
+                        $empresa     = $this->empresaEfectiva();
                         $suscripcion = $empresa->suscripcion;
                         $ciclo       = $record->ciclo ?? $suscripcion?->ciclo ?? 'mensual';
 
@@ -133,8 +165,8 @@ class PagosRelationManager extends RelationManager
                         return "Pago de S/ {$record->monto} — ciclo {$ciclo}.\n"
                             . "Nuevo período: {$periodoDesde->format('d/m/Y')} → {$periodoHasta->format('d/m/Y')}.";
                     })
-                    ->action(function ($record, $livewire) {
-                        $empresa     = $livewire->ownerRecord;
+                    ->action(function ($record) {
+                        $empresa     = $this->empresaEfectiva();
                         $suscripcion = $empresa->suscripcion;
 
                         if (! $suscripcion) {
@@ -214,11 +246,9 @@ class PagosRelationManager extends RelationManager
 
                 EditAction::make()
                     ->modalHeading('Editar Pago')
-                    ->after(function ($record, $livewire) {
-                        // Solo aplicar si el estado fue cambiado A 'aprobado' en esta edición.
-                        // Si ya era aprobado y solo se editaron datos históricos, no tocamos la suscripción.
+                    ->after(function ($record) {
                         if ($record->estado === 'aprobado' && $record->wasChanged('estado')) {
-                            static::aplicarAprobacion($record, $livewire->ownerRecord);
+                            static::aplicarAprobacion($record, $this->empresaEfectiva());
                         }
                     }),
                 DeleteAction::make()->modalHeading('Eliminar Pago'),
@@ -284,13 +314,23 @@ class PagosRelationManager extends RelationManager
             'es_prueba_gratuita' => false,
         ]);
 
-        $empresa->update([
+        $datosActivacion = [
             'estado'                       => 'activo',
             'suscripcion_proxima_a_vencer' => false,
-        ]);
+        ];
+
+        $empresa->update($datosActivacion);
 
         if ($nuevoPlan?->modulos_activos) {
             $empresa->update(['modulos_activos' => $nuevoPlan->modulos_activos]);
+        }
+
+        // Cascadear activación a todas las sucursales de esta matriz
+        if ($empresa->esMatriz()) {
+            $empresa->sucursales()->update($datosActivacion);
+            if ($nuevoPlan?->modulos_activos) {
+                $empresa->sucursales()->update(['modulos_activos' => $nuevoPlan->modulos_activos]);
+            }
         }
     }
 
@@ -299,13 +339,13 @@ class PagosRelationManager extends RelationManager
         return $schema
             ->schema([
                 Hidden::make('suscripcion_id')
-                    ->default(fn ($livewire) => $livewire->ownerRecord->suscripcion?->id),
+                    ->default(fn () => $this->empresaEfectiva()->suscripcion?->id),
 
                 Select::make('plan_id')
                     ->label('Plan')
                     ->options(fn () => Plan::orderBy('nombre')->pluck('nombre', 'id'))
                     ->native(false)
-                    ->default(fn ($livewire) => $livewire->ownerRecord->suscripcion?->plan_id)
+                    ->default(fn () => $this->empresaEfectiva()->suscripcion?->plan_id)
                     ->live()
                     ->afterStateUpdated(function ($state, Get $get, Set $set) {
                         $plan  = Plan::find($state);

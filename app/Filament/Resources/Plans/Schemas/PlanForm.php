@@ -116,13 +116,14 @@ class PlanForm
                             ->columnSpan(1),
 
                         TextInput::make('maximo_locales')
-                            ->label('Máximo de Locales')
-                            ->helperText('Sucursales o puntos de venta habilitados')
+                            ->label('Máximo de Sucursales')
+                            ->helperText('Cantidad de sucursales (empresas hijas) que puede tener el cliente con este plan')
                             ->required()
                             ->numeric()
                             ->default(1)
                             ->minValue(1)
                             ->columnSpan(1),
+
                     ])->columnSpanFull(),
 
                 Section::make('Funcionalidades incluidas')

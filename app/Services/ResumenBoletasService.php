@@ -228,8 +228,7 @@ class ResumenBoletasService
      */
     public function consultarEstadoRc(Empresa $empresa, ResumenSunat $resumen): array
     {
-        $empresa->loadMissing('facturacion');
-        $config = $empresa->facturacion;
+        $config = $empresa->facturacionEfectiva();
 
         if (! $config) {
             return ['ok' => false, 'pending' => false, 'mensaje' => 'Sin configuración de facturación electrónica.'];
