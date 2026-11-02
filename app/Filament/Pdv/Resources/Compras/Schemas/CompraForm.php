@@ -603,7 +603,7 @@ class CompraForm
         $simples = Producto::query()
             ->doesntHave('variantesActivas')
             ->where('control_de_stock', true)
-            ->whereIn('estado', ['activo', 'inactivo'])
+            ->where('estado', 'activo')
             ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
             ->when(! $esPreload, fn($q) => $q->where(function ($q) use ($search) {
                 $q->where('nombre', 'like', "%{$search}%")
@@ -617,7 +617,6 @@ class CompraForm
         foreach ($simples as $p) {
             $tag   = $p->codigo_interno ?: $p->codigo_barras;
             $label = $tag ? "[{$tag}] {$p->nombre}" : $p->nombre;
-            if ($p->estado === 'inactivo') $label .= ' (inactivo)';
             $opciones["producto_{$p->id}"] = $label;
         }
 
@@ -626,9 +625,9 @@ class CompraForm
             ->with(['producto', 'valores.valor', 'valores.productoAtributo.atributo'])
             ->join('productos as p_ord', 'p_ord.id', '=', 'variantes.producto_id')
             ->select('variantes.*')
-            ->whereIn('variantes.estado', ['activo', 'inactivo'])
+            ->where('variantes.estado', 'activo')
             ->where('p_ord.control_de_stock', true)
-            ->whereIn('p_ord.estado', ['activo', 'inactivo'])
+            ->where('p_ord.estado', 'activo')
             ->when($empresaId, fn($q) => $q->where('p_ord.empresa_id', $empresaId))
             ->when(! $esPreload, fn($q) => $q->where(function ($q) use ($search) {
                 $q->where('variantes.codigo', 'like', "%{$search}%")
@@ -643,7 +642,6 @@ class CompraForm
         foreach ($variantes as $v) {
             $nombre = AjusteDetalle::generarNombre(null, $v);
             $label  = $v->codigo ? "[{$v->codigo}] {$nombre}" : $nombre;
-            if ($v->estado === 'inactivo') $label .= ' (inactivo)';
             $opciones["variante_{$v->id}"] = $label;
         }
 

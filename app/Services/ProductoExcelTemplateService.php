@@ -99,6 +99,12 @@ class ProductoExcelTemplateService
         'D' => ['PRECIO_CON_DESCUENTO', 22, false, null,   'Se calcula automáticamente. No editar.'],
     ];
 
+    private const COLS_LISTA_PRECIOS = [
+        'A' => ['CODIGO_INTERNO (*)', 20, true,  null, "Requerido solo en la primera fila del producto.\nDeja vacío en las filas siguientes del mismo producto."],
+        'B' => ['NOMBRE_LISTA (*)',   24, true,  null, "Requerido. Nombre de la lista (ej: Mayorista, Minorista, VIP).\nSi ya existe una lista con nombre similar (sin distinción de mayúsculas/tildes) se reutiliza.\nSi no existe se crea automáticamente."],
+        'C' => ['PRECIO (*)',         14, true,  null, 'Requerido. Precio del producto en esta lista. Usa punto decimal. Ej: 25.90'],
+    ];
+
     private const COLS_VARIANTES_PRECIOS = [
         'A' => ['CODIGO_PRODUCTO',  20, false, null, "Código del producto padre.\nNecesario solo si no proporcionas CODIGO_VARIANTE en col B."],
         'B' => ['CODIGO_VARIANTE',  20, false, null, "Código propio de la variante para identificarla directamente.\nSi lo proporcionas, col A y C pueden quedar vacíos."],
@@ -176,6 +182,55 @@ class ProductoExcelTemplateService
     {
         $spreadsheet = $this->construir('Actualizar Precios', self::COLS_PRECIOS, self::EJEMPLO_PRECIOS);
         $this->agregarHojaVariantesPrecios($spreadsheet);
+        return $spreadsheet;
+    }
+
+    public function generarPlantillaListaPrecios(): Spreadsheet
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Lista de Precios');
+
+        $columnas  = self::COLS_LISTA_PRECIOS;
+        $ultimaCol = array_key_last($columnas);
+
+        $this->escribirHeaders($sheet, $columnas);
+        $this->aplicarComentarios($sheet, $columnas);
+        $this->aplicarAnchos($sheet, $columnas);
+        $this->congelarPrimeraFila($sheet);
+
+        // Ejemplos: un producto con 3 listas, luego otro producto con 2
+        $ejemplos = [
+            ['A' => 'CAMISETA-001', 'B' => 'Mayorista',  'C' => '18.00'],
+            ['A' => '',             'B' => 'Minorista',   'C' => '25.90'],
+            ['A' => '',             'B' => 'VIP',         'C' => '15.00'],
+            ['A' => 'PERFUME-001',  'B' => 'Mayorista',   'C' => '45.00'],
+            ['A' => '',             'B' => 'Minorista',   'C' => '65.00'],
+        ];
+
+        foreach ($ejemplos as $i => $ej) {
+            $fila = self::FILA_EJEMPLO + $i;
+            foreach ($columnas as $col => $_) {
+                $sheet->setCellValue($col . $fila, $ej[$col] ?? '');
+            }
+            $sheet->getStyle('A' . $fila . ':' . $ultimaCol . $fila)->applyFromArray([
+                'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_EJEMPLO]],
+                'font'    => ['italic' => true, 'size' => 11, 'color' => ['rgb' => '92400E']],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::COLOR_BORDE]]],
+            ]);
+        }
+
+        $sheet->getComment('A' . self::FILA_EJEMPLO)
+            ->getText()
+            ->createTextRun(
+                "Estas son filas de EJEMPLO. Puedes modificarlas o eliminarlas.\n\n" .
+                "CODIGO_INTERNO: solo escríbelo en la primera fila de cada producto.\n" .
+                "Las filas siguientes del mismo producto dejan la col A vacía.\n\n" .
+                "NOMBRE_LISTA: si ya existe una lista con ese nombre (sin importar mayúsculas) se reutiliza.\n" .
+                "Si no existe, se crea automáticamente."
+            );
+
+        $spreadsheet->setActiveSheetIndex(0);
         return $spreadsheet;
     }
 

@@ -27,17 +27,22 @@ class VencerSuscripcionesCommand extends Command
         $vencidas = Suscripcion::query()
             ->where('estado', EstadoGeneral::Activo)
             ->whereDate('fecha_fin', '<', $hoy)
-            ->with('empresa')
+            ->with('empresa.sucursales')
             ->get();
 
         foreach ($vencidas as $suscripcion) {
             $suscripcion->update(['estado' => EstadoGeneral::Inactivo]);
 
             if ($suscripcion->empresa) {
-                $suscripcion->empresa->update([
-                    'estado'                        => 'inactivo',
-                    'suscripcion_proxima_a_vencer'  => false,
-                ]);
+                $datosSuspension = [
+                    'estado'                       => 'inactivo',
+                    'suscripcion_proxima_a_vencer' => false,
+                ];
+
+                $suscripcion->empresa->update($datosSuspension);
+
+                // Cascadear suspensión a todas las sucursales
+                $suscripcion->empresa->sucursales()->update($datosSuspension);
             }
         }
 

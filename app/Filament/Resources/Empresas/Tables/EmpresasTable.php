@@ -38,6 +38,7 @@ class EmpresasTable
                     )
                     ->leftJoin('suscripciones', 'empresas.id', '=', 'suscripciones.empresa_id')
                     ->leftJoin('plans', 'suscripciones.plan_id', '=', 'plans.id')
+                    ->whereNull('empresas.empresa_padre_id')
                     ->select([
                         'empresas.*',
                         'plans.nombre as plan_nombre',
@@ -46,6 +47,7 @@ class EmpresasTable
                         DB::raw('COALESCE(vm.ventas_mes,0) AS ventas_mes'),
                         DB::raw('COALESCE(vm.monto_mes,0)  AS monto_mes'),
                         DB::raw('NULL AS fecha_pago'),
+                        DB::raw('(SELECT COUNT(*) FROM empresas s WHERE s.empresa_padre_id = empresas.id) AS total_sucursales'),
                     ])
             )
             ->columns([
@@ -70,6 +72,14 @@ class EmpresasTable
                     ->default('—')
                     ->badge()
                     ->color('primary'),
+
+                TextColumn::make('total_sucursales')
+                    ->label('Sucursales')
+                    ->alignCenter()
+                    ->badge()
+                    ->color(fn ($state) => $state > 0 ? 'info' : 'gray')
+                    ->formatStateUsing(fn ($state) => $state > 0 ? $state : '—')
+                    ->sortable(),
 
                 TextColumn::make('es_prueba_gratuita')
                     ->label('Tipo')

@@ -5,6 +5,7 @@ namespace App\Filament\Pdv\Pages\Tenancy;
 use App\Models\Empresa;
 use App\Models\Role;
 use Filament\Facades\Filament;
+use Filament\Support\Exceptions\Halt;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Notifications\Notification;
@@ -19,6 +20,21 @@ class RegistrarLocalPage extends RegisterTenant
     public static function getLabel(): string
     {
         return 'Agregar nuevo local';
+    }
+
+    private function resolverEmpresaActual(): ?Empresa
+    {
+        if ($tenant = Filament::getTenant()) {
+            return $tenant;
+        }
+
+        $host   = request()->getHost();
+        $domain = config('app.domain', '');
+        $slug   = $domain ? Str::before($host, '.' . $domain) : null;
+
+        return ($slug && $slug !== $host)
+            ? Empresa::where('slug', $slug)->first()
+            : null;
     }
 
     public function form(Schema $schema): Schema
@@ -70,11 +86,26 @@ class RegistrarLocalPage extends RegisterTenant
 
     protected function mutateFormDataBeforeRegister(array $data): array
     {
-        // Heredar RUC y país del tenant actual
-        $padre = Filament::getTenant();
+        $padre = $this->resolverEmpresaActual();
+
         if ($padre) {
-            $data['ruc']          = $padre->ruc;
-            $data['country_code'] = $padre->country_code ?? 'PE';
+            // Heredar identificación y configuración de la empresa padre
+            $data['empresa_padre_id']              = $padre->id;
+            $data['ruc']                           = $padre->ruc;
+            $data['country_code']                  = $padre->country_code ?? 'PE';
+            $data['logo']                          = $padre->logo;
+            $data['icono']                         = $padre->icono;
+            $data['descripcion']                   = $padre->descripcion;
+            $data['facebook']                      = $padre->facebook;
+            $data['instagram']                     = $padre->instagram;
+            $data['tiktok']                        = $padre->tiktok;
+            $data['modulos_activos']               = $padre->modulos_activos;
+            $data['features_override']             = $padre->features_override;
+            $data['fe_envio_directo_boleta']       = $padre->fe_envio_directo_boleta;
+            $data['fe_envio_directo_factura']      = $padre->fe_envio_directo_factura;
+            $data['impresion_comprobante_directo'] = $padre->impresion_comprobante_directo;
+            $data['igv_porcentaje']                = $padre->igv_porcentaje;
+            $data['rubro']                         = $padre->rubro;
         }
 
         // Generar slug único desde el nombre
@@ -95,6 +126,24 @@ class RegistrarLocalPage extends RegisterTenant
 
     protected function handleRegistration(array $data): Model
     {
+        $padre = $this->resolverEmpresaActual();
+
+        // Validar que el plan permita más sucursales
+        if ($padre) {
+            $maxSucursales    = $padre->planActual()?->maximo_locales ?? 0;
+            $sucursalesActual = $padre->sucursales()->count();
+
+            if ($sucursalesActual >= $maxSucursales) {
+                Notification::make()
+                    ->danger()
+                    ->title('Límite de sucursales alcanzado')
+                    ->body("Tu plan permite hasta {$maxSucursales} sucursal(es). Actualiza tu plan para agregar más.")
+                    ->send();
+
+                throw new Halt();
+            }
+        }
+
         $empresa = Empresa::create($data);
 
         // Vincular al usuario actual como miembro activo

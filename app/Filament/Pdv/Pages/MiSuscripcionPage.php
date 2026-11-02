@@ -41,16 +41,25 @@ class MiSuscripcionPage extends Page implements HasTable
         return auth()->user()?->can('config.suscripcion') ?? false;
     }
 
+    private function empresaEfectiva(): \App\Models\Empresa
+    {
+        $empresa = Filament::getTenant();
+        if ($empresa->esSucursal() && $empresa->empresa_padre_id) {
+            return \App\Models\Empresa::find($empresa->empresa_padre_id) ?? $empresa;
+        }
+        return $empresa;
+    }
+
     #[Computed]
     public function suscripcion()
     {
-        return Filament::getTenant()->suscripcion()->with('plan')->first();
+        return $this->empresaEfectiva()->suscripcion()->with('plan')->first();
     }
 
     #[Computed]
     public function tienePagoPendiente(): bool
     {
-        return Filament::getTenant()
+        return $this->empresaEfectiva()
             ->pagos()
             ->where('pagos_clientes.estado', 'pendiente')
             ->exists();
@@ -64,7 +73,7 @@ class MiSuscripcionPage extends Page implements HasTable
                     ->whereIn('suscripcion_id', function ($q) {
                         $q->select('id')
                           ->from('suscripciones')
-                          ->where('empresa_id', Filament::getTenant()->id);
+                          ->where('empresa_id', $this->empresaEfectiva()->id);
                     })
                     ->orderByDesc('fecha_pago')
             )
@@ -149,7 +158,7 @@ class MiSuscripcionPage extends Page implements HasTable
             ->icon('heroicon-o-plus-circle')
             ->color('primary')
             ->visible(function () {
-                $empresa     = Filament::getTenant()->fresh();
+                $empresa     = $this->empresaEfectiva()->fresh();
                 $suscripcion = $empresa->suscripcion;
 
                 // Mostrar si: en prueba, próxima a vencer, o inactiva — y sin pago pendiente
