@@ -23,7 +23,7 @@ class GastoResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
 
-    protected static ?string $navigationLabel = 'Gastos';
+    protected static ?string $navigationLabel = 'Gastos Variables';
 
     protected static string|UnitEnum|null $navigationGroup = 'Gastos';
 
@@ -31,7 +31,7 @@ class GastoResource extends Resource
 
     protected static ?string $modelLabel = 'Gasto';
 
-    protected static ?string $pluralModelLabel = 'Gastos';
+    protected static ?string $pluralModelLabel = 'Gastos Variables';
 
     protected static ?string $recordTitleAttribute = 'descripcion';
 

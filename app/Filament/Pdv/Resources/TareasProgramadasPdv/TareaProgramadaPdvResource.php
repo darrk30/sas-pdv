@@ -45,7 +45,8 @@ class TareaProgramadaPdvResource extends Resource
             return false;
         }
 
-        return $empresa->tieneFacturacionElectronica();
+        return $empresa->tieneFacturacionElectronica()
+            && (auth()->user()?->can('fe.tareas_programadas') ?? false);
     }
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
