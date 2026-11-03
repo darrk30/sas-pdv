@@ -334,10 +334,8 @@ class CompraForm
                                     ->required()
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (Get $get, Set $set): void {
-                                        $stale = (float) ($get('costo_total') ?? 0);
                                         self::calcularSubtotalItem($get, $set);
-                                        $fresh = (float) ($get('costo_total') ?? 0);
-                                        self::recalcularTotales($get, $set, true, $fresh - $stale);
+                                        self::recalcularTotales($get, $set, true);
                                     }),
 
                                 // ── Costo unitario ──
@@ -348,10 +346,8 @@ class CompraForm
                                     ->required()
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (Get $get, Set $set): void {
-                                        $stale = (float) ($get('costo_total') ?? 0);
                                         self::calcularSubtotalItem($get, $set);
-                                        $fresh = (float) ($get('costo_total') ?? 0);
-                                        self::recalcularTotales($get, $set, true, $fresh - $stale);
+                                        self::recalcularTotales($get, $set, true);
                                     }),
 
                                 // ── Costo total (guardado en BD) ──
@@ -547,9 +543,9 @@ class CompraForm
     /**
      * Recalcula subtotal, igv y total en la sección de Totales.
      * $isInsideRepeater = true cuando se llama desde dentro del repeater de detalles.
-     * $ajuste compensa el costo_total desactualizado del item actual en el snapshot del repeater.
+     * Suma cantidad × costo_unitario de cada ítem para evitar problemas con costo_total desactualizado.
      */
-    private static function recalcularTotales(Get $get, Set $set, bool $isInsideRepeater = false, float $ajuste = 0.0): void
+    private static function recalcularTotales(Get $get, Set $set, bool $isInsideRepeater = false): void
     {
         $detalles = $isInsideRepeater ? $get('../../detalles') : $get('detalles');
 
@@ -557,12 +553,12 @@ class CompraForm
 
         if (is_array($detalles)) {
             foreach ($detalles as $item) {
-                $subtotalDetalles += (float) ($item['costo_total'] ?? 0);
+                $subtotalDetalles += round(
+                    (float) ($item['cantidad'] ?? 0) * (float) ($item['costo_unitario'] ?? 0),
+                    4
+                );
             }
         }
-
-        // Corrige el valor desactualizado del item actual en el snapshot del repeater
-        $subtotalDetalles += $ajuste;
 
         $prefix      = $isInsideRepeater ? '../../' : '';
         $costoEnvio  = (float) ($isInsideRepeater ? $get('../../costo_envio') : $get('costo_envio'));

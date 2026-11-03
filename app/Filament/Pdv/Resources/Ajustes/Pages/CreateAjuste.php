@@ -9,6 +9,11 @@ class CreateAjuste extends CreateRecord
 {
     protected static string $resource = AjusteResource::class;
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         // Asignamos el usuario autenticado al array de datos

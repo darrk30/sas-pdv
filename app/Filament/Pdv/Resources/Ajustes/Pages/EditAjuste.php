@@ -10,6 +10,11 @@ class EditAjuste extends EditRecord
 {
     protected static string $resource = AjusteResource::class;
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
     // Solo los ajustes en 'borrador' son editables (el EditAction de la tabla
     // está oculto para cualquier otro estado). Como el borrador nunca ha
     // aplicado stock, no hay que revertir ni reaplicar nada al editar.

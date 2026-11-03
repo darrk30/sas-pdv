@@ -19,6 +19,11 @@ class EditCompra extends EditRecord
 {
     protected static string $resource = CompraResource::class;
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
     /**
      * Snapshot del estado y detalles al CARGAR el formulario, antes de cualquier edición.
      * Se usa como referencia para calcular el delta de stock al guardar.
@@ -132,8 +137,7 @@ class EditCompra extends EditRecord
                     $this->redirect(static::getResource()::getUrl('index'));
                 }),
 
-            DeleteAction::make()
-                ->visible(fn() => ! $this->record->estaAnulada()),
+            // DeleteAction::make()->visible(fn() => ! $this->record->estaAnulada()),
         ];
     }
 
@@ -186,15 +190,19 @@ class EditCompra extends EditRecord
                     $userId,
                 );
             }
-        } elseif ($estadoNuevo === 'recibido') {
-            // recibido → recibido con cambios: revertir snapshot + aplicar nuevos en una sola tx
-            DB::transaction(function () use ($record, $service, $nuevos, $concepto, $userId): void {
-                $service->revertirDetalles($record->empresa_id, 'entrada', collect($this->snapshotDetalles), $record, $concepto . ' (reversión)', $userId);
-                $service->aplicarDetalles($record->empresa_id, 'entrada', $nuevos, $record, $concepto, $userId);
+        } elseif ($estadoNuevo === 'recibido' && $this->_detallesCambiaron($nuevos)) {
+            // recibido → recibido con cambios: aplicar solo el delta (±diferencia por ítem)
+            [$entradas, $salidas] = $this->_calcularDeltas($nuevos);
+
+            DB::transaction(function () use ($record, $service, $entradas, $salidas, $concepto, $userId): void {
+                if ($salidas->isNotEmpty()) {
+                    $service->aplicarDetalles($record->empresa_id, 'salida', $salidas, $record, $concepto . ' (edición)', $userId);
+                }
+                if ($entradas->isNotEmpty()) {
+                    $service->aplicarDetalles($record->empresa_id, 'entrada', $entradas, $record, $concepto . ' (edición)', $userId);
+                }
             });
 
-            // Tras el revert + re-apply, stock_reserva puede quedar desfasado si había
-            // órdenes pendientes que lo tenían consumido. Recalculamos desde las órdenes reales.
             $afectados = $this->_afectadosUnion(collect($this->snapshotDetalles), $nuevos);
             $this->_recalcularReservas($record->empresa_id, $afectados);
         }
@@ -208,6 +216,141 @@ class EditCompra extends EditRecord
             ->map(fn(\stdClass $row) => (array) $row)
             ->values()
             ->all();
+    }
+
+    // ── Calcula los movimientos delta entre snapshot y nuevos detalles ───────────
+    // Devuelve [Collection $entradas, Collection $salidas] con arrays sintéticos
+    // que InventarioCoreService puede procesar directamente.
+    // - Ítem nuevo (no estaba en snapshot)      → entrada completa
+    // - Ítem eliminado (ya no está en nuevos)   → salida completa
+    // - Misma unidad, cantidad mayor            → entrada del delta
+    // - Misma unidad, cantidad menor            → salida del delta
+    // - Distinta unidad (caso raro)             → salida del viejo + entrada del nuevo
+
+    private function _calcularDeltas(Collection $nuevos): array
+    {
+        // Indexar snapshot por clave (variante_id|0)_(producto_id|0)
+        $clave  = fn($prodId, $varId) => ($varId ?? 0) . '_' . ($prodId ?? 0);
+
+        $snapMap = [];
+        foreach ($this->snapshotDetalles as $item) {
+            $k              = $clave($item['producto_id'] ?? null, $item['variante_id'] ?? null);
+            $snapMap[$k]    = $item;
+        }
+
+        $nuevoMap = [];
+        foreach ($nuevos as $item) {
+            $k           = $clave($item->producto_id ?? null, $item->variante_id ?? null);
+            $nuevoMap[$k] = $item;
+        }
+
+        $entradas = collect();
+        $salidas  = collect();
+
+        // Ítems eliminados (estaban en snapshot, ya no están)
+        foreach ($snapMap as $k => $old) {
+            if (! isset($nuevoMap[$k])) {
+                $salidas->push([
+                    'producto_id' => $old['producto_id'] ?? null,
+                    'variante_id' => $old['variante_id'] ?? null,
+                    'unidad_id'   => $old['unidad_id']   ?? null,
+                    'cantidad'    => (float) ($old['cantidad'] ?? 0),
+                ]);
+            }
+        }
+
+        // Ítems nuevos o con cantidad cambiada
+        foreach ($nuevoMap as $k => $new) {
+            if (! isset($snapMap[$k])) {
+                // Producto nuevo en la compra → entrada completa
+                $entradas->push([
+                    'producto_id'    => $new->producto_id ?? null,
+                    'variante_id'    => $new->variante_id ?? null,
+                    'unidad_id'      => $new->unidad_id   ?? null,
+                    'cantidad'       => (float) ($new->cantidad ?? 0),
+                    'costo_unitario' => $new->costo_unitario ?? null,
+                    'costo_total'    => $new->costo_total    ?? null,
+                ]);
+                continue;
+            }
+
+            $old     = $snapMap[$k];
+            $unidOld = (int) ($old['unidad_id'] ?? 0);
+            $unidNew = (int) ($new->unidad_id   ?? 0);
+
+            if ($unidOld !== $unidNew) {
+                // Unidad cambió: salida del viejo + entrada del nuevo
+                $salidas->push([
+                    'producto_id' => $old['producto_id'] ?? null,
+                    'variante_id' => $old['variante_id'] ?? null,
+                    'unidad_id'   => $old['unidad_id']   ?? null,
+                    'cantidad'    => (float) ($old['cantidad'] ?? 0),
+                ]);
+                $entradas->push([
+                    'producto_id'    => $new->producto_id ?? null,
+                    'variante_id'    => $new->variante_id ?? null,
+                    'unidad_id'      => $new->unidad_id   ?? null,
+                    'cantidad'       => (float) ($new->cantidad ?? 0),
+                    'costo_unitario' => $new->costo_unitario ?? null,
+                    'costo_total'    => $new->costo_total    ?? null,
+                ]);
+                continue;
+            }
+
+            $cantOld = round((float) ($old['cantidad'] ?? 0), 4);
+            $cantNew = round((float) ($new->cantidad   ?? 0), 4);
+            $delta   = round($cantNew - $cantOld, 4);
+
+            if ($delta > 0) {
+                // Aumentó: entrada del delta con costo proporcional
+                $costoUnit = (float) ($new->costo_unitario ?? 0);
+                $entradas->push([
+                    'producto_id'    => $new->producto_id ?? null,
+                    'variante_id'    => $new->variante_id ?? null,
+                    'unidad_id'      => $new->unidad_id   ?? null,
+                    'cantidad'       => $delta,
+                    'costo_unitario' => $costoUnit,
+                    'costo_total'    => $costoUnit > 0 ? round($costoUnit * $delta, 2) : null,
+                ]);
+            } elseif ($delta < 0) {
+                // Disminuyó: salida del delta (valor absoluto)
+                $salidas->push([
+                    'producto_id' => $new->producto_id ?? null,
+                    'variante_id' => $new->variante_id ?? null,
+                    'unidad_id'   => $new->unidad_id   ?? null,
+                    'cantidad'    => abs($delta),
+                ]);
+            }
+            // delta == 0 → sin movimiento
+        }
+
+        return [$entradas, $salidas];
+    }
+
+    // ── Compara snapshot vs detalles nuevos para detectar cambios de stock ───────
+    // Devuelve true solo si cambiaron productos, variantes o cantidades.
+    // Cambios en precio, proveedor, fecha, etc. no afectan el kardex.
+
+    private function _detallesCambiaron(Collection $nuevos): bool
+    {
+        $snapshot = collect($this->snapshotDetalles);
+
+        if ($snapshot->count() !== $nuevos->count()) {
+            return true;
+        }
+
+        $normalizar = fn($item) => [
+            'producto_id' => is_array($item) ? ($item['producto_id'] ?? null) : ($item->producto_id ?? null),
+            'variante_id' => is_array($item) ? ($item['variante_id'] ?? null) : ($item->variante_id ?? null),
+            'cantidad'    => round((float) (is_array($item) ? ($item['cantidad'] ?? 0) : ($item->cantidad ?? 0)), 4),
+        ];
+
+        $claveOrden = fn(array $d) => ($d['variante_id'] ?? 0) . '_' . ($d['producto_id'] ?? 0);
+
+        $snapshotNorm = $snapshot->map($normalizar)->sortBy($claveOrden)->values()->toArray();
+        $nuevosNorm   = $nuevos->map($normalizar)->sortBy($claveOrden)->values()->toArray();
+
+        return $snapshotNorm !== $nuevosNorm;
     }
 
     // ── Colecta todos los (producto_id, variante_id) únicos de dos colecciones ──
