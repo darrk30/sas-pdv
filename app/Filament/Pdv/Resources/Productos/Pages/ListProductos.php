@@ -291,7 +291,7 @@ class ListProductos extends ListRecords
                 Action::make('importar_lista_precios')
                     ->label('Lista de Precios')
                     ->icon('heroicon-o-tag')
-                    ->visible(fn () => Filament::getTenant()?->tienePlanListaPrecios() ?? false)
+                    ->visible(fn () => \App\Filament\Pdv\Resources\ListasPrecios\ListaPrecioResource::canAccess())
                     ->form([
                         FormActions::make([
                             Action::make('descargar_plantilla_lista_precios')

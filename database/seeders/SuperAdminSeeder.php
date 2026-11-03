@@ -66,8 +66,9 @@ class SuperAdminSeeder extends Seeder
         ['module' => 'caja', 'module_label' => 'Punto de Venta', 'group' => 'Movimientos',      'name' => 'ingresos_egresos.crear',  'description' => 'Registrar ingresos y egresos de caja'],
 
         // ── Facturación Electrónica ────────────────────────────────────────────
-        ['module' => 'fe', 'module_label' => 'Facturación Electrónica', 'group' => null, 'name' => 'caja.resumen_boletas', 'description' => 'Ver y gestionar resumenes SUNAT (RC/RA)'],
-        ['module' => 'fe', 'module_label' => 'Facturación Electrónica', 'group' => null, 'name' => 'caja.notas',           'description' => 'Ver y gestionar notas de crédito / débito'],
+        ['module' => 'fe', 'module_label' => 'Facturación Electrónica', 'group' => null, 'name' => 'caja.resumen_boletas',  'description' => 'Ver y gestionar resumenes SUNAT (RC/RA)'],
+        ['module' => 'fe', 'module_label' => 'Facturación Electrónica', 'group' => null, 'name' => 'caja.notas',            'description' => 'Ver y gestionar notas de crédito / débito'],
+        ['module' => 'fe', 'module_label' => 'Facturación Electrónica', 'group' => null, 'name' => 'fe.tareas_programadas', 'description' => 'Ver y gestionar tareas programadas de facturación'],
 
         // ── Productos / Inventario ─────────────────────────────────────────────
         ['module' => 'productos', 'module_label' => 'Productos / Inventario', 'group' => 'Productos',       'name' => 'productos.ver',      'description' => 'Ver listado de productos'],

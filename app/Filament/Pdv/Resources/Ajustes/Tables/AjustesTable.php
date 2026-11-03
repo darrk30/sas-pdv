@@ -178,38 +178,38 @@ class AjustesTable
             ])
 
             ->toolbarActions([
-                BulkActionGroup::make([
-                    // Eliminar en lote: solo procesa los que están en borrador
-                    DeleteBulkAction::make()
-                        ->action(function (Collection $records): void {
-                            $eliminados = 0;
-                            $omitidos   = 0;
+                // BulkActionGroup::make([
+                //     // Eliminar en lote: solo procesa los que están en borrador
+                //     DeleteBulkAction::make()
+                //         ->action(function (Collection $records): void {
+                //             $eliminados = 0;
+                //             $omitidos   = 0;
 
-                            foreach ($records as $ajuste) {
-                                if ($ajuste->estado === 'borrador') {
-                                    $ajuste->delete();
-                                    $eliminados++;
-                                } else {
-                                    $omitidos++;
-                                }
-                            }
+                //             foreach ($records as $ajuste) {
+                //                 if ($ajuste->estado === 'borrador') {
+                //                     $ajuste->delete();
+                //                     $eliminados++;
+                //                 } else {
+                //                     $omitidos++;
+                //                 }
+                //             }
 
-                            if ($omitidos > 0) {
-                                Notification::make()
-                                    ->warning()
-                                    ->title("{$omitidos} ajuste(s) no eliminado(s)")
-                                    ->body('Solo se pueden eliminar ajustes en borrador.')
-                                    ->send();
-                            }
+                //             if ($omitidos > 0) {
+                //                 Notification::make()
+                //                     ->warning()
+                //                     ->title("{$omitidos} ajuste(s) no eliminado(s)")
+                //                     ->body('Solo se pueden eliminar ajustes en borrador.')
+                //                     ->send();
+                //             }
 
-                            if ($eliminados > 0) {
-                                Notification::make()
-                                    ->success()
-                                    ->title("{$eliminados} ajuste(s) eliminado(s)")
-                                    ->send();
-                            }
-                        }),
-                ]),
+                //             if ($eliminados > 0) {
+                //                 Notification::make()
+                //                     ->success()
+                //                     ->title("{$eliminados} ajuste(s) eliminado(s)")
+                //                     ->send();
+                //             }
+                //         }),
+                // ]),
             ])
 
             ->defaultSort('created_at', 'desc')
