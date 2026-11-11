@@ -2,6 +2,7 @@
 
 use App\Enums\EstadoGeneral;
 use App\Http\Controllers\Pdv\ArqueoCajaController;
+use App\Http\Controllers\Pdv\AjusteExcelController;
 use App\Http\Controllers\Pdv\ClienteExcelController;
 use App\Http\Controllers\Pdv\ProductoExcelController;
 use App\Http\Controllers\Pdv\ProveedorExcelController;
@@ -51,6 +52,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/plantillas/proveedores', [ProveedorExcelController::class, 'descargar'])
         ->name('proveedores.plantilla');
+
+    Route::get('/plantillas/ajuste-stock', [AjusteExcelController::class, 'descargar'])
+        ->name('ajustes.plantilla');
 
     Route::get('/ticket/venta/{id}', [TicketVentaController::class, 'show'])
         ->name('pdv.ticket.venta')
