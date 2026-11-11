@@ -113,8 +113,18 @@ class ReporteProductosPage extends Page implements HasTable
 
     private function getProductosParaExportar(): \Illuminate\Support\Collection
     {
+        $col = match ($this->getTableSortColumn()) {
+            'ingresos'    => 'ingresos',
+            'costo'       => 'costo',
+            'utilidad'    => 'utilidad',
+            'descripcion' => 'venta_detalles.descripcion',
+            'categoria'   => 'categoria',
+            default       => 'qty',
+        };
+        $dir = ($this->getTableSortDirection() === 'asc') ? 'asc' : 'desc';
+
         return $this->buildQuery()
-            ->orderBy($this->getTableSortColumn() ?? 'qty', $this->getTableSortDirection() ?? 'desc')
+            ->orderByRaw("{$col} {$dir}")
             ->get();
     }
 
@@ -170,7 +180,7 @@ class ReporteProductosPage extends Page implements HasTable
             ->when($desde,       fn ($q) => $q->where('v.fecha_emision', '>=', $desde))
             ->when($hasta,       fn ($q) => $q->where('v.fecha_emision', '<=', $hasta))
             ->when($categoriaId, fn ($q) => $q->where('p.categoria_id', $categoriaId))
-            ->groupBy('venta_detalles.descripcion', 'p.categoria_id');
+            ->groupBy('venta_detalles.descripcion');
     }
 
     // ── Tabla Filament ────────────────────────────────────────────────────────
@@ -182,8 +192,18 @@ class ReporteProductosPage extends Page implements HasTable
                 $perPage     = is_numeric($recordsPerPage) ? (int) $recordsPerPage : 25;
                 $currentPage = is_numeric($page) ? (int) $page : 1;
 
+                $col = match ($sortColumn) {
+                    'ingresos'    => 'COALESCE(SUM(venta_detalles.total), 0)',
+                    'costo'       => 'COALESCE(SUM(venta_detalles.costo_total), 0)',
+                    'utilidad'    => 'COALESCE(SUM(venta_detalles.total - venta_detalles.costo_total), 0)',
+                    'descripcion' => 'venta_detalles.descripcion',
+                    'categoria'   => 'COALESCE(ANY_VALUE(c.nombre), \'Sin categoría\')',
+                    default       => 'COALESCE(SUM(venta_detalles.cantidad), 0)',
+                };
+                $dir = ($sortDirection === 'asc') ? 'asc' : 'desc';
+
                 return $this->buildQuery()
-                    ->orderBy($sortColumn ?? 'qty', $sortDirection ?? 'desc')
+                    ->orderByRaw("{$col} {$dir}")
                     ->paginate($perPage, ['*'], 'tablePage', $currentPage);
             })
             ->toolbarActions($this->accionesExportacion())
@@ -195,7 +215,6 @@ class ReporteProductosPage extends Page implements HasTable
                     ->searchable(false)
                     ->sortable()
                     ->weight('medium')
-                    ->description(fn ($record): string => $record->categoria)
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('categoria')
