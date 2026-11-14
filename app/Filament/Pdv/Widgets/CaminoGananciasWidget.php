@@ -5,6 +5,7 @@ namespace App\Filament\Pdv\Widgets;
 use App\Enums\EstadoGasto;
 use App\Enums\EstadoVenta;
 use App\Enums\FrecuenciaGasto;
+use App\Models\Compra;
 use App\Models\GastoFijo;
 use App\Models\Gasto;
 use App\Models\Venta;
@@ -57,15 +58,21 @@ class CaminoGananciasWidget extends Widget
             fn ($g) => $g->frecuencia->montoEnPeriodo((float) $g->monto, FrecuenciaGasto::Mensual)
         );
 
-        $meta     = $totalFijosMensual + $gastosVariables;
+        // Compras confirmadas del mes (cada compra es un gasto)
+        $comprasDelMes = (float) Compra::where('empresa_id', $empresaId)
+            ->where('estado', 'confirmado')
+            ->whereBetween('fecha_compra', [$inicio, $fin])
+            ->sum('total');
+
+        $meta       = $totalFijosMensual + $gastosVariables + $comprasDelMes;
         $diferencia = $totalNeto - $meta;
-        $pct      = $meta > 0 ? min(100, round($totalNeto / $meta * 100, 1)) : ($totalNeto > 0 ? 100 : 0);
-        $ganando  = $diferencia >= 0;
-        $mes      = Carbon::now()->locale('es')->isoFormat('MMMM YYYY');
+        $pct        = $meta > 0 ? min(100, round($totalNeto / $meta * 100, 1)) : ($totalNeto > 0 ? 100 : 0);
+        $ganando    = $diferencia >= 0;
+        $mes        = Carbon::now()->locale('es')->isoFormat('MMMM YYYY');
 
         return compact(
             'totalBruto', 'totalIgv', 'totalNeto',
-            'gastosVariables', 'totalFijosMensual',
+            'gastosVariables', 'totalFijosMensual', 'comprasDelMes',
             'meta', 'diferencia', 'pct', 'ganando', 'mes'
         );
     }
