@@ -174,6 +174,10 @@
                     <span style="color:var(--gray-500,#6b7280);">+ Gastos variables</span>
                     <span>S/ {{ fmt_precio($d['gastosVariables']) }}</span>
                 </div>
+                <div class="cg-breakdown-row">
+                    <span style="color:var(--gray-500,#6b7280);">+ Compras del mes</span>
+                    <span>S/ {{ fmt_precio($d['comprasDelMes']) }}</span>
+                </div>
                 <div class="cg-breakdown-divider"></div>
                 <div class="cg-breakdown-row cg-breakdown-row--total">
                     <span>= Meta del período</span>
