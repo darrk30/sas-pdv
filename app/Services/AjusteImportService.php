@@ -90,14 +90,14 @@ class AjusteImportService
 
             // ── Resolver unidad ───────────────────────────────────────────────
             if ($unidadRaw !== '') {
-                $unidad = $this->buscarUnidad($unidadRaw);
+                $unidad = $this->buscarUnidad($unidadRaw, $empresaId);
                 if (! $unidad) {
                     $errores[] = "Fila {$row}: Unidad '{$unidadRaw}' no existe en el sistema — omitida.";
                     $omitidos++;
                     continue;
                 }
 
-                $unidadProducto = UnidadesMedida::find($unidadProductoId);
+                $unidadProducto = UnidadesMedida::withoutGlobalScopes()->find($unidadProductoId);
                 if (! $unidadProducto || $unidad->dimension_id !== $unidadProducto->dimension_id) {
                     $errores[] = "Fila {$row}: Unidad '{$unidadRaw}' no es compatible con la unidad del producto (distinta dimensión) — omitida.";
                     $omitidos++;
@@ -228,13 +228,14 @@ class AjusteImportService
     }
 
     /**
-     * Busca unidad por nombre o símbolo (insensible a mayúsculas).
+     * Busca unidad por nombre o símbolo (insensible a mayúsculas) dentro de la empresa.
      */
-    private function buscarUnidad(string $texto): ?UnidadesMedida
+    private function buscarUnidad(string $texto, int $empresaId): ?UnidadesMedida
     {
         $lower = strtolower($texto);
 
         return UnidadesMedida::withoutGlobalScopes()
+            ->where('empresa_id', $empresaId)
             ->where('estado', true)
             ->where(fn ($q) => $q
                 ->whereRaw('LOWER(nombre) = ?', [$lower])
